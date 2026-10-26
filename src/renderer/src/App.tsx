@@ -1,5 +1,5 @@
-function App(): React.JSX.Element {
-  return <main>Sinapsi</main>
-}
+import Home from './home/Home'
 
-export default App
+export default function App(): React.JSX.Element {
+  return <Home />
+}
