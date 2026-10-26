@@ -24,7 +24,7 @@ export function buildArgs(engine: Engine, prompt: string, opts: CallOptions = {}
   }
   const session = conv ? (conv.resume ? ['--resume', conv.id] : ['--session-id', conv.id]) : []
   const system = opts.systemPrompt && !conv?.resume ? ['--system-prompt', opts.systemPrompt] : []
-  const lockdown = conv ? ['--disallowedTools', NO_TOOLS, '--setting-sources', ''] : []
+  const lockdown = conv ? ['--tools', '', '--disallowedTools', NO_TOOLS, '--strict-mcp-config', '--setting-sources', ''] : []
   return { cmd: 'claude', args: ['-p', prompt, '--output-format', 'json', ...m, ...session, ...system, ...schema, ...lockdown] }
 }
 

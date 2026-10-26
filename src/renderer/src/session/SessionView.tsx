@@ -72,7 +72,7 @@ export function SessionView({ id, onBack }: { id: string; onBack: () => void }):
                 return (
                   <div key={i} className="card err" role="alert">
                     <p>{it.message}</p>
-                    {i === s.items.length - 1 && (
+                    {i === s.items.length - 1 && s.awaiting === 'retry' && (
                       <button type="button" className="pri" onClick={() => void api.retry(id)}>
                         Riprova
                       </button>
@@ -86,6 +86,14 @@ export function SessionView({ id, onBack }: { id: string; onBack: () => void }):
                 </div>
               )
             })}
+            {s.awaiting === 'retry' && s.items[s.items.length - 1]?.kind !== 'error' && (
+              <div className="card err" role="alert">
+                <p>Il tutor non ha finito di rispondere (forse l'app è stata chiusa).</p>
+                <button type="button" className="pri" onClick={() => void api.retry(id)}>
+                  Riprova
+                </button>
+              </div>
+            )}
             {s.awaiting === 'teacher' && (
               <div className="msg typing-row">
                 <span className="typing" aria-hidden="true">

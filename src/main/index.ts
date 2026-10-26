@@ -3,6 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { APP_NAME } from '../shared/version'
 import { registerIpc } from './ipc'
+import { navigationDecision } from './navigation'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -23,6 +24,13 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => mainWindow.show())
+
+  // A link written by the tutor must never replace the app (and its API) with a web page.
+  mainWindow.webContents.on('will-navigate', (e, url) => {
+    e.preventDefault()
+    const d = navigationDecision(url)
+    if (d.external) void shell.openExternal(d.external)
+  })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     if (details.url.startsWith('https://')) shell.openExternal(details.url)

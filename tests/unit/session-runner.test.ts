@@ -114,7 +114,7 @@ describe('session runner', () => {
     const { runner, dir } = await harness(async () => probeTurn)
     const id = '22222222-2222-4222-8222-222222222222'
     await writeFile(join(dir, `${id}.jsonl`), [JSON.stringify({ t: 'created', id, topic: 'x', at }), JSON.stringify({ t: 'learner', text: 'Voglio studiare: x', at })].join('\n') + '\n')
-    expect((await runner.get(id)).awaiting).toBe('teacher')
+    expect((await runner.get(id)).awaiting).toBe('retry')
     await runner.retry(id)
     expect((await runner.get(id)).awaiting).toBe('learner')
   })

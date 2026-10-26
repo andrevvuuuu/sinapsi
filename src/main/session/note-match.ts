@@ -27,5 +27,7 @@ export function matchNote(index: VaultIndex, topic: string): VaultNote | null {
       bestScore = score
     }
   }
-  return bestScore > 0 ? best : null
+  // One shared generic word ("teorema") is not a match: ask for most of the topic.
+  const needed = tw.length >= 2 ? Math.max(2, Math.ceil(tw.length / 2)) : 1
+  return bestScore >= needed ? best : null
 }

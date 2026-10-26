@@ -42,6 +42,7 @@ export function createSessionRunner(deps: {
   const uuid = deps.uuid ?? randomUUID
   const file = (id: string): string => join(deps.dir, `${id}.jsonl`)
   const chains = new Map<string, Promise<unknown>>()
+  const inflight = new Set<string>()
 
   // One operation at a time per session, so events never interleave.
   function serial<R>(id: string, job: () => Promise<R>): Promise<R> {
@@ -49,7 +50,12 @@ export function createSessionRunner(deps: {
     chains.set(id, run.catch(() => undefined))
     return run
   }
-  const load = async (id: string): Promise<SessionState> => reduceSession(await readJsonl(file(id), AnyEvent))
+  async function load(id: string): Promise<SessionState> {
+    const s = reduceSession(await readJsonl(file(id), AnyEvent))
+    // A learner message nobody is answering (e.g. the app quit mid-turn) can be retried.
+    if (s.awaiting === 'teacher' && !inflight.has(id)) s.awaiting = 'retry'
+    return s
+  }
   async function append(id: string, e: SessionEvent): Promise<void> {
     await appendJsonl(file(id), e)
     deps.onUpdate(await load(id))
@@ -58,6 +64,8 @@ export function createSessionRunner(deps: {
   async function teacherTurn(id: string): Promise<void> {
     const s = await load(id)
     if (!s.lastLearnerText) return
+    inflight.add(id)
+    deps.onUpdate({ ...s, awaiting: 'teacher' })
     // A first turn that failed may already have created the CLI session: each first attempt gets a fresh id.
     const attempts = s.items.filter((i) => i.kind === 'error').length
     const conversationId = s.conversationId ?? (s.hasTeacherTurn || attempts === 0 ? id : uuid())
@@ -72,9 +80,13 @@ export function createSessionRunner(deps: {
         jsonSchema: teacherJsonSchema(),
         cwd: deps.dir
       })
+      inflight.delete(id)
       await append(id, { t: 'teacher', turn: r.data, conversationId: r.conversationId, at: Date.now() })
     } catch (e) {
+      inflight.delete(id)
       await append(id, { t: 'error', message: friendly(e), at: Date.now() })
+    } finally {
+      inflight.delete(id)
     }
   }
 
@@ -91,6 +103,8 @@ export function createSessionRunner(deps: {
       const note = index ? matchNote(index, topic) : null
       let noteText: string | undefined
       if (note) noteText = await deps.readNote(note.path).catch(() => undefined)
+      // The first turn starts right after: don't flash "Riprova" in between.
+      inflight.add(id)
       return serial(id, async () => {
         await append(id, { t: 'created', id, topic, ...(note && noteText ? { noteTitle: note.title, notePath: note.path } : {}), at: Date.now() })
         await append(id, { t: 'learner', text: firstMessage(topic, note && noteText ? { title: note.title, text: noteText } : undefined), at: Date.now() })
