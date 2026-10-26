@@ -3,7 +3,10 @@ import { join } from 'node:path'
 import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
-import { makeHandlers } from './ipc-handlers'
+import { readFile } from 'node:fs/promises'
+import { makeHandlers, makeSessionHandlers } from './ipc-handlers'
+import { fakeTeacher } from './session/fake-teacher'
+import { createSessionRunner } from './session/runner'
 import { dataDir } from './store/paths'
 import { loadSettings, saveSettings } from './store/settings'
 import { scanVault } from './vault/scan'
@@ -62,5 +65,29 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.aiStatus, () => h.aiStatus())
   ipcMain.handle(CH.openExternal, (_e, url) => h.openExternal(url))
   bridge.onStatus((s) => broadcast(CH.aiStatusChanged, s))
+
+  const runner = createSessionRunner({
+    bridge: process.env.SINAPSI_FAKE_TEACHER === '1' ? fakeTeacher() : bridge,
+    dir: join(dataDir(), 'sessions'),
+    vault: async () => {
+      const idx = await h.vaultIndex()
+      return 'error' in idx ? null : idx
+    },
+    readNote: (path) => readFile(path, 'utf8'),
+    onUpdate: (s) => broadcast(CH.sessionUpdated, s)
+  })
+  const sh = makeSessionHandlers(runner)
+  // Turns can take a while: the window learns progress through session:updated, so these return at once.
+  const background = (p: Promise<unknown>): void => void p.catch((e) => console.warn('[session]', e))
+  ipcMain.handle(CH.sessionStart, async (_e, topic) => {
+    const id = await sh.start(topic)
+    background(sh.retry(id))
+    return id
+  })
+  ipcMain.handle(CH.sessionList, () => sh.list())
+  ipcMain.handle(CH.sessionGet, (_e, id) => sh.get(id))
+  ipcMain.handle(CH.sessionAnswer, (_e, id, a) => background(sh.answer(id, a)))
+  ipcMain.handle(CH.sessionSay, (_e, id, text) => background(sh.say(id, text)))
+  ipcMain.handle(CH.sessionRetry, (_e, id) => background(sh.retry(id)))
   return { bridge }
 }

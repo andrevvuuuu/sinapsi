@@ -21,7 +21,16 @@ const api: SinapsiApi = {
     status: () => ipcRenderer.invoke(CH.aiStatus),
     onStatus: (cb) => subscribe(CH.aiStatusChanged, cb)
   },
-  app: { openExternal: (url) => ipcRenderer.invoke(CH.openExternal, url) }
+  app: { openExternal: (url) => ipcRenderer.invoke(CH.openExternal, url) },
+  session: {
+    start: (topic) => ipcRenderer.invoke(CH.sessionStart, topic),
+    list: () => ipcRenderer.invoke(CH.sessionList),
+    get: (id) => ipcRenderer.invoke(CH.sessionGet, id),
+    answer: (id, a) => ipcRenderer.invoke(CH.sessionAnswer, id, a),
+    say: (id, text) => ipcRenderer.invoke(CH.sessionSay, id, text),
+    retry: (id) => ipcRenderer.invoke(CH.sessionRetry, id),
+    onUpdate: (cb) => subscribe(CH.sessionUpdated, cb)
+  }
 }
 
 contextBridge.exposeInMainWorld('sinapsi', api)

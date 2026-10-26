@@ -12,6 +12,8 @@ import { firstMessage, TEACHER_SYSTEM_PROMPT } from './prompt'
 import { z } from 'zod'
 
 export type SessionRunner = {
+  /** Writes the opening events and returns at once; the first teacher turn is run by retry(). */
+  create(topic: string): Promise<string>
   start(topic: string): Promise<string>
   answer(id: string, a: LearnerAnswer): Promise<void>
   say(id: string, text: string): Promise<void>
@@ -76,8 +78,13 @@ export function createSessionRunner(deps: {
     }
   }
 
-  return {
+  const runner: SessionRunner = {
     async start(topic) {
+      const id = await runner.create(topic)
+      await runner.retry(id)
+      return id
+    },
+    async create(topic) {
       await mkdir(deps.dir, { recursive: true })
       const id = uuid()
       const index = await deps.vault().catch(() => null)
@@ -87,7 +94,6 @@ export function createSessionRunner(deps: {
       return serial(id, async () => {
         await append(id, { t: 'created', id, topic, ...(note && noteText ? { noteTitle: note.title, notePath: note.path } : {}), at: Date.now() })
         await append(id, { t: 'learner', text: firstMessage(topic, note && noteText ? { title: note.title, text: noteText } : undefined), at: Date.now() })
-        await teacherTurn(id)
         return id
       })
     },
@@ -124,4 +130,5 @@ export function createSessionRunner(deps: {
       return all.filter((s) => s.id).map((s) => ({ id: s.id, topic: s.topic, phase: s.phase, updatedAt: s.updatedAt })).sort((a, b) => b.updatedAt - a.updatedAt)
     }
   }
+  return runner
 }

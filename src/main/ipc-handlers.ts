@@ -2,6 +2,8 @@ import { access } from 'node:fs/promises'
 import { z } from 'zod'
 import type { EngineStatus, VaultResult } from '../shared/api'
 import { TASKS, type Engine, type Settings } from '../shared/settings-schema'
+import { LearnerAnswerSchema, type LearnerAnswer } from '../shared/teacher-protocol'
+import type { SessionRunner } from './session/runner'
 import type { VaultIndex } from '../shared/vault-types'
 
 const Choice = z.object({ engine: z.enum(['agy', 'claude']), model: z.string().optional() }).strict()
@@ -55,3 +57,19 @@ export function makeHandlers(d: HandlerDeps) {
   }
 }
 export type Handlers = ReturnType<typeof makeHandlers>
+
+const Id = z.string().uuid()
+const Topic = z.string().trim().min(1).max(500)
+const Text = z.string().trim().min(1).max(5000)
+
+/** Session handlers: validate everything coming from the window, then delegate to the runner. */
+export function makeSessionHandlers(runner: SessionRunner) {
+  return {
+    start: async (topic: unknown) => runner.create(Topic.parse(topic)),
+    list: () => runner.list(),
+    get: async (id: unknown) => runner.get(Id.parse(id)),
+    answer: async (id: unknown, a: unknown) => runner.answer(Id.parse(id), LearnerAnswerSchema.parse(a) as LearnerAnswer),
+    say: async (id: unknown, text: unknown) => runner.say(Id.parse(id), Text.parse(text)),
+    retry: async (id: unknown) => runner.retry(Id.parse(id))
+  }
+}
