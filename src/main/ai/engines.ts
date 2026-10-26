@@ -24,32 +24,56 @@ export function parseOutput(engine: Engine, stdout: string): { text: string; inp
   throw new AiOutputError(`${engine}: risposta inattesa`)
 }
 
-/** Real process runner: stdin closed, cwd = home, SIGTERM then SIGKILL on timeout. */
+/**
+ * Real process runner: stdin closed, cwd = home, own process group so a timeout kills the whole tree
+ * (SIGTERM, then SIGKILL). Resolves even if a grandchild keeps the pipes open.
+ */
 export const nodeSpawn: SpawnFn = (cmd, args, { timeoutMs }) =>
   new Promise((resolve, reject) => {
     const home = homedir()
     const env = { ...process.env, PATH: [`${home}/.local/bin`, '/opt/homebrew/bin', '/usr/local/bin', process.env.PATH].join(':') }
-    const child = spawn(cmd, args, { cwd: home, env, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(cmd, args, { cwd: home, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
     let stdout = ''
     let stderr = ''
     let timedOut = false
+    let done = false
+    const killTree = (): void => {
+      for (const sig of ['SIGTERM', 'SIGKILL'] as const) {
+        setTimeout(() => {
+          try {
+            if (child.pid) process.kill(-child.pid, sig)
+          } catch {
+            /* already gone */
+          }
+        }, sig === 'SIGTERM' ? 0 : 2000).unref()
+      }
+    }
+    const finish = (code: number | null): void => {
+      if (done) return
+      done = true
+      clearTimeout(timer)
+      clearTimeout(hard)
+      resolve({ stdout, stderr, code, timedOut })
+    }
     child.stdout.on('data', (d) => {
       stdout += d
       // A login prompt waits for input forever: stop at once instead of waiting for the timeout.
-      if (/authentication page/i.test(stdout)) child.kill('SIGTERM')
+      if (/authentication page/i.test(stdout)) killTree()
     })
     child.stderr.on('data', (d) => (stderr += d))
     const timer = setTimeout(() => {
       timedOut = true
-      child.kill('SIGTERM')
-      setTimeout(() => child.kill('SIGKILL'), 2000).unref()
+      killTree()
     }, timeoutMs)
+    // Hard deadline: never wait more than timeout + 3 s, whatever the pipes do.
+    const hard = setTimeout(() => finish(null), timeoutMs + 3000)
     child.on('error', (e) => {
+      if (done) return
+      done = true
       clearTimeout(timer)
+      clearTimeout(hard)
       reject(e)
     })
-    child.on('close', (code) => {
-      clearTimeout(timer)
-      resolve({ stdout, stderr, code, timedOut })
-    })
+    child.on('close', (code) => finish(code))
+    child.on('exit', (code) => setTimeout(() => finish(code), 200).unref())
   })

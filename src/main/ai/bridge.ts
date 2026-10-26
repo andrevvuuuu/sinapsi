@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { z } from 'zod'
+import { z } from 'zod'
 import type { Engine, EngineChoice, Task } from '../../shared/settings-schema'
 import { appendJsonl } from '../store/jsonl'
 import { buildArgs, parseOutput } from './engines'
-import { AiSchemaError, AiTimeoutError, AuthRequiredError, EngineMissingError } from './errors'
+import { AiOutputError, AiSchemaError, AiTimeoutError, AuthRequiredError, EngineMissingError } from './errors'
 import { extractJson } from './json'
 
 export type SpawnFn = (
@@ -35,7 +35,8 @@ export interface Bridge {
   onStatus(cb: (s: Record<Engine, EngineStatus>) => void): () => void
 }
 
-const AUTH_RE = /authentication page|log ?in|login required|not authenticated/i
+// Only CLI-specific phrases, checked only when the call did not succeed: answers may say "log in base 2".
+const AUTH_RE = /Opening authentication page|Please run \/login|Invalid API key|not logged in|login required|authentication required/i
 const DEFAULT_TIMEOUT = 180_000
 
 export function createBridge(deps: {
@@ -73,23 +74,32 @@ export function createBridge(deps: {
       setState(engine, missing ? 'missing' : 'error')
       throw missing ? new EngineMissingError(engine) : e
     }
+    if (!res.timedOut && res.code === 0) {
+      try {
+        const out = parseOutput(engine, res.stdout)
+        await logUsage({ ts: t0, task, engine, model, inputTokens: out.inputTokens, outputTokens: out.outputTokens, ms: now() - t0, ok: true })
+        setState(engine, 'idle')
+        return out.text
+      } catch {
+        /* not a valid reply: fall through to the failure checks */
+      }
+    }
     if (AUTH_RE.test(res.stdout) || AUTH_RE.test(res.stderr)) {
       setState(engine, 'auth')
       throw new AuthRequiredError(engine)
     }
-    if (res.timedOut) {
-      setState(engine, 'error')
-      await appendJsonl(deps.usageFile, { ts: t0, task, engine, model, inputTokens: 0, outputTokens: 0, ms: now() - t0, ok: false })
-      throw new AiTimeoutError(engine, timeoutMs)
-    }
+    setState(engine, 'error')
+    await logUsage({ ts: t0, task, engine, model, inputTokens: 0, outputTokens: 0, ms: now() - t0, ok: false })
+    if (res.timedOut) throw new AiTimeoutError(engine, timeoutMs)
+    throw new AiOutputError(`${engine}: risposta non valida (codice ${res.code})`)
+  }
+
+  // Bookkeeping must never cost the user an answer they already paid for.
+  async function logUsage(rec: Record<string, unknown>): Promise<void> {
     try {
-      const out = parseOutput(engine, res.stdout)
-      await appendJsonl(deps.usageFile, { ts: t0, task, engine, model, inputTokens: out.inputTokens, outputTokens: out.outputTokens, ms: now() - t0, ok: true })
-      setState(engine, 'idle')
-      return out.text
+      await appendJsonl(deps.usageFile, rec)
     } catch (e) {
-      setState(engine, 'error')
-      throw e
+      console.warn('[ai] registro consumi non scritto', e)
     }
   }
 
@@ -102,11 +112,14 @@ export function createBridge(deps: {
     async ask<T>(req: AskRequest<T>): Promise<AskResult<T>> {
       const choice = (await deps.engines())[req.task]
       const { engine, model } = choice
-      const key = createHash('sha256').update([engine, model ?? '', req.prompt, req.schemaName ?? (req.schema ? 'schema' : '')].join('|')).digest('hex')
+      const key = createHash('sha256').update([engine, model ?? '', req.prompt, req.schemaName ?? schemaId(req.schema)].join('|')).digest('hex')
       const cacheFile = join(deps.cacheDir, `${key}.json`)
       if (req.cache) {
         try {
-          return { data: JSON.parse(await readFile(cacheFile, 'utf8')), fromCache: true, engine }
+          const cached = JSON.parse(await readFile(cacheFile, 'utf8'))
+          if (!req.schema) return { data: cached, fromCache: true, engine }
+          const ok = req.schema.safeParse(cached)
+          if (ok.success) return { data: ok.data, fromCache: true, engine }
         } catch {
           /* not cached yet */
         }
@@ -123,8 +136,12 @@ export function createBridge(deps: {
         throw new AiSchemaError(second.error)
       })
       if (req.cache) {
-        await mkdir(deps.cacheDir, { recursive: true })
-        await writeFile(cacheFile, JSON.stringify(data), 'utf8')
+        try {
+          await mkdir(deps.cacheDir, { recursive: true })
+          await writeFile(cacheFile, JSON.stringify(data), 'utf8')
+        } catch (e) {
+          console.warn('[ai] cache non scritta', e)
+        }
       }
       return { data: data as T | string, fromCache: false, engine }
     }
@@ -140,4 +157,13 @@ function validate<T>(schema: z.ZodType<T>, text: string): { ok: true; value: T }
   }
   const r = schema.safeParse(json)
   return r.success ? { ok: true, value: r.data } : { ok: false, error: r.error.message.slice(0, 300) }
+}
+
+function schemaId(schema?: z.ZodType<unknown>): string {
+  if (!schema) return ''
+  try {
+    return JSON.stringify(z.toJSONSchema(schema))
+  } catch {
+    return 'schema'
+  }
 }

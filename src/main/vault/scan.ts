@@ -1,20 +1,36 @@
-import { readdir, readFile as fsReadFile, stat } from 'node:fs/promises'
+import { readdir as fsReaddir, readFile as fsReadFile, stat } from 'node:fs/promises'
+import type { Dirent } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import matter from 'gray-matter'
 import type { VaultIndex, VaultNote } from '../../shared/vault-types'
 import { parseWikilinks, stripCode } from './links'
 import { readSubjects } from './subjects'
 
-type Deps = { readFile: (path: string) => Promise<string> }
-const defaultDeps: Deps = { readFile: (p) => fsReadFile(p, 'utf8') }
+// Old-style iCloud placeholder of a note that is not downloaded: ".Nota.md.icloud"
+const ICLOUD_RE = /^\.(.+)\.md\.icloud$/
+
+type Deps = { readFile: (path: string) => Promise<string>; readdir: (path: string) => Promise<Dirent[]> }
+const defaultDeps: Deps = { readFile: (p) => fsReadFile(p, 'utf8'), readdir: (p) => fsReaddir(p, { withFileTypes: true }) }
 
 const asList = (v: unknown): string[] =>
   (Array.isArray(v) ? v : typeof v === 'string' ? v.split(/[,\s]+/) : []).map((x) => String(x).replace(/^#/, '').trim()).filter(Boolean)
 
-async function listMarkdown(root: string, excluded: string[]): Promise<string[]> {
+async function listMarkdown(root: string, excluded: string[], deps: Deps): Promise<string[]> {
   const out: string[] = []
   async function walk(dir: string): Promise<void> {
-    for (const e of await readdir(dir, { withFileTypes: true })) {
+    let entries: Dirent[]
+    try {
+      entries = await deps.readdir(dir)
+    } catch (e) {
+      if (dir === root) throw e
+      console.warn(`[vault] cartella non leggibile: ${dir}`)
+      return
+    }
+    for (const e of entries) {
+      if (ICLOUD_RE.test(e.name)) {
+        out.push(join(dir, e.name))
+        continue
+      }
       if (e.name.startsWith('.') || excluded.includes(e.name)) continue
       const p = join(dir, e.name)
       if (e.isDirectory()) await walk(p)
@@ -38,14 +54,18 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R
 }
 
 /** Read-only index of the vault. Unreadable files (iCloud placeholders) are kept with available: false. */
-export async function scanVault(root: string, excluded: string[], deps: Deps = defaultDeps): Promise<VaultIndex> {
-  const files = await listMarkdown(root, excluded)
+export async function scanVault(root: string, excluded: string[], partial: Partial<Deps> = {}): Promise<VaultIndex> {
+  const deps: Deps = { ...defaultDeps, ...partial }
+  const files = await listMarkdown(root, excluded, deps)
   const subjects = readSubjects(root)
   const notes = await mapLimit(files, 16, async (path): Promise<VaultNote> => {
     const rel = relative(root, path)
     const parts = rel.split(sep)
-    const title = parts[parts.length - 1].replace(/\.md$/, '')
+    const file = parts[parts.length - 1]
+    const placeholder = file.match(ICLOUD_RE)
+    const title = placeholder ? placeholder[1] : file.replace(/\.md$/, '')
     const base: VaultNote = { path, title, folder: parts.slice(0, -1).join('/'), tags: [], aliases: [], links: [], headings: [], blockIds: [], subject: null, mtime: 0, size: 0, available: false }
+    if (placeholder) return base
     try {
       const [text, st] = await Promise.all([deps.readFile(path), stat(path)])
       const { data, content } = matter(text)
