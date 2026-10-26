@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { APP_NAME } from '../shared/version'
+import { registerIpc } from './ipc'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -40,6 +41,7 @@ app.setName(APP_NAME)
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('it.andreaantonelli.sinapsi')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
+  registerIpc()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
