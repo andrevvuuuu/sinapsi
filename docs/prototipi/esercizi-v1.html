@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="lavagna">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tipi di esercizio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ease-out:cubic-bezier(.23,1,.32,1);--serif:'Instrument Serif',Georgia,serif;--sans:'Geist',ui-sans-serif,system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace}
+[data-theme="lavagna"]{color-scheme:dark;--bg:#0f100d;--surface:#171814;--hair:rgba(236,233,223,.10);--faint:rgba(236,233,223,.055);--inner:inset 0 1px 0 rgba(236,233,223,.06);
+  --ink:#ece9df;--muted:#a19e92;--accent:#ef7a42;--good:#8fd1a6;--warn:#e9b95f;--bad:#ef6f6f;--curve:#ece9df;--s-an:#ef7a42;--s-al:#7fa8e8;--s-fi:#e8737e;--s-nu:#a8d36f}
+[data-theme="trattato"]{color-scheme:light;--bg:#f3eee4;--surface:#fbf8f2;--hair:rgba(36,32,27,.12);--faint:rgba(36,32,27,.05);--inner:inset 0 1px 0 rgba(255,255,255,.85);
+  --ink:#221e19;--muted:#615a4f;--accent:#a83d22;--good:#2f6e48;--warn:#8f6512;--bad:#a8323f;--curve:#221e19;--s-an:#a83d22;--s-al:#2f5c9e;--s-fi:#a8323f;--s-nu:#4f7a1f}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
+button{font:inherit;color:inherit}
+.lab{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.m{font-family:var(--serif);font-style:italic;font-size:1.15em}
+header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--hair)}
+.hin{max-width:1100px;margin:0 auto;padding:12px 20px;display:flex;gap:8px;align-items:center;overflow-x:auto;scrollbar-width:none}
+.hin a{flex:none;display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:999px;background:var(--faint);color:var(--muted);text-decoration:none;font-size:13px;white-space:nowrap}
+.hin a i{font:500 11px var(--mono)}
+.hin button{flex:none;margin-left:auto;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:13px;color:var(--muted)}
+main{max-width:1100px;margin:0 auto;padding:48px 20px 120px}
+.intro{display:grid;grid-template-columns:1.3fr 1fr;gap:40px;align-items:end;margin-bottom:48px}
+.intro h1{font:400 clamp(44px,6vw,76px)/.95 var(--serif);margin:0;letter-spacing:-.015em}
+.intro p{color:var(--muted);margin:0}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.tag{display:inline-flex;align-items:center;gap:6px;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--faint);color:var(--muted)}
+.tag .dot{width:7px;height:7px;border-radius:50%}
+.tag.r{color:var(--good)} .tag.d{color:var(--warn)} .tag.c{color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.bezel{padding:6px;border-radius:28px;background:color-mix(in srgb,var(--surface) 40%,transparent);border:1px solid var(--hair)}
+.core{height:100%;border-radius:22px;background:var(--surface);box-shadow:var(--inner);padding:22px 22px 20px;display:flex;flex-direction:column}
+.ex .num{font:400 34px/1 var(--serif);color:var(--muted);margin-right:4px}
+.ex h2{font:400 28px/1.1 var(--serif);margin:0;display:flex;align-items:baseline;gap:8px}
+.ex .what{font-size:14px;color:var(--muted);margin:6px 0 12px}
+.ex .tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.q{font-size:17px;margin:0 0 12px}
+.body{flex:1}
+.check{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}
+.pri{display:inline-flex;align-items:center;min-height:44px;padding:0 20px;border-radius:999px;border:0;background:var(--ink);color:var(--bg);font:500 15px var(--sans);cursor:pointer;transition:transform .12s var(--ease-out),opacity .2s}
+.pri:active{transform:scale(.97)} .pri:disabled{opacity:.4;cursor:not-allowed}
+.fb{font-size:15px;flex:1;min-width:200px}
+.fb.ok{color:var(--good)} .fb.no{color:var(--bad)} .fb.mid{color:var(--warn)}
+.ghost{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:13px;color:var(--muted)}
+
+/* 1 order */
+.order{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.order li{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px;border-radius:14px;border:1px solid var(--hair);background:var(--faint);font-size:15px;cursor:grab;transition:transform .2s var(--ease-out),border-color .2s}
+.order li.drag{opacity:.5} .order li.over{border-color:var(--accent)}
+.order li .n{font:500 12px var(--mono);color:var(--muted);width:18px}
+.order li .t{flex:1}
+.order li .mv{display:flex;gap:2px}
+.order li .mv button{width:32px;height:32px;border-radius:8px;border:0;background:transparent;cursor:pointer;color:var(--muted)}
+.order li.ok{border-color:var(--good)} .order li.no{border-color:var(--bad)}
+/* 2 find error */
+.lines{display:flex;flex-direction:column;gap:6px}
+.lines button{display:flex;gap:12px;align-items:center;text-align:left;padding:10px 14px;border-radius:14px;border:1px solid var(--hair);background:transparent;cursor:pointer;font:400 17px var(--serif);font-style:italic}
+.lines button span{font:500 12px var(--mono);font-style:normal;color:var(--muted)}
+.lines button[aria-pressed="true"]{border-color:var(--ink)}
+.lines button.ok{border-color:var(--good);background:color-mix(in srgb,var(--good) 10%,transparent)} .lines button.no{border-color:var(--bad)}
+/* 3 fill */
+.fill{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font:400 22px var(--serif);font-style:italic}
+.fill input{width:110px;min-height:44px;border-radius:12px;border:1px solid var(--hair);background:var(--faint);color:var(--ink);font:500 18px var(--mono);text-align:center;font-style:normal}
+.fill input:focus-visible{outline:none;border-color:var(--accent)}
+/* 4 match */
+.match{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.match button{min-height:46px;padding:6px 12px;border-radius:14px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:14px;text-align:left;transition:border-color .2s,background-color .2s,opacity .2s}
+.match button[aria-pressed="true"]{border-color:var(--ink);background:var(--faint)}
+.match button.paired{opacity:.9;border-style:dashed}
+.match button.ok{border-color:var(--good);border-style:solid} .match button.no{border-color:var(--bad);border-style:solid}
+.match .col{display:flex;flex-direction:column;gap:8px}
+/* 5 tf */
+.tf{display:flex;gap:8px;margin-bottom:10px}
+.tf button,.why button{min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:15px}
+.tf button[aria-pressed="true"],.why button[aria-pressed="true"]{border-color:var(--ink);background:var(--faint)}
+.why{display:flex;flex-direction:column;gap:6px}
+.why button{border-radius:14px;text-align:left;padding:8px 14px;min-height:44px}
+.why[hidden]{display:none}
+/* 6 estimate */
+.est output{font:400 44px/1 var(--serif);display:block;margin:4px 0}
+.est small{font:500 13px var(--mono);color:var(--muted)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:40px;background:transparent;cursor:pointer;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:6px;background:var(--faint)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;border-radius:50%;background:var(--warn);border:3px solid var(--surface)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--warn);border:3px solid var(--surface)}
+.band{position:relative;height:8px;border-radius:8px;background:var(--faint);margin-top:4px;overflow:hidden}
+.band i{position:absolute;top:0;bottom:0;background:var(--good);opacity:0;transition:opacity .3s}
+.band.show i{opacity:.8}
+/* 7 counterexample */
+.cx{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cx button{padding:8px;border-radius:14px;border:1px solid var(--hair);background:transparent;cursor:pointer}
+.cx button svg{width:100%;height:auto;display:block}
+.cx button span{display:block;font:500 12px var(--mono);color:var(--muted);margin-top:4px}
+.cx button[aria-pressed="true"]{border-color:var(--ink);background:var(--faint)}
+.cx button.ok{border-color:var(--good)} .cx button.no{border-color:var(--bad)}
+/* 8 voice */
+.voice{display:flex;flex-direction:column;align-items:center;gap:12px;padding:10px 0}
+.mic{width:76px;height:76px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);display:grid;place-items:center;cursor:pointer;position:relative;transition:transform .12s var(--ease-out)}
+.mic svg{width:28px;height:28px}
+.mic:active{transform:scale(.96)}
+.mic.on{background:var(--accent)}
+.mic.on::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:2px solid var(--accent);animation:pulse 1.4s var(--ease-out) infinite}
+@keyframes pulse{from{transform:scale(.9);opacity:1}to{transform:scale(1.25);opacity:0}}
+.wave{display:flex;gap:3px;height:28px;align-items:center}
+.wave i{width:3px;border-radius:3px;background:var(--muted);height:4px;transition:height .1s}
+.cover{width:100%;display:flex;flex-direction:column;gap:6px}
+.cover div{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;border-radius:12px;background:var(--faint);font-size:14px}
+.cover b{font:500 12px var(--mono)}
+/* 9 label */
+.lbl svg{width:100%;height:auto;display:block}
+.lbl .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.lbl .chips button{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:13px}
+.lbl .chips button[aria-pressed="true"]{border-color:var(--ink);background:var(--faint)}
+.lbl .chips button:disabled{opacity:.35}
+.slot{cursor:pointer}
+/* 10 map */
+.mapq svg{width:100%;height:auto;display:block;border-radius:14px;background:var(--faint)}
+.mapq .node{cursor:pointer}
+@media (max-width:860px){.grid{grid-template-columns:1fr}.intro{grid-template-columns:1fr;gap:16px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header><nav class="hin" aria-label="Tipi di esercizio" id="nav"><button id="theme" type="button">Trattato</button></nav></header>
+<main>
+  <section class="intro">
+    <div><div class="lab" style="margin-bottom:14px">Ripasso · catalogo esercizi</div><h1>Dieci modi<br>di ricordare.</h1></div>
+    <div><p>Ogni tipo allena un'abilità diversa. Il ripasso li alterna da solo, scegliendo quello che ti manca per ogni concetto. Sono tutti provabili qui sotto.</p>
+      <div class="legend"><span class="tag r">Richiamo · farlo venire in mente</span><span class="tag d">Distinzione · non confonderlo</span><span class="tag c">Composizione · usarlo in una catena</span></div></div>
+  </section>
+  <div class="grid" id="grid"></div>
+</main>
+<script>
+(function(){
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const SUB={an:['Analisi I','var(--s-an)'],al:['Algebra lineare','var(--s-al)'],fi:['Fisiologia','var(--s-fi)'],nu:['Nutrizione','var(--s-nu)']};
+const SK={r:'Richiamo',d:'Distinzione',c:'Composizione'};
+const EX=[
+ {id:'ordina',t:'Riordina i passi',w:'Le dimostrazioni si ricordano come catene: rimetti i passaggi nell\'ordine giusto.',s:'an',k:['c'],html:`<p class="q">Ricostruisci la prova del teorema del valor medio.</p><ol class="order" id="ord"></ol>`},
+ {id:'errore',t:'Trova l\'errore',w:'Riconoscere un passaggio sbagliato è più difficile che rifarlo: obbliga a controllare ogni regola.',s:'an',k:['d'],html:`<p class="q">Uno di questi passaggi è sbagliato. Toccalo.</p><div class="lines" id="lin"></div>`},
+ {id:'completa',t:'Completa il passaggio',w:'Un pezzo mancante dentro un ragionamento noto: richiamo mirato, correzione automatica.',s:'an',k:['r'],html:`<p class="q">Sviluppo di Taylor di sin x in 0:</p><div class="fill">sin x = x + <input id="fx" inputmode="decimal" aria-label="Coefficiente di x al cubo" placeholder="?"> x³ + o(x⁴)</div><p class="lab" style="margin-top:10px">Accetta frazioni (−1/6) o decimali</p>`},
+ {id:'abbina',t:'Abbina',w:'Costruisce i collegamenti tra concetti vicini, che sono i più facili da confondere.',s:'fi',k:['d'],html:`<p class="q">Dove avviene ciascun processo nella cellula muscolare?</p><div class="match"><div class="col" id="ml"></div><div class="col" id="mr"></div></div>`},
+ {id:'vf',t:'Vero o falso, e perché',w:'Indovinare non basta: devi scegliere anche il motivo giusto.',s:'an',k:['d'],html:`<p class="q">«Se f′(c) = 0, allora c è un punto di massimo o di minimo.»</p><div class="tf" id="tf"><button type="button" aria-pressed="false" data-v="1">Vero</button><button type="button" aria-pressed="false" data-v="0">Falso</button></div><div class="why" id="why" hidden><span class="lab" style="margin:6px 0 2px">Perché?</span></div>`},
+ {id:'stima',t:'Stima',w:'Per i numeri che contano nella pratica: non serve il valore esatto, serve l\'ordine di grandezza giusto.',s:'nu',k:['r'],html:`<p class="q">Atleta di 80 kg in definizione, si allena 5 volte a settimana. Quante proteine al giorno?</p><div class="est"><output id="eo">120 g</output><small id="ek">1,5 g/kg</small><label class="lab" for="er" style="display:none">Grammi</label><input type="range" id="er" min="40" max="300" step="5" value="120" aria-label="Grammi di proteine al giorno"><div class="band" id="eb"><i></i></div></div>`},
+ {id:'contro',t:'Scegli il controesempio',w:'Capire a cosa serve un\'ipotesi vedendo cosa succede quando manca.',s:'an',k:['d','c'],html:`<p class="q">Quale grafico mostra che, senza <b>continuità</b>, il teorema di Rolle può fallire?</p><div class="cx" id="cx"></div>`},
+ {id:'voce',t:'Spiegalo a voce',w:'La tecnica di Feynman: spieghi come a un compagno, e l\'IA controlla quali pezzi hai coperto.',s:'fi',k:['r','c'],html:`<p class="q">Spiega in 60 secondi perché l'ipertrofia richiede sia tensione meccanica sia surplus proteico.</p><div class="voice"><button class="mic" id="mic" type="button" aria-label="Inizia a parlare" aria-pressed="false"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2"><rect x="10" y="3" width="8" height="14" rx="4"/><path d="M6 13a8 8 0 0 0 16 0M14 21v4"/></svg></button><div class="wave" id="wave" aria-hidden="true"></div><div class="cover" id="cov" hidden></div></div>`},
+ {id:'etichetta',t:'Etichetta lo schema',w:'Per anatomia e processi: colleghi il nome al posto giusto, senza che ti venga suggerito.',s:'fi',k:['r'],html:`<div class="lbl"><p class="q">Etichetta il sarcomero: scegli un nome, poi tocca il punto.</p><div class="chips" id="lc"></div><svg id="ls" viewBox="0 0 440 170" role="img" aria-label="Schema di un sarcomero con tre punti da etichettare"></svg></div>`},
+ {id:'mappa',t:'Collega i concetti',w:'Disegni tu le dipendenze: quale idea serve per quale. È il grafo, ma costruito da te.',s:'al',k:['c'],html:`<div class="mapq"><p class="q">Tocca due concetti per collegarli: <b>da quello che serve</b> a quello che lo usa.</p><svg id="mp" viewBox="0 0 440 220" role="img" aria-label="Quattro concetti da collegare"></svg></div>`},
+];
+$('#nav').insertAdjacentHTML('afterbegin',EX.map((e,i)=>`<a href="#${e.id}"><i>${String(i+1).padStart(2,'0')}</i>${e.t}</a>`).join(''));
+$('#grid').innerHTML=EX.map((e,i)=>`<article class="bezel ex" id="${e.id}" aria-labelledby="h-${e.id}"><div class="core">
+ <h2 id="h-${e.id}"><span class="num">${String(i+1).padStart(2,'0')}</span>${e.t}</h2><p class="what">${e.w}</p>
+ <div class="tags"><span class="tag"><span class="dot" style="background:${SUB[e.s][1]}"></span>${SUB[e.s][0]}</span>${e.k.map(k=>`<span class="tag ${k}">${SK[k]}</span>`).join('')}</div>
+ <div class="body">${e.html}</div><div class="check"><button class="pri" type="button" data-c="${e.id}">Verifica</button><span class="fb" role="status" id="fb-${e.id}"></span></div></div></article>`).join('');
+const fb=(id,cls,txt)=>{const e=$('#fb-'+id);e.className='fb '+cls;e.textContent=txt};
+const C=k=>getComputedStyle(document.documentElement).getPropertyValue('--'+k).trim();
+const CHK={};
+
+// 1 ordina
+const STEPS=['Definisci g(x) = f(x) − corda(x)','g è continua su [a,b] e derivabile in (a,b)','g(a) = g(b) = 0','Per Rolle esiste c con g′(c) = 0','g′(c) = 0 significa f′(c) = pendenza della corda'];
+let ord=[2,0,4,1,3]; const ol=$('#ord');
+function rOrd(){ol.innerHTML=ord.map((s,i)=>`<li draggable="true" data-i="${i}"><span class="n">${i+1}</span><span class="t">${STEPS[s]}</span><span class="mv"><button type="button" aria-label="Sposta su" data-u="${i}">↑</button><button type="button" aria-label="Sposta giù" data-d="${i}">↓</button></span></li>`).join('');
+ $$('li',ol).forEach(li=>{li.ondragstart=e=>{li.classList.add('drag');e.dataTransfer.setData('text',li.dataset.i)};li.ondragend=()=>li.classList.remove('drag');li.ondragover=e=>{e.preventDefault();li.classList.add('over')};li.ondragleave=()=>li.classList.remove('over');li.ondrop=e=>{e.preventDefault();const f=+e.dataTransfer.getData('text'),t=+li.dataset.i;const [x]=ord.splice(f,1);ord.splice(t,0,x);rOrd()}});
+ $$('[data-u]',ol).forEach(b=>b.onclick=()=>{const i=+b.dataset.u;if(i>0){[ord[i-1],ord[i]]=[ord[i],ord[i-1]];rOrd();$(`[data-u="${i-1}"]`,ol)?.focus()}});
+ $$('[data-d]',ol).forEach(b=>b.onclick=()=>{const i=+b.dataset.d;if(i<ord.length-1){[ord[i+1],ord[i]]=[ord[i],ord[i+1]];rOrd();$(`[data-d="${i+1}"]`,ol)?.focus()}});}
+rOrd();
+CHK.ordina=()=>{let ok=0;$$('li',ol).forEach((li,i)=>{const good=ord[i]===i;li.classList.toggle('ok',good);li.classList.toggle('no',!good);ok+=good});fb('ordina',ok===5?'ok':'no',ok===5?'Catena corretta: questa è la prova.':`${ok} su 5 al posto giusto. Domanda guida: cosa serve sapere prima di poter usare Rolle?`)};
+
+// 2 errore
+const LN=['(x² sin x)′','= (x²)′ · sin x + x² · (sin x)′','= 2x · sin x + x² · (− cos x)','= 2x sin x − x² cos x'];
+$('#lin').innerHTML=LN.map((l,i)=>`<button type="button" aria-pressed="false" data-i="${i}"><span>${i+1}</span>${l}</button>`).join('');
+let le=null;$$('#lin button').forEach(b=>b.onclick=()=>{le=+b.dataset.i;$$('#lin button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+CHK.errore=()=>{if(le===null)return fb('errore','mid','Tocca prima una riga.');const b=$$('#lin button');b.forEach(x=>x.classList.remove('ok','no'));b[le].classList.add(le===2?'ok':'no');fb('errore',le===2?'ok':'no',le===2?'Esatto: la derivata di sin x è cos x, non − cos x.':'Questa riga è corretta. Controlla la derivata di ogni funzione elementare.')};
+
+// 3 completa
+CHK.completa=()=>{const v=$('#fx').value.trim().replace(',','.').replace('−','-');let n=NaN;if(/^-?\d+\/\d+$/.test(v)){const [a,b]=v.split('/');n=+a/+b}else n=parseFloat(v);
+ if(isNaN(n))return fb('completa','mid','Scrivi un numero o una frazione.');const ok=Math.abs(n+1/6)<.002;fb('completa',ok?'ok':'no',ok?'Giusto: −1/3! = −1/6.':(Math.abs(n-1/6)<.002?'Quasi: il segno. I termini di sin x si alternano.':'Non ancora. Suggerimento: il termine è (−1)ⁿ/(2n+1)!.'))};
+$('#fx').onkeydown=e=>{if(e.key==='Enter')CHK.completa()};
+
+// 4 abbina
+const PL=[['Glicolisi','Citoplasma'],['Ciclo di Krebs','Matrice mitocondriale'],['Catena di trasporto','Membrana mitocondriale interna'],['Rilascio di Ca²⁺','Reticolo sarcoplasmatico']];
+const R=[2,0,3,1]; let selL=null, pairs={};
+$('#ml').innerHTML=PL.map((p,i)=>`<button type="button" aria-pressed="false" data-l="${i}">${p[0]}</button>`).join('');
+$('#mr').innerHTML=R.map(i=>`<button type="button" aria-pressed="false" data-r="${i}">${PL[i][1]}</button>`).join('');
+function rM(){$$('#ml button').forEach(b=>{b.setAttribute('aria-pressed',+b.dataset.l===selL);b.classList.toggle('paired',b.dataset.l in pairs)});$$('#mr button').forEach(b=>b.classList.toggle('paired',Object.values(pairs).includes(+b.dataset.r)))}
+$$('#ml button').forEach(b=>b.onclick=()=>{selL=+b.dataset.l;rM()});
+$$('#mr button').forEach(b=>b.onclick=()=>{if(selL===null)return;for(const k in pairs)if(pairs[k]===+b.dataset.r)delete pairs[k];pairs[selL]=+b.dataset.r;const l=$(`#ml [data-l="${selL}"]`);l.textContent=PL[selL][0]+' → '+PL[+b.dataset.r][1];selL=null;rM()});
+CHK.abbina=()=>{let ok=0;$$('#ml button').forEach(b=>{const i=+b.dataset.l,g=pairs[i]===i;b.classList.remove('ok','no');if(i in pairs){b.classList.add(g?'ok':'no')}ok+=g});fb('abbina',ok===4?'ok':'no',ok===4?'Tutto corretto.':`${ok} su 4. Le coppie sbagliate sono in rosso: riprova solo quelle.`)};
+
+// 5 vero/falso
+let tv=null,wv=null;const WHY=[['Perché la derivata nulla indica sempre un estremo',0],['Perché può essere un flesso a tangente orizzontale, come x³ in 0',1],['Perché f potrebbe non essere continua in c',0]];
+$('#why').insertAdjacentHTML('beforeend',WHY.map((w,i)=>`<button type="button" aria-pressed="false" data-w="${i}">${w[0]}</button>`).join(''));
+$$('#tf button').forEach(b=>b.onclick=()=>{tv=+b.dataset.v;$$('#tf button').forEach(x=>x.setAttribute('aria-pressed',x===b));$('#why').hidden=false});
+$$('#why button').forEach(b=>b.onclick=()=>{wv=+b.dataset.w;$$('#why button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+CHK.vf=()=>{if(tv===null)return fb('vf','mid','Scegli vero o falso.');if(tv===1)return fb('vf','no','Non sempre: pensa a x³ in 0.');if(wv===null)return fb('vf','mid','Giusto. Ora scegli il motivo.');fb('vf',wv===1?'ok':'mid',wv===1?'Esatto: punto stazionario non vuol dire estremo.':'Falso è giusto, ma il motivo no. Conta quanto la risposta.')};
+
+// 6 stima
+const er=$('#er');er.oninput=()=>{$('#eo').textContent=er.value+' g';$('#ek').textContent=(er.value/80).toFixed(1).replace('.',',')+' g/kg'};
+const band=$('#eb i');band.style.left=((128-40)/260*100)+'%';band.style.width=((200-128)/260*100)+'%';
+CHK.stima=()=>{const v=+er.value;$('#eb').classList.add('show');fb('stima',v>=128&&v<=200?'ok':(v>=110&&v<=220?'mid':'no'),v>=128&&v<=200?'Nella fascia: 1,6–2,5 g/kg, verso l\'alto in definizione.':v<128?'Basso: in deficit calorico il fabbisogno sale, circa 1,6–2,5 g/kg.':'Alto: oltre 2,5 g/kg i benefici sono minimi.')};
+
+// 7 controesempio
+const plots=[{n:'A',d:'M10 60 Q50 10 90 60',extra:'',ok:0},{n:'B',d:'M10 60 L60 25',extra:'<circle cx="60" cy="25" r="3" fill="none" stroke="currentColor"/><circle cx="60" cy="60" r="3" fill="currentColor"/><path d="M60 60 L90 60" stroke="currentColor" stroke-width="2"/>',ok:1},{n:'C',d:'M10 60 L50 20 L90 60',extra:'',ok:0}];
+$('#cx').innerHTML=plots.map((p,i)=>`<button type="button" aria-pressed="false" data-i="${i}" aria-label="Grafico ${p.n}"><svg viewBox="0 0 100 74"><line x1="5" x2="95" y1="66" y2="66" stroke="currentColor" opacity=".25"/><path d="${p.d}" fill="none" stroke="currentColor" stroke-width="2"/>${p.extra}</svg><span>${p.n}</span></button>`).join('');
+let cv=null;$$('#cx button').forEach(b=>b.onclick=()=>{cv=+b.dataset.i;$$('#cx button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+CHK.contro=()=>{if(cv===null)return fb('contro','mid','Scegli un grafico.');$$('#cx button').forEach((b,i)=>{b.classList.remove('ok','no');if(i===cv)b.classList.add(plots[i].ok?'ok':'no')});fb('contro',plots[cv].ok?'ok':'no',plots[cv].ok?'Esatto: f(a) = f(b) ma il salto impedisce qualsiasi tangente orizzontale.':cv===2?'Qui manca la derivabilità (spigolo), non la continuità. Ottima distinzione da ricordare.':'Questa funzione soddisfa tutte le ipotesi: ha davvero una tangente orizzontale.')};
+
+// 8 voce (simulata)
+const wave=$('#wave');wave.innerHTML='<i></i>'.repeat(28);let rec=false,wt;
+$('#mic').onclick=()=>{rec=!rec;$('#mic').classList.toggle('on',rec);$('#mic').setAttribute('aria-pressed',rec);$('#mic').setAttribute('aria-label',rec?'Ferma':'Inizia a parlare');
+ if(rec){wt=setInterval(()=>$$('i',wave).forEach(i=>i.style.height=(4+Math.random()*22)+'px'),110)}else{clearInterval(wt);$$('i',wave).forEach(i=>i.style.height='4px')}};
+CHK.voce=()=>{const c=$('#cov');c.hidden=false;c.innerHTML=[['Tensione meccanica come segnale',1],['mTOR e sintesi proteica',1],['Bilancio azotato positivo',0],['Recupero e sonno',0]].map(([t,k])=>`<div><span>${t}</span><b style="color:${k?'var(--good)':'var(--muted)'}">${k?'detto':'mancante'}</b></div>`).join('');fb('voce','mid','Simulazione: l\'IA trascrive e segna i concetti coperti. 2 su 4.')};
+
+// 9 etichetta
+const LB=['Linea Z','Banda A','Linea M'],SP=[[40,80,125,'Linea Z'],[220,220,108,'Linea M'],[280,350,100,'Banda A']];let lsel=null,lab={};
+$('#lc').innerHTML=LB.map(l=>`<button type="button" aria-pressed="false" data-n="${l}">${l}</button>`).join('');
+function rL(){const s=$('#ls'),ink=C('ink'),mu=C('muted'),hair=C('hair');let h=`<rect x="40" y="55" width="360" height="60" rx="6" fill="none" stroke="${hair}"/>`;
+ for(let k=0;k<7;k++)h+=`<line x1="${130+k*30}" x2="${130+k*30}" y1="70" y2="100" stroke="${mu}" stroke-width="3" stroke-linecap="round"/>`;
+ for(let k=0;k<6;k++){h+=`<line x1="${42+k*12}" x2="${42+k*12}" y1="64" y2="106" stroke="${mu}" opacity=".5"/><line x1="${398-k*12}" x2="${398-k*12}" y1="64" y2="106" stroke="${mu}" opacity=".5"/>`}
+ h+=`<line x1="40" x2="40" y1="45" y2="125" stroke="${ink}" stroke-width="3"/><line x1="400" x2="400" y1="45" y2="125" stroke="${ink}" stroke-width="3"/><line x1="220" x2="220" y1="62" y2="108" stroke="${ink}" stroke-width="2" stroke-dasharray="3 3"/>`;
+ SP.forEach(([x,lx,y0,ans],k)=>{const v=lab[k];const x0=x;x=lx;h+=`<g class="slot" tabindex="0" role="button" data-k="${k}" aria-label="Punto ${k+1}${v?', etichettato '+v:''}"><line x1="${x0}" x2="${x}" y1="${y0}" y2="140" stroke="${mu}"/><rect x="${x-46}" y="140" width="92" height="26" rx="13" fill="${v?C('surface'):'transparent'}" stroke="${v?ink:mu}" stroke-dasharray="${v?'0':'4 3'}"/><text x="${x}" y="157" text-anchor="middle" font-size="12" fill="${v?ink:mu}" font-family="Geist,sans-serif">${v||'?'}</text></g>`});
+ s.innerHTML=h;$$('.slot',s).forEach(g=>{const f=()=>{if(!lsel)return;for(const q in lab)if(lab[q]===lsel)delete lab[q];lab[g.dataset.k]=lsel;lsel=null;$$('#lc button').forEach(b=>b.setAttribute('aria-pressed','false'));rL()};g.onclick=f;g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();f()}}})}
+$$('#lc button').forEach(b=>b.onclick=()=>{lsel=b.dataset.n;$$('#lc button').forEach(x=>x.setAttribute('aria-pressed',x===b))});rL();
+CHK.etichetta=()=>{let ok=SP.filter(([x,lx,y0,a],k)=>lab[k]===a).length;fb('etichetta',ok===3?'ok':'no',ok===3?'Tutto al posto giusto.':`${ok} su 3. La banda A è lunga quanto i filamenti spessi (miosina).`)};
+
+// 10 mappa
+const MN=[['Autovalori',70,50],['Autospazi',70,170],['Molt. geometrica',300,50],['Diagonalizzabilità',300,170]],GOOD=['0-1','1-2','2-3','0-3'];let ms=null,ed=[];
+function rMap(){const s=$('#mp'),ink=C('ink'),mu=C('muted'),hair=C('hair'),acc=C('accent');let h=`<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="${ink}"/></marker></defs>`;
+ ed.forEach(([a,b])=>{const A=MN[a],B=MN[b],dx=B[1]-A[1],dy=B[2]-A[2],L=Math.hypot(dx,dy);h+=`<line x1="${A[1]+dx/L*62}" y1="${A[2]+dy/L*22}" x2="${B[1]-dx/L*66}" y2="${B[2]-dy/L*24}" stroke="${ink}" stroke-width="1.6" marker-end="url(#ar)"/>`});
+ MN.forEach(([t,x,y],i)=>h+=`<g class="node" tabindex="0" role="button" data-i="${i}" aria-label="${t}${ms===i?', selezionato':''}"><rect x="${x-62}" y="${y-18}" width="124" height="36" rx="18" fill="${C('surface')}" stroke="${ms===i?acc:hair}" stroke-width="${ms===i?2:1}"/><text x="${x}" y="${y+5}" text-anchor="middle" font-size="13" fill="${ink}" font-family="Geist,sans-serif">${t}</text></g>`);
+ s.innerHTML=h;$$('.node',s).forEach(g=>{const f=()=>{const i=+g.dataset.i;if(ms===null){ms=i}else if(ms===i){ms=null}else{const k=ed.findIndex(e=>e[0]===ms&&e[1]===i);if(k>=0)ed.splice(k,1);else ed.push([ms,i]);ms=null}rMap()};g.onclick=f;g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();f()}}})}
+rMap();
+CHK.mappa=()=>{const got=ed.map(e=>e.join('-'));const hit=GOOD.filter(g=>got.includes(g)).length,extra=got.filter(g=>!GOOD.includes(g)).length;fb('mappa',hit===4&&!extra?'ok':'mid',hit===4&&!extra?'Mappa completa.':`${hit} ${hit===1?'collegamento giusto':'collegamenti giusti'} su 4${extra?', '+extra+' in più':''}. Gli autospazi servono a definire la molteplicità geometrica.`)};
+
+$$('[data-c]').forEach(b=>b.onclick=()=>CHK[b.dataset.c]());
+$('#theme').onclick=()=>{const t=document.documentElement.dataset.theme==='lavagna'?'trattato':'lavagna';document.documentElement.dataset.theme=t;$('#theme').textContent=t==='lavagna'?'Trattato':'Lavagna';rL();rMap()};
+})();
+</script>
+</body>
+</html>

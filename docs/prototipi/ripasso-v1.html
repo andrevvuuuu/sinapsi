@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="lavagna">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ripasso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ease-out:cubic-bezier(.23,1,.32,1);--serif:'Instrument Serif',Georgia,serif;--sans:'Geist',ui-sans-serif,system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace}
+[data-theme="lavagna"]{color-scheme:dark;--bg:#0f100d;--surface:#171814;--raised:#1d1e1a;--hair:rgba(236,233,223,.10);--faint:rgba(236,233,223,.055);--inner:inset 0 1px 0 rgba(236,233,223,.06);
+  --ink:#ece9df;--muted:#a19e92;--accent:#ef7a42;--good:#8fd1a6;--warn:#e9b95f;--bad:#ef6f6f;--curve:#ece9df;
+  --s-an:#ef7a42;--s-al:#7fa8e8;--s-fi:#e8737e;--s-nu:#a8d36f}
+[data-theme="trattato"]{color-scheme:light;--bg:#f3eee4;--surface:#fbf8f2;--raised:#fffdf8;--hair:rgba(36,32,27,.12);--faint:rgba(36,32,27,.05);--inner:inset 0 1px 0 rgba(255,255,255,.85);
+  --ink:#221e19;--muted:#615a4f;--accent:#a83d22;--good:#2f6e48;--warn:#8f6512;--bad:#a8323f;--curve:#221e19;
+  --s-an:#a83d22;--s-al:#2f5c9e;--s-fi:#a8323f;--s-nu:#4f7a1f}
+*{box-sizing:border-box}
+body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font:400 17px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+button{font:inherit;color:inherit}
+.lab{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.m{font-family:var(--serif);font-style:italic;font-size:1.15em}
+
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:20px;padding:14px 24px;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--hair)}
+.back{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 14px 0 10px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:14px;color:var(--muted)}
+.back svg{width:14px;height:14px}
+.title{font:400 26px/1 var(--serif)}
+.track{flex:1;display:flex;gap:6px;align-items:center;max-width:420px;margin:0 auto}
+.track i{flex:1;height:6px;border-radius:6px;background:var(--faint);position:relative;overflow:hidden}
+.track i::after{content:"";position:absolute;inset:0;background:var(--c);transform:scaleX(0);transform-origin:left;transition:transform .4s var(--ease-out)}
+.track i.done::after{transform:scaleX(1)} .track i.now{box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 45%,transparent)}
+.meta{font:500 13px var(--mono);color:var(--muted);white-space:nowrap}
+.themebtn{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:13px;color:var(--muted)}
+
+main{max-width:760px;margin:0 auto;padding:40px 20px 120px}
+.intro h1{font:400 clamp(40px,6vw,64px)/1 var(--serif);margin:0 0 14px;letter-spacing:-.01em}
+.intro p{color:var(--muted);margin:0 0 26px;max-width:52ch}
+.plan{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:28px}
+.plan div{padding:14px 16px;border-radius:16px;background:var(--faint)}
+.plan b{display:block;font:400 30px/1.1 var(--serif)}
+.plan span{font-size:14px;color:var(--muted)}
+.list{list-style:none;padding:0;margin:0 0 28px;display:flex;flex-direction:column;gap:2px}
+.list li{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--hair);font-size:15px}
+.list .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.list .r{margin-left:auto;font:500 13px var(--mono);color:var(--muted)}
+.list .why{font-size:13px;color:var(--muted)}
+.pri{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 8px 0 22px;border-radius:999px;border:0;background:var(--ink);color:var(--bg);font:500 16px var(--sans);cursor:pointer;transition:transform .12s var(--ease-out),opacity .2s}
+.pri .ic{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 18%,transparent)}
+.pri .ic svg{width:14px;height:14px}
+.pri:active{transform:scale(.97)} .pri:disabled{opacity:.4;cursor:not-allowed}
+.ghost{min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:15px}
+
+/* item card (bezel) */
+.bezel{padding:6px;border-radius:28px;background:color-mix(in srgb,var(--surface) 40%,transparent);border:1px solid var(--hair)}
+.core{border-radius:22px;background:var(--surface);box-shadow:var(--inner),0 40px 80px -50px rgba(0,0,0,.6);padding:26px 26px 22px}
+.item{animation:in .45s var(--ease-out)}
+@keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.ihead{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--faint);color:var(--muted)}
+.chip .dot{width:7px;height:7px;border-radius:50%}
+.q{font-size:20px;line-height:1.5;margin:0 0 18px;text-wrap:pretty}
+.field{border:1px solid var(--hair);border-radius:16px;background:var(--faint);padding:10px 14px 8px;transition:border-color .2s}
+.field:focus-within{border-color:var(--accent)}
+.field textarea{width:100%;min-height:96px;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;resize:vertical;outline:none;padding:4px 0}
+.field textarea::placeholder{color:var(--muted);opacity:1}
+.conf{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;margin:14px 0 4px}
+.conf output{font:500 14px var(--mono);min-width:44px;text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:40px;background:transparent;cursor:pointer;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:6px;background:linear-gradient(90deg,var(--cc) 0 var(--p),var(--faint) var(--p) 100%)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;border-radius:50%;background:var(--cc);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--hair)}
+input[type=range]::-moz-range-track{height:6px;border-radius:6px;background:var(--faint)}
+input[type=range]::-moz-range-progress{height:6px;border-radius:6px;background:var(--cc)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--cc);border:3px solid var(--surface)}
+.acts{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.acts .ghost{margin-right:auto}
+.hint{font-size:14px;color:var(--muted)}
+
+.opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;margin:8px 0 0;min-height:52px;padding:10px 18px 10px 10px;border-radius:18px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:16px;line-height:1.4;transition:border-color .2s,background-color .2s}
+.opt .k{flex:none;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--faint);font:500 13px var(--mono);color:var(--muted)}
+.opt[aria-pressed="true"]{border-color:var(--ink)} .opt[aria-pressed="true"] .k{background:var(--ink);color:var(--bg)}
+.opt.ok{border-color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent)} .opt.ok .k{background:var(--good);color:var(--bg)}
+.opt.no{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,transparent)} .opt.no .k{background:var(--bad);color:var(--bg)}
+.opt:disabled{cursor:default}
+
+.fig{border-radius:16px;background:var(--faint);padding:10px}
+.fig svg{width:100%;height:auto;display:block;touch-action:none;user-select:none}
+.fig .ro{display:flex;justify-content:space-between;font:500 13px var(--mono);color:var(--muted);padding:6px 6px 0}
+
+/* reveal */
+.reveal{margin-top:18px;border-top:1px solid var(--hair);padding-top:18px;animation:in .4s var(--ease-out)}
+.verdict{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:16px;margin-bottom:14px}
+.verdict.ok{background:color-mix(in srgb,var(--good) 12%,transparent)} .verdict.mid{background:color-mix(in srgb,var(--warn) 14%,transparent)} .verdict.bad{background:color-mix(in srgb,var(--bad) 12%,transparent)}
+.verdict b{display:block;font-size:16px;margin-bottom:2px}
+.verdict.ok b{color:var(--good)} .verdict.mid b{color:var(--warn)} .verdict.bad b{color:var(--bad)}
+.verdict p{margin:0;font-size:15px}
+.verdict svg{width:22px;height:22px;flex:none;margin-top:2px}
+.model{font-size:15px;color:var(--muted);padding:0 2px 14px}
+.model .lab{display:block;margin-bottom:4px}
+.grade{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.grade button{min-height:60px;border-radius:16px;border:1px solid var(--hair);background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:15px;transition:border-color .2s,background-color .2s,transform .12s var(--ease-out)}
+.grade button small{font:500 12px var(--mono);color:var(--muted)}
+.grade button:active{transform:scale(.97)}
+.grade button[aria-pressed="true"]{border-color:var(--ink);background:var(--faint)}
+.grade button .sug{font:500 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;flex-wrap:wrap}
+.link{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;background:none;border:0;cursor:pointer;min-height:40px}
+
+/* summary */
+.sum h1{font:400 clamp(40px,6vw,60px)/1 var(--serif);margin:0 0 10px}
+.sum .lede{color:var(--muted);margin:0 0 26px}
+.rows{display:flex;flex-direction:column;gap:2px;margin-bottom:26px}
+.rowx{display:grid;grid-template-columns:1fr 150px 110px;gap:16px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--hair);font-size:15px}
+.rowx .bars{display:flex;flex-direction:column;gap:4px}
+.rowx .bars i{display:block;height:6px;border-radius:6px;background:var(--faint);position:relative;overflow:hidden}
+.rowx .bars i::after{content:"";position:absolute;inset:0;border-radius:6px;background:var(--c);transform-origin:left;transform:scaleX(var(--v));opacity:var(--o,1)}
+.rowx .nx{font:500 13px var(--mono);text-align:right}
+.callout{display:flex;gap:12px;padding:16px;border-radius:16px;background:color-mix(in srgb,var(--accent) 10%,transparent);margin-bottom:26px;font-size:15px}
+.callout svg{width:20px;height:20px;flex:none;color:var(--accent);margin-top:2px}
+@media (max-width:640px){header{padding:10px 16px;gap:10px}.title,.meta{display:none}.core{padding:20px 16px 16px}.grade{grid-template-columns:repeat(2,1fr)}.rowx{grid-template-columns:1fr 90px}.rowx .bars{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <button class="back" type="button"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8.5 3 4.5 7l4 4"/></svg>Home</button>
+  <span class="title">Ripasso</span>
+  <div class="track" id="track" role="progressbar" aria-label="Avanzamento ripasso" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0"></div>
+  <span class="meta" id="meta">0 / 4</span>
+  <button class="themebtn" id="theme" type="button" aria-label="Cambia stile">Trattato</button>
+</header>
+<main id="main" aria-live="polite"></main>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s), main=$('#main');
+const SUBC={an:'var(--s-an)',al:'var(--s-al)',fi:'var(--s-fi)',nu:'var(--s-nu)'}, SUBN={an:'Analisi I',al:'Algebra lineare',fi:'Fisiologia',nu:'Nutrizione'};
+const ICON={ok:'<svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--good)"><circle cx="11" cy="11" r="9"/><path d="M7 11.5l2.6 2.6L15 8.5"/></svg>',
+ mid:'<svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--warn)"><circle cx="11" cy="11" r="9"/><path d="M7 11h8"/></svg>',
+ bad:'<svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--bad)"><circle cx="11" cy="11" r="9"/><path d="M8 8l6 6M14 8l-6 6"/></svg>'};
+const arrow='<span class="ic" aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7h8M7.5 3.5 11 7l-3.5 3.5"/></svg></span>';
+
+// Each item = one proposition due today. Surface is FRESH each time (generated from the note), never a fixed flashcard.
+const ITEMS=[
+ {s:'an',mode:'Richiamo',prop:'Teorema del valor medio',R:.23,type:'open',
+  q:'Hai una funzione continua su $[a,b]$, derivabile all\'interno. Senza usare il nome del teorema: <b>che cosa puoi garantire sulla sua derivata</b>, e da quale teorema più semplice lo ricavi?',
+  model:'Esiste c in (a,b) con f′(c) = (f(b) − f(a))/(b − a): da qualche parte la tangente è parallela alla corda. Si ricava da Rolle applicato a g(x) = f(x) − corda(x), che vale zero agli estremi.',
+  grade:(t,c)=>{const ok=/corda|pendenza|media|valor medio|lagrange/i.test(t), rolle=/rolle/i.test(t);
+    if(ok&&rolle) return {v:'ok',h:'Corretto, e hai ritrovato anche la prova',p:'Hai detto sia cosa garantisce sia da dove viene. Questo è il ricordo che regge un esame.',g:c>=70?3:2};
+    if(ok) return {v:'mid',h:'Enunciato giusto, prova mancante',p:'Ricordi cosa dice il teorema ma non da dove viene. Alla prossima ti chiederò proprio la prova.',g:1};
+    return {v:'bad',h:'Non ancora',p:'Il punto chiave: la tangente parallela alla corda. Lo rivedi tra poco, con una domanda diversa.',g:0};}},
+ {s:'al',mode:'Distinzione',prop:'Diagonalizzabilità',R:.34,type:'mc',
+  q:'Una matrice $3\\times3$ ha autovalori $2,\\,2,\\,5$. Quale informazione ti serve <b>ancora</b> per sapere se è diagonalizzabile?',
+  opts:['Nessuna: con autovalori reali è sempre diagonalizzabile','La dimensione dell\'autospazio di 2','Il determinante della matrice','Se la matrice è invertibile'],ok:1,
+  model:'Serve che la molteplicità geometrica di 2 (dimensione del suo autospazio) sia 2, cioè uguale a quella algebrica. Autovalori reali non bastano.'},
+ {s:'an',mode:'Sul grafico',prop:'Interpretazione geometrica della derivata',R:.41,type:'graph',
+  q:'Trascina il punto sulla curva finché la tangente non ha <b>la stessa pendenza della corda</b>. Poi conferma.',
+  model:'I punti sono due, simmetrici: c ≈ −1,04 e c ≈ 1,04.'},
+ {s:'nu',mode:'Applicazione',prop:'Leucina e sintesi proteica',R:.52,type:'open',
+  q:'Un atleta mangia 20 g di proteine da riso a pranzo e 20 g di siero del latte a cena. Quale pasto stimola di più la sintesi proteica muscolare, e <b>perché</b>?',
+  model:'Il siero: a parità di grammi contiene più leucina e viene assorbito più in fretta, quindi supera la "soglia di leucina" che attiva mTORC1. Le proteine del riso ne hanno meno: servirebbe una dose maggiore.',
+  grade:(t,c)=>{const l=/leucin/i.test(t), s=/siero|whey/i.test(t);
+    if(l&&s) return {v:'ok',h:'Corretto',p:'Hai individuato il meccanismo (la leucina), non solo la risposta.',g:c>=70?3:2};
+    if(s) return {v:'mid',h:'Risposta giusta, motivo incompleto',p:'Il siero è corretto, ma il perché è la leucina. Senza il perché, il ricordo è fragile.',g:1};
+    return {v:'bad',h:'Non ancora',p:'Il fattore decisivo è il contenuto di leucina. Lo rivedi a fine sessione con un caso diverso.',g:0};}}
+];
+const GR=[{n:'Di nuovo',t:'10 min'},{n:'Difficile',t:'1 giorno'},{n:'Bene',t:'4 giorni'},{n:'Facile',t:'11 giorni'}];
+let i=-1, results=[];
+const track=$('#track');
+track.innerHTML=ITEMS.map(it=>`<i style="--c:${SUBC[it.s]}"></i>`).join('');
+const math=s=>s.replace(/\$([^$]+)\$/g,(_,m)=>'<span class="m">'+m.replace(/\\times/g,'×').replace(/\\,/g,' ')+'</span>');
+
+function setTrack(){[...track.children].forEach((e,k)=>{e.classList.toggle('done',k<i||(k===i&&results[k]!=null));e.classList.toggle('now',k===i)});$('#meta').textContent=Math.min(i+1,ITEMS.length)+' / '+ITEMS.length;track.setAttribute('aria-valuenow',Math.max(0,i))}
+
+function intro(){
+  main.innerHTML=`<section class="intro item">
+   <div class="lab" style="margin-bottom:14px">Lunedì 26 ottobre</div>
+   <h1>4 cose stanno<br>sbiadendo.</h1>
+   <p>Le ho scelte perché stai per dimenticarle (la percentuale è la probabilità stimata che te le ricordi oggi). Ogni domanda è nuova: non la stessa carta di ieri.</p>
+   <div class="plan"><div><b>~9 min</b><span>durata stimata</span></div><div><b>2 materie</b><span>mescolate apposta</span></div></div>
+   <ul class="list">${ITEMS.map(it=>`<li><span class="dot" style="background:${SUBC[it.s]}"></span><span>${it.prop}<br><span class="why">${SUBN[it.s]} · ${it.mode.toLowerCase()}</span></span><span class="r">${Math.round(it.R*100)}%</span></li>`).join('')}</ul>
+   <button class="pri" id="go" type="button">Inizia ripasso${arrow}</button>
+  </section>`;
+  $('#go').onclick=next; $('#go').focus();
+}
+
+function confBlock(){return `<div class="conf"><label class="lab" for="cf">Quanto sei sicuro?</label><input type="range" id="cf" min="0" max="100" step="10" value="50" style="--cc:var(--warn);--p:50%"><output id="cfo" for="cf">50%</output></div>`}
+function wireConf(){const r=$('#cf'),o=$('#cfo');const u=()=>{o.textContent=r.value+'%';r.style.setProperty('--p',r.value+'%');r.style.setProperty('--cc',r.value<40?'var(--bad)':r.value<70?'var(--warn)':'var(--good)')};r.oninput=u;u()}
+
+function next(){i++;setTrack();if(i>=ITEMS.length)return summary();const it=ITEMS[i];
+  const head=`<div class="ihead"><span class="chip"><span class="dot" style="background:${SUBC[it.s]}"></span>${SUBN[it.s]}</span><span class="chip">${it.mode}</span></div>`;
+  let body='';
+  if(it.type==='open') body=`<div class="field"><label class="lab" for="ans">La tua risposta, ragionando ad alta voce</label><textarea id="ans" placeholder="Scrivi come ti viene, anche disordinato. Conta il ragionamento."></textarea></div>${confBlock()}
+    <div class="acts"><button class="ghost" id="idk" type="button">Non lo so</button><button class="pri" id="sub" type="button" disabled>Verifica${arrow}</button></div>`;
+  if(it.type==='mc') body=`<div role="group" aria-label="Opzioni">${it.opts.map((o,k)=>`<button class="opt" type="button" aria-pressed="false" data-k="${k}"><span class="k" aria-hidden="true">${'ABCD'[k]}</span>${o}</button>`).join('')}</div>${confBlock()}
+    <div class="acts"><button class="ghost" id="idk" type="button">Non lo so</button><button class="pri" id="sub" type="button" disabled>Verifica${arrow}</button></div>`;
+  if(it.type==='graph') body=`<div class="fig"><svg id="g" viewBox="0 0 520 300" role="img" aria-label="Grafico con corda e tangente trascinabile"></svg><div class="ro"><span id="gro">tangente —</span><span>corda −0,19</span></div>
+    <label class="sr" for="gr">Posizione del punto</label><input type="range" id="gr" min="-1.45" max="1.95" step="0.005" value="0" style="--cc:var(--warn);--p:50%"></div>${confBlock()}
+    <div class="acts"><button class="ghost" id="idk" type="button">Non lo so</button><button class="pri" id="sub" type="button">Conferma questo punto${arrow}</button></div>`;
+  main.innerHTML=`<article class="item bezel" aria-labelledby="qq"><div class="core">${head}<p class="q" id="qq">${math(it.q)}</p>${body}<div id="rev"></div></div></article>`;
+  wireConf();
+  const sub=$('#sub');
+  if(it.type==='open'){const a=$('#ans');a.oninput=()=>sub.disabled=!a.value.trim();a.focus();
+    a.onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)&&!sub.disabled)sub.click()};
+    sub.onclick=()=>reveal(it.grade(a.value,+$('#cf').value));}
+  if(it.type==='mc'){let pick=null;document.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{pick=+b.dataset.k;document.querySelectorAll('.opt').forEach(x=>x.setAttribute('aria-pressed',x===b));sub.disabled=false});
+    sub.onclick=()=>{const c=+$('#cf').value;document.querySelectorAll('.opt').forEach(b=>{b.disabled=true;const k=+b.dataset.k;if(k===it.ok)b.classList.add('ok');else if(k===pick)b.classList.add('no')});
+      const ok=pick===it.ok; reveal(ok?{v:'ok',h:'Corretto',p:c<50?'Giusto, ma eri incerto: lo considero fragile e lo rivedi prima.':'Esatto: autovalori reali non bastano, conta la molteplicità geometrica.',g:c<50?1:2}
+        :{v:'bad',h:c>=70?'Sbagliato con sicurezza: possibile misconcezione':'Non ancora',p:c>=70?'Eri sicuro al '+c+'%. È il segnale più importante: probabilmente c\'è un\'idea sbagliata da correggere, non solo un vuoto.':'La risposta giusta era la B.',g:0,mis:c>=70});};}
+  if(it.type==='graph') graph(sub);
+  $('#idk').onclick=()=>reveal({v:'bad',h:'Va bene non saperlo',p:'Lo segno come vuoto, non come errore. Torna tra pochi minuti con un aiuto in più.',g:0});
+}
+
+function graph(sub){
+  const f=x=>.25*x*x*x-x+1.5, fp=x=>.75*x*x-1, a=-1.5,b=2,m=(f(b)-f(a))/(b-a);
+  const X0=-2.1,X1=2.6,Y0=-.4,Y1=3.5,W=520,H=300,P=20, sx=x=>P+(x-X0)/(X1-X0)*(W-2*P), sy=y=>H-P-(y-Y0)/(Y1-Y0)*(H-2*P), ix=px=>X0+(px-P)/(W-2*P)*(X1-X0);
+  const s=$('#g'), cs=getComputedStyle(document.documentElement), C=k=>cs.getPropertyValue('--'+k).trim();
+  let d='';for(let x=X0+.15;x<=X1-.12;x+=.01)d+=(d?'L':'M')+sx(x).toFixed(1)+','+sy(f(x)).toFixed(1);
+  s.innerHTML=`<line x1="${sx(X0)}" x2="${sx(X1)}" y1="${sy(0)}" y2="${sy(0)}" stroke="${C('hair')}"/><path d="${d}" fill="none" stroke="${C('curve')}" stroke-width="2.4"/><line x1="${sx(a)}" y1="${sy(f(a))}" x2="${sx(b)}" y2="${sy(f(b))}" stroke="${C('accent')}" stroke-width="2"/><line id="tl" stroke-width="2.2" stroke-linecap="round"/><g id="hd" style="cursor:grab"><circle r="22" fill="transparent"/><circle id="hc" r="7" stroke="${C('surface')}" stroke-width="3"/></g>`;
+  const tl=$('#tl'),hd=$('#hd'),hc=$('#hc'),rg=$('#gr'); let c=0;
+  const draw=()=>{const sl=fp(c),par=Math.abs(sl-m)<.045,col=par?C('good'):C('warn');tl.setAttribute('x1',sx(c-1));tl.setAttribute('y1',sy(f(c)-sl));tl.setAttribute('x2',sx(c+1));tl.setAttribute('y2',sy(f(c)+sl));tl.setAttribute('stroke',col);hc.setAttribute('fill',col);hd.setAttribute('transform',`translate(${sx(c)},${sy(f(c))})`);$('#gro').textContent='tangente '+sl.toFixed(2).replace('.',',').replace('-','−');rg.value=c;rg.setAttribute('aria-valuetext','pendenza tangente '+sl.toFixed(2)+(par?', parallela alla corda':''))};
+  const X=e=>{const p=s.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return ix(p.matrixTransform(s.getScreenCTM().inverse()).x)};
+  let dr=false;hd.onpointerdown=e=>{dr=true;hd.setPointerCapture(e.pointerId)};hd.onpointermove=e=>{if(dr){c=Math.max(-1.45,Math.min(1.95,X(e)));draw()}};hd.onpointerup=()=>dr=false;
+  rg.oninput=()=>{c=+rg.value;draw()}; draw();
+  sub.onclick=()=>{const ok=Math.abs(fp(c)-m)<.045;rg.disabled=true;hd.style.pointerEvents='none';
+    reveal(ok?{v:'ok',h:'Trovato',p:'c ≈ '+c.toFixed(2).replace('.',',')+'. Esiste anche il punto simmetrico: la prossima volta te li chiedo entrambi.',g:2}:{v:'bad',h:'Non ancora parallela',p:'La tangente ha pendenza '+fp(c).toFixed(2).replace('.',',')+', la corda −0,19. Cerca dove la curva "si inclina come la corda".',g:0})};
+}
+
+function reveal(r){
+  const it=ITEMS[i]; document.querySelectorAll('#sub,#idk').forEach(b=>b.remove());
+  const ta=$('#ans'); if(ta) ta.readOnly=true;
+  $('#rev').innerHTML=`<div class="reveal"><div class="verdict ${r.v}">${ICON[r.v]}<div><b>${r.h}</b><p>${r.p}</p></div></div>
+   <div class="model"><span class="lab">Risposta di riferimento</span>${it.model}</div>
+   <div class="lab" id="gl" style="margin-bottom:8px">Quanto ti è costato ricordarlo?</div>
+   <div class="grade" role="group" aria-labelledby="gl">${GR.map((g,k)=>`<button type="button" aria-pressed="${k===r.g}" data-g="${k}">${k===r.g?'<span class="sug">proposta</span>':''}${g.n}<small>${g.t}</small></button>`).join('')}</div>
+   <div class="foot"><button class="link" type="button">Apri nella nota, al paragrafo giusto</button><button class="pri" id="nx" type="button">${i===ITEMS.length-1?'Vedi riepilogo':'Prossima'}${arrow}</button></div></div>`;
+  let g=r.g; document.querySelectorAll('.grade button').forEach(b=>b.onclick=()=>{g=+b.dataset.g;document.querySelectorAll('.grade button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+  results[i]={...r,get g(){return g}}; setTrack();
+  $('#nx').onclick=()=>{results[i]={...r,g};next()}; $('#nx').focus();
+}
+
+function summary(){
+  const after=[.9,.93,.95,.97];
+  const mis=results.some(r=>r.mis), misses=results.filter(r=>r.g===0).length;
+  main.innerHTML=`<section class="sum item"><div class="lab" style="margin-bottom:14px">Ripasso completato · 9 min</div>
+   <h1>${misses?'Quasi tutto<br>di nuovo nitido.':'Tutto di nuovo<br>nitido.'}</h1>
+   <p class="lede">Barra chiara: quanto lo ricordavi prima. Barra piena: subito dopo. La data è il prossimo ripasso, calcolato sul tuo voto.</p>
+   ${mis?`<div class="callout"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3l8 14H2z"/><path d="M10 8v4M10 14.5v.5"/></svg><div><b>Possibile misconcezione su ${ITEMS[1].prop}.</b> Eri molto sicuro ma hai sbagliato. Ti propongo una mini-sessione di Apprendimento di 5 minuti invece di un semplice ripasso.</div></div>`:''}
+   ${misses?`<div class="callout" style="background:var(--faint)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--muted)"><path d="M4 10a6 6 0 1 0 2-4.5M4 3v3h3"/></svg><div><b>${misses} ${misses>1?'cose tornano':'cosa torna'} tra 10 minuti</b>, con una domanda diversa. Se chiudi ora, riappaiono domani in cima.</div></div>`:''}
+   <div class="rows">${ITEMS.map((it,k)=>{const g=results[k]?.g??0;return `<div class="rowx"><span>${it.prop}<br><span class="hint">${SUBN[it.s]}</span></span><span class="bars"><i style="--c:${SUBC[it.s]};--v:${it.R};--o:.45"></i><i style="--c:${SUBC[it.s]};--v:${g===0?.55:after[k]}"></i></span><span class="nx">${GR[g].t}</span></div>`}).join('')}</div>
+   <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="pri" type="button">Torna alla home${arrow}</button>${misses?'<button class="ghost" type="button">Rifai subito gli errori</button>':''}</div></section>`;
+}
+
+$('#theme').onclick=()=>{const t=document.documentElement.dataset.theme==='lavagna'?'trattato':'lavagna';document.documentElement.dataset.theme=t;$('#theme').textContent=t==='lavagna'?'Trattato':'Lavagna';if(ITEMS[i]?.type==='graph'){/* re-tint figure */const sub=$('#sub');if(sub)graph(sub)}};
+intro();
+})();
+</script>
+</body>
+</html>

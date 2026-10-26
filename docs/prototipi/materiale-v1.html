@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="lavagna">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Materiale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ease-out:cubic-bezier(.23,1,.32,1);--serif:'Instrument Serif',Georgia,serif;--sans:'Geist',ui-sans-serif,system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace}
+[data-theme="lavagna"]{color-scheme:dark;--bg:#0f100d;--panel:#141511;--surface:#1a1b17;--hair:rgba(236,233,223,.10);--faint:rgba(236,233,223,.055);--inner:inset 0 1px 0 rgba(236,233,223,.06);
+  --ink:#ece9df;--muted:#a19e92;--accent:#ef7a42;--good:#8fd1a6;--warn:#e9b95f;--bad:#ef6f6f;
+  --s-an:#ef7a42;--s-al:#7fa8e8;--s-pr:#c9a0e6;--s-ml:#6fcabc;--s-fi:#e8737e;--s-nu:#a8d36f;--s-fa:#e2bb5c}
+[data-theme="trattato"]{color-scheme:light;--bg:#f3eee4;--panel:#ede7db;--surface:#fbf8f2;--hair:rgba(36,32,27,.12);--faint:rgba(36,32,27,.05);--inner:inset 0 1px 0 rgba(255,255,255,.85);
+  --ink:#221e19;--muted:#615a4f;--accent:#a83d22;--good:#2f6e48;--warn:#8f6512;--bad:#a8323f;
+  --s-an:#a83d22;--s-al:#2f5c9e;--s-pr:#7a4b9a;--s-ml:#1f7a6c;--s-fi:#a8323f;--s-nu:#4f7a1f;--s-fa:#8f6512}
+*{box-sizing:border-box}
+body{margin:0;min-height:100dvh;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--sans);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
+button{font:inherit;color:inherit}
+.lab{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.top{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--hair)}
+.top h1{font:400 28px/1 var(--serif);margin:0}
+.top .sp{flex:1}
+.pill{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:13px;color:var(--muted)}
+.stage{flex:1;display:flex;flex-direction:column;justify-content:flex-end;max-width:820px;width:100%;margin:0 auto;padding:24px 20px 24px}
+.note{color:var(--muted);font-size:15px;margin:0 0 auto;padding-top:20px;max-width:60ch}
+.note b{color:var(--ink);font-weight:500}
+.shell{padding:5px;border-radius:24px;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--hair)}
+.inner{border-radius:19px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:14px 16px}
+.mhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.sum{font:500 12px var(--mono);color:var(--ink);padding:3px 10px;border-radius:999px;background:var(--faint)}
+.mhead .sp{flex:1}
+.link{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:13px}
+.link svg{width:14px;height:14px}
+.group{margin-bottom:8px}
+.group .lab{display:block;margin-bottom:6px;font-size:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:0 6px 0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:14px;transition:border-color .2s,background-color .2s,transform .12s var(--ease-out);animation:pop .25s var(--ease-out)}
+@keyframes pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+.chip:active{transform:scale(.97)}
+.chip i{width:8px;height:8px;border-radius:50%;flex:none}
+.chip small{font:500 11px var(--mono);color:var(--muted);padding:2px 6px;border-radius:999px;background:var(--faint)}
+.chip .x{width:28px;height:28px;border-radius:50%;border:0;background:transparent;cursor:pointer;display:grid;place-items:center;color:var(--muted);transition:background-color .15s,color .15s}
+@media (hover:hover) and (pointer:fine){.chip .x:hover{background:var(--faint);color:var(--ink)}}
+.chip .x svg{width:10px;height:10px}
+.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--faint)}
+.chip.more{border-style:dashed;color:var(--muted);padding:0 14px}
+.free{display:flex;gap:8px;align-items:center;border-top:1px solid var(--hair);margin-top:10px;padding-top:10px}
+.free input{flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;outline:none;min-height:42px;padding:0 4px}
+.free input::placeholder{color:var(--muted)}
+.pri{min-height:42px;padding:0 20px;border-radius:999px;border:0;background:var(--ink);color:var(--bg);font:500 15px var(--sans);cursor:pointer;white-space:nowrap;transition:transform .12s var(--ease-out),opacity .2s}
+.pri:active{transform:scale(.97)} .pri:disabled{opacity:.35;cursor:not-allowed}
+.toast{font-size:13px;color:var(--good);min-height:20px;margin-top:6px}
+/* picker dialog */
+dialog{padding:0;border:0;background:transparent;color:var(--ink);max-width:min(1040px,calc(100vw - 32px));width:100%;max-height:calc(100dvh - 48px)}
+dialog::backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
+dialog[open]{animation:dlg .22s var(--ease-out)}
+@keyframes dlg{from{opacity:0;transform:scale(.98) translateY(6px)}to{opacity:1;transform:none}}
+.dlg{display:grid;grid-template-rows:auto auto 1fr auto;height:min(720px,calc(100dvh - 48px));border-radius:24px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--inner),0 40px 100px -30px rgba(0,0,0,.7);overflow:hidden}
+.dh{display:flex;align-items:center;gap:12px;padding:16px 18px 8px}
+.dh h2{font:400 30px/1 var(--serif);margin:0}
+.dh .sp{flex:1}
+.icon{width:40px;height:40px;border-radius:12px;border:0;background:transparent;cursor:pointer;color:var(--muted);display:grid;place-items:center}
+.icon svg{width:16px;height:16px}
+.tabs{display:flex;gap:2px;padding:3px;border-radius:999px;background:var(--faint)}
+.tabs button{min-height:32px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;font-size:13px}
+.tabs button[aria-selected="true"]{background:var(--bg);color:var(--ink)}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 18px 12px;border-bottom:1px solid var(--hair)}
+.search{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;padding:0 14px;border-radius:999px;background:var(--faint);border:1px solid transparent}
+.search:focus-within{border-color:var(--accent)}
+.search svg{width:15px;height:15px;color:var(--muted)}
+.search input{flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;outline:none;min-height:40px}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters button{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:13px;color:var(--muted)}
+.filters button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.cols{display:grid;grid-template-columns:1fr 300px;min-height:0}
+.tree{overflow:auto;padding:8px 10px 16px;scrollbar-width:thin}
+.sel{border-left:1px solid var(--hair);overflow:auto;padding:14px 14px;background:var(--panel)}
+.tree details>summary{list-style:none;display:flex;align-items:center;gap:8px;min-height:40px;padding:0 8px;border-radius:10px;cursor:pointer}
+.tree details>summary::-webkit-details-marker{display:none}
+.tree summary .chev{width:12px;height:12px;color:var(--muted);transition:transform .2s var(--ease-out);flex:none}
+.tree details[open]>summary .chev{transform:rotate(90deg)}
+.tree summary .cnt{margin-left:auto;font:500 11px var(--mono);color:var(--muted)}
+.tree .kids{margin-left:22px;border-left:1px solid var(--hair);padding-left:6px}
+.row{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 8px;border-radius:10px;cursor:pointer;font-size:14px}
+@media (hover:hover) and (pointer:fine){.row:hover,.tree summary:hover{background:var(--faint)}}
+.cb{appearance:none;flex:none;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--hair);background:transparent;cursor:pointer;display:grid;place-items:center;margin:0}
+.cb:checked{background:var(--ink);border-color:var(--ink)}
+.cb:checked::after{content:"";width:9px;height:5px;border-left:2px solid var(--bg);border-bottom:2px solid var(--bg);transform:rotate(-45deg) translate(1px,-1px)}
+.cb:indeterminate{background:var(--ink);border-color:var(--ink)}
+.cb:indeterminate::after{content:"";width:8px;height:2px;background:var(--bg)}
+.mem{margin-left:auto;display:flex;align-items:center;gap:8px;font:500 11px var(--mono);color:var(--muted)}
+.mem .bar{width:44px;height:4px;border-radius:4px;background:var(--faint);overflow:hidden}
+.mem .bar b{display:block;height:100%;border-radius:4px}
+.tag{font:500 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:var(--faint);color:var(--muted)}
+.tag.due{color:var(--accent)}
+.sel h3{margin:0 0 10px}
+.sel ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.sel li{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;border-radius:10px;background:var(--faint);font-size:13px}
+.sel li i{width:7px;height:7px;border-radius:50%;flex:none}
+.sel li span{flex:1}
+.sel li button{width:28px;height:28px;border-radius:8px;border:0;background:transparent;cursor:pointer;color:var(--muted)}
+.sel .empty{font-size:13px;color:var(--muted)}
+.df{display:flex;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid var(--hair)}
+.df .sp{flex:1}
+.ghost{min-height:42px;padding:0 18px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:14px}
+.files{padding:16px 18px;display:flex;flex-direction:column;gap:8px;overflow:auto}
+.file{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--hair);cursor:pointer}
+.file .kind{font:500 10px var(--mono);padding:3px 6px;border-radius:5px;background:var(--faint);color:var(--muted)}
+.file .pp{margin-left:auto;font:500 12px var(--mono);color:var(--muted)}
+.file:has(.cb:checked){border-color:var(--ink);background:var(--faint)}
+.hidden{display:none!important}
+@media (max-width:760px){.cols{grid-template-columns:1fr}.sel{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="top"><span class="lab" style="color:var(--accent)">Prototipo · Materiale con il vault pieno</span><h1>Pratica</h1><span class="sp"></span><button class="pill" id="theme" type="button">Trattato</button></div>
+<div class="stage">
+  <p class="note">Questo è il riquadro "Materiale" quando nel vault ci sono <b id="tot">—</b> concetti. In cima ci sono solo i <b>suggeriti</b>, ognuno con il motivo. Per tutto il resto ci sono il campo di testo e "Scegli…".</p>
+  <div class="shell"><div class="inner">
+    <div class="mhead"><span class="lab">Materiale</span><span class="sum" id="sum" aria-live="polite"></span><span class="sp"></span>
+      <button class="link" id="open" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 4h11M2.5 8h11M2.5 12h7"/></svg>Scegli…</button></div>
+    <div class="group"><span class="lab">Scelti</span><div class="chips" id="picked"></div></div>
+    <div class="group"><span class="lab">Suggeriti per oggi</span><div class="chips" id="sugg"></div></div>
+    <div class="free"><input id="free" placeholder="Scrivi un argomento, es. «autovalori» o «tutta la glicolisi»" aria-label="Cerca un argomento"><button class="pri" id="go" type="button" disabled>Inizia</button></div>
+    <div class="toast" id="toast" role="status"></div>
+  </div></div>
+</div>
+
+<dialog id="dlg" aria-labelledby="dt"><div class="dlg">
+  <div class="dh"><h2 id="dt">Scegli il materiale</h2><div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-t="c" type="button">Concetti</button><button role="tab" aria-selected="false" data-t="f" type="button">Fonti</button></div><span class="sp"></span><button class="icon" id="close" type="button" aria-label="Chiudi"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+  <div class="tools" id="tools"><label class="search"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg><input id="q" placeholder="Cerca tra i concetti…" aria-label="Cerca"></label>
+    <div class="filters" role="group" aria-label="Filtri"><button type="button" aria-pressed="false" data-f="weak">Più deboli</button><button type="button" aria-pressed="false" data-f="due">In scadenza</button><button type="button" aria-pressed="false" data-f="never">Mai praticati</button></div></div>
+  <div class="cols" id="pc"><div class="tree" id="tree"></div><aside class="sel"><h3 class="lab" id="selh">Selezionati</h3><ul id="sel"></ul></aside></div>
+  <div class="files hidden" id="pf"></div>
+  <div class="df"><span class="sum" id="dsum"></span><span class="sp"></span><button class="ghost" id="clear" type="button">Svuota</button><button class="pri" id="ok" type="button">Conferma</button></div>
+</div></dialog>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+// A realistic vault: subject → course → concepts. m = memory (0..1), p = times practiced, due = needed for upcoming exam
+const V={'Matematica':{'Analisi I':['Limiti notevoli','Continuità','Teorema degli zeri','Derivate','Teorema di Rolle','Teorema del valor medio','De l\'Hôpital','Serie di Taylor','Studio di funzione','Integrali definiti','Integrali impropri','Teorema fondamentale','Serie numeriche','Criterio del rapporto'],'Algebra lineare':['Spazi vettoriali','Basi e dimensione','Applicazioni lineari','Matrici','Determinante','Autovalori','Autospazi','Diagonalizzabilità','Prodotto scalare','Gram-Schmidt'],'Probabilità':['Assiomi di Kolmogorov','Probabilità condizionata','Bayes','Variabili aleatorie','Valore atteso','Varianza','Distribuzione normale','Legge dei grandi numeri']},
+ 'Intelligenza artificiale':{'Machine learning':['Regressione lineare','Funzione di costo','Discesa del gradiente','Overfitting','Regolarizzazione','Backpropagation','Reti convoluzionali']},
+ 'Bodybuilding':{'Fisiologia':['ATP','Glicolisi','Ciclo di Krebs','Fibre muscolari','Sarcomero','Ipertrofia','Tensione meccanica','Recupero'],'Nutrizione':['Bilancio energetico','Sintesi proteica','Leucina','Carboidrati e glicogeno','Timing dei nutrienti','Creatina'],'Farmacologia':['Asse HPG','Testosterone','Recettori androgeni','Steroidi anabolizzanti','Aromatizzazione','PCT']}};
+const COL={'Analisi I':'an','Algebra lineare':'al','Probabilità':'pr','Machine learning':'ml','Fisiologia':'fi','Nutrizione':'nu','Farmacologia':'fa'};
+let seed=7; const rnd=()=>(seed=(seed*9301+49297)%233280)/233280;
+const N=[]; for(const s in V) for(const c in V[s]) for(const n of V[s][c]) N.push({id:N.length,n,s,c,col:'var(--s-'+COL[c]+')',m:+(.12+rnd()*.85).toFixed(2),p:rnd()<.3?0:Math.ceil(rnd()*5),due:c==='Analisi I'&&rnd()<.5});
+N.find(x=>x.n==='Teorema del valor medio').m=.23; N.find(x=>x.n==='Serie di Taylor').m=.12;N.find(x=>x.n==='Diagonalizzabilità').m=.34;N.find(x=>x.n==='Backpropagation').m=.18;N.find(x=>x.n==='Backpropagation').p=0;
+$('#tot').textContent=N.length;
+const SRC=[{t:'Temi d\'esame 2023–2025',k:'PDF',pp:'34 pag.',nb:'Analisi I — prof. Rossi'},{t:'Eserciziario capitolo 5',k:'PDF',pp:'52 pag.',nb:'Analisi I — prof. Rossi'},{t:'Slide lezione 12 — Teoremi sulle derivate',k:'slide',pp:'28 slide',nb:'Analisi I — prof. Rossi'},{t:'Registrazione lezione 14',k:'audio',pp:'1 h 32',nb:'Analisi I — prof. Rossi'},{t:'Esercizi diagonalizzazione',k:'PDF',pp:'12 pag.',nb:'Algebra lineare'}];
+const sel=new Set(), srcSel=new Set();
+// suggestions: weakest, due for exam, never practiced — with the reason
+const SUG=[...N].filter(x=>x.due).sort((a,b)=>a.m-b.m).slice(0,2).map(x=>({x,why:'esame · '+Math.round(x.m*100)+'%'}))
+ .concat([...N].filter(x=>!x.due).sort((a,b)=>a.m-b.m).slice(0,2).map(x=>({x,why:Math.round(x.m*100)+'% memoria'})))
+ .concat([...N].filter(x=>x.p===0&&!x.due).slice(0,1).map(x=>({x,why:'mai praticato'})));
+SUG.slice(0,2).forEach(({x})=>sel.add(x.id));
+const X='<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 2l6 6M8 2L2 8"/></svg>';
+const mins=()=>Math.max(10,Math.round(sel.size*6+srcSel.size*10));
+const sumText=()=>{const c=sel.size,f=srcSel.size;return (c?`${c} ${c===1?'concetto':'concetti'}`:'')+(c&&f?' · ':'')+(f?`${f} ${f===1?'fonte':'fonti'}`:'')+(c||f?` · ~${mins()} min`:'niente scelto')};
+
+function render(){
+ const picked=[...sel].map(i=>N[i]); const vis=picked.slice(0,5);
+ $('#picked').innerHTML=vis.map(x=>`<span class="chip" aria-pressed="true"><i style="background:${x.col}"></i>${x.n}<button class="x" type="button" data-rm="${x.id}" aria-label="Togli ${x.n}">${X}</button></span>`).join('')
+  +[...srcSel].map(i=>`<span class="chip" aria-pressed="true"><span class="tag">${SRC[i].k}</span>${SRC[i].t}<button class="x" type="button" data-rs="${i}" aria-label="Togli ${SRC[i].t}">${X}</button></span>`).join('')
+  +(picked.length>5?`<button class="chip more" type="button" id="more">+${picked.length-5} altri</button>`:'')
+  +(!picked.length&&!srcSel.size?'<span class="lab" style="text-transform:none;letter-spacing:0;font-size:13px">Niente ancora: tocca un suggerito o scrivi un argomento.</span>':'');
+ $('#sugg').innerHTML=SUG.filter(({x})=>!sel.has(x.id)).map(({x,why})=>`<button class="chip" type="button" aria-pressed="false" data-add="${x.id}"><i style="background:${x.col}"></i>${x.n}<small>${why}</small></button>`).join('')||'<span class="lab" style="text-transform:none;letter-spacing:0;font-size:13px">Hai già preso tutti i suggeriti.</span>';
+ $('#sum').textContent=sumText(); $('#go').disabled=!(sel.size||srcSel.size);
+ $$('[data-rm]').forEach(b=>b.onclick=()=>{sel.delete(+b.dataset.rm);render()});
+ $$('[data-rs]').forEach(b=>b.onclick=()=>{srcSel.delete(+b.dataset.rs);render()});
+ $$('[data-add]').forEach(b=>b.onclick=()=>{sel.add(+b.dataset.add);render()});
+ $('#more')&&($('#more').onclick=openDlg);
+}
+// free text → the AI would match concepts in your graph; simulated with a fuzzy match
+const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+$('#free').onkeydown=e=>{if(e.key!=='Enter')return;const q=norm(e.target.value.trim());if(!q)return;
+ const words=q.replace(/tutta la |tutto |tutti gli |la |il |lo /g,'').split(/\s+/).filter(w=>w.length>2);
+ const hits=N.filter(x=>words.some(w=>norm(x.n).includes(w)||norm(x.c).includes(w)));
+ hits.forEach(x=>sel.add(x.id));render();
+ $('#toast').textContent=hits.length?`${hits.length===1?'Trovato 1 concetto':'Trovati '+hits.length+' concetti'} per «${e.target.value.trim()}»: ${hits.length===1?'aggiunto':'aggiunti'}. Toglili con la ×.`:`Nessun concetto per «${e.target.value.trim()}» nelle tue note. Prova «Scegli…».`;e.target.value=''};
+
+// dialog
+const dlg=$('#dlg'); let filt=null, q='';
+const chev='<svg class="chev" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5"/></svg>';
+const pass=x=>(!q||norm(x.n).includes(q)||norm(x.c).includes(q))&&(!filt||(filt==='weak'&&x.m<.45)||(filt==='due'&&x.due)||(filt==='never'&&x.p===0));
+function memBar(x){const c=x.m<.35?'var(--bad)':x.m<.6?'var(--warn)':'var(--good)';return `<span class="mem">${x.due?'<span class="tag due">esame</span>':''}${x.p===0?'<span class="tag">mai praticato</span>':''}<span class="bar"><b style="width:${x.m*100}%;background:${c}"></b></span>${Math.round(x.m*100)}%</span>`}
+function drawTree(){const open=!!(q||filt);let h='';
+ for(const s in V){const sn=N.filter(x=>x.s===s&&pass(x));if(!sn.length)continue;
+  h+=`<details ${open||s==='Matematica'?'open':''}><summary>${chev}<input type="checkbox" class="cb" data-g="s:${s}" aria-label="Seleziona tutto ${s}">${s}<span class="cnt">${sn.length}</span></summary><div class="kids">`;
+  for(const c in V[s]){const cn=sn.filter(x=>x.c===c);if(!cn.length)continue;
+   h+=`<details ${open||c==='Analisi I'?'open':''}><summary>${chev}<input type="checkbox" class="cb" data-g="c:${c}" aria-label="Seleziona tutto ${c}"><i style="width:8px;height:8px;border-radius:50%;background:var(--s-${COL[c]})"></i>${c}<span class="cnt">${cn.length}</span></summary><div class="kids">`+
+    cn.map(x=>`<label class="row"><input type="checkbox" class="cb" data-id="${x.id}" ${sel.has(x.id)?'checked':''}>${x.n}${memBar(x)}</label>`).join('')+'</div></details>'}
+  h+='</div></details>'}
+ $('#tree').innerHTML=h||'<p class="lab" style="padding:16px;text-transform:none;letter-spacing:0;font-size:14px">Nessun concetto corrisponde.</p>';
+ syncGroups();
+ $$('#tree .cb[data-id]').forEach(cb=>cb.onchange=()=>{cb.checked?sel.add(+cb.dataset.id):sel.delete(+cb.dataset.id);syncGroups();drawSel()});
+ $$('#tree .cb[data-g]').forEach(cb=>{cb.onclick=e=>e.stopPropagation();cb.onchange=()=>{const [k,v]=cb.dataset.g.split(/:(.*)/);N.filter(x=>(k==='s'?x.s:x.c)===v&&pass(x)).forEach(x=>cb.checked?sel.add(x.id):sel.delete(x.id));drawTree();drawSel()}});
+}
+function syncGroups(){$$('#tree .cb[data-g]').forEach(cb=>{const [k,v]=cb.dataset.g.split(/:(.*)/);const g=N.filter(x=>(k==='s'?x.s:x.c)===v&&pass(x));const n=g.filter(x=>sel.has(x.id)).length;cb.checked=n===g.length&&n>0;cb.indeterminate=n>0&&n<g.length})}
+function drawSel(){const l=[...sel].map(i=>N[i]);$('#sel').innerHTML=l.length?l.map(x=>`<li><i style="background:${x.col}"></i><span>${x.n}</span><button type="button" data-u="${x.id}" aria-label="Togli ${x.n}">×</button></li>`).join('')+[...srcSel].map(i=>`<li><span class="tag">${SRC[i].k}</span><span>${SRC[i].t}</span></li>`).join(''):'<li class="empty" style="background:none">Niente di selezionato.</li>';
+ $$('#sel [data-u]').forEach(b=>b.onclick=()=>{sel.delete(+b.dataset.u);drawTree();drawSel()});$('#dsum').textContent=sumText()}
+function drawFiles(){$('#pf').innerHTML='<p class="lab" style="margin:0 0 4px">Dai tuoi notebook · l\'IA usa gli esercizi così come sono oppure ne crea di simili</p>'+SRC.map((s,i)=>`<label class="file"><input type="checkbox" class="cb" data-s="${i}" ${srcSel.has(i)?'checked':''}><span class="kind">${s.k}</span><span><b style="font-weight:500">${s.t}</b><br><span style="font-size:13px;color:var(--muted)">${s.nb}</span></span><span class="pp">${s.pp}</span></label>`).join('');
+ $$('#pf .cb').forEach(cb=>cb.onchange=()=>{cb.checked?srcSel.add(+cb.dataset.s):srcSel.delete(+cb.dataset.s);drawSel()})}
+function tab(t){$$('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));$('#pc').classList.toggle('hidden',t!=='c');$('#tools').classList.toggle('hidden',t!=='c');$('#pf').classList.toggle('hidden',t!=='f');if(t==='f')drawFiles()}
+$$('.tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
+let snapshot=null;
+function openDlg(){snapshot=[new Set(sel),new Set(srcSel)];q='';filt=null;$('#q').value='';$$('.filters button').forEach(b=>b.setAttribute('aria-pressed','false'));tab('c');drawTree();drawSel();dlg.showModal();$('#q').focus()}
+$('#open').onclick=openDlg;
+$('#q').oninput=e=>{q=norm(e.target.value.trim());drawTree()};
+$$('.filters button').forEach(b=>b.onclick=()=>{filt=filt===b.dataset.f?null:b.dataset.f;$$('.filters button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.f===filt));drawTree()});
+$('#ok').onclick=()=>{dlg.close();render()};
+$('#close').onclick=()=>{sel.clear();snapshot[0].forEach(i=>sel.add(i));srcSel.clear();snapshot[1].forEach(i=>srcSel.add(i));dlg.close();render()};
+dlg.addEventListener('cancel',e=>{e.preventDefault();$('#close').click()});
+$('#clear').onclick=()=>{sel.clear();srcSel.clear();drawTree();drawSel();if(!$('#pf').classList.contains('hidden'))drawFiles()};
+$('#free').oninput=()=>$('#toast').textContent='';
+$('#theme').onclick=()=>{const t=document.documentElement.dataset.theme==='lavagna'?'trattato':'lavagna';document.documentElement.dataset.theme=t;$('#theme').textContent=t==='lavagna'?'Trattato':'Lavagna'};
+render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="lavagna">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Teorema di Lagrange</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<style>
+:root{
+  --ease-out:cubic-bezier(.23,1,.32,1);
+  --serif:'Instrument Serif',Georgia,serif; --sans:'Geist',ui-sans-serif,system-ui,sans-serif; --mono:'Geist Mono',ui-monospace,monospace;
+  --z-figure:5; --z-nav:30; --z-grain:40; --z-skip:50;
+}
+[data-theme="lavagna"]{
+  color-scheme:dark;
+  --bg:#0f100d; --surface:#171814; --shell:rgba(236,233,223,.035); --hair:rgba(236,233,223,.10); --inner:inset 0 1px 0 rgba(236,233,223,.06);
+  --ink:#ece9df; --muted:#a19e92; --faint:rgba(236,233,223,.055);
+  --accent:#ef7a42; --good:#8fd1a6; --pen:#8fb8ff; --bad:#f08080; --warn:#e9b95f; --curve:#ece9df; --grain:.05; --shadow:0 40px 80px -48px rgba(0,0,0,.7);
+}
+[data-theme="trattato"]{
+  color-scheme:light;
+  --bg:#f3eee4; --surface:#fbf8f2; --shell:rgba(36,32,27,.035); --hair:rgba(36,32,27,.12); --inner:inset 0 1px 0 rgba(255,255,255,.85);
+  --ink:#221e19; --muted:#615a4f; --faint:rgba(36,32,27,.05);
+  --accent:#a83d22; --good:#2f6e48; --pen:#2f55a8; --bad:#a8323f; --warn:#8f6512; --curve:#221e19; --grain:.07; --shadow:0 40px 80px -50px rgba(80,60,30,.35);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:90px}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 18px/1.7 var(--sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;transition:background-color .4s var(--ease-out),color .4s var(--ease-out)}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:var(--z-grain);opacity:var(--grain);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:10px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:fixed;left:16px;top:-80px;z-index:var(--z-skip);padding:12px 18px;border-radius:999px;background:var(--ink);color:var(--bg);font:500 15px var(--sans);text-decoration:none;transition:top .2s var(--ease-out)}
+.skip:focus{top:16px}
+.katex{font-size:1.06em}
+.content{min-width:0}
+.katex-display{margin:18px 0;overflow-x:auto;overflow-y:hidden;padding:4px 0}
+
+/* island */
+.island{position:fixed;top:max(16px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:var(--z-nav);display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:color-mix(in srgb,var(--surface) 80%,transparent);border:1px solid var(--hair);box-shadow:var(--inner);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);max-width:calc(100vw - 24px)}
+.island .bar{width:64px;height:4px;border-radius:4px;background:var(--hair);overflow:hidden;margin:0 10px 0 14px;flex:none}
+.island .bar i{display:block;height:100%;background:var(--accent);transform-origin:left;transform:scaleX(0)}
+.seg{display:flex;gap:2px;border-radius:999px}
+.seg button{min-height:40px;min-width:44px;font:500 14px var(--sans);border:0;background:transparent;color:var(--muted);padding:0 14px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background-color .2s ease,color .2s ease,transform .12s var(--ease-out)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg button:active{transform:scale(.97)}
+.sep{width:1px;height:22px;background:var(--hair);margin:0 4px;flex:none}
+.layers{display:flex;gap:2px}
+.layers button{min-height:40px;padding:0 11px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:500 13px var(--sans);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.layers button i{width:8px;height:8px;border-radius:50%;opacity:.35}
+.layers button[aria-pressed="true"]{color:var(--ink)} .layers button[aria-pressed="true"] i{opacity:1}
+.layers button[data-l="pers"] i{background:var(--pen)} .layers button[data-l="quiz"] i{background:var(--warn)} .layers button[data-l="src"] i{background:var(--muted)}
+body.no-pers .ann, body.no-quiz .qz, body.no-quiz .flash, body.no-src .src{display:none!important}
+
+/* page grid */
+main{max-width:1360px;margin:0 auto;padding:0 40px}
+.page{display:grid;grid-template-columns:220px minmax(0,1fr);gap:56px}
+.toc{position:sticky;top:96px;align-self:start;max-height:calc(100dvh - 120px);overflow:auto;padding-bottom:20px}
+.toc h2{font:600 11px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.toc ol{list-style:none;margin:0;padding:0}
+.toc a{display:flex;align-items:center;gap:10px;min-height:36px;padding:4px 10px;border-radius:10px;font-size:14px;line-height:1.3;color:var(--muted);text-decoration:none;transition:color .2s,background-color .2s}
+.toc a b{font:500 11px var(--mono);width:18px;flex:none;color:inherit;opacity:.7}
+.toc a i{margin-left:auto;width:7px;height:7px;border-radius:50%;flex:none}
+.toc a[aria-current="true"]{color:var(--ink);background:var(--faint)}
+@media (hover:hover) and (pointer:fine){.toc a:hover{color:var(--ink)}}
+.toc .legend{margin-top:14px;padding:10px;border-radius:12px;border:1px solid var(--hair);font-size:12px;color:var(--muted);line-height:1.5}
+.toc .legend span{display:flex;align-items:center;gap:8px}
+.toc .legend i{width:7px;height:7px;border-radius:50%}
+.m-good{background:var(--good)} .m-warn{background:var(--warn)} .m-bad{background:var(--bad)} .m-none{background:transparent;border:1px solid var(--muted)}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1.5fr 1fr;align-items:end;gap:56px;padding:150px 0 72px}
+.eyebrow{display:inline-block;font:500 12px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:6px 14px;border-radius:999px;border:1px solid var(--hair);margin-bottom:28px}
+h1{font:400 clamp(56px,8.4vw,128px)/.92 var(--serif);letter-spacing:-.02em;margin:0;text-wrap:balance}
+h1 em{font-style:italic;color:var(--accent)}
+.aka{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.aka span{font:500 12px var(--mono);color:var(--muted);padding:4px 10px;border-radius:8px;background:var(--faint)}
+.lede{font-size:20px;color:var(--muted);max-width:40ch;margin:26px 0 0;line-height:1.55;text-wrap:pretty}
+.origin{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+.origin span{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);padding:6px 12px;border-radius:999px;border:1px solid var(--hair)}
+.origin svg{width:14px;height:14px;flex:none}
+.enter{opacity:0;transform:translateY(16px);animation:enter .8s var(--ease-out) forwards}
+.enter.d1{animation-delay:.08s}.enter.d2{animation-delay:.16s}.enter.d3{animation-delay:.24s}.enter.d4{animation-delay:.32s}
+@keyframes enter{to{opacity:1;transform:none}}
+
+.bezel{padding:6px;border-radius:28px;background:var(--shell);border:1px solid var(--hair)}
+.core{border-radius:22px;background:var(--surface);box-shadow:var(--inner),var(--shadow)}
+.scheda .core{padding:24px}
+.scheda dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:10px 20px;font-size:15px}
+.scheda dt{color:var(--muted)} .scheda dd{margin:0;text-align:right;font:400 14px var(--mono);font-variant-numeric:tabular-nums}
+.ring{display:flex;align-items:center;gap:16px;padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--hair)}
+.ring svg{width:56px;height:56px;transform:rotate(-90deg);flex:none}
+.ring b{display:block;font:400 32px/1 var(--serif)} .ring span{font-size:14px;color:var(--muted)}
+
+/* provenance disclosure */
+.prov{margin:0 0 56px}
+.prov summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;min-height:52px;padding:0 20px;border-radius:18px;border:1px solid var(--hair);font-size:16px;color:var(--muted)}
+.prov summary::-webkit-details-marker{display:none}
+.prov summary b{color:var(--ink);font-weight:500}
+.prov summary svg{width:16px;height:16px;margin-left:auto;transition:transform .25s var(--ease-out)}
+.prov[open] summary svg{transform:rotate(180deg)}
+.prov .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+.prov .grid3>div{padding:18px 20px;border-radius:18px;background:var(--surface);border:1px solid var(--hair)}
+.prov h3{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.prov ul{margin:0;padding:0 0 0 18px;font-size:15px;line-height:1.55}
+.prov li{margin-bottom:6px}
+
+/* tldr */
+.tldr{margin:0 0 40px;display:grid;grid-template-columns:auto 1fr;gap:20px 40px;padding:28px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+.tldr h2{font:400 28px/1 var(--serif);margin:0;white-space:nowrap}
+.tldr ol{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,1fr);gap:24px;counter-reset:t}
+.tldr li{counter-increment:t;font-size:16px;line-height:1.5}
+.tldr li::before{content:counter(t,decimal-leading-zero);display:block;font:500 12px var(--mono);color:var(--accent);margin-bottom:6px}
+
+/* sections */
+.sec{padding:72px 0 24px;border-top:1px solid var(--hair)}
+.sec>header{display:flex;align-items:baseline;gap:18px;margin-bottom:26px;flex-wrap:wrap}
+.num{font:500 13px var(--mono);color:var(--accent)}
+.sec h2{font:400 clamp(36px,3.8vw,52px)/1.05 var(--serif);letter-spacing:-.01em;margin:0;text-wrap:balance;flex:1;min-width:260px}
+.sec h2 em{font-style:italic}
+.memo{font:500 12px var(--mono);color:var(--muted);display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border-radius:999px;border:1px solid var(--hair)}
+.memo i{width:7px;height:7px;border-radius:50%}
+.prose{max-width:700px}
+.prose p{margin:0 0 16px;text-wrap:pretty}
+h3{font:400 28px/1.15 var(--serif);margin:36px 0 12px}
+.sub{font:600 12px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:28px 0 10px}
+.muted{color:var(--muted)}
+.hl-acc{color:var(--accent);font-weight:500} .hl-good{color:var(--good);font-weight:500} .hl-warn{color:var(--warn);font-weight:500}
+.wide{max-width:900px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+
+/* theorem card */
+.thm{margin:26px 0;padding:26px 28px;border-radius:24px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--inner),var(--shadow);max-width:760px}
+.thm .t{font:600 12px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.thm p{margin:0 0 10px}
+.hyps{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.hyp{display:flex;align-items:center;gap:14px;min-height:52px;padding:8px 16px 8px 10px;border-radius:16px;border:1px solid var(--hair);background:transparent;color:var(--ink);font:inherit;font-size:16px;text-align:left;cursor:pointer;transition:border-color .2s,background-color .2s,opacity .2s}
+.hyp .sw{flex:none;width:40px;height:24px;border-radius:999px;background:var(--hair);position:relative;transition:background-color .25s var(--ease-out)}
+.hyp .sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .25s var(--ease-out)}
+.hyp[aria-pressed="true"] .sw{background:var(--good)} .hyp[aria-pressed="true"] .sw::after{transform:translateX(16px)}
+.hyp[aria-pressed="false"]{border-color:color-mix(in srgb,var(--bad) 60%,transparent)}
+.hyp[aria-pressed="false"] .lbl{text-decoration:line-through;text-decoration-color:var(--bad);color:var(--muted)}
+
+/* decodifica tabs */
+.deco{margin:26px 0;max-width:760px}
+.tabs{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--faint);width:max-content;max-width:100%;overflow-x:auto}
+.tabs button{min-height:40px;padding:0 16px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:500 14px var(--sans);cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--hair),var(--inner)}
+.panel{padding:20px 4px 4px}
+.panel[hidden]{display:none}
+
+/* figures */
+.fig{margin:22px 0}
+.fig .core{padding:16px 18px 18px}
+.fighead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:2px 4px 8px}
+.fighead .t{font:600 12px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.fighead .f{font:400 13px var(--mono);color:var(--muted);text-align:right}
+.fig svg{width:100%;height:auto;display:block;overflow:visible;user-select:none;-webkit-user-select:none;touch-action:pan-y}
+.readout{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.readout div{flex:1;min-width:130px;padding:9px 13px;border-radius:12px;background:var(--faint);font:400 13px var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);display:flex;justify-content:space-between;gap:8px;transition:background-color .2s,color .2s}
+.readout b{font-weight:500;color:var(--ink)}
+.readout div.hit{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)} .readout div.hit b{color:var(--good)}
+.readout div.miss{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)} .readout div.miss b{color:var(--bad)}
+.ctl{margin-top:10px}
+.ctl label{display:flex;justify-content:space-between;gap:10px;font-size:14px;color:var(--muted)}
+.ctl label output{font:500 13px var(--mono);color:var(--ink)}
+.pts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.pts>.chip{color:var(--good);border-color:color-mix(in srgb,var(--good) 45%,transparent)}
+.pts>.chip[aria-pressed="true"]{background:color-mix(in srgb,var(--good) 14%,transparent);border-color:var(--good)}
+.ptl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.ptl .go{min-height:36px;font:500 13px var(--mono);color:var(--good);border-color:color-mix(in srgb,var(--good) 35%,transparent)}
+.ptl .go.off{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,transparent)}
+.caption{font-size:15px;color:var(--muted);margin:10px 4px 0;line-height:1.5;min-height:1.5em}
+.caption b{color:var(--ink);font-weight:500}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:40px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:6px;background:var(--hair)}
+input[type=range]::-moz-range-track{height:6px;border-radius:6px;background:var(--hair)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;border-radius:50%;background:var(--warn);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--hair)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--warn);border:3px solid var(--surface)}
+input[type=range]:focus-visible{outline:none}
+input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--accent)}
+input[type=range]:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--accent)}
+
+/* car + speedometer */
+.car{display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:center}
+.car svg{width:100%;height:auto;display:block;overflow:visible}
+
+/* glossary */
+table{width:100%;border-collapse:collapse;font-size:15px;margin:10px 0}
+th{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--hair)}
+td{padding:12px;border-bottom:1px solid var(--hair);vertical-align:top}
+td:first-child{white-space:nowrap}
+.cover td.hide{cursor:pointer}
+.cover td.hide span{filter:blur(6px);transition:filter .3s var(--ease-out);user-select:none}
+.cover td.hide.shown span{filter:none}
+.tablebar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--muted);font:500 14px var(--sans);cursor:pointer}
+.chip[aria-pressed="true"]{color:var(--ink);border-color:var(--ink)}
+
+/* proof scrolly */
+.scrolly{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:0 44px}
+.pstep{min-height:88dvh;display:flex;flex-direction:column;justify-content:center;padding:10vh 0}
+.pstep>*{opacity:.35;transition:opacity .5s var(--ease-out)}
+.pstep.on>*{opacity:1}
+.pstep .kick{font:600 12px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.pstep h3{margin:0 0 14px;font-size:34px}
+.pstep p{margin:0 0 14px;max-width:48ch}
+.stage{position:sticky;top:0;height:100dvh;display:flex;flex-direction:column;justify-content:center;gap:12px}
+.stage .bezel{border-radius:32px}
+.stage .core{border-radius:26px;padding:16px 18px 16px}
+.chain{display:flex;gap:6px;flex-wrap:wrap}
+.chain button{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--muted);font:500 12px var(--mono);cursor:pointer;transition:all .25s var(--ease-out)}
+.chain button.done{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,transparent)}
+.chain button[aria-current="step"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.why{margin:6px 0 10px}
+.why>button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px 0 10px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--muted);font:500 14px var(--sans);cursor:pointer}
+.why>button svg{width:14px;height:14px;transition:transform .25s var(--ease-out)}
+.why>button[aria-expanded="true"] svg{transform:rotate(45deg)}
+.why .body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s var(--ease-out)}
+.why .body.open{grid-template-rows:1fr}
+.why .body>div{overflow:hidden}
+.why .body>div>p{margin:10px 0 0;padding:14px 16px;border-radius:16px;background:var(--faint);font-size:16px}
+
+/* "prova da solo" */
+.try-cover{display:none}
+body.try [data-try]:not(.revealed)>.try-body{display:none}
+body.try [data-try]:not(.revealed)>.try-cover{display:block}
+.try-cover{margin:6px 0 14px;padding:18px 20px;border-radius:20px;border:1px dashed color-mix(in srgb,var(--pen) 60%,transparent);background:color-mix(in srgb,var(--pen) 6%,transparent);max-width:540px}
+.try-cover p{margin:0 0 8px!important;font-size:16px}
+.try-cover p b{color:var(--pen);font-weight:500}
+textarea,input[type=text]{display:block;width:100%;border-radius:14px;border:1px solid var(--hair);background:var(--faint);color:var(--ink);font:inherit;font-size:16px;padding:11px 14px;transition:border-color .2s}
+textarea{min-height:76px;resize:vertical}
+textarea:focus-visible,input[type=text]:focus-visible,select:focus-visible{outline:none;border-color:var(--accent)}
+textarea::placeholder,input::placeholder{color:var(--muted);opacity:1}
+.row{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 8px 0 18px;border-radius:999px;border:0;background:var(--ink);color:var(--bg);font:500 15px var(--sans);cursor:pointer;transition:transform .12s var(--ease-out),opacity .2s}
+.btn .ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 16%,transparent)}
+.btn .ic svg{width:14px;height:14px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--hair);padding:0 18px}
+.btn:active{transform:scale(.97)}
+
+/* annotations, sources, flags */
+.ann{margin:6px 0 20px;padding:2px 0 2px 18px;border-left:2px solid var(--pen);max-width:48ch}
+.ann .who{display:block;font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--pen);margin-bottom:2px}
+.ann p{margin:0!important;font:500 23px/1.25 'Caveat',cursive;color:var(--pen)}
+.ann.err{border-left-color:var(--bad)} .ann.err .who,.ann.err p{color:var(--bad)}
+.ann.quote p::before{content:"«"} .ann.quote p::after{content:"»"}
+.src{display:inline-flex;align-items:center;gap:4px;vertical-align:2px;margin:0 4px 0 0;padding:1px 8px;border-radius:999px;background:var(--faint);border:1px solid var(--hair);font:500 11px var(--mono);color:var(--muted);text-decoration:none;white-space:nowrap;line-height:1.8}
+.src.ob{color:var(--pen);border-color:color-mix(in srgb,var(--pen) 35%,transparent)}
+@media (hover:hover) and (pointer:fine){.src:hover{color:var(--ink);border-color:var(--muted)}}
+.srcs{margin:-4px 0 18px}
+.flag{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:18px 0;padding:16px 18px;border-radius:18px;border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);background:color-mix(in srgb,var(--warn) 7%,transparent);max-width:700px}
+.flag svg{width:20px;height:20px;grid-row:span 3;margin-top:3px;color:var(--warn)}
+.flag b{font-weight:600;color:var(--warn);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.flag p{margin:0!important;font-size:16px}
+.flag .row{margin-top:6px}
+.flag .chip{min-height:36px;font-size:13px}
+
+/* quizzes */
+.qz{margin:22px 0;max-width:640px}
+.qz .core{padding:20px 22px 22px}
+.lab{display:flex;align-items:center;gap:8px;font:600 12px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--warn);margin-bottom:10px}
+.lab svg{width:16px;height:16px}
+.lab small{margin-left:auto;font:500 11px var(--mono);letter-spacing:.04em;text-transform:none;color:var(--muted)}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{padding:0;font-size:17px;margin-bottom:4px}
+.opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;margin:9px 0 0;min-height:52px;padding:10px 16px 10px 10px;border-radius:16px;border:1px solid var(--hair);background:transparent;color:var(--ink);font:inherit;font-size:16px;line-height:1.4;cursor:pointer;transition:border-color .2s,background-color .2s,transform .12s var(--ease-out)}
+.opt .k{flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:var(--faint);font:500 13px var(--mono);color:var(--muted)}
+.opt:active{transform:scale(.985)}
+@media (hover:hover) and (pointer:fine){.opt:hover:not([disabled]){border-color:color-mix(in srgb,var(--ink) 35%,transparent)}}
+.opt[data-state="ok"]{border-color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent)}
+.opt[data-state="ok"] .k{background:var(--good);color:var(--bg)}
+.opt[data-state="no"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.opt[data-state="no"] .k{background:var(--accent);color:var(--bg)}
+.opt[disabled]{cursor:default}
+.opt[disabled]:not([data-state]){opacity:.55}
+.fb{font-size:16px;margin-top:12px;line-height:1.55}
+.fb:empty{display:none}
+.fb.ok{color:var(--good)} .fb.no{color:var(--accent)}
+
+/* flashcards */
+.flash{margin:20px 0;max-width:640px;border-radius:20px;border:1px solid var(--hair);background:var(--surface);overflow:hidden}
+.flash .q{padding:16px 20px;display:flex;gap:14px;align-items:flex-start}
+.flash .q .tag{flex:none;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--warn);padding:3px 8px;border-radius:6px;border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);margin-top:3px}
+.flash .q p{margin:0;font-size:17px}
+.flash .a{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s var(--ease-out)}
+.flash.open .a{grid-template-rows:1fr}
+.flash .a>div{overflow:hidden}
+.flash .a p{margin:0;padding:0 20px 14px;font-size:16px;color:var(--muted)}
+.flash .bar2{display:flex;gap:8px;padding:0 20px 16px;flex-wrap:wrap;align-items:center}
+.flash .bar2 .chip{min-height:38px;font-size:14px}
+.flash .bar2 .done{font-size:14px;color:var(--good)}
+
+/* corollary tabs */
+.cor .tabs{margin-bottom:6px}
+
+/* worked examples */
+.fade{display:grid;gap:16px;max-width:860px}
+.ex{border-radius:22px;border:1px solid var(--hair);background:var(--surface);padding:20px 22px}
+.ex .h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.ex .lvl{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px}
+.lvl.l1{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)}
+.lvl.l2{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.lvl.l3{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.ex h4{font:400 24px/1.2 var(--serif);margin:0}
+.ex ol{margin:8px 0 0;padding-left:22px}
+.ex li{margin-bottom:8px}
+select{font:inherit;font-size:15px;min-height:40px;padding:0 10px;border-radius:10px;border:1px solid var(--hair);background:var(--faint);color:var(--ink);vertical-align:middle}
+select.ok{border-color:var(--good);color:var(--good)} select.no{border-color:var(--bad);color:var(--bad)}
+
+/* bridges map */
+.map{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;align-items:stretch}
+.map svg{width:100%;height:auto;display:block}
+.map .node{cursor:pointer}
+.map .node:focus-visible{outline:none}
+.map .node:focus-visible rect{stroke:var(--accent);stroke-width:2.5}
+.mapinfo{padding:22px;border-radius:22px;background:var(--surface);border:1px solid var(--hair)}
+.mapinfo h4{font:400 28px/1.1 var(--serif);margin:6px 0 10px}
+.mapinfo .st{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mapinfo p{font-size:16px;margin:0 0 12px}
+
+/* closing */
+.after{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:24px 0 0}
+.after .core{padding:24px 26px}
+.after h3{margin:0 0 14px}
+.keep{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.keep li{display:flex;gap:12px;font-size:16px;line-height:1.5}
+.keep li b{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--faint);font:500 12px var(--mono);color:var(--accent)}
+.formulario{display:flex;flex-direction:column;gap:2px}
+.formulario div{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--hair);font-size:15px}
+.formulario div span{color:var(--muted)}
+.links{display:flex;flex-direction:column;gap:8px}
+.links a{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:var(--faint);color:var(--ink);text-decoration:none;font-size:15px}
+.links a small{margin-left:auto;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:right}
+.links a i{width:8px;height:8px;border-radius:50%;flex:none}
+.cta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:20px;padding:22px 26px;border-radius:24px;background:var(--surface);border:1px solid var(--hair)}
+.cta p{margin:0;flex:1;min-width:240px;color:var(--muted)}
+.cta p b{color:var(--ink);font-weight:500}
+
+.mtoc{display:none}
+@media (max-width:1100px){
+  .page{grid-template-columns:minmax(0,1fr);gap:0}
+  .toc{display:none}
+  .mtoc{display:block;margin:0 0 32px}
+  .mtoc summary{min-height:48px;display:flex;align-items:center;padding:0 16px;border-radius:14px;border:1px solid var(--hair);cursor:pointer;color:var(--muted)}
+  .mtoc ol{margin:8px 0 0;padding-left:28px;line-height:2.2}
+  .mtoc a{color:var(--ink)}
+}
+@media (max-width:900px){
+  main{padding:0 16px}
+  body{font-size:17px}
+  .hero{grid-template-columns:1fr;padding:100px 0 48px;gap:32px}
+  .tldr{grid-template-columns:1fr} .tldr ol{grid-template-columns:1fr;gap:14px}
+  .prov .grid3{grid-template-columns:1fr}
+  .two,.map,.after{grid-template-columns:minmax(0,1fr)}
+  .katex{display:inline-block;max-width:100%;overflow-x:auto;overflow-y:hidden;vertical-align:middle}
+  .katex-display>.katex{display:block}
+  .car{grid-template-columns:1fr}
+  .car>svg{max-width:220px;margin:0 auto}
+  .scrolly{grid-template-columns:minmax(0,1fr)}
+  .stage{order:-1;height:auto;top:64px;z-index:var(--z-figure);padding:6px 0 8px;background:linear-gradient(var(--bg) 90%,transparent)}
+  .stage .core{padding:8px 10px}
+  .stage .fighead,.stage .readout{display:none}
+  #pfig{height:27dvh}
+  .chain button{min-height:32px;padding:0 9px;font-size:11px}
+  .pstep{min-height:80dvh;padding:4vh 0}
+  .island .layers,.island .sep.l{display:none}
+  .island .bar{display:none}
+  .island{padding:3px}
+  .seg button{padding:0 11px;font-size:13px}
+  td:first-child{white-space:normal}
+  .sec{padding-top:56px}
+}
+@media (prefers-reduced-motion:reduce){
+  .enter{animation:none;opacity:1;transform:none}
+  .pstep>*{transition:none}
+  *{scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#s1">Vai al contenuto</a>
+
+<nav class="island" aria-label="Controlli della nota">
+  <span class="bar" role="progressbar" aria-label="Avanzamento lettura" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="prog"><i id="bar"></i></span>
+  <div class="seg" role="group" aria-label="Modalità di lettura">
+    <button type="button" data-mode="read" aria-pressed="true">Leggi</button>
+    <button type="button" data-mode="try" aria-pressed="false">Prova da solo</button>
+  </div>
+  <span class="sep l" aria-hidden="true"></span>
+  <div class="layers" role="group" aria-label="Strati della nota">
+    <button type="button" data-l="pers" aria-pressed="true"><i></i>Sessione</button>
+    <button type="button" data-l="quiz" aria-pressed="true"><i></i>Quiz</button>
+    <button type="button" data-l="src" aria-pressed="true"><i></i>Fonti</button>
+  </div>
+  <span class="sep" aria-hidden="true"></span>
+  <div class="seg" role="group" aria-label="Tema">
+    <button type="button" data-t="lavagna" aria-pressed="true" aria-label="Tema scuro">◐</button>
+    <button type="button" data-t="trattato" aria-pressed="false" aria-label="Tema chiaro">◑</button>
+  </div>
+</nav>
+
+<main>
+  <header class="hero">
+    <div>
+      <span class="eyebrow enter">Analisi 1 · Calcolo differenziale · Teorema</span>
+      <h1 class="enter d1">Teorema di Lagrange <em>del valor medio</em></h1>
+      <div class="aka enter d2" aria-label="Detto anche"><span>Teorema 3.8</span><span>Teorema 33</span><span>Teorema del valor medio</span></div>
+      <p class="lede enter d2">Il ponte tra un'informazione locale (la pendenza in un punto) e una globale (quanto cresce la funzione su tutto l'intervallo).</p>
+      <div class="origin enter d3">
+        <span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 2h6l3 3v9H4z"/><path d="M10 2v3h3"/></svg>Nota Obsidian · Matematica/Teorema di Lagrange del Valor Medio</span>
+        <span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2.5" y="3" width="11" height="10" rx="2"/><path d="M5.5 3v10"/></svg>Notebook SMIA: Analisi 1 · 12 fonti</span>
+        <span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>Sessione di lunedì 26 ottobre · 24 min</span>
+      </div>
+    </div>
+    <aside class="bezel scheda enter d4" aria-label="Scheda dell'argomento"><div class="core">
+      <div class="ring">
+        <svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" fill="none" stroke="var(--hair)" stroke-width="3"/><circle cx="18" cy="18" r="15" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-dasharray="94.2" stroke-dashoffset="58"/></svg>
+        <div><b>38%</b><span>padronanza stimata su 10 sezioni</span></div>
+      </div>
+      <dl>
+        <dt>Lettura completa</dt><dd>~35 min</dd>
+        <dt>Solo l'essenziale</dt><dd>~8 min</dd>
+        <dt>Serve sapere</dt><dd>Rolle · 82%</dd>
+        <dt>Esercizi nella nota</dt><dd>11</dd>
+        <dt>Prossimo ripasso</dt><dd>domani 18:40</dd>
+      </dl>
+    </div></aside>
+  </header>
+
+  <details class="prov">
+    <summary><span><b>Come è nata questa nota.</b> Struttura e contenuto vengono dalla tua nota Obsidian; ecco cosa è stato aggiunto e segnalato.</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></summary>
+    <div class="grid3">
+      <div><h3>Dalla tua nota Obsidian</h3><ul><li>Le 10 sezioni, nello stesso ordine e con gli stessi titoli</li><li>Enunciato, decodifica in 3 parti, dimostrazione a tre atti</li><li>Tabella dei simboli, controesempi, corollari, esempi, esercizi</li><li>8 flashcard e 5 quiz della Palestra, messi accanto alle sezioni giuste</li></ul></div>
+      <div><h3>Aggiunto dall'app</h3><ul><li>9 figure interattive, una dove serve a capire</li><li>Il diagramma Mermaid è diventato la mappa che segue la dimostrazione</li><li>Esempi a difficoltà crescente: svolto, da completare, da solo</li><li>Strato della sessione: tue previsioni, frasi ed errori</li></ul></div>
+      <div><h3>Segnalato, non cambiato</h3><ul><li>§3 "rotazione del sistema di riferimento": è più preciso dire taglio verticale</li><li>Due formule con il <code>$</code> di chiusura mancante (§7.1, quiz 5): qui sono corrette</li><li>5 note collegate non esistono ancora nel vault (Cauchy, de l'Hôpital, Taylor…)</li></ul></div>
+    </div>
+  </details>
+
+  <section class="tldr" aria-labelledby="htl">
+    <h2 id="htl">In tre righe</h2>
+    <ol>
+      <li>Se $f$ è continua su $[a,b]$ e derivabile in $(a,b)$, esiste almeno un $c\in(a,b)$ con $f'(c)=\frac{f(b)-f(a)}{b-a}$.</li>
+      <li>Geometricamente: in almeno un punto la tangente è parallela alla corda. In cinematica: la velocità istantanea uguaglia quella media.</li>
+      <li>Prova: sottrai la corda a $f$, ottieni $g$ con $g(a)=g(b)=0$, applichi Rolle. Da qui seguono costanza, monotonia e Lipschitz.</li>
+    </ol>
+  </section>
+
+  <div class="page">
+    <nav class="toc" aria-label="Indice">
+      <h2>Indice</h2>
+      <ol id="toc">
+        <li><a href="#s1"><b>1</b>Definizioni preliminari<i class="m-good" title="Memoria buona"></i></a></li>
+        <li><a href="#s2"><b>2</b>Enunciato<i class="m-good" title="Memoria buona"></i></a></li>
+        <li><a href="#s3"><b>3</b>Il ruolo di Rolle<i class="m-good" title="Memoria buona"></i></a></li>
+        <li><a href="#s4"><b>4</b>Dimostrazione<i class="m-warn" title="Incerta"></i></a></li>
+        <li><a href="#s6"><b>5–6</b>Ipotesi e controesempi<i class="m-warn" title="Incerta"></i></a></li>
+        <li><a href="#s7"><b>7</b>Corollari<i class="m-bad" title="Debole"></i></a></li>
+        <li><a href="#s8"><b>8</b>Esempi notevoli<i class="m-none" title="Mai studiata"></i></a></li>
+        <li><a href="#s9"><b>9</b>Esercizi d'esame<i class="m-none" title="Mai studiata"></i></a></li>
+        <li><a href="#s10"><b>10</b>Ponti verso altri teoremi<i class="m-none" title="Mai studiata"></i></a></li>
+        <li><a href="#fine"><b>✓</b>Cosa ricordare</a></li>
+      </ol>
+      <div class="legend" aria-label="Legenda memoria">
+        <span><i class="m-good"></i>la ricordi</span><span><i class="m-warn"></i>incerta</span><span><i class="m-bad"></i>debole</span><span><i class="m-none"></i>mai studiata</span>
+      </div>
+    </nav>
+
+    <div class="content">
+      <details class="mtoc"><summary>Indice della nota</summary><ol>
+        <li><a href="#s1">Definizioni preliminari</a></li><li><a href="#s2">Enunciato</a></li><li><a href="#s3">Il ruolo di Rolle</a></li><li><a href="#s4">Dimostrazione</a></li><li><a href="#s6">Ipotesi e controesempi</a></li><li><a href="#s7">Corollari</a></li><li><a href="#s8">Esempi notevoli</a></li><li><a href="#s9">Esercizi d'esame</a></li><li><a href="#s10">Ponti verso altri teoremi</a></li><li><a href="#fine">Cosa ricordare</a></li></ol></details>
+
+      <!-- §1 -->
+      <section class="sec" id="s1" aria-labelledby="h1s">
+        <header><span class="num">§1</span><h2 id="h1s">Definizioni <em>preliminari</em> e notazione</h2><span class="memo"><i class="m-good"></i>memoria 91%</span></header>
+        <div class="prose">
+          <p class="srcs"><a class="src ob" href="#">Obsidian §1</a><a class="src" href="#">Dispense · cap. 3</a></p>
+          <p>Sia $f:[a,b]\to\mathbb{R}$ e siano $x_1\neq x_2$ due punti di $[a,b]$. Il <b>rapporto incrementale</b> è la pendenza della <span class="hl-acc">secante</span> per $(x_1,f(x_1))$ e $(x_2,f(x_2))$:</p>
+          $$\frac{\Delta f}{\Delta x}=\frac{f(x_2)-f(x_1)}{x_2-x_1}$$
+          <p>Se la variabile è il tempo e $s(t)$ la posizione, è la <b>velocità media</b>. Quando l'incremento tende a zero diventa la <b>derivata</b>, cioè la pendenza della <span class="hl-good">tangente</span>, cioè la velocità istantanea:</p>
+          $$f'(c)=\lim_{h\to 0}\frac{f(c+h)-f(c)}{h}$$
+        </div>
+        <figure class="bezel fig wide" style="margin-top:8px"><div class="core">
+          <div class="fighead"><span class="t">Figura 1 · Dalla secante alla tangente</span><span class="f">f(x) = x³/4 − x + 3/2</span></div>
+          <svg id="f1" viewBox="0 0 640 300" role="img" aria-label="Secante tra x1 e x1 più h che, al diminuire di h, diventa la tangente in x1"></svg>
+          <div class="two" style="gap:16px">
+            <div class="ctl"><label for="f1x">Punto $x_1$<output id="f1xo"></output></label><input type="range" id="f1x" min="-1.6" max="1.4" step="0.01" value="-0.4"></div>
+            <div class="ctl"><label for="f1h">Incremento $h$<output id="f1ho"></output></label><input type="range" id="f1h" min="0" max="1" step="0.005" value="0.85"></div>
+          </div>
+          <div class="readout"><div id="f1r1"></div><div id="f1r2"></div></div>
+          <p class="caption" id="f1cap"></p>
+        </div></figure>
+        <div class="prose">
+          <h3>Classi di funzioni e dominio</h3>
+          <p>$C^0([a,b])$ sono le funzioni continue su tutto l'intervallo chiuso, con continuità da destra in $a$ e da sinistra in $b$. Un insieme $I\subseteq\mathbb{R}$ è un <b>intervallo</b> se non ha buchi: $\forall x_1\lt x_2\in I,\ [x_1,x_2]\subseteq I$. Questa proprietà tornerà decisiva in §6 e §7.</p>
+          <p>$f$ è <b>lipschitziana</b> su $A$ se esiste $L\ge 0$ con $|f(x_1)-f(x_2)|\le L|x_1-x_2|$ per ogni $x_1,x_2\in A$: la funzione non può cambiare più in fretta di una pendenza fissa.</p>
+        </div>
+        <div class="wide" style="margin-top:24px">
+          <div class="tablebar"><div class="sub" style="margin:0">Simboli · come si legge · cosa significa</div><button type="button" class="chip" id="coverBtn" aria-pressed="false">Copri i significati e prova a dirli</button></div>
+          <table id="glos">
+            <thead><tr><th scope="col">Simbolo</th><th scope="col">Come si legge</th><th scope="col">Significato</th></tr></thead>
+            <tbody>
+              <tr><td>$[a,b]$</td><td>intervallo chiuso da a a b</td><td class="hide"><span>Dominio compatto, estremi inclusi</span></td></tr>
+              <tr><td>$(a,b)$ o $]a,b[$</td><td>intervallo aperto da a a b</td><td class="hide"><span>Solo i punti interni, senza estremi</span></td></tr>
+              <tr><td>$f\in C^0([a,b])$</td><td>f appartiene a C zero di [a, b]</td><td class="hide"><span>f continua su tutto l'intervallo chiuso</span></td></tr>
+              <tr><td>$\frac{f(b)-f(a)}{b-a}$</td><td>rapporto incrementale tra a e b</td><td class="hide"><span>Pendenza della secante tra gli estremi del grafico</span></td></tr>
+              <tr><td>$f'(c)$</td><td>derivata prima di f in c</td><td class="hide"><span>Pendenza della tangente nel punto $(c,f(c))$</span></td></tr>
+              <tr><td>$L\ge 0$</td><td>costante di Lipschitz</td><td class="hide"><span>Tetto massimo alla velocità di variazione di f</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- §2 -->
+      <section class="sec" id="s2" aria-labelledby="h2s">
+        <header><span class="num">§2</span><h2 id="h2s">Enunciato <em>formale</em></h2><span class="memo"><i class="m-good"></i>memoria 88%</span></header>
+        <div class="thm" role="group" aria-label="Enunciato del teorema">
+          <div class="t">Teorema 3.8 · Teorema 33 <a class="src" href="#">Dispense · Teo 3.8</a><a class="src ob" href="#">Obsidian §2</a></div>
+          <p>Sia $f:[a,b]\to\mathbb{R}$, con $a\lt b$. Tocca un'ipotesi per spegnerla e guarda la figura.</p>
+          <div class="hyps">
+            <button type="button" class="hyp" id="hC" aria-pressed="true"><span class="sw" aria-hidden="true"></span><span class="lbl"><b>1.</b> $f$ è continua su $[a,b]$, cioè $f\in C^0([a,b])$</span></button>
+            <button type="button" class="hyp" id="hD" aria-pressed="true"><span class="sw" aria-hidden="true"></span><span class="lbl"><b>2.</b> $f$ è derivabile in $(a,b)$</span></button>
+          </div>
+          <p>Allora esiste <b>almeno un</b> punto $c\in(a,b)$ tale che</p>
+          $$f'(c)=\frac{f(b)-f(a)}{b-a}\qquad\Longleftrightarrow\qquad f(b)-f(a)=f'(c)\,(b-a)$$
+        </div>
+        <figure class="bezel fig wide"><div class="core">
+          <div class="fighead"><span class="t">Figura 2 · Le ipotesi servono davvero</span><span class="f" id="f2f"></span></div>
+          <svg id="f2" viewBox="0 0 640 280" role="img" aria-describedby="f2cap"></svg>
+          <div class="readout"><div id="f2r1"></div><div id="f2r2"></div></div>
+          <div class="pts"><button type="button" class="chip" id="f2s" aria-pressed="false" data-lbl="Mostra dove diventa verde">Mostra dove diventa verde</button><span id="f2l" class="ptl" aria-live="polite"></span></div>
+          <p class="caption" id="f2cap" role="status"></p>
+        </div></figure>
+
+        <div class="deco">
+          <div class="sub">Decodifica logico-formale</div>
+          <div class="tabs" role="tablist" aria-label="Decodifica">
+            <button type="button" role="tab" id="dt1" aria-selected="true" aria-controls="dp1">Notazione formale</button>
+            <button type="button" role="tab" id="dt2" aria-selected="false" aria-controls="dp2" tabindex="-1">Come si legge</button>
+            <button type="button" role="tab" id="dt3" aria-selected="false" aria-controls="dp3" tabindex="-1">Cosa significa</button>
+          </div>
+          <div class="panel" role="tabpanel" id="dp1" aria-labelledby="dt1">$$\forall f\in C^0([a,b]),\ f \text{ derivabile in } (a,b)\implies \exists c\in(a,b): f'(c)=\frac{f(b)-f(a)}{b-a}$$</div>
+          <div class="panel" role="tabpanel" id="dp2" aria-labelledby="dt2" hidden><p>«Se la funzione $f$ appartiene alla classe delle funzioni continue sull'intervallo chiuso e limitato $[a,b]$, ed è derivabile in ogni punto dell'intervallo aperto $(a,b)$, allora esiste almeno un punto $c$ dell'aperto tale che la derivata prima di $f$ in $c$ è uguale al rapporto tra l'incremento $f(b)-f(a)$ e l'ampiezza $b-a$.»</p></div>
+          <div class="panel" role="tabpanel" id="dp3" aria-labelledby="dt3" hidden>
+            <p>Un'auto percorre 100 km tra due caselli in un'ora: media 100 km/h. Se il moto è continuo (niente teletrasporti) e liscio (niente urti), il tachimetro <b>deve</b> aver segnato esattamente 100 km/h in almeno un istante. Premi play.</p>
+            <div class="car">
+              <svg id="gauge" viewBox="0 0 200 150" role="img" aria-label="Tachimetro"></svg>
+              <div>
+                <svg id="road" viewBox="0 0 400 70" role="img" aria-label="Posizione dell'auto tra i due caselli"></svg>
+                <div class="row"><button type="button" class="btn" id="carPlay">Play<span class="ic" aria-hidden="true"><svg viewBox="0 0 14 14" fill="currentColor"><path d="M4 2.5v9l7-4.5z"/></svg></span></button><span class="caption" id="carCap" role="status" style="margin:0"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ann"><span class="who">La tua previsione in sessione</span><p>«uno solo, vicino a b». Erano due: l'esistenza non dice quanti.</p></div>
+        <div class="flash" data-flash><div class="q"><span class="tag">Flashcard</span><p>Il teorema assicura l'<b>unicità</b> del punto $c$?</p></div>
+          <div class="bar2"><button type="button" class="chip" data-show>Mostra risposta</button></div>
+          <div class="a"><div><p>No. È un puro teorema di esistenza: garantisce <i>almeno un</i> $c$. Possono essercene molti, o infiniti (una retta: ogni punto va bene).</p><div class="bar2"><button type="button" class="chip" data-g="1">Lo sapevo</button><button type="button" class="chip" data-g="0">Non lo sapevo</button></div></div></div></div>
+        <div class="bezel qz"><div class="core">
+          <div class="lab"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3"/><path d="M5.5 8.2l1.8 1.8 3.4-3.6"/></svg>Quiz 1 · Verifica delle ipotesi<small>dalla tua Palestra</small></div>
+          <fieldset class="quiz"><legend>$f(x)=\frac{1}{x^2}$ per $x\neq 0$ e $f(0)=1$ su $[-1,2]$. Si può applicare Lagrange?</legend>
+            <button class="opt" type="button" data-ok="0" data-why="No: la derivabilità non basta. Prima ancora manca la continuità in 0."><span class="k">A</span>Sì, è derivabile ovunque tranne nell'origine</button>
+            <button class="opt" type="button" data-ok="1" data-why="Esatto: per x → 0 la funzione va a +∞, quindi in 0 c'è un asintoto verticale. Cade l'ipotesi 1, Lagrange non si applica."><span class="k">B</span>No: in $x=0$ c'è una discontinuità (asintoto verticale)</button>
+            <button class="opt" type="button" data-ok="0" data-why="Trappola classica: che la secante esista non garantisce la tangente parallela se la curva è spezzata."><span class="k">C</span>Sì, il rapporto incrementale tra gli estremi è finito</button>
+            <button class="opt" type="button" data-ok="0" data-why="No: Lagrange non chiede alcuna simmetria del dominio."><span class="k">D</span>No, l'intervallo non è simmetrico</button>
+            <div class="fb" role="status"></div></fieldset>
+        </div></div>
+      </section>
+
+      <!-- §3 -->
+      <section class="sec" id="s3" aria-labelledby="h3s">
+        <header><span class="num">§3</span><h2 id="h3s">Il ruolo del <em>Teorema di Rolle</em></h2><span class="memo"><i class="m-good"></i>Rolle 82% · ripassato 3 giorni fa</span></header>
+        <div class="prose">
+          <p class="srcs"><a class="src ob" href="#">Obsidian §3</a><a class="src ob" href="#">Teorema di Rolle ^teo-rolle</a></p>
+          <p><b>Rolle (Teorema 3.7 / 32).</b> Se $f$ è continua su $[a,b]$, derivabile in $(a,b)$ e $f(a)=f(b)$, esiste $c\in(a,b)$ con $f'(c)=0$. È il caso particolare di Lagrange in cui la corda è <b>orizzontale</b>.</p>
+          <p>Inclina la corda con il cursore. Guarda dove stanno i punti $c$.</p>
+        </div>
+        <figure class="bezel fig wide"><div class="core">
+          <div class="fighead"><span class="t">Figura 3 · Rolle è Lagrange con la corda in piano</span><span class="f">f(x) + t·x</span></div>
+          <svg id="f3" viewBox="0 0 640 260" role="img" aria-describedby="f3cap"></svg>
+          <div class="ctl"><label for="f3t">Inclinazione aggiunta $t$<output id="f3to"></output></label><input type="range" id="f3t" min="-0.6" max="0.6" step="0.01" value="0.35"></div>
+          <p class="caption" id="f3cap" role="status"></p>
+        </div></figure>
+        <div class="prose"><p>I punti $c$ <b>non si spostano</b>: aggiungere una retta $t\cdot x$ cambia tutte le pendenze della stessa quantità $t$, quindi cambia la pendenza della corda <i>e</i> quella delle tangenti insieme. È esattamente l'idea della dimostrazione: togliere la corda per tornare a Rolle.</p></div>
+        <div class="flag" role="note">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M10 3l8 14H2z"/><path d="M10 8v4M10 14.5v.5"/></svg>
+          <b>Segnalazione sulla tua nota</b>
+          <p>In §3 c'è scritto "rotazione/inclinazione del sistema di riferimento". Più preciso: è un <b>taglio verticale</b>. Ogni punto scende o sale in verticale di quanto vale la corda, le verticali restano verticali. Una rotazione vera potrebbe trasformare il grafico in qualcosa che non è più una funzione.</p>
+          <div class="row"><button type="button" class="chip">Copia la correzione per Obsidian</button><button type="button" class="chip">Ignora</button></div>
+        </div>
+      </section>
+
+      <!-- §4 -->
+      <section class="sec" id="s4" aria-labelledby="h4s">
+        <header><span class="num">§4–5</span><h2 id="h4s">Dimostrazione <em>a tre atti</em></h2><span class="memo"><i class="m-warn"></i>memoria 54% · il passo 5 ti è costato</span></header>
+        <div class="prose"><p class="muted">Scorri: la figura segue ogni passo e la catena sotto la figura (era il tuo diagramma Mermaid del §5) mostra dove sei. In modalità <b>Prova da solo</b> ogni passo resta nascosto finché non scrivi il tuo.</p></div>
+        <div class="scrolly">
+          <div id="psteps">
+            <article class="pstep" data-s="0">
+              <div class="kick">Atto 1 · Strategia</div>
+              <h3>Ridurre tutto a Rolle</h3>
+              <p>Vogliamo un $c$ con $f'(c)-\frac{f(b)-f(a)}{b-a}=0$. Costruiamo una funzione $g$ che misura, per ogni $x$, la <span class="hl-good">distanza verticale</span> tra il grafico e la secante. Agli estremi grafico e secante coincidono, quindi $g(a)=g(b)=0$: è il terreno di Rolle.</p>
+              <p class="srcs"><a class="src ob" href="#">Obsidian §4 · Strategia</a><a class="src" href="#">Dispense · dim. Teo 3.8</a></p>
+            </article>
+            <article class="pstep" data-s="1" data-try>
+              <div class="kick">Atto 2 · Passo 1</div>
+              <h3>L'equazione della secante</h3>
+              <div class="try-cover"><p><b>Prima prova tu.</b> Che retta ti serve, e qual è la sua equazione?</p><textarea aria-label="Il tuo passo 1" placeholder="Scrivi il passo come lo faresti all'esame…"></textarea><div class="row"><button type="button" class="btn ghost" data-reveal>Ho provato, mostra</button></div></div>
+              <div class="try-body">
+                <p>La secante per $(a,f(a))$ e $(b,f(b))$ ha pendenza $m_{\text{sec}}=\frac{f(b)-f(a)}{b-a}$ e, dal fascio di rette per $(a,f(a))$:</p>
+                $$y_{\text{sec}}(x)=f(a)+\frac{f(b)-f(a)}{b-a}(x-a)$$
+              </div>
+            </article>
+            <article class="pstep" data-s="2" data-try>
+              <div class="kick">Atto 2 · Passo 2</div>
+              <h3>La funzione ausiliaria di scarto</h3>
+              <div class="try-cover"><p><b>Prima prova tu.</b> Come definisci $g$?</p><textarea aria-label="Il tuo passo 2" placeholder="g(x) := …"></textarea><div class="row"><button type="button" class="btn ghost" data-reveal>Ho provato, mostra</button></div></div>
+              <div class="try-body">
+                $$g(x):=f(x)-y_{\text{sec}}(x)=f(x)-f(a)-\frac{f(b)-f(a)}{b-a}(x-a)$$
+                <p>Nella figura, $g$ è la lunghezza delle <span class="hl-good">barrette verdi</span>.</p>
+                <div class="ann quote"><span class="who">Le tue parole, giuste</span><p>tolgo la retta così agli estremi fa zero</p></div>
+              </div>
+            </article>
+            <article class="pstep" data-s="3" data-try>
+              <div class="kick">Atto 2 · Passo 3</div>
+              <h3>$g$ eredita le ipotesi di $f$</h3>
+              <div class="try-cover"><p><b>Prima prova tu.</b> Perché $g$ è continua e derivabile?</p><textarea aria-label="Il tuo passo 3"></textarea><div class="row"><button type="button" class="btn ghost" data-reveal>Ho provato, mostra</button></div></div>
+              <div class="try-body">
+                <p><b>Continuità:</b> $g$ è differenza tra $f$ (continua su $[a,b]$) e un polinomio di primo grado (continuo ovunque), quindi $g\in C^0([a,b])$.</p>
+                <p><b>Derivabilità:</b> $f$ è derivabile in $(a,b)$, la retta ovunque; la derivata è lineare, quindi $g$ è derivabile in $(a,b)$.</p>
+              </div>
+            </article>
+            <article class="pstep" data-s="4" data-try>
+              <div class="kick">Atto 2 · Passo 4</div>
+              <h3>Agli estremi $g$ vale zero</h3>
+              <div class="try-cover"><p><b>Prima prova tu.</b> Calcola $g(a)$ e $g(b)$.</p><textarea aria-label="Il tuo passo 4"></textarea><div class="row"><button type="button" class="btn ghost" data-reveal>Ho provato, mostra</button></div></div>
+              <div class="try-body">
+                $$g(a)=f(a)-f(a)-m_{\text{sec}}\cdot 0=0$$ $$g(b)=f(b)-f(a)-\big(f(b)-f(a)\big)=0$$
+                <p>Nella figura il grafico si "taglia" in verticale fino a diventare $g$: la corda si appiattisce sull'asse.</p>
+              </div>
+            </article>
+            <article class="pstep" data-s="5" data-try>
+              <div class="kick">Atto 2 · Passo 5</div>
+              <h3>Rolle applicato a $g$</h3>
+              <div class="try-cover"><p><b>Prima prova tu.</b> Quali tre ipotesi controlli, e cosa ottieni?</p><textarea aria-label="Il tuo passo 5"></textarea><div class="row"><button type="button" class="btn ghost" data-reveal>Ho provato, mostra</button></div></div>
+              <div class="try-body">
+                <p>$g$ è continua su $[a,b]$, derivabile in $(a,b)$ e $g(a)=g(b)=0$. Per Rolle esiste almeno un $c\in(a,b)$ con $g'(c)=0$: <span class="hl-good">tangente orizzontale</span> al grafico di $g$.</p>
+                <div class="ann err"><span class="who">Attenzione · errore in sessione</span><p>Avevi risposto "g è sempre positiva", sicuro al 90%. Rolle non chiede il segno: qui g è anche negativa.</p></div>
+                <div class="why"><button type="button" aria-expanded="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>Perché proprio Rolle?</button><div class="body"><div><p>Perché è l'unico strumento che dà una derivata nulla partendo da due valori uguali. Tutto il lavoro dei passi 1–4 serve a creare quei due valori uguali.</p></div></div></div>
+              </div>
+            </article>
+            <article class="pstep" data-s="6" data-try>
+              <div class="kick">Atto 3 · Passo 6 e conclusione</div>
+              <h3>Si torna a $f$</h3>
+              <div class="try-cover"><p><b>Prima prova tu.</b> Deriva $g$ e valuta in $c$.</p><textarea aria-label="Il tuo passo 6"></textarea><div class="row"><button type="button" class="btn ghost" data-reveal>Ho provato, mostra</button></div></div>
+              <div class="try-body">
+                <p>$f(a)$ e $m_{\text{sec}}$ sono costanti e la derivata di $(x-a)$ è 1:</p>
+                $$g'(x)=f'(x)-\frac{f(b)-f(a)}{b-a}$$ $$g'(c)=0\iff f'(c)=\frac{f(b)-f(a)}{b-a}\quad\blacksquare$$
+                <p>Nella figura, "smontando" il taglio le tangenti orizzontali ruotano e diventano <span class="hl-good">parallele alla corda</span>.</p>
+              </div>
+            </article>
+          </div>
+          <div class="stage">
+            <figure class="bezel" style="margin:0"><div class="core">
+              <div class="fighead"><span class="t">Figura 4 · La dimostrazione</span><span class="f" id="pcap">f(x) = x³/4 − x + 3/2</span></div>
+              <svg id="pfig" viewBox="0 0 520 360" role="img" aria-label="Figura della dimostrazione, cambia a ogni passo"></svg>
+              <div class="readout"><div id="pr1"></div><div id="pr2"></div></div>
+            </div></figure>
+            <div class="chain" id="chain" role="list" aria-label="Catena della dimostrazione">
+              <button type="button" data-go="0">Strategia</button><button type="button" data-go="1">Secante</button><button type="button" data-go="2">g = f − sec</button><button type="button" data-go="3">Ipotesi di g</button><button type="button" data-go="4">g(a)=g(b)=0</button><button type="button" data-go="5">Rolle su g</button><button type="button" data-go="6">f′(c) = m</button>
+            </div>
+          </div>
+        </div>
+        <div class="flash" data-flash><div class="q"><span class="tag">Flashcard</span><p>Perché la continuità è chiesta su $[a,b]$ ma la derivabilità solo su $(a,b)$?</p></div>
+          <div class="bar2"><button type="button" class="chip" data-show>Mostra risposta</button></div>
+          <div class="a"><div><p>La continuità sul chiuso serve perché $g$ sia continua sul compatto e valga 0 agli estremi (Rolle poggia su Weierstrass). La derivabilità serve solo dentro, perché $c$ è interno: agli estremi possono esserci cuspidi o tangenti verticali senza problemi.</p><div class="bar2"><button type="button" class="chip" data-g="1">Lo sapevo</button><button type="button" class="chip" data-g="0">Non lo sapevo</button></div></div></div></div>
+      </section>
+
+      <!-- §6 -->
+      <section class="sec" id="s6" aria-labelledby="h6s">
+        <header><span class="num">§6</span><h2 id="h6s">Analisi critica delle ipotesi e <em>controesempi</em></h2><span class="memo"><i class="m-warn"></i>memoria 61%</span></header>
+        <div class="prose"><p class="srcs"><a class="src ob" href="#">Obsidian §6</a><a class="src ob" href="#">Fermat · punto angoloso</a></p>
+          <p>Le due ipotesi sono minime: se ne cade una anche in un solo punto, la tesi non è più garantita.</p></div>
+        <div class="two wide">
+          <figure class="bezel fig" style="margin:0"><div class="core">
+            <div class="fighead"><span class="t">6.1 · Uno spigolo basta</span><span class="f">|x| su [−1, 1]</span></div>
+            <svg id="f6a" viewBox="0 0 320 220" role="img" aria-describedby="f6acap"></svg>
+            <div class="ctl"><label for="f6ax">Muovi il punto<output id="f6axo"></output></label><input type="range" id="f6ax" min="-0.95" max="0.95" step="0.01" value="-0.6"></div>
+            <div class="pts"><button type="button" class="chip" id="f6as" aria-pressed="false" data-lbl="Mostra i punti">Mostra i punti</button><span id="f6al" class="ptl" aria-live="polite"></span></div>
+            <p class="caption" id="f6acap" role="status"></p>
+          </div></figure>
+          <figure class="bezel fig" style="margin:0"><div class="core">
+            <div class="fighead"><span class="t">6.2 · Un dominio con un buco</span><span class="f">A = (1,2) ∪ (3,4)</span></div>
+            <svg id="f6b" viewBox="0 0 320 220" role="img" aria-describedby="f6bcap"></svg>
+            <div class="seg" role="group" aria-label="Scegli i due punti" style="margin-top:10px;background:var(--faint);padding:4px;width:max-content;max-width:100%">
+              <button type="button" data-p="same" aria-pressed="false">Stesso pezzo</button><button type="button" data-p="diff" aria-pressed="true">Pezzi diversi</button>
+            </div>
+            <p class="caption" id="f6bcap" role="status"></p>
+          </div></figure>
+        </div>
+        <div class="prose" style="margin-top:22px">
+          <p><b>6.1</b> · $f(x)=|x|$ è continua su $[-1,1]$, la corda ha pendenza $\frac{1-1}{2}=0$, ma $f'$ vale solo $\pm1$: in $0$ $f'_+(0)=1\neq-1=f'_-(0)$. Nessun $c$ con $f'(c)=0$.</p>
+          <p><b>6.2</b> · Su $A=(1,2)\cup(3,4)$, $f=0$ sul primo pezzo e $f=1$ sul secondo: $f'\equiv 0$, ma tra $1{,}5$ e $3{,}5$ il rapporto incrementale vale $\frac12$. Il segmento attraversa la lacuna, quindi Lagrange non si applica.</p>
+        </div>
+      </section>
+
+      <!-- §7 -->
+      <section class="sec" id="s7" aria-labelledby="h7s">
+        <header><span class="num">§7</span><h2 id="h7s">I corollari <em>fondamentali</em></h2><span class="memo"><i class="m-bad"></i>memoria 31% · da ripassare</span></header>
+        <div class="prose"><p>Lagrange conta soprattutto per quello che ne discende: traduce proprietà della derivata in proprietà della funzione.</p></div>
+        <div class="cor wide">
+          <div class="tabs" role="tablist" aria-label="Corollari" id="corTabs">
+            <button type="button" role="tab" aria-selected="true" aria-controls="c1" id="ct1">1 · Costanza</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="c2" id="ct2" tabindex="-1">2 · Stessa derivata</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="c3" id="ct3" tabindex="-1">3 · Monotonia</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="c4" id="ct4" tabindex="-1">4 · Lipschitz</button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="c5" id="ct5" tabindex="-1">5 · Limite di f′</button>
+          </div>
+
+          <div class="panel" role="tabpanel" id="c1" aria-labelledby="ct1">
+            <div class="thm" style="margin-top:6px"><div class="t">Corollario 34 · Teorema 3.9 · Test di costanza <a class="src" href="#">Dispense · Cor. 34</a></div>
+              <p>Sia $I$ un <b>intervallo</b> e $f$ derivabile su $I$. Allora $f'(x)=0\ \forall x\in I \iff f$ è costante su $I$.</p></div>
+            <div class="prose" data-try>
+              <div class="try-cover"><p><b>Prima prova tu.</b> Prendi $x_1\lt x_2$ in $I$: come arrivi a $f(x_1)=f(x_2)$?</p><textarea aria-label="La tua dimostrazione del test di costanza"></textarea><div class="row"><button type="button" class="btn ghost" data-reveal>Ho provato, mostra</button></div></div>
+              <div class="try-body"><p class="sub">Dimostrazione</p><p>Siano $x_1\lt x_2$ in $I$. Poiché $I$ è un intervallo, $[x_1,x_2]\subseteq I$: lì $f$ è continua e derivabile. Per Lagrange esiste $c\in(x_1,x_2)$ con $\frac{f(x_2)-f(x_1)}{x_2-x_1}=f'(c)=0$, dunque $f(x_1)=f(x_2)$. Per l'arbitrarietà dei punti, $f$ è costante. $\blacksquare$</p></div>
+            </div>
+            <div class="bezel qz"><div class="core">
+              <div class="lab"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3"/><path d="M5.5 8.2l1.8 1.8 3.4-3.6"/></svg>Quiz 3 · Domini sconnessi<small>dalla tua Palestra</small></div>
+              <fieldset class="quiz"><legend>$f(x)=\frac{x}{|x|}$ su $\mathbb{R}\setminus\{0\}$ ha $f'\equiv0$ ma non è costante. Perché non contraddice il test?</legend>
+                <button class="opt" type="button" data-ok="0" data-why="No: |x| è derivabile per ogni x ≠ 0."><span class="k">A</span>Il valore assoluto non è mai derivabile</button>
+                <button class="opt" type="button" data-ok="1" data-why="Esatto: il dominio sono due semirette separate. Il test dà costanza su ciascuna (−1 e +1), non tra le due."><span class="k">B</span>Il dominio non è un intervallo</button>
+                <button class="opt" type="button" data-ok="0" data-why="No: confondi f con f′. La derivata è davvero 0 ovunque nel dominio."><span class="k">C</span>La derivata vale ±1, non 0</button>
+                <button class="opt" type="button" data-ok="0" data-why="Falso: Lagrange vale per qualunque funzione che rispetti le ipotesi."><span class="k">D</span>Lagrange vale solo per i polinomi</button>
+                <div class="fb" role="status"></div></fieldset>
+            </div></div>
+          </div>
+
+          <div class="panel" role="tabpanel" id="c2" aria-labelledby="ct2" hidden>
+            <div class="thm" style="margin-top:6px"><div class="t">Corollario · Stessa derivata</div>
+              <p>Se $f'(x)=g'(x)$ per ogni $x$ di un intervallo $I$, allora $f(x)=g(x)+C$. È il fondamento di $\int f(x)\,dx=F(x)+C$.</p></div>
+            <figure class="bezel fig"><div class="core">
+              <div class="fighead"><span class="t">Stessa forma, quota diversa</span><span class="f">g(x) = f(x) + C</span></div>
+              <svg id="fc2" viewBox="0 0 640 240" role="img" aria-label="Due curve con la stessa derivata, distanti C"></svg>
+              <div class="two" style="gap:16px"><div class="ctl"><label for="fc2c">Costante $C$<output id="fc2co"></output></label><input type="range" id="fc2c" min="-1.5" max="1.5" step="0.01" value="0.9"></div>
+              <div class="ctl"><label for="fc2x">Punto $x$<output id="fc2xo"></output></label><input type="range" id="fc2x" min="-1.8" max="1.8" step="0.01" value="0.7"></div></div>
+              <p class="caption">Le due tangenti sono sempre parallele: stessa derivata in ogni punto. <b>Dimostrazione:</b> $d=f-g$ ha $d'\equiv0$, quindi per il Corollario 1 è costante.</p>
+            </div></figure>
+          </div>
+
+          <div class="panel" role="tabpanel" id="c3" aria-labelledby="ct3" hidden>
+            <div class="thm" style="margin-top:6px"><div class="t">Corollario 35 · Teorema 3.9 · Monotonia <a class="src" href="#">Dispense · Cor. 35</a></div>
+              <p>$f$ continua su $[a,b]$, derivabile in $(a,b)$: $f'\ge0 \iff f$ crescente; $f'\le0\iff f$ decrescente; $f'>0\implies$ strettamente crescente; $f'<0\implies$ strettamente decrescente.</p></div>
+            <figure class="bezel fig"><div class="core">
+              <div class="fighead"><span class="t">Il segno di f′ colora la curva</span><span class="f">verde: f′ &gt; 0 · rosso: f′ &lt; 0</span></div>
+              <svg id="fc3" viewBox="0 0 640 240" role="img" aria-describedby="fc3cap"></svg>
+              <div class="ctl"><label for="fc3x">Scegli $c\lt d$ trascinando $d$<output id="fc3xo"></output></label><input type="range" id="fc3x" min="-1.6" max="2.4" step="0.01" value="-0.2"></div>
+              <div class="pts"><button type="button" class="chip" id="fc3s" aria-pressed="false" data-lbl="Mostra dove cambia segno">Mostra dove cambia segno</button><span id="fc3l" class="ptl" aria-live="polite"></span></div>
+              <p class="caption" id="fc3cap" role="status"></p>
+            </div></figure>
+            <div class="prose"><p><b>Dimostrazione.</b> Per $c\lt d$, Lagrange su $[c,d]$ dà $f(d)-f(c)=f'(p)(d-c)$. Con $d-c>0$, il segno dell'incremento è il segno di $f'(p)$. $\blacksquare$</p></div>
+          </div>
+
+          <div class="panel" role="tabpanel" id="c4" aria-labelledby="ct4" hidden>
+            <div class="thm" style="margin-top:6px"><div class="t">Osservazione 3.11 · Criterio di Lipschitz <a class="src" href="#">Dispense · Oss. 3.11</a></div>
+              <p>Se $|f'(t)|\le C$ su $(a,b)$, allora $|f(x)-f(y)|\le C|x-y|$ per ogni $x,y\in[a,b]$.</p></div>
+            <figure class="bezel fig"><div class="core">
+              <div class="fighead"><span class="t">Il doppio cono</span><span class="f">f(x) = sin(3x), |f′| ≤ 3</span></div>
+              <svg id="fc4" style="overflow:hidden" viewBox="0 0 640 260" role="img" aria-describedby="fc4cap"></svg>
+              <div class="two" style="gap:16px"><div class="ctl"><label for="fc4c">Pendenza del cono $C$<output id="fc4co"></output></label><input type="range" id="fc4c" min="0.5" max="4" step="0.05" value="1.5"></div>
+              <div class="ctl"><label for="fc4x">Vertice del cono<output id="fc4xo"></output></label><input type="range" id="fc4x" min="0.1" max="2" step="0.01" value="1.05"></div></div>
+              <div class="pts"><button type="button" class="chip" id="fc4s" aria-pressed="false" data-lbl="Mostra il C giusto">Mostra il C giusto</button><span id="fc4l" class="ptl" aria-live="polite"></span></div>
+              <p class="caption" id="fc4cap" role="status"></p>
+            </div></figure>
+            <div class="prose"><p><b>Dimostrazione.</b> Per $x<y$, Lagrange dà $\frac{|f(y)-f(x)|}{|y-x|}=|f'(c)|\le C$. $\blacksquare$</p></div>
+            <div class="bezel qz"><div class="core">
+              <div class="lab"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3"/><path d="M5.5 8.2l1.8 1.8 3.4-3.6"/></svg>Quiz 4 · Lipschitz<small>dalla tua Palestra</small></div>
+              <fieldset class="quiz"><legend>Quale funzione è lipschitziana su $(0,1)$ grazie al criterio?</legend>
+                <button class="opt" type="button" data-ok="0" data-why="No: f′ = −1/x² esplode vicino a 0."><span class="k">A</span>$\frac1x$</button>
+                <button class="opt" type="button" data-ok="0" data-why="No: f′ = 1/(2√x) esplode vicino a 0. È uniformemente continua, ma non lipschitziana."><span class="k">B</span>$\sqrt{x}$</button>
+                <button class="opt" type="button" data-ok="1" data-why="Esatto: f′ = 3cos(3x), quindi |f′| ≤ 3 e L = 3. È proprio la funzione della figura."><span class="k">C</span>$\sin(3x)$</button>
+                <button class="opt" type="button" data-ok="0" data-why="No: f′ = 1/x è illimitata vicino all'origine."><span class="k">D</span>$\ln x$</button>
+                <div class="fb" role="status"></div></fieldset>
+            </div></div>
+          </div>
+
+          <div class="panel" role="tabpanel" id="c5" aria-labelledby="ct5" hidden>
+            <div class="thm" style="margin-top:6px"><div class="t">Osservazione 3.21 · Derivabilità via limite di f′ <a class="src" href="#">Dispense · Oss. 3.21</a></div>
+              <p>$f$ continua in $(a,b)$, derivabile tranne forse in $x_0$. Se $\lim_{x\to x_0}f'(x)=L\in\mathbb{R}$, allora $f$ è derivabile in $x_0$ e $f'(x_0)=L$. Se $L=\pm\infty$, non è derivabile.</p></div>
+            <div class="prose" data-try>
+              <div class="try-cover"><p><b>Prima prova tu.</b> Su quale intervallo applichi Lagrange per stimare la derivata destra?</p><textarea aria-label="La tua idea"></textarea><div class="row"><button type="button" class="btn ghost" data-reveal>Ho provato, mostra</button></div></div>
+              <div class="try-body"><p class="sub">Dimostrazione</p><p>Per $h>0$, Lagrange su $[x_0,x_0+h]$ dà $\frac{f(x_0+h)-f(x_0)}{h}=f'(y_h)$ con $x_0\lt y_h\lt x_0+h$. Per i carabinieri $y_h\to x_0^+$, quindi $f'_+(x_0)=L$. Allo stesso modo a sinistra: $f'_-(x_0)=L$. $\blacksquare$</p></div>
+            </div>
+            <div class="bezel qz"><div class="core">
+              <div class="lab"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3"/><path d="M5.5 8.2l1.8 1.8 3.4-3.6"/></svg>Quiz 5 · Il criterio è solo sufficiente<small>dalla tua Palestra</small></div>
+              <fieldset class="quiz"><legend>$f(x)=x^2\sin\frac1x$, $f(0)=0$. Perché il criterio non dà $f'(0)$, pur essendo $f$ derivabile in 0?</legend>
+                <button class="opt" type="button" data-ok="0" data-why="No: f è continua in 0 (infinitesima per limitata)."><span class="k">A</span>$f$ non è continua in 0</button>
+                <button class="opt" type="button" data-ok="1" data-why="Esatto: f′(x) = 2x·sin(1/x) − cos(1/x) non ha limite in 0, quindi il criterio tace. Con il rapporto incrementale si trova f′(0) = 0."><span class="k">B</span>$\lim_{x\to0} f'(x)$ non esiste: oscilla</button>
+                <button class="opt" type="button" data-ok="0" data-why="No: f′(0) = 0, finito."><span class="k">C</span>In 0 c'è una tangente verticale</button>
+                <button class="opt" type="button" data-ok="0" data-why="Falso: la tangente in 0 esiste ed è orizzontale."><span class="k">D</span>Una funzione che oscilla non ha tangente</button>
+                <div class="fb" role="status"></div></fieldset>
+            </div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- §8 -->
+      <section class="sec" id="s8" aria-labelledby="h8s">
+        <header><span class="num">§8</span><h2 id="h8s">Esempi notevoli: <em>identità</em> dal test di costanza</h2><span class="memo"><i class="m-none"></i>mai studiata</span></header>
+        <div class="prose"><p>Per dimostrare un'identità basta mostrare che la derivata è nulla su un intervallo e valutare in un punto comodo. Attenzione quando il dominio <b>non</b> è un intervallo.</p></div>
+        <figure class="bezel fig wide"><div class="core">
+          <div class="fighead"><span class="t">Figura 8 · La somma è piatta</span>
+            <div class="seg" role="group" aria-label="Esempio" style="background:var(--faint);padding:3px"><button type="button" data-e="1" aria-pressed="true">arcsin + arccos</button><button type="button" data-e="2" aria-pressed="false">arctan x + arctan 1/x</button></div></div>
+          <svg id="f8" viewBox="0 0 640 260" role="img" aria-describedby="f8cap"></svg>
+          <div class="ctl"><label for="f8x">Punto $x$<output id="f8xo"></output></label><input type="range" id="f8x" min="-1" max="1" step="0.01" value="0.4"></div>
+          <div class="readout"><div id="f8r1"></div><div id="f8r2"></div><div id="f8r3"></div></div>
+          <p class="caption" id="f8cap" role="status"></p>
+        </div></figure>
+        <div class="prose">
+          <p><b>8.1</b> · $f(x)=\arcsin x+\arccos x$: $f'(x)=\frac{1}{\sqrt{1-x^2}}-\frac{1}{\sqrt{1-x^2}}=0$ su $(-1,1)$, quindi $f$ è costante e $f(0)=\frac\pi2$.</p>
+          <p><b>8.2</b> · $g(x)=\arctan x+\arctan\frac1x$: $g'\equiv0$, ma il dominio $\mathbb{R}\setminus\{0\}$ sono due pezzi. Vale $\frac\pi2$ per $x>0$ e $-\frac\pi2$ per $x<0$.</p>
+        </div>
+      </section>
+
+      <!-- §9 -->
+      <section class="sec" id="s9" aria-labelledby="h9s">
+        <header><span class="num">§9</span><h2 id="h9s">Esercizi d'esame <em>svolti</em> passo passo</h2><span class="memo"><i class="m-none"></i>mai praticata</span></header>
+        <div class="prose"><p class="srcs"><a class="src" href="#">Dispense · Esercizio 3.19</a><a class="src ob" href="#">Obsidian §9</a></p>
+          <p><b>Metodo per $f(x)\ge g(x)$:</b> definisci $h=f-g$, trova il punto di contatto dove $h=0$, studia il segno di $h'$ con il criterio di monotonia. Gli esempi si "sfilano": il primo è svolto, il secondo lo completi tu, il terzo è tuo.</p></div>
+        <div class="fade">
+          <div class="ex">
+            <div class="h"><span class="lvl l1">Svolto</span><h4>$e^x\ge 1+x$ per ogni $x\in\mathbb{R}$</h4></div>
+            <ol>
+              <li>Poni $h(x)=e^x-(1+x)$. Nel punto di contatto $h(0)=0$.</li>
+              <li>$h'(x)=e^x-1$: positiva per $x>0$, negativa per $x<0$.</li>
+              <li>Quindi $h$ decresce fino a $0$ e poi cresce: $0$ è il minimo, $h(x)\ge h(0)=0$. Uguaglianza solo in $x=0$.</li>
+            </ol>
+          </div>
+          <div class="ex" id="ex2">
+            <div class="h"><span class="lvl l2">Da completare</span><h4>$\ln x\le x-1$ per ogni $x>0$</h4></div>
+            <ol>
+              <li>Poni $g(x)=(x-1)-\ln x$ su $(0,+\infty)$. Punto di contatto: $x=$ <select aria-label="Punto di contatto" data-ans="1"><option value="">…</option><option value="0">0</option><option value="1">1</option><option value="e">e</option></select></li>
+              <li>$g'(x)=$ <select aria-label="Derivata di g" data-ans="b"><option value="">…</option><option value="a">1 + 1/x</option><option value="b">1 − 1/x</option><option value="c">−1/x</option></select> $=\frac{x-1}{x}$.</li>
+              <li>Per $0\lt x\lt 1$ la derivata è <select aria-label="Segno per x minore di 1" data-ans="neg"><option value="">…</option><option value="pos">positiva</option><option value="neg">negativa</option></select>, per $x>1$ è positiva: $x=1$ è il minimo, $g\ge 0$.</li>
+            </ol>
+            <p class="caption" id="ex2fb" role="status"></p>
+          </div>
+          <div class="ex" data-try data-always>
+            <div class="h"><span class="lvl l3">Da solo</span><h4>$\sin x\le x$ per ogni $x\ge0$</h4></div>
+            <div class="try-cover" style="display:block"><p><b>Tocca a te.</b> Scrivi la funzione ausiliaria, il punto di contatto e il segno della derivata.</p><textarea aria-label="La tua soluzione"></textarea><div class="row"><button type="button" class="btn ghost" data-reveal>Confronta con la soluzione</button></div></div>
+            <div class="try-body" hidden><ol><li>$h(x)=x-\sin x$, $h(0)=0$.</li><li>$h'(x)=1-\cos x\ge0$ perché $\cos x\le1$.</li><li>$h$ crescente su $[0,+\infty)$, quindi $h(x)\ge 0$, cioè $\sin x\le x$.</li></ol></div>
+          </div>
+          <div class="ex">
+            <div class="h"><span class="lvl l3">Esame</span><h4>Il punto di Lagrange di $f(x)=x^3-3x^2+2x$ su $[0,3]$</h4></div>
+            <p style="margin:0 0 8px">Verifica le ipotesi e trova tutti i $c\in(0,3)$. Usa la figura se vuoi, poi scrivi la risposta.</p>
+            <svg id="f9" viewBox="0 0 640 230" role="img" aria-describedby="f9cap" style="width:100%;height:auto;display:block;overflow:visible"></svg>
+            <div class="ctl"><label for="f9x">Muovi la tangente<output id="f9xo"></output></label><input type="range" id="f9x" min="0.02" max="2.98" step="0.01" value="0.6"></div>
+            <div class="pts"><button type="button" class="chip" id="f9s" aria-pressed="false" data-lbl="Mostra i punti (soluzione)">Mostra i punti (soluzione)</button><span id="f9l" class="ptl" aria-live="polite"></span></div>
+            <p class="caption" id="f9cap" role="status"></p>
+            <div class="row"><input type="text" id="f9in" inputmode="decimal" placeholder="Valori di c, separati da virgola" aria-label="I tuoi valori di c" style="max-width:300px"><button type="button" class="btn" id="f9go">Controlla<span class="ic" aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7h8M7.5 3.5 11 7l-3.5 3.5"/></svg></span></button></div>
+            <p class="caption" id="f9fb" role="status"></p>
+          </div>
+        </div>
+        <div class="bezel qz"><div class="core">
+          <div class="lab"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3"/><path d="M5.5 8.2l1.8 1.8 3.4-3.6"/></svg>Quiz 2 · Calcolo del punto<small>dalla tua Palestra</small></div>
+          <fieldset class="quiz"><legend>$f(x)=x^2-4x+3$ su $[1,5]$. Quale $c$ garantisce il teorema?</legend>
+            <button class="opt" type="button" data-ok="0" data-why="No: in 2 c'è il vertice, dove f′ = 0. La corda invece ha pendenza 2."><span class="k">A</span>$c=2$</button>
+            <button class="opt" type="button" data-ok="1" data-why="Esatto: f(1) = 0, f(5) = 8, corda 8/4 = 2; f′(c) = 2c − 4 = 2 dà c = 3. Per una parabola è sempre il punto medio."><span class="k">B</span>$c=3$</button>
+            <button class="opt" type="button" data-ok="0" data-why="No: f′(4) = 4 ≠ 2."><span class="k">C</span>$c=4$</button>
+            <button class="opt" type="button" data-ok="0" data-why="No: 1 è un estremo, non sta nell'aperto (1, 5)."><span class="k">D</span>$c=1$</button>
+            <div class="fb" role="status"></div></fieldset>
+        </div></div>
+      </section>
+
+      <!-- §10 -->
+      <section class="sec" id="s10" aria-labelledby="h10s">
+        <header><span class="num">§10</span><h2 id="h10s">Ponti logici verso i <em>teoremi derivati</em></h2></header>
+        <div class="prose"><p>Lagrange è la matrice da cui nascono i teoremi successivi. Tocca un nodo: quelli tratteggiati non hanno ancora una nota nel tuo vault.</p></div>
+        <div class="map wide">
+          <svg id="map" viewBox="0 0 540 360" role="group" aria-label="Mappa dei collegamenti"></svg>
+          <div class="mapinfo" id="mapinfo" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- closing -->
+      <section class="sec" id="fine" aria-labelledby="hfine">
+        <header><span class="num">✓</span><h2 id="hfine">Cosa <em>ricordare</em></h2></header>
+        <div class="after">
+          <div class="bezel"><div class="core">
+            <h3>Le 4 idee</h3>
+            <ul class="keep">
+              <li><b>01</b><span>Ipotesi: continua sul chiuso, derivabile sull'aperto. Tesi: esiste almeno un $c$, non uno solo.</span></li>
+              <li><b>02</b><span>Prova: $g=f-$secante, $g(a)=g(b)=0$, Rolle su $g$.</span></li>
+              <li><b>03</b><span>Senza intervallo (dominio con buchi) i corollari cadono: $\arctan x+\arctan\frac1x$.</span></li>
+              <li><b>04</b><span>Per le disuguaglianze d'esame: funzione differenza, punto di contatto, segno di $h'$.</span></li>
+            </ul>
+          </div></div>
+          <div class="bezel"><div class="core">
+            <h3>Formulario</h3>
+            <div class="formulario">
+              <div><span>Tesi</span>$f(b)-f(a)=f'(c)(b-a)$</div>
+              <div><span>Funzione scarto</span>$g(x)=f(x)-f(a)-m_{\text{sec}}(x-a)$</div>
+              <div><span>Costanza</span>$f'\equiv0 \text{ su } I \Rightarrow f\equiv C$</div>
+              <div><span>Lipschitz</span>$|f'|\le C\Rightarrow|f(x)-f(y)|\le C|x-y|$</div>
+              <div><span>Taylor ordine 1</span>$f(b)=f(a)+f'(\xi)(b-a)$</div>
+            </div>
+          </div></div>
+          <div class="bezel"><div class="core">
+            <h3>Palestra</h3>
+            <p class="muted" style="margin:0 0 12px;font-size:16px">Le 8 flashcard della tua nota sono entrate nel Ripasso, con le varianti generate per non ripetere sempre la stessa domanda. I 5 quiz li hai trovati accanto alle sezioni.</p>
+            <div class="readout"><div><span>flashcard</span><b>8</b></div><div><span>quiz nella nota</span><b>5</b></div><div><span>esercizi</span><b>4</b></div></div>
+          </div></div>
+          <div class="bezel"><div class="core">
+            <h3>Collegamenti</h3>
+            <div class="links">
+              <a href="#"><i class="m-good"></i>Teorema di Rolle<small>prerequisito · 82%</small></a>
+              <a href="#"><i class="m-warn"></i>Teorema di Fermat sui Punti Stazionari<small>fonda Rolle · 64%</small></a>
+              <a href="#"><i class="m-warn"></i>Massimi e Minimi Relativi e Assoluti<small>applicazione · 58%</small></a>
+              <a href="#"><i class="m-none"></i>Analisi 1 MOC<small>mappa del corso</small></a>
+            </div>
+          </div></div>
+        </div>
+        <div class="cta"><p><b>Prossimo ripasso domani alle 18:40.</b> Se vuoi farlo adesso: 5 domande, circa 6 minuti, partendo dai corollari (31%) e dal passo 5 della dimostrazione.</p><button class="btn" type="button">Ripassa ora<span class="ic" aria-hidden="true"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7h8M7.5 3.5 11 7l-3.5 3.5"/></svg></span></button></div>
+        <div style="height:120px"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  const NS='http://www.w3.org/2000/svg', $=id=>document.getElementById(id);
+  const mq=matchMedia('(prefers-reduced-motion: reduce)'); let reduce=mq.matches; mq.addEventListener('change',e=>reduce=e.matches);
+  const C={}; const readC=()=>{const s=getComputedStyle(document.documentElement);['ink','muted','hair','accent','good','warn','bad','pen','curve','surface','bg'].forEach(k=>C[k]=s.getPropertyValue('--'+k).trim())};
+  const fmt=(v,d=2)=>(Math.abs(v)<5e-4?0:v).toFixed(d).replace('.',',').replace('-','−');
+  const clamp=(v,lo=0,hi=1)=>Math.min(hi,Math.max(lo,v)), lerp=(o,t,k)=>o+(t-o)*k;
+  const redraws=[], SHOW={}; let HOLD=null;
+  const jump=(inp,v)=>{inp.value=v;inp.dispatchEvent(new Event('input'))};
+  const ring=(P,x,y,lbl,col)=>{P.el('circle',{cx:P.sx(x),cy:P.sy(y),r:9,fill:'none',stroke:col,'stroke-width':2});if(lbl)P.text(P.sx(x),P.sy(y)-16,lbl,{fill:col,'font-size':17})};
+  const note=(P,x,y,t,col)=>P.text(x,y,t,{fill:col,'font-size':14,'font-style':'normal','font-family':'Geist,sans-serif'});
+
+  // ── theme / modes / layers ──
+  const themeBtns=[...document.querySelectorAll('[data-t]')];
+  function setTheme(t){document.documentElement.dataset.theme=t;themeBtns.forEach(x=>x.setAttribute('aria-pressed',x.dataset.t===t));readC();redraws.forEach(f=>f())}
+  let saved=null; try{saved=localStorage.getItem('nota-tema')}catch(e){}
+  setTheme(saved||(matchMedia('(prefers-color-scheme: light)').matches?'trattato':'lavagna'));
+  themeBtns.forEach(b=>b.addEventListener('click',()=>{setTheme(b.dataset.t);try{localStorage.setItem('nota-tema',b.dataset.t)}catch(e){}}));
+  const modeBtns=[...document.querySelectorAll('[data-mode]')];
+  modeBtns.forEach(b=>b.addEventListener('click',()=>{modeBtns.forEach(x=>x.setAttribute('aria-pressed',x===b));document.body.classList.toggle('try',b.dataset.mode==='try')}));
+  document.querySelectorAll('.layers button').forEach(b=>b.addEventListener('click',()=>{const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);document.body.classList.toggle('no-'+b.dataset.l,!on)}));
+  document.querySelectorAll('[data-reveal]').forEach(b=>b.addEventListener('click',()=>{const t=b.closest('[data-try]');t.classList.add('revealed');if(t.hasAttribute('data-always')){t.querySelector('.try-body').hidden=false;b.textContent='Soluzione mostrata';b.disabled=true}}));
+  document.querySelectorAll('a[href="#"]').forEach(a=>a.addEventListener('click',e=>e.preventDefault()));
+
+  // ── generic widgets ──
+  document.querySelectorAll('.quiz').forEach(q=>{const opts=[...q.querySelectorAll('.opt')],fb=q.querySelector('.fb');
+    opts.forEach(o=>o.addEventListener('click',()=>{const ok=o.dataset.ok==='1';o.dataset.state=ok?'ok':'no';fb.textContent=o.dataset.why;fb.className='fb '+(ok?'ok':'no');if(ok)opts.forEach(x=>x.disabled=true);else o.disabled=true}))});
+  document.querySelectorAll('[data-flash]').forEach(f=>{const s=f.querySelector('[data-show]');
+    s.addEventListener('click',()=>{f.classList.add('open');s.parentElement.hidden=true});
+    f.querySelectorAll('[data-g]').forEach(g=>g.addEventListener('click',()=>{const bar=g.parentElement;bar.innerHTML='<span class="done">'+(g.dataset.g==='1'?'Segnato: la rivedrai tra qualche giorno.':'Segnato: torna nel ripasso di domani.')+'</span>'}))});
+  document.querySelectorAll('.why>button').forEach(b=>b.addEventListener('click',()=>{const o=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',o);b.nextElementSibling.classList.toggle('open',o)}));
+  function tabs(list){const tb=[...list.querySelectorAll('[role=tab]')];
+    const sel=t=>{tb.forEach(x=>{const on=x===t;x.setAttribute('aria-selected',on);x.tabIndex=on?0:-1;$(x.getAttribute('aria-controls')).hidden=!on});redraws.forEach(f=>f())};
+    tb.forEach((t,i)=>{t.addEventListener('click',()=>sel(t));t.addEventListener('keydown',e=>{const d=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0;if(d){const n=tb[(i+d+tb.length)%tb.length];sel(n);n.focus();e.preventDefault()}})})}
+  document.querySelectorAll('[role=tablist]').forEach(tabs);
+  $('coverBtn').addEventListener('click',e=>{const b=e.currentTarget,on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);$('glos').classList.toggle('cover',on);document.querySelectorAll('#glos td.hide').forEach(td=>{td.classList.remove('shown');td.tabIndex=on?0:-1})});
+  document.querySelectorAll('#glos td.hide').forEach(td=>{const r=()=>{if($('glos').classList.contains('cover'))td.classList.add('shown')};td.addEventListener('click',r);td.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){r();e.preventDefault()}})});
+
+  // ── plotting helper ──
+  function Plot(svg,X0,X1,Y0,Y1,P=22){
+    const vb=svg.viewBox.baseVal,W=vb.width,H=vb.height;
+    const sx=x=>P+(x-X0)/(X1-X0)*(W-2*P), sy=y=>H-P-(y-Y0)/(Y1-Y0)*(H-2*P);
+    const el=(t,at,par)=>{const e=document.createElementNS(NS,t);for(const k in at)e.setAttribute(k,at[k]);(par||svg).appendChild(e);return e};
+    const path=(f,a,b,n=240)=>{let d='',pen=false;for(let i=0;i<=n;i++){const x=a+(b-a)*i/n,y=f(x);if(!isFinite(y)||y<Y0-3||y>Y1+3){pen=false;continue}d+=(pen?'L':'M')+sx(x).toFixed(1)+','+sy(y).toFixed(1);pen=true}return d};
+    const text=(x,y,t,o={})=>{const e=el('text',Object.assign({x,y,'font-size':18,'font-style':'italic','font-family':'Instrument Serif,serif','text-anchor':'middle'},o));e.textContent=t;return e};
+    const clear=()=>{while(svg.firstChild)svg.removeChild(svg.firstChild)};
+    const axes=()=>{if(Y0<0&&Y1>0)el('line',{x1:sx(X0),x2:sx(X1),y1:sy(0),y2:sy(0),stroke:C.muted,'stroke-opacity':.5,'stroke-width':1});if(X0<0&&X1>0)el('line',{x1:sx(0),x2:sx(0),y1:sy(Y0),y2:sy(Y1),stroke:C.muted,'stroke-opacity':.3,'stroke-width':1})};
+    const line=(x,y,s,len,at)=>el('line',Object.assign({x1:sx(x-len),y1:sy(y-len*s),x2:sx(x+len),y2:sy(y+len*s),'stroke-linecap':'round'},at));
+    return {sx,sy,el,path,text,clear,axes,line,W,H};
+  }
+
+  // ── F1: secant → tangent ──
+  (function(){
+    const f=x=>.25*x**3-x+1.5, fp=x=>.75*x*x-1, svg=$('f1'), P=Plot(svg,-2.2,2.6,-.3,3.4);
+    const ix=$('f1x'), ih=$('f1h');
+    function draw(){
+      const x1=+ix.value, h=Math.max(+ih.value*1.2,1e-4), x2=x1+h, s=(f(x2)-f(x1))/h, t=fp(x1), near=+ih.value<.03;
+      P.clear(); P.axes();
+      P.el('path',{d:P.path(f,-2.1,2.5),fill:'none',stroke:C.curve,'stroke-width':2.4});
+      P.line(x1,f(x1),t,1.1,{stroke:C.good,'stroke-width':2,'stroke-dasharray':near?'':'5 6','stroke-opacity':near?1:.7});
+      if(!near) P.line(x1+h/2,(f(x1)+f(x2))/2,s,h/2+.9,{stroke:C.accent,'stroke-width':2.4});
+      P.el('line',{x1:P.sx(x1),x2:P.sx(x2),y1:P.sy(f(x1)),y2:P.sy(f(x1)),stroke:C.muted,'stroke-dasharray':'2 4'});
+      P.el('line',{x1:P.sx(x2),x2:P.sx(x2),y1:P.sy(f(x1)),y2:P.sy(f(x2)),stroke:C.muted,'stroke-dasharray':'2 4'});
+      if(h>.25){P.text((P.sx(x1)+P.sx(x2))/2,P.sy(f(x1))+(f(x2)>f(x1)?18:-8),'Δx',{fill:C.muted,'font-size':15});P.text(P.sx(x2)+18,(P.sy(f(x1))+P.sy(f(x2)))/2+5,'Δf',{fill:C.muted,'font-size':15})}
+      P.el('circle',{cx:P.sx(x1),cy:P.sy(f(x1)),r:5,fill:C.ink});
+      if(!near)P.el('circle',{cx:P.sx(x2),cy:P.sy(f(x2)),r:5,fill:C.accent});
+      $('f1xo').textContent=fmt(x1); $('f1ho').textContent=fmt(h);
+      $('f1r1').innerHTML='<span>secante Δf/Δx</span><b>'+(near?'—':fmt(s,3))+'</b>'; $('f1r2').innerHTML='<span>tangente f′(x₁)</span><b>'+fmt(t,3)+'</b>';
+      $('f1r1').className=near?'hit':''; $('f1r2').className=near?'hit':'';
+      $('f1cap').innerHTML=near?'<b>h ≈ 0:</b> la secante è diventata la tangente. Il rapporto incrementale è diventato la derivata.':'Riduci <b>h</b>: il secondo punto scivola verso il primo e la secante arancione ruota verso la tangente verde.';
+    }
+    ix.addEventListener('input',draw); ih.addEventListener('input',draw); redraws.push(draw);
+  })();
+
+  // ── F2: hypotheses toggles ──
+  (function(){
+    const svg=$('f2'), hC=$('hC'), hD=$('hD');
+    const cases={
+      ok:{f:x=>.25*x**3-x+1.5,fp:x=>.75*x*x-1,a:-1.5,b:2,X:[-2,2.5],Y:[0,3.2],lbl:'f(x) = x³/4 − x + 3/2'},
+      noD:{f:x=>Math.abs(x)+.6,fp:x=>x>0?1:-1,a:-1,b:1,X:[-1.5,1.5],Y:[0,2.2],lbl:'f(x) = |x| su [−1, 1]',kink:0},
+      noC:{f:x=>x<1?x+.4:x-1.1,fp:()=>1,a:0,b:2,X:[-.3,2.3],Y:[-.5,1.8],lbl:'salto in x = 1',jump:1}
+    };
+    let t0=performance.now(),cur=null;
+    function pick(){const c=hC.getAttribute('aria-pressed')==='true',d=hD.getAttribute('aria-pressed')==='true';return !c?'noC':!d?'noD':'ok'}
+    [hC,hD].forEach(b=>b.addEventListener('click',()=>{b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')!=='true');t0=performance.now();HOLD=null;window.__f2fill&&__f2fill()}));
+    window.__f2case=()=>{const k=pick(),cs=cases[k],m=(cs.f(cs.b)-cs.f(cs.a))/(cs.b-cs.a);return {k,sols:k==='ok'?[-1,1].map(q=>q*Math.sqrt((m+1)/.75)):[]}};
+    let lastMsg='';
+    function frame(now){
+      const k=pick(),cs=cases[k],P=Plot(svg,cs.X[0],cs.X[1],cs.Y[0],cs.Y[1]),m=(cs.f(cs.b)-cs.f(cs.a))/(cs.b-cs.a);
+      const ph=reduce?.3:((now-t0)/5200)%1, u=.5-.5*Math.cos(ph*2*Math.PI), c=HOLD!=null?HOLD:cs.a+.03+(cs.b-cs.a-.06)*u, sl=cs.fp(c), par=Math.abs(sl-m)<.05;
+      P.clear(); P.axes();
+      if(cs.jump!=null){P.el('path',{d:P.path(cs.f,cs.a,cs.jump-.001),fill:'none',stroke:C.curve,'stroke-width':2.4});P.el('path',{d:P.path(cs.f,cs.jump,cs.b),fill:'none',stroke:C.curve,'stroke-width':2.4});
+        P.el('circle',{cx:P.sx(1),cy:P.sy(1.4),r:4.5,fill:C.surface,stroke:C.curve,'stroke-width':2});P.el('circle',{cx:P.sx(1),cy:P.sy(-.1),r:4.5,fill:C.curve});}
+      else P.el('path',{d:P.path(cs.f,cs.a,cs.b),fill:'none',stroke:C.curve,'stroke-width':2.4});
+      if(cs.kink!=null)P.el('circle',{cx:P.sx(0),cy:P.sy(cs.f(0)),r:14,fill:'none',stroke:C.bad,'stroke-width':1.5,'stroke-dasharray':'3 3'});
+      P.el('line',{x1:P.sx(cs.a),y1:P.sy(cs.f(cs.a)),x2:P.sx(cs.b),y2:P.sy(cs.f(cs.b)),stroke:C.accent,'stroke-width':2.2,'stroke-linecap':'round'});
+      [cs.a,cs.b].forEach((x,i)=>{P.el('circle',{cx:P.sx(x),cy:P.sy(cs.f(x)),r:4.5,fill:C.ink});P.text(P.sx(x),P.sy(cs.Y[0])+2,i?'b':'a',{fill:C.muted})});
+      if(SHOW.f2){if(k==='ok')[-1,1].map(q=>q*Math.sqrt((m+1)/.75)).forEach((x,i)=>{P.line(x,cs.f(x),cs.fp(x),.75,{stroke:C.good,'stroke-width':2,'stroke-dasharray':'6 5'});ring(P,x,cs.f(x),i?'c₂':'c₁',C.good)});
+        if(k==='noD'){ring(P,0,cs.f(0),'',C.bad);note(P,P.sx(0),P.sy(cs.f(0))+32,'qui manca la derivata',C.bad)}
+        if(k==='noC')note(P,P.sx(1),P.sy(1.4)-16,'qui la curva salta',C.bad)}
+      const col=par?C.good:C.warn; P.line(c,cs.f(c),sl,.75,{stroke:col,'stroke-width':2.4}); P.el('circle',{cx:P.sx(c),cy:P.sy(cs.f(c)),r:6,fill:col,stroke:C.surface,'stroke-width':2.5});
+      $('f2f').textContent=cs.lbl;
+      $('f2r1').innerHTML='<span>tangente</span><b>'+fmt(sl)+'</b>'; $('f2r2').innerHTML='<span>corda</span><b>'+fmt(m)+'</b>'; $('f2r1').className=$('f2r2').className=par?'hit':'';
+      const msg=k==='ok'?'Ipotesi entrambe vere: la tangente che scorre diventa verde quando è parallela alla corda. Succede due volte.':k==='noD'?'Senza derivabilità: in 0 c\'è uno spigolo. La tangente salta da −1 a +1 e non vale mai 0, la pendenza della corda.':'Senza continuità: la curva salta in x = 1. La tangente ha sempre pendenza 1, la corda 0,25: mai parallele.';
+      if(msg!==lastMsg){$('f2cap').textContent=msg;lastMsg=msg}
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+
+  // ── car + speedometer ──
+  (function(){
+    const g=$('gauge'), r=$('road'), s=t=>100*t-(15/Math.PI)*Math.sin(2*Math.PI*t), v=t=>100-30*Math.cos(2*Math.PI*t);
+    const P=Plot(g,0,1,0,1,0), R=Plot(r,0,1,0,1,0);
+    let t=0,playing=false,last=0,hits=[];
+    const ang=val=>Math.PI*(1-val/160);
+    function draw(){
+      P.clear(); const cx=100,cy=110,rad=84;
+      let d='';for(let i=0;i<=60;i++){const a=Math.PI*(1-i/60);d+=(i?'L':'M')+(cx+rad*Math.cos(a)).toFixed(1)+','+(cy-rad*Math.sin(a)).toFixed(1)}
+      P.el('path',{d,fill:'none',stroke:C.hair,'stroke-width':10,'stroke-linecap':'round'});
+      for(let k=0;k<=160;k+=20){const a=ang(k);P.el('line',{x1:cx+(rad-14)*Math.cos(a),y1:cy-(rad-14)*Math.sin(a),x2:cx+(rad-6)*Math.cos(a),y2:cy-(rad-6)*Math.sin(a),stroke:k===100?C.accent:C.muted,'stroke-width':k===100?3:1.5})}
+      const a100=ang(100); P.text(cx+(rad+12)*Math.cos(a100),cy-(rad+12)*Math.sin(a100)+4,'100',{fill:C.accent,'font-size':14,'font-style':'normal','font-family':'Geist Mono,monospace'});
+      const vv=v(t),a=ang(vv),hit=Math.abs(vv-100)<1.6&&t>0&&t<1;
+      P.el('line',{x1:cx,y1:cy,x2:cx+(rad-18)*Math.cos(a),y2:cy-(rad-18)*Math.sin(a),stroke:hit?C.good:C.ink,'stroke-width':3,'stroke-linecap':'round'});
+      P.el('circle',{cx,cy,r:6,fill:hit?C.good:C.ink});
+      P.text(cx,cy+32,Math.round(vv)+' km/h',{fill:hit?C.good:C.ink,'font-size':16,'font-style':'normal','font-family':'Geist Mono,monospace'});
+      R.clear(); R.el('line',{x1:20,x2:380,y1:40,y2:40,stroke:C.hair,'stroke-width':6,'stroke-linecap':'round'});
+      R.el('line',{x1:20,x2:20+360*s(t)/100,y1:40,y2:40,stroke:C.accent,'stroke-width':6,'stroke-linecap':'round'});
+      hits.forEach(h=>R.el('circle',{cx:20+360*s(h)/100,cy:40,r:5,fill:C.good}));
+      R.el('circle',{cx:20+360*s(t)/100,cy:40,r:9,fill:C.ink,stroke:C.surface,'stroke-width':3});
+      R.text(20,22,'A',{fill:C.muted,'font-style':'normal','font-size':14,'font-family':'Geist Mono,monospace'}); R.text(380,22,'B',{fill:C.muted,'font-style':'normal','font-size':14,'font-family':'Geist Mono,monospace'});
+      R.text(200,66,Math.round(t*60)+' min · '+Math.round(s(t))+' km',{fill:C.muted,'font-style':'normal','font-size':13,'font-family':'Geist Mono,monospace'});
+      if(hit&&!hits.some(h=>Math.abs(h-t)<.08)){hits.push(t);$('carCap').textContent='Eccolo: 100 km/h esatti al minuto '+Math.round(t*60)+'.'}
+    }
+    function loop(now){if(!playing)return;const dt=Math.min(.05,(now-last)/1000);last=now;t=Math.min(1,t+dt/6);draw();if(t>=1){playing=false;$('carCap').textContent=hits.length+' istanti a 100 km/h, come garantito da Lagrange.';$('carPlay').firstChild.textContent='Di nuovo';return}requestAnimationFrame(loop)}
+    $('carPlay').addEventListener('click',()=>{if(t>=1){t=0;hits=[]}if(reduce){t=1;hits=[.25,.75];draw();$('carCap').textContent='2 istanti a 100 km/h: al minuto 15 e al minuto 45.';return}playing=true;last=performance.now();$('carCap').textContent='';requestAnimationFrame(loop)});
+    redraws.push(draw);
+  })();
+
+  // ── F3: Rolle tilt ──
+  (function(){
+    const f0=x=>.25*x**3-.8125*x+1.1, a=-1.5,b=2, cs=[-Math.sqrt(.8125/.75),Math.sqrt(.8125/.75)], svg=$('f3'), it=$('f3t');
+    function draw(){
+      const t=+it.value, f=x=>f0(x)+t*x, P=Plot(svg,-2,2.5,-.4,2.6);
+      P.clear(); P.axes();
+      P.el('path',{d:P.path(f,-1.9,2.4),fill:'none',stroke:C.curve,'stroke-width':2.4});
+      P.el('line',{x1:P.sx(a),y1:P.sy(f(a)),x2:P.sx(b),y2:P.sy(f(b)),stroke:C.accent,'stroke-width':2.2,'stroke-linecap':'round'});
+      cs.forEach((c,i)=>{P.line(c,f(c),t,.6,{stroke:C.good,'stroke-width':2.2});P.el('circle',{cx:P.sx(c),cy:P.sy(f(c)),r:5.5,fill:C.good});P.text(P.sx(c),P.sy(f(c))-14,i?'c₂':'c₁',{fill:C.good});
+        P.el('line',{x1:P.sx(c),x2:P.sx(c),y1:P.sy(f(c))+8,y2:P.sy(-.4),stroke:C.good,'stroke-dasharray':'2 4','stroke-opacity':.6})});
+      $('f3to').textContent=fmt(t);
+      $('f3cap').innerHTML=Math.abs(t)<.02?'<b>Corda orizzontale: questo è Rolle.</b> Le tangenti in c₁ e c₂ hanno pendenza 0.':'Corda inclinata di '+fmt(t)+': è Lagrange. c₁ e c₂ restano a <b>'+fmt(cs[0])+'</b> e <b>'+fmt(cs[1])+'</b>.';
+    }
+    it.addEventListener('input',draw); redraws.push(draw);
+  })();
+
+  // ── F4: proof scrolly ──
+  (function(){
+    const f=x=>.25*x**3-x+1.5, fp=x=>.75*x*x-1, a=-1.5,b=2, m=(f(b)-f(a))/(b-a), sec=x=>f(a)+m*(x-a);
+    const cs=[-Math.sqrt((m+1)/.75),Math.sqrt((m+1)/.75)];
+    const svg=$('pfig'), P=Plot(svg,-2.1,2.6,-1.25,3.4,24);
+    // state per step: chord, gaps, badges, shear, tangents
+    const T=[{ch:0,gp:0,bd:0,sh:0,tn:0},{ch:1,gp:0,bd:0,sh:0,tn:0},{ch:1,gp:1,bd:0,sh:0,tn:0},{ch:1,gp:1,bd:1,sh:0,tn:0},{ch:1,gp:1,bd:0,sh:1,tn:0},{ch:1,gp:.5,bd:0,sh:1,tn:1},{ch:1,gp:0,bd:0,sh:0,tn:1}];
+    const S={ch:0,gp:0,bd:0,sh:0,tn:0};
+    const steps=[...document.querySelectorAll('.pstep')], chain=[...document.querySelectorAll('#chain button')];
+    const io=new IntersectionObserver(es=>es.forEach(e=>e.target.classList.toggle('on',e.isIntersecting)),{rootMargin:'-30% 0px -30% 0px'}); steps.forEach(s=>io.observe(s));
+    chain.forEach(b=>b.addEventListener('click',()=>steps[+b.dataset.go].scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'})));
+    let step=0,last=-1;
+    const caps=['f(x) = x³/4 − x + 3/2','secante: y = f(a) + m(x − a)','g(x) = f(x) − y_sec(x)','g continua e derivabile','g(a) = g(b) = 0','Rolle: g′(c) = 0','f′(c) = m'];
+    function frame(){
+      const mid=innerHeight*.5; steps.forEach((s,i)=>{const r=s.getBoundingClientRect();if(r.top<mid&&r.bottom>mid)step=i});
+      if(step!==last){chain.forEach((b,i)=>{if(i===step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');b.classList.toggle('done',i<step)});$('pcap').textContent=caps[step];last=step}
+      const k=reduce?1:.08; for(const key in S) S[key]=lerp(S[key],T[step][key],k);
+      const sh=S.sh, Y=x=>f(x)-sh*sec(x)+sh*0, Ys=x=>(1-sh)*sec(x);
+      P.clear(); P.axes();
+      P.el('path',{d:P.path(Y,-2,2.5),fill:'none',stroke:C.curve,'stroke-width':2.6});
+      // gaps
+      if(S.gp>.02) for(let x=a+.06;x<b;x+=.09){P.el('line',{x1:P.sx(x),x2:P.sx(x),y1:P.sy(Ys(x)),y2:P.sy(Y(x)),stroke:C.good,'stroke-width':1.8,'stroke-opacity':.55*S.gp,'stroke-linecap':'round'})}
+      // chord
+      const chL=S.ch; if(chL>.02){const xb=a+(b-a)*chL;P.el('line',{x1:P.sx(a),y1:P.sy(Ys(a)),x2:P.sx(xb),y2:P.sy(Ys(xb)),stroke:C.accent,'stroke-width':2.3,'stroke-linecap':'round'})}
+      [a,b].forEach((x,i)=>{P.el('circle',{cx:P.sx(x),cy:P.sy(Y(x)),r:5,fill:C.ink});P.text(P.sx(x),P.sy(-1.25)+4,i?'b':'a',{fill:C.muted})});
+      if(sh>.5){P.text(P.sx(a)-10,P.sy(Y(a))-14,'g(a) = 0',{fill:C.good,'font-size':16,'text-anchor':'end','opacity':sh});P.text(P.sx(b)+10,P.sy(Y(b))-14,'g(b) = 0',{fill:C.good,'font-size':16,'text-anchor':'start','opacity':sh})}
+      if(S.bd>.05){['g continua su [a, b] ✓','g derivabile in (a, b) ✓'].forEach((t,i)=>P.text(P.sx(-2)+4,P.sy(3.3)+i*24,t,{fill:C.good,'font-size':15,'text-anchor':'start','font-style':'normal','font-family':'Geist,sans-serif','opacity':S.bd}))}
+      if(S.gp>.5&&sh<.3)P.text(P.sx(.55),P.sy((f(.55)+sec(.55))/2)+6,'g(x)',{fill:C.good,'opacity':S.gp});
+      if(S.tn>.02) cs.forEach((c,i)=>{const sl=fp(c)-sh*m;P.line(c,Y(c),sl,.8,{stroke:C.good,'stroke-width':2.3,'stroke-opacity':S.tn});P.el('circle',{cx:P.sx(c),cy:P.sy(Y(c)),r:5.5,fill:C.good,'fill-opacity':S.tn});P.text(P.sx(c),P.sy(Y(c))-14,i?'c₂':'c₁',{fill:C.good,opacity:S.tn})});
+      $('pr1').innerHTML=step>=5?'<span>pendenza in c</span><b>'+fmt(fp(cs[1])-sh*m,3)+'</b>':'<span>f(a)</span><b>'+fmt(f(a),3)+'</b>';
+      $('pr2').innerHTML=step>=5?'<span>'+(sh>.5?'tangente orizzontale':'corda m')+'</span><b>'+fmt(sh>.5?0:m,3)+'</b>':'<span>pendenza secante m</span><b>'+fmt(m,3)+'</b>';
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+
+  // ── F6a / F6b ──
+  (function(){
+    const svg=$('f6a'), ix=$('f6ax'), f=x=>Math.abs(x);
+    function draw(){
+      const x=+ix.value, P=Plot(svg,-1.25,1.25,-.15,1.3,18), sl=Math.abs(x)<.02?null:(x>0?1:-1);
+      P.clear(); P.axes();
+      P.el('path',{d:P.path(f,-1,1),fill:'none',stroke:C.curve,'stroke-width':2.4});
+      P.el('line',{x1:P.sx(-1),y1:P.sy(1),x2:P.sx(1),y2:P.sy(1),stroke:C.accent,'stroke-width':2.2});
+      P.el('circle',{cx:P.sx(0),cy:P.sy(0),r:12,fill:'none',stroke:C.bad,'stroke-dasharray':'3 3'});
+      if(sl!==null)P.line(x,f(x),sl,.35,{stroke:C.warn,'stroke-width':2.4});
+      P.el('circle',{cx:P.sx(x),cy:P.sy(f(x)),r:6,fill:sl===null?C.bad:C.warn,stroke:C.surface,'stroke-width':2.5});
+      if(SHOW.f6a){P.el('line',{x1:P.sx(-1),x2:P.sx(1),y1:P.sy(.03),y2:P.sy(.03),stroke:C.bad,'stroke-width':6,'stroke-opacity':.25,'stroke-linecap':'round'});note(P,P.sx(0),P.sy(0)+30,'nessun punto con tangente orizzontale',C.bad)}
+      $('f6axo').textContent=fmt(x);
+      $('f6acap').innerHTML=sl===null?'<b>Nello spigolo la tangente non esiste.</b>':'Pendenza tangente <b>'+(sl>0?'+1':'−1')+'</b>, pendenza corda <b>0</b>: mai uguali.';
+    }
+    ix.addEventListener('input',draw); redraws.push(draw);
+    const s2=$('f6b'), bt=[...document.querySelectorAll('[data-p]')]; let mode='diff';
+    function draw2(){
+      const P=Plot(s2,.6,4.4,-.4,1.5,18); P.clear(); P.axes();
+      P.el('rect',{x:P.sx(2),y:P.sy(1.5),width:P.sx(3)-P.sx(2),height:P.sy(-.4)-P.sy(1.5),fill:C.bad,'fill-opacity':.08});
+      P.text(P.sx(2.5),P.sy(1.3),'lacuna',{fill:C.bad,'font-size':15});
+      [[1,2,0],[3,4,1]].forEach(([u,v,y])=>{P.el('line',{x1:P.sx(u),x2:P.sx(v),y1:P.sy(y),y2:P.sy(y),stroke:C.curve,'stroke-width':2.6});[u,v].forEach(q=>P.el('circle',{cx:P.sx(q),cy:P.sy(y),r:4,fill:C.surface,stroke:C.curve,'stroke-width':2}))});
+      const p=mode==='diff'?[[1.5,0],[3.5,1]]:[[3.2,1],[3.8,1]];
+      P.el('line',{x1:P.sx(p[0][0]),y1:P.sy(p[0][1]),x2:P.sx(p[1][0]),y2:P.sy(p[1][1]),stroke:mode==='diff'?C.bad:C.good,'stroke-width':2.2,'stroke-dasharray':mode==='diff'?'6 5':''});
+      p.forEach(q=>P.el('circle',{cx:P.sx(q[0]),cy:P.sy(q[1]),r:5,fill:mode==='diff'?C.bad:C.good}));
+      $('f6bcap').innerHTML=mode==='diff'?'Tra 1,5 e 3,5 la pendenza è <b>½</b>, eppure f′ = 0 ovunque: il segmento esce dal dominio.':'Nello stesso pezzo il segmento sta nel dominio: pendenza <b>0</b>, come dice Lagrange.';
+    }
+    bt.forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.p;bt.forEach(x=>x.setAttribute('aria-pressed',x===b));draw2()}));
+    redraws.push(draw2);
+  })();
+
+  // ── corollary figures ──
+  (function(){
+    const f=x=>.25*x**3-x+1.5, fp=x=>.75*x*x-1;
+    const s2=$('fc2'), ic=$('fc2c'), ix=$('fc2x');
+    function d2(){const Cc=+ic.value,x=+ix.value,P=Plot(s2,-2.2,2.4,-1,4.4);P.clear();P.axes();
+      P.el('path',{d:P.path(f,-2.1,2.3),fill:'none',stroke:C.curve,'stroke-width':2.4});
+      P.el('path',{d:P.path(t=>f(t)+Cc,-2.1,2.3),fill:'none',stroke:C.pen,'stroke-width':2.4});
+      P.el('line',{x1:P.sx(x),x2:P.sx(x),y1:P.sy(f(x)),y2:P.sy(f(x)+Cc),stroke:C.muted,'stroke-dasharray':'2 4'});
+      P.text(P.sx(x)+16,P.sy(f(x)+Cc/2)+5,'C',{fill:C.muted});
+      [0,Cc].forEach((o,i)=>{P.line(x,f(x)+o,fp(x),.7,{stroke:C.good,'stroke-width':2.2});P.el('circle',{cx:P.sx(x),cy:P.sy(f(x)+o),r:5,fill:i?C.pen:C.ink})});
+      P.text(P.sx(-1.95),P.sy(f(-1.95))-10,'f',{fill:C.ink,'font-size':20});P.text(P.sx(-1.95),P.sy(f(-1.95)+Cc)-10,'g',{fill:C.pen,'font-size':20});
+      $('fc2co').textContent=fmt(Cc);$('fc2xo').textContent=fmt(x)}
+    ic.addEventListener('input',d2);ix.addEventListener('input',d2);redraws.push(d2);
+
+    const s3=$('fc3'), i3=$('fc3x'), c0=-1.6;
+    function d3(){const d=+i3.value,P=Plot(s3,-2,2.6,-.2,3.6);P.clear();P.axes();
+      for(let x=-1.9;x<2.5;x+=.02){const sg=fp(x+.01);P.el('line',{x1:P.sx(x),y1:P.sy(f(x)),x2:P.sx(x+.022),y2:P.sy(f(x+.022)),stroke:sg>0?C.good:C.bad,'stroke-width':3,'stroke-linecap':'round'})}
+      [c0,d].forEach((x,i)=>{P.el('circle',{cx:P.sx(x),cy:P.sy(f(x)),r:5.5,fill:C.ink});P.text(P.sx(x),P.sy(f(x))-13,i?'d':'c',{fill:C.ink})});
+      const z=2/Math.sqrt(3); if(SHOW.fc3)[-z,z].forEach(x=>{P.el('line',{x1:P.sx(x),x2:P.sx(x),y1:P.sy(f(x)),y2:P.sy(-.2),stroke:C.warn,'stroke-dasharray':'3 4'});ring(P,x,f(x),'f′ = 0',C.warn)});
+      const inc=f(d)-f(c0); $('fc3xo').textContent=fmt(d);
+      const allPos=d<=-1.155, crosses=d>-1.155;
+      $('fc3cap').innerHTML='f(d) − f(c) = <b>'+fmt(inc)+'</b>. '+(allPos?'Tra c e d la derivata è sempre positiva, quindi l\'incremento è positivo.':'Tra c e d f′ cambia segno: il criterio non si applica a tutto [c, d], l\'incremento può avere qualunque segno.')}
+    i3.addEventListener('input',d3);redraws.push(d3);
+
+    const s4=$('fc4'), i4c=$('fc4c'), i4x=$('fc4x'), g=x=>Math.sin(3*x);
+    function d4(){const Cc=+i4c.value,x0=+i4x.value,P=Plot(s4,0,2.1,-1.6,1.6);P.clear();P.axes();
+      const y0=g(x0); P.el('path',{d:'M'+P.sx(x0)+','+P.sy(y0)+'L'+P.sx(x0+3)+','+P.sy(y0+3*Cc)+'L'+P.sx(x0+3)+','+P.sy(y0-3*Cc)+'Z M'+P.sx(x0)+','+P.sy(y0)+'L'+P.sx(x0-3)+','+P.sy(y0+3*Cc)+'L'+P.sx(x0-3)+','+P.sy(y0-3*Cc)+'Z',fill:C.warn,'fill-opacity':.1,stroke:'none'});
+      // keep cone inside plot area
+      let bad=0; for(let x=0;x<=2.1;x+=.006){const ins=Math.abs(g(x)-y0)>Cc*Math.abs(x-x0)+1e-9;if(ins)bad++;P.el('line',{x1:P.sx(x),y1:P.sy(g(x)),x2:P.sx(x+.007),y2:P.sy(g(x+.007)),stroke:ins?C.bad:C.curve,'stroke-width':ins?3.2:2.4,'stroke-linecap':'round'})}
+      P.line(x0,y0,Cc,3,{stroke:C.warn,'stroke-width':1.4});P.line(x0,y0,-Cc,3,{stroke:C.warn,'stroke-width':1.4});
+      P.el('circle',{cx:P.sx(x0),cy:P.sy(y0),r:5.5,fill:C.warn,stroke:C.surface,'stroke-width':2});
+      if(SHOW.fc4){P.line(x0,y0,3,3,{stroke:C.good,'stroke-width':2,'stroke-dasharray':'6 5'});P.line(x0,y0,-3,3,{stroke:C.good,'stroke-width':2,'stroke-dasharray':'6 5'})}
+      $('fc4co').textContent=fmt(Cc);$('fc4xo').textContent=fmt(x0);
+      $('fc4cap').innerHTML=bad?'<b>Il grafico esce dal cono</b> (tratti rossi): con C = '+fmt(Cc)+' la disuguaglianza fallisce. Serve C ≥ max|f′| = 3.':'<b>Tutto il grafico sta fuori dal cono:</b> |f(x) − f(x₀)| ≤ '+fmt(Cc)+'·|x − x₀| ovunque.'}
+    // clip cone to svg box
+    i4c.addEventListener('input',d4);i4x.addEventListener('input',d4);redraws.push(d4);
+  })();
+
+  // ── F8: identities ──
+  (function(){
+    const svg=$('f8'), ix=$('f8x'), bt=[...document.querySelectorAll('[data-e]')]; let ex='1';
+    function draw(){
+      const P=ex==='1'?Plot(svg,-1.15,1.15,-.4,3.5):Plot(svg,-4.2,4.2,-2.2,2.2), x=+ix.value;
+      P.clear(); P.axes();
+      if(ex==='1'){
+        const A=Math.asin,B=Math.acos,S=t=>A(t)+B(t);
+        P.el('path',{d:P.path(A,-1,1),fill:'none',stroke:C.pen,'stroke-width':2,'stroke-opacity':.8});
+        P.el('path',{d:P.path(B,-1,1),fill:'none',stroke:C.warn,'stroke-width':2,'stroke-opacity':.8});
+        P.el('path',{d:P.path(S,-1,1),fill:'none',stroke:C.good,'stroke-width':3});
+        P.el('line',{x1:P.sx(x),x2:P.sx(x),y1:P.sy(A(x)),y2:P.sy(S(x)),stroke:C.muted,'stroke-dasharray':'2 4'});
+        [[A(x),C.pen],[B(x),C.warn],[S(x),C.good]].forEach(([y,c])=>P.el('circle',{cx:P.sx(x),cy:P.sy(y),r:5,fill:c}));
+        P.text(P.sx(-.95),P.sy(Math.PI/2)-10,'π/2',{fill:C.good,'font-size':16,'text-anchor':'start'});
+        $('f8r1').innerHTML='<span>arcsin x</span><b>'+fmt(A(x),3)+'</b>';$('f8r2').innerHTML='<span>arccos x</span><b>'+fmt(B(x),3)+'</b>';$('f8r3').innerHTML='<span>somma</span><b>'+fmt(S(x),3)+'</b>';$('f8r3').className='hit';
+        $('f8cap').innerHTML='Muovi x: i due pezzi cambiano, la somma resta <b>π/2 ≈ 1,571</b>.';
+      } else {
+        const A=Math.atan,B=t=>Math.atan(1/t),S=t=>A(t)+B(t);
+        P.el('path',{d:P.path(A,-4,4),fill:'none',stroke:C.pen,'stroke-width':2,'stroke-opacity':.8});
+        P.el('path',{d:P.path(B,-4,-.01),fill:'none',stroke:C.warn,'stroke-width':2,'stroke-opacity':.8});P.el('path',{d:P.path(B,.01,4),fill:'none',stroke:C.warn,'stroke-width':2,'stroke-opacity':.8});
+        P.el('path',{d:P.path(S,-4,-.02),fill:'none',stroke:C.good,'stroke-width':3});P.el('path',{d:P.path(S,.02,4),fill:'none',stroke:C.good,'stroke-width':3});
+        P.el('circle',{cx:P.sx(0),cy:P.sy(0),r:9,fill:'none',stroke:C.bad,'stroke-dasharray':'3 3'});
+        const xx=Math.abs(x)<.05?(x<0?-.05:.05):x;
+        [[A(xx),C.pen],[B(xx),C.warn],[S(xx),C.good]].forEach(([y,c])=>P.el('circle',{cx:P.sx(xx),cy:P.sy(y),r:5,fill:c}));
+        $('f8r1').innerHTML='<span>arctan x</span><b>'+fmt(A(xx),3)+'</b>';$('f8r2').innerHTML='<span>arctan 1/x</span><b>'+fmt(B(xx),3)+'</b>';$('f8r3').innerHTML='<span>somma</span><b>'+fmt(S(xx),3)+'</b>';$('f8r3').className=xx>0?'hit':'miss';
+        $('f8cap').innerHTML='Due costanti diverse: <b>+π/2</b> per x &gt; 0, <b>−π/2</b> per x &lt; 0. Il buco in 0 spezza la costanza.';
+      }
+      $('f8xo').textContent=fmt(ex==='1'?x:(Math.abs(x)<.05?(x<0?-.05:.05):x));
+    }
+    bt.forEach(b=>b.addEventListener('click',()=>{ex=b.dataset.e;bt.forEach(q=>q.setAttribute('aria-pressed',q===b));ix.min=ex==='1'?-1:-4;ix.max=ex==='1'?1:4;ix.value=ex==='1'?.4:1.5;draw()}));
+    ix.addEventListener('input',draw); redraws.push(draw);
+  })();
+
+  // ── §9 fill-in + exam exercise ──
+  (function(){
+    const sels=[...document.querySelectorAll('#ex2 select')];
+    sels.forEach(s=>s.addEventListener('change',()=>{s.classList.remove('ok','no');if(s.value)s.classList.add(s.value===s.dataset.ans?'ok':'no');
+      const done=sels.every(q=>q.value===q.dataset.ans), wrong=sels.find(q=>q.value&&q.value!==q.dataset.ans);
+      $('ex2fb').innerHTML=done?'<b>Completo.</b> Hai ricostruito il metodo da solo.':wrong?'Uno dei passaggi non torna: guarda quello in rosso.':''}));
+    const f=x=>x**3-3*x*x+2*x, fp=x=>3*x*x-6*x+2, svg=$('f9'), ix=$('f9x'), m=2;
+    function draw(){const x=+ix.value,P=Plot(svg,-.4,3.4,-1,6.6),sl=fp(x),par=Math.abs(sl-m)<.08;P.clear();P.axes();
+      P.el('path',{d:P.path(f,-.3,3.25),fill:'none',stroke:C.curve,'stroke-width':2.4});
+      P.el('line',{x1:P.sx(0),y1:P.sy(0),x2:P.sx(3),y2:P.sy(6),stroke:C.accent,'stroke-width':2.2});
+      P.line(x,f(x),sl,.55,{stroke:par?C.good:C.warn,'stroke-width':2.4});P.el('circle',{cx:P.sx(x),cy:P.sy(f(x)),r:6,fill:par?C.good:C.warn,stroke:C.surface,'stroke-width':2.5});
+      if(SHOW.f9){P.line(2,f(2),fp(2),.55,{stroke:C.good,'stroke-width':2,'stroke-dasharray':'6 5'});ring(P,2,f(2),'c = 2',C.good);ring(P,0,0,'',C.bad);note(P,P.sx(0)+8,P.sy(0)+30,'c = 0: estremo, scartato',C.bad)}
+      $('f9xo').textContent=fmt(x);$('f9cap').innerHTML='Tangente <b>'+fmt(sl)+'</b> · corda <b>2</b>'+(par?' · <b>parallele</b>':'')}
+    ix.addEventListener('input',draw);redraws.push(draw);
+    $('f9go').addEventListener('click',()=>{const v=$('f9in').value.split(/[;,\s]+/).map(s=>s.replace(',', '.')).filter(Boolean).map(Number).filter(n=>!isNaN(n));
+      const has2=v.some(n=>Math.abs(n-2)<.01), has0=v.some(n=>Math.abs(n)<.01), other=v.filter(n=>Math.abs(n-2)>=.01&&Math.abs(n)>=.01);
+      $('f9fb').innerHTML=!v.length?'Scrivi almeno un valore.':has2&&!has0&&!other.length?'<b style="color:var(--good)">Corretto: c = 2.</b> Da 3c(c − 2) = 0 escono 0 e 2, ma 0 è un estremo e va scartato.':has0?'<b style="color:var(--accent)">c = 0 è un estremo</b>: il teorema vuole c nell\'aperto (0, 3). Scartalo.':'<b style="color:var(--accent)">Non torna.</b> Imposta f′(c) = 2: 3c² − 6c + 2 = 2.'});
+  })();
+
+  // ── "mostra i punti" ──
+  function pts(id,build){const b=$(id+'s'),l=$(id+'l');
+    const fill=()=>{l.innerHTML='';if(!SHOW[id])return;build().forEach(it=>{if(typeof it==='string'){const sp=document.createElement('span');sp.textContent=it;l.appendChild(sp)}else{const c=document.createElement('button');c.type='button';c.className='chip go'+(it.off?' off':'');c.textContent=it.t;c.addEventListener('click',()=>{it.fn();fill()});l.appendChild(c)}})};
+    b.addEventListener('click',()=>{const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);b.textContent=on?'Nascondi':b.dataset.lbl;SHOW[id]=on;fill();redraws.forEach(f=>f())});return fill}
+  window.__f2fill=pts('f2',()=>{const {k,sols}=__f2case();if(!sols.length)return[k==='noD'?'Nessun punto: nello spigolo la tangente salta da −1 a +1, la corda vale 0.':'Nessun punto: la tangente vale sempre 1, la corda 0,25.'];
+    const out=sols.map((x,i)=>({t:(i?'c₂':'c₁')+' ≈ '+fmt(x),fn:()=>{HOLD=x}}));if(HOLD!=null)out.push({t:'▶ riprendi',fn:()=>{HOLD=null}});return out});
+  pts('f6a',()=>['Nessuno: la pendenza è −1 o +1, mai 0.',{t:'vai allo spigolo',off:1,fn:()=>jump($('f6ax'),0)}]);
+  pts('fc3',()=>{const z=2/Math.sqrt(3);return['Dove f′ = 0 il colore cambia:',{t:'x ≈ −1,15',fn:()=>jump($('fc3x'),-z)},{t:'x ≈ 1,15',fn:()=>jump($('fc3x'),z)}]});
+  pts('fc4',()=>['Il cono tratteggiato ha C = max|f′| = 3:',{t:'usa C = 3',fn:()=>jump($('fc4c'),3)}]);
+  pts('f9',()=>[{t:'c = 2',fn:()=>jump($('f9x'),2)},{t:'c = 0 scartato',off:1,fn:()=>jump($('f9x'),.02)}]);
+
+  // ── §10 map ──
+  (function(){
+    const svg=$('map'), P=Plot(svg,0,1,0,1,0);
+    const N=[
+      {id:'L',x:250,y:180,t:'Lagrange',s:'questa nota',me:1,d:'Sei qui.'},
+      {id:'R',x:70,y:110,t:'Rolle',s:'nel vault · 82%',ok:1,d:'Caso particolare con f(a) = f(b): la corda è orizzontale. È il prerequisito della dimostrazione.'},
+      {id:'F',x:70,y:250,t:'Fermat',s:'nel vault · 64%',ok:1,d:'Condizione necessaria sugli estremi interni: è ciò su cui poggia Rolle.'},
+      {id:'Ca',x:420,y:60,t:'Cauchy',s:'nota da creare',d:'Confronta gli incrementi di due funzioni: (f(b) − f(a)) / (g(b) − g(a)) = f′(c) / g′(c). Con g(x) = x ritorna Lagrange.'},
+      {id:'H',x:420,y:140,t:'de l\'Hôpital',s:'nota da creare',d:'Le forme 0/0 e ∞/∞ si sciolgono applicando Cauchy a rapporti incrementali infinitesimi.'},
+      {id:'T',x:420,y:220,t:'Taylor (resto di Lagrange)',s:'nota da creare',d:'Lagrange è Taylor arrestato al primo ordine: f(b) = f(a) + f′(ξ)(b − a). La generalizzazione stima l\'errore del polinomio di grado N.'},
+      {id:'M',x:420,y:300,t:'Media integrale',s:'nota da creare',d:'Applicata a f′ e unita al teorema fondamentale, (1/(b − a))∫f′ = f′(ξ) ridà la formula di Lagrange.'}
+    ];
+    let sel='Ca';
+    function draw(){P.clear();
+      N.forEach(n=>{if(n.me)return;const L=N[0];P.el('path',{d:'M'+L.x+','+L.y+' C'+((L.x+n.x)/2)+','+L.y+' '+((L.x+n.x)/2)+','+n.y+' '+n.x+','+n.y,fill:'none',stroke:n.ok?C.muted:C.hair,'stroke-width':1.5,'stroke-dasharray':n.ok?'':'5 5'})});
+      N.forEach(n=>{const g=P.el('g',{class:'node',tabindex:0,role:'button','aria-label':n.t+', '+n.s,'aria-pressed':n.id===sel});
+        const w=Math.max(90,n.t.length*7.6+26);
+        P.el('rect',{x:n.x-w/2,y:n.y-22,width:w,height:44,rx:22,fill:n.me?C.accent:n.id===sel?C.ink:C.surface,stroke:n.me?C.accent:n.ok?C.muted:C.hair,'stroke-width':1.5,'stroke-dasharray':n.ok||n.me?'':'4 4'},g);
+        const t=P.el('text',{x:n.x,y:n.y+5,'text-anchor':'middle','font-size':14,'font-family':'Geist,sans-serif',fill:n.me?C.bg:n.id===sel?C.bg:C.ink},g);t.textContent=n.t;
+        if(!n.me){const go=()=>{sel=n.id;draw();info()};g.addEventListener('click',go);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){go();e.preventDefault()}})}
+      });
+    }
+    function info(){const n=N.find(q=>q.id===sel);$('mapinfo').innerHTML='<span class="st">'+n.s+'</span><h4>'+n.t+'</h4><p>'+n.d+'</p><button type="button" class="btn'+(n.ok?'':' ghost')+'">'+(n.ok?'Apri la nota':'Crea la nota dal notebook')+'</button>'}
+    redraws.push(()=>{draw()}); info();
+  })();
+
+  // ── progress + toc ──
+  const toc=[...document.querySelectorAll('#toc a')], secs=toc.map(a=>document.querySelector(a.getAttribute('href')));
+  function onScroll(){const h=document.documentElement,pr=clamp(h.scrollTop/(h.scrollHeight-innerHeight));$('bar').style.transform='scaleX('+pr+')';$('prog').setAttribute('aria-valuenow',Math.round(pr*100));
+    let cur=-1;secs.forEach((s,i)=>{if(s.getBoundingClientRect().top<innerHeight*.4)cur=i});toc.forEach((a,i)=>a.setAttribute('aria-current',i===cur))}
+  addEventListener('scroll',onScroll,{passive:true}); onScroll();
+  redraws.forEach(f=>f());
+
+  // ── KaTeX ──
+  function tex(){if(!window.renderMathInElement)return setTimeout(tex,60);renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,ignoredTags:['script','noscript','style','textarea','pre','code','option']})}
+  tex();
+})();
+</script>
+</body>
+</html>

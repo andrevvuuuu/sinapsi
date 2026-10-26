@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="lavagna">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A · Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ease-out:cubic-bezier(.23,1,.32,1);--serif:'Instrument Serif',Georgia,serif;--sans:'Geist',ui-sans-serif,system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace}
+[data-theme="lavagna"]{color-scheme:dark;--bg:#0f100d;--panel:#141511;--surface:#1a1b17;--hair:rgba(236,233,223,.10);--faint:rgba(236,233,223,.055);--inner:inset 0 1px 0 rgba(236,233,223,.06);
+  --ink:#ece9df;--muted:#a19e92;--accent:#ef7a42;--good:#8fd1a6;--warn:#e9b95f;--bad:#ef6f6f;--curve:#ece9df}
+[data-theme="trattato"]{color-scheme:light;--bg:#f3eee4;--panel:#ede7db;--surface:#fbf8f2;--hair:rgba(36,32,27,.12);--faint:rgba(36,32,27,.05);--inner:inset 0 1px 0 rgba(255,255,255,.85);
+  --ink:#221e19;--muted:#615a4f;--accent:#a83d22;--good:#2f6e48;--warn:#8f6512;--bad:#a8323f;--curve:#221e19}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.65 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
+button{font:inherit;color:inherit}
+.lab{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.m{font-family:var(--serif);font-style:italic;font-size:1.15em}
+.app{display:grid;grid-template-rows:auto 1fr;height:100dvh}
+.top{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--hair)}
+.top h1{font:400 28px/1 var(--serif);margin:0}
+.phase{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.top .sp{flex:1}
+.pill{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:13px;color:var(--muted)}
+.body{display:grid;grid-template-columns:1fr 260px;min-height:0}
+.scroll{overflow:auto;min-height:0;position:relative}
+.col{max-width:760px;margin:0 auto;padding:28px 24px 40px;min-height:calc(100% - 60px)}
+.msg{margin:0 0 18px;animation:in .4s var(--ease-out)}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.msg p{margin:0 0 12px}
+.you{display:flex;justify-content:flex-end}
+.you div{max-width:80%;padding:10px 16px;border-radius:18px 18px 4px 18px;background:var(--faint);font-size:16px}
+.card{border:1px solid var(--hair);border-radius:16px;background:var(--surface);padding:14px 16px;margin:0 0 18px;animation:in .4s var(--ease-out)}
+.card .row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.chip{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+.chip.ok{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)} .chip.no{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad)}
+.card .ans{font-size:15px} .card .th{font-size:14px;color:var(--muted);border-left:2px solid var(--hair);padding-left:10px;margin-top:6px;font-style:italic}
+.card details{margin-top:6px;font-size:14px;color:var(--muted)} .card summary{cursor:pointer;font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.divider{display:flex;align-items:center;gap:12px;margin:26px 0;color:var(--muted)}
+.divider::before,.divider::after{content:"";flex:1;border-top:1px dotted var(--hair)}
+.fig{border-radius:16px;background:var(--surface);border:1px solid var(--hair);padding:10px;margin:6px 0 16px}
+.fig svg{width:100%;height:auto;display:block}
+.sumg{display:flex;flex-direction:column;gap:6px;margin:6px 0 12px}
+.sumg div{display:flex;justify-content:space-between;padding:8px 12px;border-radius:12px;background:var(--faint);font-size:15px}
+.sumg b{font:500 12px var(--mono)}
+/* dock */
+.dockwrap{position:sticky;bottom:0;padding:0 24px 20px;pointer-events:none;background:linear-gradient(transparent,var(--bg) 40px)}
+.dock{max-width:760px;margin:0 auto;pointer-events:auto}
+.shell{padding:5px;border-radius:24px;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--hair);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.inner{border-radius:19px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:14px 16px}
+.q{font-size:17px;margin:4px 0 10px}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;align-items:center;gap:12px;text-align:left;min-height:44px;padding:8px 14px 8px 8px;border-radius:14px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:15px;line-height:1.4}
+.opt .k{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--faint);font:500 12px var(--mono);color:var(--muted)}
+.opt[aria-pressed="true"]{border-color:var(--ink)} .opt[aria-pressed="true"] .k{background:var(--ink);color:var(--bg)}
+.opt.idk{border-style:dashed;color:var(--muted)}
+.conf{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;margin:8px 0 2px}
+.conf output{font:500 13px var(--mono)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:32px;background:transparent;cursor:pointer;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:5px;background:var(--faint)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7.5px;border-radius:50%;background:var(--warn);border:3px solid var(--surface)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--warn);border:3px solid var(--surface)}
+.think{border:1px solid var(--hair);border-radius:14px;padding:6px 12px;margin-top:6px}
+.think textarea{width:100%;min-height:44px;border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;resize:none;outline:none}
+.think textarea::placeholder{color:var(--muted);opacity:1}
+.act{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px}
+.act .hint{font:500 12px var(--mono);color:var(--muted)}
+.pri{min-height:42px;padding:0 20px;border-radius:999px;border:0;background:var(--ink);color:var(--bg);font:500 15px var(--sans);cursor:pointer;transition:transform .12s var(--ease-out),opacity .2s}
+.pri:active{transform:scale(.97)} .pri:disabled{opacity:.35;cursor:not-allowed}
+.invite{display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer;border:0;background:transparent;padding:4px 2px}
+.invite b{display:block;font-size:16px;font-weight:500}
+.invite span{font-size:14px;color:var(--muted)}
+.invite .go{margin-left:auto;min-height:40px;padding:0 16px;border-radius:999px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-size:14px}
+.rt{border:1px solid var(--hair);border-radius:18px;background:color-mix(in srgb,var(--surface) 80%,transparent);padding:8px 14px;margin-bottom:8px;backdrop-filter:blur(10px)}
+.rt textarea{width:100%;min-height:30px;border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;resize:none;outline:none}
+.composer{display:flex;gap:8px;align-items:flex-end}
+.composer textarea{flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;resize:none;outline:none;min-height:40px;padding:8px 4px}
+/* side plan */
+.side{border-left:1px solid var(--hair);background:var(--panel);padding:20px 16px;overflow:auto}
+.side h2{margin:0 0 14px}
+.map{position:relative;display:flex;flex-direction:column;gap:14px}
+.map::before{content:"";position:absolute;left:9px;top:10px;bottom:10px;border-left:1px dashed var(--hair)}
+.node{position:relative;display:flex;gap:12px;align-items:flex-start;font-size:14px;color:var(--muted);transition:color .3s}
+.node i{flex:none;width:19px;height:19px;border-radius:50%;border:1.5px solid var(--hair);background:var(--panel);position:relative;z-index:1;transition:all .3s}
+.node.own i{background:var(--muted);border-color:var(--muted)} .node.own{color:var(--muted)}
+.node.done i{background:var(--good);border-color:var(--good)} .node.done{color:var(--ink)}
+.node.cur i{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 25%,transparent)} .node.cur{color:var(--ink);font-weight:500}
+.node small{display:block;font:500 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.empty{color:var(--muted);font-size:14px}
+.typing{display:inline-flex;gap:4px;padding:6px 0}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:b 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes b{50%{opacity:.25}}
+@media (max-width:900px){.body{grid-template-columns:1fr}.side{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <span class="lab" style="color:var(--accent)">Prototipo A · Chat</span>
+    <h1>Teorema del valor medio</h1>
+    <span class="phase" id="phase">Misura</span>
+    <span class="sp"></span>
+    <button class="pill" id="theme" type="button">Trattato</button>
+  </div>
+  <div class="body">
+    <div class="scroll" id="scroll">
+      <div class="col" id="log" aria-live="polite"></div>
+      <div class="dockwrap"><div class="dock" id="dock"></div></div>
+    </div>
+    <aside class="side" aria-label="Piano">
+      <div class="lab" style="margin-bottom:14px">Il piano</div>
+      <div id="map"><p class="empty">Il piano compare dopo la misura.</p></div>
+    </aside>
+  </div>
+</div>
+<script>
+(function(){
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const log=$('#log'), dock=$('#dock'), scroll=$('#scroll');
+const NODES=[['own','Derivata come pendenza','già tuo'],['own','Teorema di Rolle','già tuo'],['','Corda e pendenza media','passo 1'],['','Togliere la corda','passo 2'],['','Teorema del valor medio','obiettivo']];
+const C=k=>getComputedStyle(document.documentElement).getPropertyValue('--'+k).trim();
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const down=()=>scroll.scrollTo({top:scroll.scrollHeight,behavior:'smooth'});
+function add(html,cls='msg'){const d=document.createElement('div');d.className=cls;d.innerHTML=html;log.appendChild(d);down();return d}
+async function agent(html){const t=add('<span class="typing"><i></i><i></i><i></i></span>');await wait(700);t.innerHTML=html;down();return t}
+function divider(t){add(t,'divider lab')}
+function setMap(cur,done=[]){$('#map').innerHTML='<div class="map">'+NODES.map((n,i)=>`<div class="node ${n[0]} ${done.includes(i)?'done':''} ${i===cur?'cur':''}"><i></i><div>${n[1]}<small>${i===cur?'adesso':n[2]}</small></div></div>`).join('')+'</div>'}
+
+function fig(mode){const f=x=>.25*x*x*x-x+1.5,a=-1.5,b=2,m=(f(b)-f(a))/(b-a),X0=-2.1,X1=2.6,Y0=-.4,Y1=3.5,W=520,H=260,P=20,sx=x=>P+(x-X0)/(X1-X0)*(W-2*P),sy=y=>H-P-(y-Y0)/(Y1-Y0)*(H-2*P);
+ let d='';for(let x=X0+.15;x<=X1-.12;x+=.01)d+=(d?'L':'M')+sx(x).toFixed(1)+','+sy(f(x)).toFixed(1);
+ let g='';if(mode==='g')for(let x=a+.04;x<b;x+=.05){const yc=f(a)+m*(x-a);g+=`<line x1="${sx(x)}" x2="${sx(x)}" y1="${sy(yc)}" y2="${sy(f(x))}" stroke="${C('good')}" opacity=".5" stroke-width="1.6"/>`}
+ const L=Math.hypot(sx(b)-sx(a),sy(f(b))-sy(f(a)));
+ return `<div class="fig"><svg viewBox="0 0 520 260" role="img" aria-label="Grafico con corda"><line x1="${sx(X0)}" x2="${sx(X1)}" y1="${sy(0)}" y2="${sy(0)}" stroke="${C('hair')}"/>${g}<path d="${d}" fill="none" stroke="${C('curve')}" stroke-width="2.4"/><line x1="${sx(a)}" y1="${sy(f(a))}" x2="${sx(b)}" y2="${sy(f(b))}" stroke="${C('accent')}" stroke-width="2.2" stroke-dasharray="${L}" stroke-dashoffset="${L}"><animate attributeName="stroke-dashoffset" from="${L}" to="0" dur="1.2s" fill="freeze" calcMode="spline" keySplines=".23 1 .32 1"/></line><circle cx="${sx(a)}" cy="${sy(f(a))}" r="5" fill="${C('ink')}"/><circle cx="${sx(b)}" cy="${sy(f(b))}" r="5" fill="${C('ink')}"/><text x="${sx(a)}" y="${sy(0)+18}" text-anchor="middle" font-family="Instrument Serif" font-style="italic" font-size="18" fill="${C('muted')}">a</text><text x="${sx(b)}" y="${sy(0)+18}" text-anchor="middle" font-family="Instrument Serif" font-style="italic" font-size="18" fill="${C('muted')}">b</text>${mode==='g'?`<text x="${sx(.45)}" y="${sy(1.5)}" font-family="Instrument Serif" font-style="italic" font-size="20" fill="${C('good')}">g(x)</text>`:`<text x="${sx(.3)}" y="${sy(2.2)}" font-family="Instrument Serif" font-style="italic" font-size="18" fill="${C('accent')}">corda</text>`}</svg></div>`}
+
+// the question dock (LH: options + "I don't know" + confidence + your thinking)
+function ask({kind,q,opts,open,ok}){return new Promise(res=>{
+ const render=()=>{dock.innerHTML=`<div class="shell"><div class="inner"><div class="lab">${kind}</div><p class="q">${q}</p>
+  ${opts?`<div class="opts" role="group">${opts.map((o,i)=>`<button type="button" class="opt" aria-pressed="false" data-i="${i}"><span class="k">${'ABCD'[i]}</span>${o}</button>`).join('')}<button type="button" class="opt idk" aria-pressed="false" data-i="-1"><span class="k">?</span>Non lo so</button></div>
+  <div class="conf"><label class="lab" for="cf">Fiducia</label><input id="cf" type="range" min="0" max="100" step="10" value="50"><output id="cfo">50%</output></div>`:''}
+  <div class="think"><label class="lab" for="th">${open?'La tua risposta':'Il tuo ragionamento'}</label><textarea id="th" placeholder="${open?'Scrivi come ti viene.':'Perché questa risposta? Quello che ti passa per la testa.'}"></textarea></div>
+  <div class="act"><span class="hint">↵ invia · ⇧↵ a capo</span><button class="pri" id="send" type="button" disabled>Invia risposta</button></div></div></div>`;
+  let pick=null;const send=$('#send'),th=$('#th');
+  $$('.opt').forEach(b=>b.onclick=()=>{pick=+b.dataset.i;$$('.opt').forEach(x=>x.setAttribute('aria-pressed',x===b));send.disabled=false});
+  if(opts){const r=$('#cf');r.oninput=()=>$('#cfo').textContent=r.value+'%'}
+  th.oninput=()=>{if(open)send.disabled=!th.value.trim()};
+  th.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!send.disabled)send.click()}};
+  send.onclick=()=>{const conf=opts?+$('#cf').value:null;dock.innerHTML='';
+   const right=pick===ok, idk=pick===-1;
+   add(`<div class="row"><span class="lab">${kind}</span>${open?'':`<span class="chip ${right?'ok':'no'}">${idk?'Non lo so':right?'Corretto':'Sbagliato'}</span>`}${conf!=null&&!idk?`<span class="lab">fiducia ${conf}%</span>`:''}</div>
+    <div class="ans">${open?th.value:(idk?'Non lo so':opts[pick])}</div>${th.value&&!open?`<div class="th">${th.value}</div>`:''}${!open?`<details><summary>Perché</summary>${opts[ok]} è la risposta giusta.</details>`:''}`,'card');
+   res({pick,right,idk,text:th.value,conf})};
+  (opts?$('.opt'):th).focus();};
+ render();})}
+function invite(){return new Promise(res=>{dock.innerHTML=`<div class="rt"><label class="lab" for="rtt">Pensieri mentre leggi</label><textarea id="rtt" placeholder="Quello che ti viene in mente leggendo."></textarea></div><div class="shell"><div class="inner"><button class="invite" id="inv" type="button"><span><b>Verifica la tua comprensione</b><span>Aprila quando hai finito di leggere</span></span><span class="go">Apri ↓</span></button></div></div>`;$('#inv').onclick=()=>res($('#rtt').value)})}
+function composer(ph){return new Promise(res=>{dock.innerHTML=`<div class="shell"><div class="inner"><div class="composer"><textarea id="cp" rows="1" placeholder="${ph}"></textarea><button class="pri" id="cps" type="button">Approva il piano</button></div></div></div>`;$('#cps').onclick=()=>{const v=$('#cp').value.trim();dock.innerHTML='';add(`<div>${v||'Va bene, partiamo.'}</div>`,'msg you');res()}})}
+
+async function run(){
+ add('<div>Voglio capire il teorema del valor medio per l\'esame di Analisi I.</div>','msg you');
+ await agent('<p>Prima di spiegarti qualcosa, vediamo da dove partiamo. Ti faccio poche domande: rispondi d\'istinto e indica quanto sei sicuro.</p>');
+ await ask({kind:'Misura',q:'Una funzione è continua su [a, b], derivabile in (a, b), e f(a) = f(b). Cosa puoi concludere?',opts:['Esiste c in (a, b) con f′(c) = 0','f è costante su [a, b]','Esiste c in (a, b) con f(c) = 0','f ha un massimo in a'],ok:0});
+ await agent('<p>Rolle ce l\'hai. Dal tuo ragionamento si vede anche che leggi la derivata come pendenza: è proprio quello che ci serve.</p><div class="sumg"><div>Derivata come pendenza<b style="color:var(--good)">solido</b></div><div>Teorema di Rolle<b style="color:var(--good)">solido</b></div><div>Pendenza media / corda<b style="color:var(--muted)">da vedere</b></div></div>');
+ divider('Piano · 5 nodi'); $('#phase').textContent='Piano'; setMap(-1);
+ await agent('<p>Partiamo da quello che hai già (Rolle) e ci arriviamo in <b>due passi</b>: prima diamo un nome alla "pendenza media" di una funzione, poi riduciamo il caso generale a Rolle con un trucco. Il piano è a destra.</p><p>Ti va bene così?</p>');
+ await composer('Chiedi una modifica al piano, oppure approva…');
+ divider('Insegnamento'); $('#phase').textContent='Insegnamento'; setMap(2);
+ await agent('<p>Primo passo. Prima di spiegartelo, prova a indovinarlo.</p>');
+ const p=await ask({kind:'Previsione',q:'Su [a, b] la funzione passa da f(a) a f(b). Se dovessi dire con un solo numero "quanto sale in media", cosa useresti?',opts:['(f(b) − f(a)) / (b − a)','f(b) − f(a)','(f(a) + f(b)) / 2','f′((a + b) / 2)'],ok:0});
+ await agent(`<p>${p.right?'Esatto, hai scelto il rapporto.':'Hai scelto un\'altra strada; vediamo perché il rapporto funziona meglio.'} Il dislivello <span class="m">f(b) − f(a)</span> da solo non basta: salire di 6 in 1 metro o in 100 metri è molto diverso. Va diviso per la distanza <span class="m">b − a</span>.</p><p>Quel rapporto è la pendenza della retta che unisce i due estremi: la <b style="color:var(--accent)">corda</b>.</p>${fig('c')}<p>È la velocità media del viaggio da <span class="m">a</span> a <span class="m">b</span>.</p>`);
+ const rt=await invite(); dock.innerHTML='';
+ await ask({kind:'Verifica',q:'Qual è la pendenza della corda tra i punti (1, 2) e (3, 8)?',opts:['3','6','5','2'],ok:0});
+ setMap(3,[2]);
+ await agent('<p>Giusto. Passo due: qui arriva l\'idea chiave.</p>');
+ await ask({kind:'Previsione',q:'Rolle funziona solo se f(a) = f(b). La nostra f non lo soddisfa. Come potresti "raddrizzarla" per poter usare Rolle?',open:true});
+ await agent(`<p>Ecco il trucco: <b>togli la corda alla funzione</b>. Chiama <span class="m">g(x) = f(x) − corda(x)</span>: è la distanza verticale tra curva e corda.</p>${fig('g')}<p>Agli estremi curva e corda coincidono, quindi <span class="m">g(a) = g(b) = 0</span>. E ora puoi usare Rolle su <span class="m">g</span>…</p><p class="lab" style="margin-top:20px">Fine del prototipo · qui seguirebbero la verifica, il passo 3 e il consolidamento</p>`);
+}
+$('#theme').onclick=()=>{const t=document.documentElement.dataset.theme==='lavagna'?'trattato':'lavagna';document.documentElement.dataset.theme=t;$('#theme').textContent=t==='lavagna'?'Trattato':'Lavagna'};
+run();
+})();
+</script>
+</body>
+</html>

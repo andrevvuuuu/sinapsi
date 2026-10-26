@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="lavagna">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grafo unito</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root{--ease-out:cubic-bezier(.23,1,.32,1);--serif:'Instrument Serif',Georgia,serif;--sans:'Geist',ui-sans-serif,system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace}
+[data-theme="lavagna"]{color-scheme:dark;--bg:#0f100d;--surface:#171814;--hair:rgba(236,233,223,.10);--ink:#ece9df;--muted:#a19e92;--faint:rgba(236,233,223,.055);--accent:#ef7a42;--good:#8fd1a6;--warn:#e9b95f;--bad:#f08080;--pen:#8fb8ff;--inner:inset 0 1px 0 rgba(236,233,223,.06);--shadow:0 30px 60px -30px rgba(0,0,0,.8)}
+[data-theme="trattato"]{color-scheme:light;--bg:#f3eee4;--surface:#fbf8f2;--hair:rgba(36,32,27,.12);--ink:#221e19;--muted:#615a4f;--faint:rgba(36,32,27,.05);--accent:#a83d22;--good:#2f6e48;--warn:#8f6512;--bad:#a8323f;--pen:#2f55a8;--inner:inset 0 1px 0 rgba(255,255,255,.85);--shadow:0 30px 60px -34px rgba(80,60,30,.35)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block;touch-action:none;cursor:grab}
+canvas.hov{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
+button{font:inherit;color:inherit}
+.glass{background:color-mix(in srgb,var(--surface) 86%,transparent);border:1px solid var(--hair);box-shadow:var(--inner),var(--shadow);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.panel{position:fixed;top:16px;left:16px;z-index:5;width:304px;max-height:calc(100vh - 32px);overflow:auto;border-radius:22px;padding:14px}
+.panel h1{font:400 30px/1 var(--serif);margin:2px 4px 4px}
+.meta{font:500 12px var(--mono);color:var(--muted);margin:0 4px 12px;line-height:1.5}
+.search{position:relative}
+.search input{width:100%;min-height:44px;border-radius:14px;border:1px solid var(--hair);background:var(--faint);color:var(--ink);font:inherit;padding:0 14px 0 38px}
+.search input::placeholder{color:var(--muted)}
+.search input:focus-visible{outline:none;border-color:var(--accent)}
+.search svg{position:absolute;left:12px;top:14px;width:16px;height:16px;color:var(--muted)}
+#results{list-style:none;margin:6px 0 0;padding:0}
+#results button{width:100%;display:flex;align-items:center;gap:10px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:transparent;text-align:left;cursor:pointer;font-size:14px}
+#results button:hover,#results button[aria-selected="true"]{background:var(--faint)}
+#results i{width:9px;height:9px;border-radius:50%;flex:none}
+#results small{margin-left:auto;font:500 11px var(--mono);color:var(--muted);white-space:nowrap}
+.sec{margin-top:14px;padding-top:12px;border-top:1px solid var(--hair)}
+.sec h2{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 4px 8px}
+.seg{display:flex;gap:2px;padding:3px;border-radius:12px;background:var(--faint)}
+.seg button{flex:1;min-height:36px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--hair)}
+.hint{font-size:12.5px;color:var(--muted);margin:8px 4px 0;line-height:1.45}
+.lens{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.lens button{min-height:36px;border-radius:10px;border:1px solid transparent;background:transparent;cursor:pointer;font-size:13px;color:var(--muted);text-align:left;padding:0 10px;display:flex;align-items:center;gap:6px}
+.lens button[aria-pressed="true"]{background:var(--faint);color:var(--ink);border-color:var(--hair)}
+.lens button b{margin-left:auto;font:500 11px var(--mono)}
+.tog{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px;padding:0 4px;font-size:14px;cursor:pointer;border:0;background:transparent;width:100%;text-align:left}
+.tog .sw{flex:none;width:36px;height:22px;border-radius:999px;background:var(--hair);position:relative;transition:background-color .25s var(--ease-out)}
+.tog .sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .25s var(--ease-out)}
+.tog[aria-pressed="true"] .sw{background:var(--good)} .tog[aria-pressed="true"] .sw::after{transform:translateX(14px)}
+.tog small{color:var(--muted);font:500 11px var(--mono)}
+.legend ul{list-style:none;margin:0;padding:0;display:grid;gap:7px;font-size:13px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:10px}
+.legend svg{width:30px;height:20px;flex:none}
+.zoom{position:fixed;right:16px;bottom:18px;z-index:5;display:flex;flex-direction:column;gap:2px;padding:4px;border-radius:18px}
+.zoom button{width:42px;height:42px;border:0;border-radius:14px;background:transparent;cursor:pointer;font:500 18px var(--mono);color:var(--muted)}
+.zoom button:hover{background:var(--faint);color:var(--ink)}
+.theme{position:fixed;right:16px;top:16px;z-index:5;display:flex;gap:2px;padding:4px;border-radius:999px}
+.theme button{width:40px;height:40px;border:0;border-radius:999px;background:transparent;cursor:pointer;color:var(--muted)}
+.theme button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.crumbs{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:999px;font-size:13px}
+.crumbs span{padding:6px 12px;border-radius:999px;color:var(--muted);white-space:nowrap;transition:all .3s var(--ease-out)}
+.crumbs span.on{background:var(--ink);color:var(--bg)}
+.crumbs i{color:var(--muted);font-style:normal;opacity:.5}
+.card{position:fixed;top:72px;right:16px;z-index:6;width:350px;max-height:calc(100vh - 100px);overflow:auto;border-radius:24px;padding:20px;transform:translateX(16px);opacity:0;pointer-events:none;transition:transform .35s var(--ease-out),opacity .25s}
+.card.show{transform:none;opacity:1;pointer-events:auto}
+.card .x{position:absolute;top:12px;right:12px;width:36px;height:36px;border-radius:12px;border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:18px}
+.card .x:hover{background:var(--faint)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;padding-right:36px}
+.chips span{font:500 11px var(--mono);padding:3px 9px;border-radius:999px;border:1px solid var(--hair);color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.chips i{width:8px;height:8px;border-radius:50%}
+.card h3{font:400 28px/1.08 var(--serif);margin:0 0 8px;text-wrap:balance}
+.card .stmt{font-size:15px;margin:0 0 12px;padding:12px 14px;border-radius:14px;background:var(--faint)}
+.card p{margin:0 0 10px;color:var(--muted);font-size:14px}
+.card p b{color:var(--ink);font-weight:500}
+.card h4{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.word{display:inline-block;font:500 12px var(--mono);padding:3px 10px;border-radius:999px;margin:0 6px 10px 0}
+.rows{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.rows button,.rows li.s{width:100%;text-align:left;padding:8px 10px;border-radius:10px;background:var(--faint);border:0;cursor:pointer;font-size:14px;display:flex;gap:8px;align-items:center}
+.rows li.s{cursor:default}
+.rows button:hover{background:color-mix(in srgb,var(--ink) 9%,transparent)}
+.rows i{width:8px;height:8px;border-radius:50%;flex:none}
+.rows small{margin-left:auto;font:500 11px var(--mono);color:var(--muted);white-space:nowrap}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.acts button{min-height:42px;border-radius:12px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:14px;padding:0 10px}
+.acts button.pri{background:var(--ink);color:var(--bg);border-color:var(--ink);grid-column:1/-1}
+.membar{height:6px;border-radius:6px;background:var(--hair);overflow:hidden;margin:4px 0 6px}
+.membar i{display:block;height:100%;border-radius:6px}
+.mix{display:flex;height:8px;border-radius:6px;overflow:hidden;margin:6px 0 4px;gap:2px}
+.mix i{display:block;height:100%}
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,10px);z-index:7;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:all .3s var(--ease-out);pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.card,.toast,.crumbs span{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="cv" role="img" aria-label="Grafo unito: materie, note e concetti. Usa la ricerca per selezionare."></canvas>
+
+<nav class="crumbs glass" aria-label="Livello di zoom"><span id="z0">Materie</span><i>›</i><span id="z1">Note</span><i>›</i><span id="z2">Concetti</span></nav>
+
+<section class="panel glass" aria-label="Controlli del grafo">
+  <h1>Grafo</h1>
+  <div class="meta" id="meta"></div>
+  <div class="search">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
+    <input id="q" type="search" placeholder="Cerca un concetto o una nota" aria-label="Cerca nel grafo" aria-controls="results" autocomplete="off">
+  </div>
+  <ul id="results" role="listbox" aria-label="Risultati"></ul>
+
+  <div class="sec">
+    <h2>Disposizione</h2>
+    <div class="seg" role="group" aria-label="Disposizione">
+      <button type="button" data-lay="radial" aria-pressed="true">Radiale</button>
+      <button type="button" data-lay="vertical" aria-pressed="false">A piani</button>
+      <button type="button" data-lay="free" aria-pressed="false">Libera</button>
+    </div>
+    <p class="hint" id="layHint"></p>
+  </div>
+
+  <div class="sec">
+    <h2>Evidenzia</h2>
+    <div class="lens" role="group" aria-label="Evidenzia">
+      <button type="button" data-lens="all" aria-pressed="true">Tutto</button>
+      <button type="button" data-lens="weakbase" aria-pressed="false">Basi fragili<b id="nWB"></b></button>
+      <button type="button" data-lens="due" aria-pressed="false">Da ripassare<b id="nDue"></b></button>
+      <button type="button" data-lens="never" aria-pressed="false">Mai visti<b id="nNever"></b></button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>Mostra</h2>
+    <button type="button" class="tog" id="tReg" aria-pressed="true"><span>Regioni (una per nota)</span><span class="sw" aria-hidden="true"></span></button>
+    <button type="button" class="tog" id="tWl" aria-pressed="true"><span>Link scritti in Obsidian</span><span class="sw" aria-hidden="true"></span></button>
+    <button type="button" class="tog" id="tFr" aria-pressed="true"><span>Frontiera <small id="nFr"></small></span><span class="sw" aria-hidden="true"></span></button>
+  </div>
+
+  <div class="sec legend">
+    <h2>Come leggerlo</h2>
+    <ul>
+      <li><svg viewBox="0 0 30 20" aria-hidden="true"><circle cx="15" cy="10" r="5" fill="#8fd1a6"/></svg>Concetto che sai</li>
+      <li><svg viewBox="0 0 30 20" aria-hidden="true"><circle cx="15" cy="10" r="5" fill="#e9b95f"/></svg>Incerto</li>
+      <li><svg viewBox="0 0 30 20" aria-hidden="true"><circle cx="15" cy="10" r="5" fill="#8fb8ff"/></svg>Accettato senza capirlo</li>
+      <li><svg viewBox="0 0 30 20" aria-hidden="true"><circle cx="15" cy="10" r="4.3" fill="none" stroke="#a19e92" stroke-width="1.6"/></svg>Nelle tue note, mai studiato</li>
+      <li><svg viewBox="0 0 30 20" aria-hidden="true"><circle cx="15" cy="10" r="7" fill="#ece9df"/><circle cx="15" cy="10" r="10" fill="none" stroke="#ece9df" stroke-opacity=".4" stroke-dasharray="2 2"/></svg>Più grande: compare in più note</li>
+      <li><svg viewBox="0 0 30 20" aria-hidden="true"><path d="M2 4 L14 10 M2 16 L14 10 L26 10" stroke="#ece9df" stroke-width="1.3" fill="none"/><path d="M26 10 l-5 -3 v6z" fill="#ece9df"/></svg>Premesse ⇒ conclusione</li>
+      <li><svg viewBox="0 0 30 20" aria-hidden="true"><path d="M3 14 Q15 0 27 14" stroke="#a19e92" stroke-width="1.3" stroke-dasharray="3 3" fill="none"/></svg>Link scritto da te in Obsidian</li>
+    </ul>
+  </div>
+</section>
+
+<div class="theme glass" role="group" aria-label="Tema">
+  <button type="button" data-t="lavagna" aria-pressed="true" aria-label="Tema scuro">◐</button>
+  <button type="button" data-t="trattato" aria-pressed="false" aria-label="Tema chiaro">◑</button>
+</div>
+<div class="zoom glass" role="group" aria-label="Zoom">
+  <button type="button" id="zIn" aria-label="Avvicina">+</button>
+  <button type="button" id="zOut" aria-label="Allontana">−</button>
+  <button type="button" id="zFit" aria-label="Mostra tutto">⤢</button>
+</div>
+<aside class="card glass" id="card" aria-live="polite" aria-label="Dettagli"></aside>
+<div class="toast glass" id="toast" role="status"></div>
+
+<script>
+const V2={"other":[{"id":"Come Funziona il Wi-Fi","s":"scienze","k":"note"},{"id":"Potenziale di Membrana e Potenziale d'Azione","s":"scienze","k":"note"},{"id":"Nichilismo","s":"filosofia","k":"note"},{"id":"La Geopolitica dei Semiconduttori, TSMC e la Questione di Taiwan","s":"storia","k":"note"},{"id":"Bicipite Brachiale e Flessori del Gomito","s":"bodybuilding","k":"note"},{"id":"Come funziona l'industria musicale","s":"arte","k":"note"},{"id":"Teorema dell'Energia Cinetica e Lavoro","s":"scienze","k":"note"},{"id":"Inflazione, Tassi di Interesse e Meccanismo di Trasmissione della Politica Monetaria","s":"storia","k":"note"},{"id":"Discesa del Gradiente e Varianti Stocastiche","s":"matematica","k":"note"},{"id":"Crisi del 1929","s":"storia","k":"note"},{"id":"Metafisica VS Surrealismo","s":"arte","k":"note"},{"id":"Astrattismo VS Dadaismo","s":"arte","k":"note"},{"id":"Macchiaioli General","s":"arte","k":"note"},{"id":"Dadaismo General","s":"arte","k":"note"},{"id":"Romanticismo General","s":"arte","k":"note"},{"id":"Realismo General","s":"arte","k":"note"},{"id":"Espressionismo General","s":"arte","k":"note"},{"id":"Post-Impressionismo","s":"arte","k":"note"},{"id":"Futurismo General","s":"arte","k":"note"},{"id":"Metafisica General","s":"arte","k":"note"},{"id":"Cubismo VS Futurismo","s":"arte","k":"note"},{"id":"Cubismo General","s":"arte","k":"note"},{"id":"Impressionismo General","s":"arte","k":"note"},{"id":"Astrattismo General","s":"arte","k":"note"},{"id":"Surrealismo General","s":"arte","k":"note"},{"id":"Neo-Classicismo General","s":"arte","k":"note"},{"id":"Ricerca Binaria (Binary Search)","s":"matematica","k":"note"},{"id":"Latino","s":"civica","k":"note"},{"id":"AI Cinese vs AI Americana","s":"civica","k":"note"},{"id":"ONU","s":"civica","k":"note"},{"id":"Antropocene","s":"civica","k":"note"},{"id":"Articolo 11","s":"civica","k":"note"},{"id":"Reti Neurali","s":"civica","k":"note"},{"id":"Bleach MOC","s":"filosofia","k":"moc"},{"id":"Bodybuilding MOC","s":"bodybuilding","k":"moc"},{"id":"Analisi 1 MOC","s":"matematica","k":"moc"},{"id":"Algebra Lineare MOC","s":"matematica","k":"moc"},{"id":"Replicazione del DNA, Trascrizione e Traduzione","s":"scienze","k":"note"},{"id":"Omero General","s":"letteratura","k":"note"},{"id":"Il Pessimismo Cosmico e il \"Dialogo della Natura e di un Islandese","s":"letteratura","k":"note"},{"id":"Dissonanza Cognitiva (Festinger) e Meccanismi di Autogiustificazione","s":"filosofia","k":"note"},{"id":"Legame Chimico, Elettronegatività, Ibridazione degli Orbitali e Polarità Molecolare","s":"scienze","k":"note"},{"id":"Sosuke Aizen","s":"filosofia","k":"note"}],"wl":[["Cubismo General","Cubismo VS Futurismo"],["Algebra Lineare MOC","Discesa del Gradiente e Varianti Stocastiche"],["Massimi e Minimi Relativi e Assoluti","Punti Critici o Stazionari"],["Algebra Lineare MOC","Insiemi e Appartenenza"],["Teorema di Fermat sui Punti Stazionari","Teorema di Rolle"],["Algebra Lineare MOC","Teorema dell'Energia Cinetica e Lavoro"],["Punti Interni e Punti di Estremo","Teorema di Rolle"],["Analisi 1 MOC","Numeri Naturali"],["Massimi e Minimi Relativi e Assoluti","Operazioni Insiemistiche Fondamentali"],["Punti Critici o Stazionari","Teorema di Lagrange del Valor Medio"],["Punti Interni e Punti di Estremo","Teorema di Fermat sui Punti Stazionari"],["Massimi e Minimi Relativi e Assoluti","Teorema di Lagrange del Valor Medio"],["Nichilismo","Sosuke Aizen"],["Algebra Lineare MOC","Reti Neurali"],["Insiemi e Appartenenza","Punti Interni e Punti di Estremo"],["Analisi 1 MOC","Punti Interni e Punti di Estremo"],["Astrattismo General","Astrattismo VS Dadaismo"],["Cubismo VS Futurismo","Futurismo General"],["Metafisica General","Metafisica VS Surrealismo"],["Punti Interni e Punti di Estremo","Teorema di Lagrange del Valor Medio"],["Algebra Lineare MOC","Analisi 1 MOC"],["Algebra Lineare MOC","Operazioni Insiemistiche Fondamentali"],["Massimi e Minimi Relativi e Assoluti","Numeri Naturali"],["Analisi 1 MOC","Teorema di Rolle"],["Teorema di Lagrange del Valor Medio","Teorema di Rolle"],["Il Pessimismo Cosmico e il \"Dialogo della Natura e di un Islandese","Nichilismo"],["Crisi del 1929","Inflazione, Tassi di Interesse e Meccanismo di Trasmissione della Politica Monetaria"],["Punti Critici o Stazionari","Punti Interni e Punti di Estremo"],["Analisi 1 MOC","Teorema di Fermat sui Punti Stazionari"],["Massimi e Minimi Relativi e Assoluti","Punti Interni e Punti di Estremo"],["Operazioni Insiemistiche Fondamentali","Punti Interni e Punti di Estremo"],["Analisi 1 MOC","Punti Critici o Stazionari"],["Teorema di Fermat sui Punti Stazionari","Teorema di Lagrange del Valor Medio"],["Analisi 1 MOC","Insiemi e Appartenenza"],["Analisi 1 MOC","Teorema dell'Energia Cinetica e Lavoro"],["Astrattismo VS Dadaismo","Dadaismo General"],["Analisi 1 MOC","Massimi e Minimi Relativi e Assoluti"],["Algebra Lineare MOC","Numeri Naturali"],["Metafisica VS Surrealismo","Surrealismo General"],["Insiemi e Appartenenza","Operazioni Insiemistiche Fondamentali"],["Insiemi e Appartenenza","Numeri Naturali"],["Numeri Naturali","Operazioni Insiemistiche Fondamentali"],["Analisi 1 MOC","Operazioni Insiemistiche Fondamentali"],["Punti Critici o Stazionari","Teorema di Rolle"],["Analisi 1 MOC","Teorema di Lagrange del Valor Medio"],["Massimi e Minimi Relativi e Assoluti","Teorema di Rolle"],["Punti Critici o Stazionari","Teorema di Fermat sui Punti Stazionari"],["Bleach MOC","Sosuke Aizen"],["Bleach MOC","Nichilismo"],["Massimi e Minimi Relativi e Assoluti","Teorema di Fermat sui Punti Stazionari"]],"ghA":["Algoritmo Decisionale per lo Studio del Carattere di una Serie","Algoritmo di Bisezione per Bolzano-Weierstrass","Analisi Matematica 2","Applicazione Geometrica della Media Integrale","Asintoti Obliqui","Assioma di Completezza di Dedekind","Calcolo Combinatorio","Calcolo Diretto dell'Integrale di Riemann dalla Definizione","Calcolo degli Zeri Finali del Fattoriale","Calcolo dei Limiti con gli Sviluppi di Taylor","Calcolo dei Limiti di Funzione tramite Limiti Notevoli","Calcolo dei Limiti di Successioni con Forme Indeterminate","Calcolo dell'Area dell'Ellisse tramite Integrazione","Calcolo della Frazione Generatrice di un Numero Periodico","Calcolo della Retta Tangente al Grafico","Calcolo della Somma di Serie Geometriche e Telescopiche","Calcolo delle Derivate di Ordine Superiore tramite Taylor","Campioni Fondamentali di Integrazione Impropria","Classificazione Operativa delle Discontinuita","Combinazioni Semplici e Coefficienti Binomiali","Composizione di Funzioni","Condizione Necessaria di Convergenza per le Serie","Continuita Puntuale di una Funzione","Continuita Uniforme","Continuita su un Intervallo","Convergenza Assoluta per Integrali Impropri","Convergenza Assoluta per Serie","Convessita e Concavita di una Funzione","Corollario sul Confronto tra Somme Inferiori e Superiori Arbitrarie","Corpo Ordinato dei Numeri Reali","Costante di Nepero","Costruzione Geometrica dei Razionali con il Teorema di Talete","Criteri di Convessita tramite la Derivata Seconda","Criteri di Monotonia tramite la Derivata Prima","Criterio Integrale per le Serie Numeriche","Criterio del Confronto Asintotico per Integrali Impropri","Criterio del Confronto Asintotico per Serie","Criterio del Confronto Ordinario per Integrali Impropri","Criterio del Confronto Ordinario per Serie","Criterio del Rapporto per Serie","Criterio della Convergenza Assoluta per Integrali","Criterio della Radice per Serie","Criterio di Convergenza tramite Sottosuccessioni","Criterio di Derivabilita tramite il Limite della Derivata","Criterio di Integrabilita di Riemann","Criterio di Leibniz per le Serie a Segno Alterno","Derivata Destra e Derivata Sinistra","Derivata delle Funzioni Elementari","Derivata di una Funzione","Derivazione Implicita","Derivazione Logaritmica","Determinazione del Dominio di una Funzione Reale","Dimostrazione di Disuguaglianze tramite Calcolo Differenziale","Disposizioni Semplici","Disuguaglianze Trigonometriche Fondamentali","Dominio Codominio e Immagine","Estremo Superiore ed Estremo Inferiore","Fattoriale","Fisica Generale","Flessi a Tangente Verticale","Forme Indeterminate nei Limiti di Funzione","Forme Indeterminate tra Successioni","Formula Asintotica di Stirling","Formula Fondamentale del Calcolo di Torricelli-Barrow","Formula di Leibniz per le Derivate Successive","Formule Ricorsive per Potenze di Funzioni Trigonometriche","Formule di Addizione e Prostaferesi","Formule di Somma Notabili per Induzione","Funzione Esponenziale","Funzione Gamma di Eulero","Funzione Integrale","Funzione Inversa","Funzione Logaritmo","Funzione di Dirichlet come Controesempio","Funzioni Iniettive Suriettive e Biunivoche","Funzioni Integrabili secondo Riemann","Funzioni Iperboliche e Primitive Associate","Funzioni Limitate ed Estremi di Funzione","Funzioni Lipschitziane","Funzioni Lisce Non Analitiche","Funzioni Monotone","Funzioni Polinomiali e Razionali","Funzioni Reali di Variabile Reale","Funzioni Trigonometriche","Funzioni Trigonometriche Inverse","Gerarchia degli Infiniti","Grafico di una Funzione","Infinitesimi e Ordine di Infinitesimo","Insiemi Compatti della Retta Reale","Insiemi Induttivi","Insiemi Limitati e Illimitati","Integrale Indefinito","Integrale Inferiore e Superiore di Riemann","Integrali Impropri di Prima Specie su Intervalli Illimitati","Integrali Impropri di Seconda Specie su Funzioni Illimitate","Integrali Impropri su Intervalli Simmetrici e Funzioni Dispari","Intervalli Reali","Lemma di Raffinamento delle Partizioni","Limite di una Funzione in un Punto","Limite di una Successione","Limiti Destro e Sinistro","Limiti Infiniti al Finito e Asintoti Verticali","Limiti Infiniti all'Infinito","Limiti Notevoli Fondamentali","Limiti al Finito all'Infinito e Asintoti Orizzontali","Maggioranti e Minoranti","Massimo e Minimo di un Insieme Reale","Matematica MOC","Metodo Assiomatico in Analisi","Metodo del Valore Principale di Cauchy per Singolarita Interne e all'Infinito","Metodo di Bisezione per la Localizzazione degli Zeri","Metodo di Calcolo Ricorsivo dello Sviluppo della Tangente","Metodo di Calcolo degli Asintoti Obliqui","Metodo di Calcolo della Funzione Inversa","Metodo di Calcolo di Estremo Superiore e Inferiore con Epsilon","Metodo di Decomposizione in Fratti Semplici per Funzioni Razionali","Metodo di Derivazione Implicita","Metodo di Derivazione Logaritmica per Funzioni Esponenziali Composte","Metodo di Dimostrazione dell'Irrazionalita per Assurdo","Metodo di Divisibilita nei Fattoriali","Metodo di Integrazione per Parti","Metodo di Integrazione per Sostituzione","Metodo di Razionalizzazione con Tangente dell'Arco Dimezzato","Metodo di Risoluzione di Forme Indeterminate con Razionalizzazione","Metodo di Risoluzione tramite Gerarchia degli Infiniti","Metodo di Sostituzione Iperbolica e Trigonometrica per Radicali Quadratici","Metodo di Sviluppo di Taylor per Funzioni Composte e Prodotti","Metodo di Traslazione degli Indici nelle Sommatorie","Minimo di un Sottoinsieme","Notazione degli O-Piccoli nella Derivabilita","Notazione di Sommatoria e Produttoria","Numeri Interi Relativi","Numeri Irrazionali","Numeri Razionali","Numeri Reali","Operazioni Algebriche e Inversi nei Razionali","Operazioni di Somma e Prodotto nei Naturali","Oscillazione di una Funzione su un Intervallo","Partizioni di un Intervallo","Periodo e Antiperiodo nei Numeri Decimali","Permutazioni","Polinomio di Taylor","Potenze nei Naturali","Primitive Elementari","Primitive Non Elementari","Primitive di una Funzione","Principio del Buon Ordinamento","Principio di Archimede","Principio di Induzione Matematica","Proposizione sull'Assenza del Minimo Razionale Positivo","Proposizione sulla Densita dei Razionali","Proposizione sulla Formula Ricorsiva di Pascal","Proprieta dell'Algebra degli O-Piccoli","Proprieta della Disuguaglianza Triangolare","Proprieta di Caratterizzazione dell'Estremo Superiore","Proprieta di Linearita Monotonia e Additivita dell'Integrale","Proprieta di Monotonia della Funzione Integrale per Integrande Positive","Punti Angolosi e Cuspidi","Punti di Accumulazione e Punti Isolati","Punti di Discontinuita Eliminabile","Punti di Discontinuita di Prima Specie con Salto","Punti di Discontinuita di Seconda Specie","Punti di Flesso","Punti di Non Derivabilita","Punti di Singolarita Interni","Radice Quadrata e Radici Ennesime","Rapporto Incrementale","Rappresentazione Geometrica dei Razionali sulla Retta","Regole Algebriche di Derivazione","Relazione d'Ordine sui Naturali","Resto di Taylor","Retta Reale Estesa e Simboli di Infinito","Retta Tangente al Grafico","Risoluzione di Dimostrazioni per Induzione","Risoluzione di Disequazioni con Valore Assoluto e Radici","Risoluzione di Forme Indeterminate con de l'Hopital","Serie Armonica","Serie Armonica Generalizzata","Serie Geometrica","Serie Numeriche","Serie a Termini Non Negativi","Serie a Termini di Segno Variabile","Simbolo di Landau O-Piccolo","Somme Integrali Inferiori e Superiori","Somme Parziali","Sottografico di una Funzione Positiva e Problema dell'Area","Sottosuccessioni","Stima dell'Errore di Approssimazione con il Resto di Lagrange","Stima dell'Errore per Serie a Segno Alterno","Studio Completo del Grafico di una Funzione","Studio del Grafico di una Funzione","Studio dell'Integrabilita Impropria di Funzioni con Piu Singolarita","Studio della Derivabilita di Funzioni Definite a Tratti","Successioni Convergenti","Successioni Divergenti e Oscillanti","Successioni Limitate","Successioni Notabili","Successioni Numeriche Reali","Sviluppi Asintotici Notevoli","Sviluppi Decimali Non Periodici","Sviluppo Decimale dei Razionali","Teorema Fondamentale del Calcolo Integrale","Teorema Ponte tra Successioni e Funzioni","Teorema degli Zeri di Bolzano","Teorema dei Carabinieri per Funzioni","Teorema dei Carabinieri per Successioni","Teorema dei Valori Intermedi","Teorema del Cambio di Variabile nei Limiti","Teorema del Prodotto tra Infinitesima e Limitata","Teorema del Segno del Limite per Successioni","Teorema della Convergenza Assoluta per Serie","Teorema della Disuguaglianza di Bernoulli","Teorema della Limitatezza delle Successioni Convergenti","Teorema della Media Integrale","Teorema della Permanenza del Segno per Funzioni","Teorema della Permanenza del Segno per Funzioni Continue","Teorema della Permanenza del Segno per Successioni","Teorema dello Sviluppo del Binomio di Newton","Teorema di Bolzano-Weierstrass","Teorema di Cauchy","Teorema di Continuita della Funzione Composta","Teorema di Continuita delle Funzioni Elementari","Teorema di Decomposizione in Fratti Semplici","Teorema di Densita dei Razionali nei Reali","Teorema di Derivazione della Funzione Composta","Teorema di Derivazione della Funzione Inversa","Teorema di Equivalenza tra Buon Ordinamento e Induzione","Teorema di Esistenza dell'Estremo Superiore","Teorema di Estensione dell'Integrale Improprio a Funzioni di Riemann","Teorema di Heine-Borel sulla Continuita Uniforme","Teorema di Integrabilita delle Funzioni Continue","Teorema di Integrabilita delle Funzioni Monotone","Teorema di Integrazione per Parti","Teorema di Integrazione per Sostituzione","Teorema di Invertibilita delle Funzioni Strettamente Monotone","Teorema di Relazione tra Derivabilita e Continuita","Teorema di Rolle Generalizzato","Teorema di Unicita del Limite per Funzioni","Teorema di Unicita del Limite per Successioni","Teorema di Unicita del Polinomio di Taylor","Teorema di Weierstrass sui Massimi e Minimi Assoluti","Teorema di de l'Hopital-Bernoulli","Teorema sui Campioni Fondamentali di Integrazione Impropria","Teorema sui Limiti delle Funzioni Monotone","Teorema sul Resto di Taylor in Forma di Lagrange","Teorema sul Resto di Taylor in Forma di Peano","Teorema sull'Impossibilita del Periodo Nove da Divisione","Teorema sull'Irrazionalita della Radice di Due","Teorema sull'Irrazionalita delle Radici di Non Quadrati Perfetti","Teorema sulle Proprieta Fondamentali della Funzione Gamma di Eulero","Teorema sulle Successioni Monotone","Triangolo di Tartaglia","Valore Assoluto","Valore Principale di Cauchy","Verifica del Limite tramite Definizione Metrica Epsilon-Delta","Verifica della Convergenza Semplice ma Non Assoluta del Seno Cardinale","Verifica della Lipschitzianita di una Funzione","Verifica di Limitatezza di Insiemi Numerici","Verifica di Non Integrabilita tramite Funzione di Dirichlet"],"ghL":["Algoritmo Euclideo delle Divisioni Successive","Algoritmo Euclideo per Polinomi","Algoritmo della Divisione tra Polinomi","Algoritmo di Calcolo del Prodotto Matriciale","Algoritmo di Cifratura RSA","Algoritmo di Diagonalizzazione Ortogonale","Algoritmo di Diagonalizzazione di una Matrice","Algoritmo di Ortogonalizzazione di Gram-Schmidt","Algoritmo di Riduzione a Forma Canonica di Coniche","Algoritmo di Riduzione a Scala di Gauss-Jordan","Algoritmo di Sostituzione all'Indietro","Anello","Anello dei Polinomi","Anello delle Classi di Resto","Applicazione dei Teoremi di Sylow per la Classificazione","Applicazioni Lineari","Applicazioni e Funzioni","Assioma di Gruppo","Autospazio di un Autovalore","Azioni di Gruppo su Insiemi","Base di uno Spazio Vettoriale","Calcolo Combinatorio","Calcolo degli Autovalori e Autospazi","Calcolo dei Coefficienti di Bezout","Calcolo dei Fasci di Piani","Calcolo dei Fattori Invarianti di Gruppi Abeliani","Calcolo dei Polinomi Ciclotomici","Calcolo dei Punti Base e delle Coniche Degeneri di un Fascio","Calcolo dei Valori Singolari e Decomposizione SVD","Calcolo del Coefficiente Binomiale","Calcolo del Determinante con Riduzione di Gauss","Calcolo del Determinante con Sviluppi di Laplace","Calcolo del Gruppo di Galois di Polinomi di Terzo Grado","Calcolo del Nucleo di un'Applicazione Lineare","Calcolo del Piano Tangente a una Quadrica o Sfera","Calcolo del Polinomio Caratteristico","Calcolo del Polinomio Minimo di un Elemento Algebrico","Calcolo del Prodotto Vettore e Prodotto Misto","Calcolo del Rango con Riduzione a Scala","Calcolo del Rango con il Metodo degli Orlati","Calcolo del Segno di una Permutazione","Calcolo dell'Area del Parallelogramma e Volume del Parallelepipedo","Calcolo dell'Immagine di un'Applicazione Lineare","Calcolo dell'Inversa con la Matrice Aggiunta","Calcolo dell'Inversa di una Matrice con Gauss-Jordan","Calcolo dell'Inverso Modulare","Calcolo della Base e della Dimensione di uno Span","Calcolo della Caratteristica di un Anello","Calcolo della Decomposizione Spettrale","Calcolo della Decomposizione in Cicli Disgiunti","Calcolo della Distanza Punto-Piano","Calcolo della Distanza tra Rette Sghembe","Calcolo della Fattorizzazione QR","Calcolo della Funzione Phi di Eulero","Calcolo della Matrice di Gram e della Segnatura","Calcolo della Matrice di Transizione","Calcolo della Proiezione Ortogonale su un Sottospazio","Calcolo della Risolvente Cubica","Calcolo delle Coordinate di Fourier","Calcolo delle Equazioni di Piani nello Spazio","Calcolo delle Equazioni di Rette nello Spazio","Calcolo delle Nuove Coordinate di un Vettore","Calcolo delle Permutazioni e Disposizioni","Calcolo delle Radici Ennesime nei Numeri Complessi","Calcolo di una Base dello Spazio Nullo","Campi Finiti","Campo","Campo di Spezzamento","Caratteristica di un Anello","Cardinalita degli Insiemi","Classi di Equivalenza","Combinazioni Lineari e Sottospazio Generato","Conversione tra Coordinate Affini e Omogenee Proiettive","Conversione tra Forma Parametrica e Cartesiana di Sottospazi","Corollario sull'Equivalenza tra Iniettivita e Suriettivita per Spazi di Pari Dimensione","Corollario sull'Ordine degli Elementi","Corollario sulla Ciclicita dei Gruppi di Ordine Primo","Costruzione dei Campi di Galois","Costruzione dell'Anello Quoziente","Costruzione della Matrice Associata a un'Applicazione Lineare","Costruzione di un'Applicazione Lineare da Immagini di Base","Costruzioni con Riga e Compasso","Criterio di Diagonalizzabilita","Criterio di Irriducibilita di Eisenstein","Criterio di Risolubilita delle Equazioni Diofantee Lineari","Criterio di Sylvester per la Positivita","Determinazione dell'Asse e dell'Angolo di una Rotazione Spaziale","Determinazione di Punti Fissi di un'Affinita","Diagrammi di Hasse","Dimensione di uno Spazio Vettoriale","Disuguaglianza Triangolare dei Numeri Reali","Divisori dello Zero","Domini Euclidei","Domini a Fattorizzazione Unica","Dominio di Integrita","Equazioni Diofantee Lineari","Estensioni Normali","Estensioni di Campi","Formula Esplicita dell'Inversa con Matrice Aggiunta","Formula Orbita-Stabilizzatore","Formula Ricorsiva di Pascal","Formula di De Moivre","Funzione Phi di Eulero","Gruppi Diedrali","Gruppi Risolubili","Gruppi di Simmetria delle Decorazioni","Gruppo Alterno","Gruppo Simmetrico","Gruppo delle Unita delle Classi di Resto","Gruppo di Galois","Ideale","Immagine di un'Applicazione Lineare","Indipendenza Lineare","Insieme Quoziente","Insieme delle Parti","Isomorfismi di Gruppi","Leggi di De Morgan","Lemma Fondamentale di Indipendenza Lineare","Lemma di Dedekind sull'Indipendenza dei Caratteri","Lemma di Gauss sui Polinomi","Matematica MOC","Matrice Aumentata del Sistema","Matrice Rettangolare","Matrice di Cambiamento di Base","Metodo degli Invarianti per la Classificazione delle Coniche","Metodo del Completamento a Base","Metodo della Doppia Inclusione per Insiemi","Metodo della Regola del Parallelogramma","Metodo della Tavola di Verita","Metodo di Conversione tra Basi di Numerazione","Metodo di Dimostrazione per Contrapposizione","Metodo di Eliminazione di Gauss","Norma Vettoriale","Nucleo di un'Applicazione Lineare","Numeri Complessi","Numeri Interi","Numeri Razionali","Omomorfismi di Anelli","Omomorfismi di Gruppi","Piccolo Teorema di Fermat","Polinomi Ciclotomici","Polinomi Simmetrici","Polinomio Caratteristico","Primo Teorema di Omomorfismo per Anelli","Primo Teorema di Omomorfismo per Gruppi","Principio del Buon Ordinamento","Principio del Terzo Escluso","Principio di Dimostrazione per Assurdo","Principio di Induzione Matematica","Prodotti Diretti e Semidiretti","Prodotto Scalare Euclideo","Rappresentazione Cartesiana del Piano nello Spazio","Rappresentazione Parametrica della Retta nello Spazio","Regola dei Segni di Cartesio per Forme Quadratiche","Regola del Modus Ponens","Relazione d'Ordine","Relazione di Congruenza Modulo n","Relazione di Equivalenza","Relazioni Binarie","Relazioni Radici-Coefficienti di Viete","Risoluzione dei Minimi Quadrati","Risoluzione dei Sistemi Lineari con Rouche-Capelli","Risoluzione delle Equazioni Diofantee Lineari","Risoluzione delle Equazioni di Terzo Grado con Formule di Cardano","Risoluzione di Congruenze Lineari","Risoluzione di Dimostrazioni per Induzione","Risoluzione di Sistemi Lineari con Eliminazione di Gauss","Risoluzione di Sistemi Lineari con Regola di Cramer","Scomposizione di Polinomi Simmetrici","Secondo Teorema di Isomorfismo per Anelli","Secondo Teorema di Isomorfismo per Gruppi","Sistemi Lineari Omogenei e Spazio Nullo","Sistemi Lineari a Scala","Sistemi di Numerazione in Basi Diverse","Somma Diretta di Sottospazi","Sottogruppi Ciclici","Sottogruppo","Sottogruppo Normale","Sottospazi Affini","Sottospazi Vettoriali","Spazio Vettoriale su un Campo","Stringa Caratteristica","Studio della Diagonalizzabilita con Parametri","Studio della Fattorizzazione negli Interi di Gauss","Studio della Similitudine tra Matrici Quadrate","Studio della Somma Diretta di Sottospazi","Studio delle Posizioni Reciproche di Rette nello Spazio","Studio delle Posizioni Reciproche tra Retta e Piano","Studio delle Radici con l'Automorfismo di Frobenius","Studio delle Sezioni Piane di Quadriche e Sfere","Successione dei Numeri di Fibonacci","Teorema Cinese del Resto","Teorema Fondamentale dei Gruppi Abeliani Finiti","Teorema Fondamentale dell'Algebra","Teorema Fondamentale dell'Algebra in Chiave Galoisiana","Teorema Fondamentale dell'Aritmetica","Teorema Fondamentale della Corrispondenza di Galois","Teorema Spettrale Reale","Teorema degli Invarianti della Similitudine Matriciale","Teorema degli Orlati di Kronecker","Teorema degli Sviluppi di Laplace","Teorema del Binomio di Newton","Teorema del Cambiamento di Base per Applicazioni Lineari","Teorema del Cambiamento di Base per Endomorfismi","Teorema del Complemento Ortogonale e Somma Diretta","Teorema del Completamento della Base","Teorema dell'Elemento Primitivo","Teorema dell'Indipendenza Lineare di Autovettori con Autovalori Distinti","Teorema dell'Invarianza Ciclica della Traccia","Teorema dell'Invarianza della Dimensione","Teorema dell'Isomorfismo tra Applicazioni Lineari e Matrici","Teorema dell'Uguaglianza del Rango per Righe e per Colonne","Teorema della Ciclicita del Gruppo Moltiplicativo dei Campi Finiti","Teorema della Decomposizione a Valori Singolari","Teorema della Diagonale di Cantor","Teorema della Dimensione per Applicazioni Lineari","Teorema della Disuguaglianza di Cauchy-Schwarz","Teorema della Disuguaglianza tra Molteplicita Algebrica e Geometrica","Teorema della Divisione Euclidea negli Interi","Teorema della Divisione Euclidea tra Polinomi","Teorema della Formula di Grassmann","Teorema della Regola di Cramer","Teorema della Torre dei Gradi","Teorema delle Condizioni Equivalenti di Invertibilita","Teorema di Bezout","Teorema di Bezout nei Domini ad Ideali Principali","Teorema di Binet","Teorema di Cantor sulla Numerabilita dei Razionali","Teorema di Caratterizzazione degli Ideali Primi e Massimali","Teorema di Cauchy sui Gruppi","Teorema di Cayley","Teorema di Cayley Generalizzato","Teorema di Classificazione degli Invarianti Ortogonali delle Coniche","Teorema di Classificazione dei Moti Rigidi nello Spazio","Teorema di Classificazione delle Posizioni Reciproche tra Rette","Teorema di Classificazione delle Quadriche nello Spazio","Teorema di Classificazione tra Retta e Piano","Teorema di Conservazione dei Rapporti Semplici per Affinita","Teorema di Conservazione delle Soluzioni per Operazioni Elementari","Teorema di Corrispondenza per Sottogruppi","Teorema di Corrispondenza tra Partizioni ed Equivalenze","Teorema di Determinazione di un'Applicazione Lineare su una Base","Teorema di Equivalenza dell'Equipollenza Geometrica","Teorema di Equivalenza tra Buon Ordinamento e Induzione","Teorema di Esistenza della Base","Teorema di Esistenza della Decomposizione QR","Teorema di Esistenza e Unicita dei Campi Finiti di Galois","Teorema di Esistenza e Unicita del Campo di Spezzamento","Teorema di Esistenza e Unicita del Determinante","Teorema di Euclide sull'Infinita dei Numeri Primi","Teorema di Eulero","Teorema di Eulero sulle Rotazioni Spaziali","Teorema di Fattorizzazione negli Anelli di Polinomi","Teorema di Gauss-Wantzel sui Poligoni Costruibili","Teorema di Immersione nel Campo dei Quozienti","Teorema di Indipendenza Lineare dei Sistemi Ortogonali","Teorema di Invertibilita della Matrice di Transizione","Teorema di Isomorfismo tra Spazi di Pari Dimensione","Teorema di Jordan-Holder","Teorema di Lagrange sui Gruppi","Teorema di Riduzione a Forma Canonica delle Coniche","Teorema di Risolubilita dei Sistemi Triangolari Superiori","Teorema di Rouche-Capelli","Teorema di Ruffini","Teorema di Schur sulla Triangolabilita Ortogonale","Teorema di Struttura dei Polinomi Simmetrici","Teorema di Struttura delle Soluzioni di Sistemi Lineari","Teorema di Wedderburn sui Corpi Finiti","Teorema sull'Impossibilita delle Costruzioni con Riga e Compasso","Teorema sulla Trasposta del Prodotto Matriciale","Teoremi di Sylow","Terzo Teorema di Isomorfismo per Anelli","Terzo Teorema di Isomorfismo per Gruppi","Verifica di Costruibilita Geometrica","Verifica di Indipendenza Lineare","Verifica di Iniettivita e Suriettivita","Verifica di Invertibilita Matriciale","Verifica di Sottospazio Vettoriale","Vettori Applicati","Vettori Liberi"]};
+(function(){
+const $=id=>document.getElementById(id), cv=$('cv'), ctx=cv.getContext('2d');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C={};const readC=()=>{const s=getComputedStyle(document.documentElement);['bg','ink','muted','hair','accent','good','warn','bad','pen','surface'].forEach(k=>C[k]=s.getPropertyValue('--'+k).trim())};
+let dark=true;
+const SUBJ={matematica:['Matematica','#de77a9','#b03f78'],bodybuilding:['Bodybuilding','#a685f5','#6a3fd1'],arte:['Arte','#f3d55f','#8a6d00'],filosofia:['Filosofia','#b8a1e8','#6b4fb0'],storia:['Storia','#e0706d','#a8323f'],letteratura:['Letteratura','#c8937c','#8a5640'],scienze:['Scienze','#6cc4b0','#1e7a66'],civica:['Ed. civica','#d48a8a','#9c4545']};
+const scol=s=>SUBJ[s]?SUBJ[s][dark?1:2]:'#999';
+
+// ── NOTES (Obsidian files = Learn Harness birth regions) ──
+// hue per note (LH: stable hue per region), memory from the app
+const NOTES=[
+ {id:'IN',t:'Insiemi e Appartenenza',h:'#7fb7c9',m:.9,due:9},
+ {id:'OP',t:'Operazioni Insiemistiche Fondamentali',h:'#6cc4b0',m:.76,due:5},
+ {id:'NN',t:'Numeri Naturali',h:'#a9c46c',m:.29,due:0},
+ {id:'PI',t:'Punti Interni e Punti di Estremo',h:'#c99a6a',m:.45,due:0},
+ {id:'MM',t:'Massimi e Minimi Relativi e Assoluti',h:'#e0a35a',m:.58,due:1},
+ {id:'FE',t:'Teorema di Fermat sui Punti Stazionari',h:'#d983a6',m:.64,due:2},
+ {id:'PC',t:'Punti Critici o Stazionari',h:'#b28ae0',m:.71,due:3},
+ {id:'RO',t:'Teorema di Rolle',h:'#9a8cf0',m:.82,due:4},
+ {id:'LA',t:'Teorema di Lagrange del Valor Medio',h:'#ef8a6a',m:.38,due:1}];
+const NB=Object.fromEntries(NOTES.map(n=>[n.id,n]));
+// ── PROPOSITIONS (what the extractor would mint from your notes; one node per idea, even if it appears in several notes) ──
+// [id, birth note, name, statement, also-in notes, understanding, section]
+const PR=[
+ ['in1','IN','Insieme e appartenenza','Un insieme è determinato dai suoi elementi; x ∈ A dice che x appartiene ad A.',[],'solid','§1'],
+ ['in3','IN','Inclusione','A ⊆ B se e solo se ogni elemento di A appartiene a B.',[],'solid','§4'],
+ ['in4','IN','Uguaglianza per doppia inclusione','A = B se e solo se A ⊆ B e B ⊆ A.',[],'solid','§4'],
+ ['in5','IN','Equivalenza ⇒ partizione','Una relazione di equivalenza divide l\'insieme in classi disgiunte che lo ricoprono.',[],'shaky','§9'],
+ ['op1','OP','Unione, intersezione, differenza','A ∪ B, A ∩ B e A ∖ B si definiscono tramite l\'appartenenza degli elementi.',['IN'],'solid','§1'],
+ ['op2','OP','Leggi di De Morgan','Il complementare dell\'unione è l\'intersezione dei complementari, e viceversa.',[],'solid','§3 ^teo-leggi-de-morgan'],
+ ['op3','OP','Inclusione-esclusione','|A ∪ B| = |A| + |B| − |A ∩ B|.',[],'shaky','§3 ^teo-inclusione-esclusione'],
+ ['nn1','NN','Assiomi di Peano','ℕ è descritto da uno zero, una funzione successore iniettiva e l\'assioma di induzione.',[],'shaky','§1 ^def-assiomi-peano'],
+ ['nn2','NN','Principio di induzione','Se P(0) vale e P(n) ⇒ P(n+1), allora P vale per ogni n.',[],'shaky','§4'],
+ ['nn3','NN','Buon ordinamento','Ogni sottoinsieme non vuoto di ℕ ha un minimo.',[],'accepted','§3 ^def-buon-ordinamento'],
+ ['nn4','NN','Induzione ⟺ buon ordinamento','Induzione standard, induzione forte e buon ordinamento sono equivalenti.',[],'not','§4 ^teo-equivalenza-induzione-buon-ordinamento'],
+ ['nn5','NN','Divisione con resto','Per a, b ∈ ℕ con b > 0 esistono unici q, r con a = bq + r e 0 ≤ r < b.',[],'not','§5 ^teo-divisione-resto'],
+ ['uq','NN','Unicità del massimo e del minimo','Se un insieme ha massimo (o minimo), questo è unico.',['PI','MM'],'solid','§3 ^teo-unicita-minimo'],
+ ['pi1','PI','Intorno sferico','L\'intorno di x₀ di raggio r è l\'intervallo (x₀ − r, x₀ + r).',[],'solid','§1'],
+ ['pi2','PI','Punto interno','x₀ è interno ad A se esiste un intorno di x₀ tutto contenuto in A.',['FE','PC'],'solid','§1 ^decodifica-punto-interno'],
+ ['pi3','PI','Estremo relativo','x₀ è di massimo relativo se f(x₀) ≥ f(x) per ogni x in un intorno di x₀.',['FE','MM'],'shaky','§2'],
+ ['mm1','MM','Estremo assoluto','x₀ è di massimo assoluto se f(x₀) ≥ f(x) per ogni x del dominio.',[],'solid','§2'],
+ ['mm2','MM','Assoluto interno ⇒ relativo','Un estremo assoluto in un punto interno è anche relativo.',[],'not','§3'],
+ ['mm3','MM','Teorema di Weierstrass','Una funzione continua su [a, b] ha massimo e minimo assoluti.',['RO','PC'],'accepted','§6'],
+ ['fe1','FE','Teorema di Fermat','Se x₀ è estremo relativo interno e f è derivabile in x₀, allora f′(x₀) = 0.',['PI','MM'],'solid','§2 ^teo-fermat-punti-stazionari'],
+ ['fe2','FE','Il viceversa di Fermat è falso','f(x) = x³ ha f′(0) = 0 ma 0 non è un estremo.',[],'shaky','§4'],
+ ['pc1','PC','Punto critico','x₀ è critico se f′(x₀) = 0 oppure f non è derivabile in x₀.',[],'solid','§1 ^def-punto-critico'],
+ ['pc2','PC','Criterio della derivata prima','Se f′ cambia segno da + a − in x₀, x₀ è un massimo relativo.',[],'shaky','§3 ^criterio-derivata-prima'],
+ ['pc3','PC','Criterio della derivata seconda','Se f′(x₀) = 0 e f″(x₀) > 0, x₀ è un minimo relativo.',['PI','MM'],'not','§3 ^teo-criterio-derivata-seconda'],
+ ['pc4','PC','Candidati agli estremi su [a, b]','Gli estremi assoluti stanno tra punti critici interni ed estremi dell\'intervallo.',[],'not','§4 ^candidati-estremi-weierstrass'],
+ ['ro2','RO','Ipotesi di Rolle','f continua su [a, b], derivabile in (a, b) e f(a) = f(b).',[],'solid','§2'],
+ ['ro3','RO','Senza continuità Rolle fallisce','Un salto in un estremo basta a impedire la tangente orizzontale.',[],'shaky','§6'],
+ ['ro4','RO','Rolle è Lagrange con la corda orizzontale','Se f(a) = f(b) la pendenza della secante è 0.',[],'solid','§7'],
+ ['fe3','FE','Fermat vale solo nei punti interni','Negli estremi dell\'intervallo un massimo può avere f′ ≠ 0.',[],'shaky','§4'],
+ ['mm4','MM','Relativo non implica assoluto','Un massimo locale può essere superato altrove nel dominio.',[],'solid','§3'],
+ ['ro1','RO','Teorema di Rolle','f continua su [a, b], derivabile in (a, b), f(a) = f(b) ⇒ esiste c con f′(c) = 0.',['LA'],'solid','§2 ^teo-rolle'],
+ ['la1','LA','Ipotesi di Lagrange','f continua su [a, b] e derivabile in (a, b).',[],'solid','§2'],
+ ['la2','LA','Pendenza della secante','La secante tra gli estremi ha pendenza (f(b) − f(a)) / (b − a).',[],'solid','§1.1'],
+ ['la3','LA','g = f − secante si annulla agli estremi','La funzione scarto vale 0 in a e in b.',[],'solid','§4 passo 4'],
+ ['la4','LA','g eredita le ipotesi di f','Continuità e derivabilità passano da f a g.',[],'shaky','§4 passo 3'],
+ ['la5','LA','Esiste c con g′(c) = 0','Rolle applicato alla funzione scarto.',[],'shaky','§4 passo 5'],
+ ['la6','LA','Teorema di Lagrange','Esiste c ∈ (a, b) con f′(c) = (f(b) − f(a)) / (b − a).',[],'shaky','§2 ^teo-lagrange'],
+ ['la7','LA','Serve un intervallo','Senza dominio connesso i corollari cadono.',[],'not','§6.2'],
+ ['la8','LA','Test di costanza','f′ ≡ 0 su un intervallo ⇒ f costante.',[],'not','§7.1 ^corollario-test-costanza'],
+ ['la9','LA','Criterio di monotonia','Il segno di f′ dà la crescenza o decrescenza di f.',['PC'],'shaky','§7.3 ^corollario-monotonia'],
+ ['la10','LA','Criterio di Lipschitz','|f′| ≤ C ⇒ |f(x) − f(y)| ≤ C|x − y|.',[],'not','§7.4 ^corollario-lipschitz'],
+ ['la11','LA','Stessa derivata ⇒ differiscono per C','f′ = g′ su un intervallo ⇒ f = g + C.',[],'not','§7.2'],
+ ['la12','LA','arcsin x + arccos x = π/2','Identità dal test di costanza.',[],'not','§8.1'],
+ ['la13','LA','eˣ ≥ 1 + x','Disuguaglianza dal criterio di monotonia.',[],'not','§9.1'],
+ ['la14','LA','|x| viola la derivabilità','Su [−1, 1] la tangente non è mai orizzontale.',[],'accepted','§6.1']
+];
+// reasoning chains (premises ⇒ conclusion) — the extractor's deliverable
+const CH=[[['in3'],'in4'],[['in1'],'in5'],[['in1'],'op1'],[['op1','in4'],'op2'],[['op1'],'op3'],[['nn1'],'nn2'],[['nn1'],'nn3'],[['nn2','nn3'],'nn4'],[['nn3'],'nn5'],[['in4'],'uq'],
+ [['pi1'],'pi2'],[['pi1'],'pi3'],[['mm1','pi3','pi2'],'mm2'],[['pi2','pi3'],'fe1'],[['fe1'],'fe2'],[['pi2'],'pc1'],[['pc1'],'pc3'],[['pc1','la9'],'pc2'],[['mm3','fe1','pc1'],'pc4'],
+ [['mm3','fe1','ro2'],'ro1'],[['ro1'],'ro3'],[['ro1','la6'],'ro4'],[['fe1'],'fe3'],[['mm1','pi3'],'mm4'],[['la1','la2'],'la3'],[['la1'],'la4'],[['ro1','la3','la4'],'la5'],[['la5','la2'],'la6'],[['la6','la7'],'la8'],[['la6'],'la9'],[['la6'],'la10'],[['la8'],'la11'],[['la8'],'la12'],[['la9'],'la13'],[['la14'],'la1']];
+
+// ── build graph ──
+const nodes=[], byId={};
+PR.forEach(([id,note,name,st,also,u,sec])=>{const n={id,kind:'p',note,name,st,also,u,sec,prov:[note,...also]};nodes.push(n);byId[id]=n});
+const props=nodes.slice();
+// inference depth: longest premise chain (Learn Harness inferenceDepths; DAG here)
+const parents={};CH.forEach(([ps,c])=>{(parents[c]=parents[c]||[]).push(...ps)});
+const depth={};const dOf=id=>depth[id]!=null?depth[id]:(depth[id]=parents[id]?1+Math.max(...parents[id].map(dOf)):0);
+props.forEach(p=>p.d=dOf(p.id));
+const maxD=Math.max(...props.map(p=>p.d));
+const imps=[], logical=[];
+CH.forEach(([ps,c],i)=>{ps.forEach(p=>logical.push([p,c]));if(ps.length>1){const im={id:'arg'+i,kind:'i',ps,c,d:(Math.max(...ps.map(p=>byId[p].d))+byId[c].d)/2};nodes.push(im);byId[im.id]=im;imps.push(im)}});
+// other notes (no extraction yet in the prototype) — Obsidian-style nodes
+const others=V2.other.filter(o=>!o.id.endsWith('MOC')||o.id==='Bodybuilding MOC').map(o=>({id:'o:'+o.id,kind:'n',name:o.id,s:o.s,moc:o.k==='moc'}));
+others.forEach(o=>{nodes.push(o);byId[o.id]=o});
+// frontier: notes your MOCs cite but that don't exist yet
+const FA=V2.ghA.map((g,i)=>({id:'g:'+g,kind:'g',name:g,course:'Analisi 1',i}));
+const FL=V2.ghL.map((g,i)=>({id:'gl:'+g,kind:'g',name:g,course:'Algebra Lineare',i}));
+[...FA,...FL].forEach(g=>{nodes.push(g);byId[g.id]=g});
+// sim links
+const links=[];
+CH.forEach(([ps,c],i)=>{if(ps.length>1){ps.forEach(p=>links.push({source:p,target:'arg'+i,ch:i}));links.push({source:'arg'+i,target:c,ch:i,head:1})}else links.push({source:ps[0],target:c,ch:i,head:1})});
+const owl=V2.wl.filter(([a,b])=>byId['o:'+a]&&byId['o:'+b]).map(([a,b])=>({source:'o:'+a,target:'o:'+b,wl:1}));
+links.push(...owl);
+// Obsidian wikilinks between the math notes (drawn between regions)
+const NID=Object.fromEntries(NOTES.map(n=>[n.t,n.id]));
+const WLN=V2.wl.filter(([a,b])=>NID[a]&&NID[b]).map(([a,b])=>[NID[a],NID[b]]);
+
+// ── layout: Learn Harness forces (springs, charge, cluster pull, depth anchoring) ──
+const BASE=90, SPACING=62, RIM=BASE+maxD*SPACING+120;
+const noteAng={};NOTES.forEach((n,i)=>noteAng[n.id]=-Math.PI/2+i/NOTES.length*Math.PI*2);
+props.forEach(p=>{const a=noteAng[p.note]+(Math.random()-.5)*.5,r=BASE+p.d*SPACING;p.x=Math.cos(a)*r;p.y=Math.sin(a)*r});
+imps.forEach(im=>{const c=byId[im.c];im.x=c.x*.9;im.y=c.y*.9});
+const SC={matematica:null};const subjOrder=['bodybuilding','arte','filosofia','storia','letteratura','scienze','civica'];
+const LCX=RIM*2.2+300, LCY=-RIM*.2;
+subjOrder.forEach((s,i)=>{const a=-Math.PI*.15+i/subjOrder.length*Math.PI*2;SC[s]={x:Math.cos(a)*(RIM+520),y:Math.sin(a)*(RIM+430)}});
+others.forEach(o=>{const c=SC[o.s]||{x:RIM+600,y:0};o.x=c.x+(Math.random()-.5)*160;o.y=c.y+(Math.random()-.5)*160});
+FA.forEach(g=>{const a=g.i/FA.length*Math.PI*2;g.x=Math.cos(a)*RIM;g.y=Math.sin(a)*RIM});
+SC.matematica={x:LCX,y:LCY+340};
+FL.forEach(g=>{const a=g.i*2.399,r=12*Math.sqrt(g.i);g.x=LCX+Math.cos(a)*r;g.y=LCY+Math.sin(a)*r});
+
+let LAY='radial';
+function clusterPull(strength){let ns;function f(alpha){const cen={};for(const p of props){const c=cen[p.note]||(cen[p.note]={x:0,y:0,n:0});c.x+=p.x;c.y+=p.y;c.n++}
+  for(const k in cen){cen[k].x/=cen[k].n;cen[k].y/=cen[k].n}for(const p of props){const c=cen[p.note];p.vx+=(c.x-p.x)*strength*alpha;p.vy+=(c.y-p.y)*strength*alpha}}f.initialize=n=>ns=n;return f}
+function depthForce(){function f(alpha){const k=.8*alpha;for(const n of nodes){if(n.kind!=='p'&&n.kind!=='i')continue;
+  if(LAY==='radial'){const r=BASE+n.d*SPACING,d=Math.hypot(n.x,n.y)||1,dr=(r-d)*k*.12;n.vx+=n.x/d*dr;n.vy+=n.y/d*dr;
+    if(n.kind==='p'){const a=noteAng[n.note];n.vx+=(Math.cos(a)*r-n.x)*k*.035;n.vy+=(Math.sin(a)*r-n.y)*k*.035}}
+  else if(LAY==='vertical'){const ty=260-n.d*SPACING*1.25;n.vy+=(ty-n.y)*k*.12}}}return f}
+const sim=d3.forceSimulation(nodes)
+  .force('link',d3.forceLink(links).id(n=>n.id).distance(l=>l.wl?90:40).strength(l=>l.wl?.15:.7))
+  .force('charge',d3.forceManyBody().strength(n=>n.kind==='g'?-2:n.kind==='i'?-30:n.kind==='n'?-160:-240).distanceMax(500))
+  .force('cluster',clusterPull(.15))
+  .force('depth',depthForce())
+  .force('gx',d3.forceX(n=>n.kind==='n'?(SC[n.s]||{x:0}).x:n.kind==='g'&&n.course==='Algebra Lineare'?LCX:LAY==='vertical'&&n.kind==='p'?(noteAng[n.note]+Math.PI/2)/(Math.PI*2)*900-450:0).strength(n=>n.kind==='n'?.08:n.kind==='g'?(n.course==='Algebra Lineare'?.04:0):LAY==='free'?.04:LAY==='vertical'?.05:.0))
+  .force('gy',d3.forceY(n=>n.kind==='n'?(SC[n.s]||{y:0}).y:n.kind==='g'&&n.course==='Algebra Lineare'?LCY:0).strength(n=>n.kind==='n'?.08:n.kind==='g'?(n.course==='Algebra Lineare'?.04:0):LAY==='free'?.04:0))
+  .force('rim',d3.forceRadial(RIM,0,0).strength(n=>n.kind==='g'&&n.course==='Analisi 1'?.6:0))
+  .force('col',d3.forceCollide(n=>n.kind==='g'?3:n.kind==='i'?2:n.kind==='n'?14:11))
+  .stop();
+for(let i=0;i<500;i++)sim.tick();
+sim.on('tick',()=>{dirty=true});
+function relayout(l){LAY=l;sim.force('gx').strength(sim.force('gx').strength());sim.force('gy').strength(sim.force('gy').strength());sim.alpha(.9).restart();
+  $('layHint').textContent={radial:'Le basi al centro, ciò che ne deriva verso l\'esterno. Il bordo è il limite di quello che sai; oltre, la frontiera.',vertical:'Le basi in basso, le conseguenze sopra: le frecce salgono. Utile per capire cosa studiare prima.',free:'Solo molle e repulsione, come Obsidian. I concetti restano raggruppati per nota.'}[l];
+  setTimeout(()=>fit(l==='vertical'?props:undefined),reduce?0:900)}
+
+// ── memory / state ──
+const W={solid:['la sai','good'],shaky:['incerto','warn'],accepted:['accettato senza capirlo','pen'],not:['mai studiato','muted']};
+const ucol=u=>u==='not'?C.muted:C[W[u][1]];
+const desc={},anc={};
+props.forEach(p=>{desc[p.id]=new Set();anc[p.id]=new Set()});
+const kids={};logical.forEach(([a,b])=>{(kids[a]=kids[a]||[]).push(b)});
+function walk(id,map,set){(map[id]||[]).forEach(x=>{if(!set.has(x)){set.add(x);walk(x,map,set)}})}
+props.forEach(p=>{walk(p.id,kids,desc[p.id]);walk(p.id,parents,anc[p.id])});
+const weakBase=p=>(p.u==='shaky'||p.u==='accepted')&&desc[p.id].size>=3;
+const dueP=p=>NB[p.note].due===0&&p.u!=='not';
+$('nWB').textContent=props.filter(weakBase).length;$('nDue').textContent=props.filter(dueP).length;$('nNever').textContent=props.filter(p=>p.u==='not').length;
+$('nFr').textContent=FA.length+FL.length;
+$('meta').textContent=props.length+' concetti da 9 note di Analisi · '+CH.length+' catene · '+props.filter(p=>p.also.length).length+' concetti presenti in più note';
+
+// ── state ──
+const S={hov:null,sel:null,lens:'all',reg:true,wl:true,fr:true,path:null};
+let T=d3.zoomIdentity,Wd=0,Hd=0,dpr=1,dirty=true;
+function resize(){dpr=Math.min(2,devicePixelRatio||1);Wd=innerWidth;Hd=innerHeight;cv.width=Wd*dpr;cv.height=Hd*dpr;dirty=true}
+addEventListener('resize',resize);resize();
+const sx=x=>x*T.k+T.x, sy=y=>y*T.k+T.y;
+const rgba=(hex,a)=>{const h=hex.replace('#','');const n=parseInt(h,16);return`rgba(${n>>16&255},${n>>8&255},${n&255},${a})`};
+const ease=t=>t<0?0:t>1?1:t*t*(3-2*t);
+const pr=p=>(4.2+p.prov.length*1.6+Math.min(3,(kids[p.id]||[]).length*.6));
+
+// region rasterization (Learn Harness: blurred low-res bitmap behind everything)
+const off=document.createElement('canvas'),octx=off.getContext('2d');
+function regions(alpha){const sc=.25;off.width=Math.ceil(Wd*sc);off.height=Math.ceil(Hd*sc);octx.clearRect(0,0,off.width,off.height);
+  octx.globalCompositeOperation='source-over';
+  for(const n of NOTES){octx.fillStyle=n.h;octx.globalAlpha=1;octx.beginPath();for(const p of props){if(p.note!==n.id)continue;const r=Math.max(3,46*T.k)*sc;octx.moveTo(sx(p.x)*sc+r,sy(p.y)*sc);octx.arc(sx(p.x)*sc,sy(p.y)*sc,r,0,7)}octx.fill()}
+  ctx.save();ctx.globalAlpha=alpha*(dark?.2:.26);ctx.filter='blur('+Math.max(8,40*Math.min(1.4,T.k))+'px)';ctx.drawImage(off,0,0,Wd,Hd);ctx.filter='none';ctx.restore()}
+function hulls(alpha){ctx.save();ctx.setLineDash([3,5]);ctx.lineWidth=1;
+  for(const n of NOTES){const pts=[];for(const p of props){if(p.note!==n.id)continue;const r=26;for(let a=0;a<6;a++)pts.push([sx(p.x+Math.cos(a*1.047)*r),sy(p.y+Math.sin(a*1.047)*r)])}
+    const h=d3.polygonHull(pts);if(!h)continue;ctx.beginPath();h.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.strokeStyle=rgba(n.h,alpha*.55);ctx.stroke();n._hull=h}
+  ctx.restore()}
+function centroid(id){let x=0,y=0,c=0;for(const p of props)if(p.note===id){x+=p.x;y+=p.y;c++}return{x:x/c,y:y/c}}
+
+function focusSets(){
+  if(S.path)return{nodes:S.path.set,edgesOk:(a,b)=>S.path.set.has(a)&&S.path.set.has(b)};
+  const f=S.hov||S.sel;if(!f)return null;
+  if(f.kind==='p'){const set=new Set([f.id]);(parents[f.id]||[]).forEach(x=>set.add(x));(kids[f.id]||[]).forEach(x=>set.add(x));return{nodes:set,edgesOk:(a,b)=>(a===f.id||b===f.id),note:null}}
+  if(f.kind==='note'){const set=new Set(props.filter(p=>p.prov.includes(f.id)).map(p=>p.id));return{nodes:set,edgesOk:(a,b)=>set.has(a)&&set.has(b),note:f.id}}
+  if(f.kind==='n'){return{nodes:new Set([f.id]),edgesOk:()=>false}}
+  return null}
+
+function draw(now){
+  const k=T.k;
+  const tSubj=1-ease((k-.3)/.18), tNote=ease((k-.34)/.16)*(1-ease((k-1.25)/.45)), tProp=ease((k-1.15)/.5);
+  ['z0','z1','z2'].forEach((z,i)=>$(z).classList.toggle('on',[tSubj,tNote,tProp][i]===Math.max(tSubj,tNote,tProp)));
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=C.bg;ctx.fillRect(0,0,Wd,Hd);
+  const F=focusSets(), dimOf=id=>F&&!F.nodes.has(id)?.13:1, lensOn=S.lens!=='all';
+  const lensHit=p=>S.lens==='weakbase'?weakBase(p):S.lens==='due'?dueP(p):S.lens==='never'?p.u==='not':true;
+  // depth rings (radial) — the edge of what you know
+  if(LAY==='radial'){ctx.save();ctx.strokeStyle=rgba(C.ink,.05);ctx.lineWidth=1;for(let d=0;d<=maxD;d++){ctx.beginPath();ctx.arc(sx(0),sy(0),(BASE+d*SPACING)*k,0,7);ctx.stroke()}
+    ctx.setLineDash([2,6]);ctx.strokeStyle=rgba(C.ink,.16);ctx.beginPath();ctx.arc(sx(0),sy(0),(BASE+maxD*SPACING+60)*k,0,7);ctx.stroke();ctx.restore();
+    if(k>.5){ctx.font='500 11px "Geist Mono",monospace';ctx.fillStyle=rgba(C.muted,.8);ctx.textAlign='center';ctx.fillText('limite di ciò che sai',sx(0),sy(-(BASE+maxD*SPACING+60))-8);ctx.fillText('basi',sx(0),sy(0)+4)}}
+  if(S.reg){regions(1);if(tNote>.05&&tProp<.9)hulls(tNote)}
+  // frontier
+  if(S.fr){for(const g of [...FA,...FL]){ctx.beginPath();ctx.arc(sx(g.x),sy(g.y),Math.max(1,1.6*Math.sqrt(k)),0,7);ctx.fillStyle=rgba(scol('matematica'),F?.08:.35);ctx.fill()}
+    if(k<1.4){ctx.textAlign='center';ctx.font='400 22px "Instrument Serif",serif';ctx.fillStyle=rgba(C.muted,.9);
+      ctx.fillText('Algebra Lineare',sx(LCX),sy(LCY)-60*k-26);ctx.font='500 11px "Geist Mono",monospace';ctx.fillText('0 note scritte · '+FL.length+' previste dal MOC',sx(LCX),sy(LCY)-60*k-10)}}
+  // Obsidian wikilinks between note regions (authored by you)
+  if(S.wl&&tProp<.95){ctx.save();ctx.setLineDash([3,4]);ctx.lineWidth=1.2;
+    for(const [a,b] of WLN){const A=centroid(a),B=centroid(b),mx=(A.x+B.x)/2,my=(A.y+B.y)/2,nx=-(B.y-A.y)*.18,ny=(B.x-A.x)*.18;
+      const on=F&&F.note&&(a===F.note||b===F.note);ctx.strokeStyle=rgba(C.muted,(on?.75:.28)*(1-tProp));
+      ctx.beginPath();ctx.moveTo(sx(A.x),sy(A.y));ctx.quadraticCurveTo(sx(mx+nx),sy(my+ny),sx(B.x),sy(B.y));ctx.stroke()}
+    for(const l of owl){const a=l.source,b=l.target;ctx.strokeStyle=rgba(C.muted,.25);ctx.beginPath();ctx.moveTo(sx(a.x),sy(a.y));ctx.lineTo(sx(b.x),sy(b.y));ctx.stroke()}
+    ctx.restore()}
+  // chains (LH geometry: premises converge headless on the junction; one arrow leaves)
+  ctx.lineWidth=1.15;
+  for(const l of links){if(l.wl)continue;const a=l.source,b=l.target;
+    const aid=a.kind==='i'?null:a.id,bid=b.kind==='i'?null:b.id;const im=a.kind==='i'?a:b.kind==='i'?b:null;
+    let on=1;if(F){const [ps,c]=CH[l.ch],f=S.hov||S.sel;on=(S.path?(S.path.set.has(c)&&ps.every(x=>S.path.set.has(x))):f&&f.kind==='p'?(c===f.id||ps.includes(f.id)):f&&f.kind==='note'?(F.nodes.has(c)||ps.some(x=>F.nodes.has(x))):false)?1:.08}
+    if(lensOn)on*=.5;
+    const al=(.18+.5*tProp)*on;ctx.strokeStyle=rgba(C.ink,al);
+    const x1=sx(a.x),y1=sy(a.y),x2=sx(b.x),y2=sy(b.y);
+    if(l.head){const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy)||1,ux=dx/L,uy=dy/L,er=pr(b)*Math.sqrt(k)*.9+2,ah=Math.max(3,6*Math.min(1.4,k));
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2-ux*(er+ah),y2-uy*(er+ah));ctx.stroke();
+      if(k>.45){ctx.beginPath();ctx.moveTo(x2-ux*er,y2-uy*er);ctx.lineTo(x2-ux*(er+ah)-uy*ah*.5,y2-uy*(er+ah)+ux*ah*.5);ctx.lineTo(x2-ux*(er+ah)+uy*ah*.5,y2-uy*(er+ah)-ux*ah*.5);ctx.closePath();ctx.fillStyle=rgba(C.ink,al);ctx.fill()}}
+    else{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}}
+  // other notes (Obsidian-style)
+  for(const o of others){const X=sx(o.x),Y=sy(o.y),r=Math.max(2.5,(o.moc?9:5)*Math.sqrt(k));ctx.globalAlpha=F?(F.nodes.has(o.id)?1:.15):1;
+    ctx.beginPath();ctx.arc(X,Y,r,0,7);ctx.fillStyle=C.bg;ctx.fill();ctx.lineWidth=1.6;ctx.strokeStyle=scol(o.s);ctx.stroke();ctx.globalAlpha=1}
+  // propositions
+  const pulse=reduce?.5:(Math.sin(now/520)+1)/2;let anyDue=false;
+  for(const p of props){const X=sx(p.x),Y=sy(p.y);if(X<-30||Y<-30||X>Wd+30||Y>Hd+30)continue;
+    const r=Math.max(1.8,pr(p)*Math.sqrt(k)*.9);let a=dimOf(p.id);if(lensOn&&!lensHit(p))a=Math.min(a,.12);ctx.globalAlpha=a;
+    const c=ucol(p.u);
+    if(p.prov.length>1){ctx.beginPath();ctx.arc(X,Y,r+3.5,0,7);ctx.setLineDash([2,2]);ctx.strokeStyle=rgba(C.ink,.45);ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([])}
+    if(p.u==='not'){ctx.beginPath();ctx.arc(X,Y,r-.7,0,7);ctx.fillStyle=C.bg;ctx.fill();ctx.lineWidth=1.5;ctx.strokeStyle=c;ctx.stroke()}
+    else{ctx.beginPath();ctx.arc(X,Y,r,0,7);ctx.fillStyle=c;ctx.fill()}
+    if(dueP(p)&&a>.5){anyDue=true;ctx.beginPath();ctx.arc(X,Y,r+6+pulse*3,0,7);ctx.strokeStyle=rgba(C.warn,.25+.45*(1-pulse));ctx.lineWidth=1.2;ctx.stroke()}
+    if(p===S.sel){ctx.beginPath();ctx.arc(X,Y,r+9,0,7);ctx.strokeStyle=C.ink;ctx.lineWidth=1.5;ctx.stroke()}
+    if(p===S.hov){ctx.beginPath();ctx.arc(X,Y,r+12,0,7);ctx.fillStyle=rgba(c,.18);ctx.fill()}
+    ctx.globalAlpha=1}
+  // labels — the three zoom levels cross-fade (subjects › notes › concepts)
+  ctx.textAlign='center';
+  if(tSubj>.02){ctx.globalAlpha=tSubj;ctx.font='400 40px "Instrument Serif",serif';ctx.fillStyle=scol('matematica');ctx.fillText('Analisi 1',sx(0),sy(-RIM)-30);
+    ctx.font='500 12px "Geist Mono",monospace';ctx.fillStyle=C.muted;ctx.fillText('9 note scritte · '+FA.length+' previste dal MOC',sx(0),sy(-RIM)-10);
+    for(const s of subjOrder){const m=others.filter(o=>o.s===s);if(!m.length)continue;const X=sx(d3.mean(m,o=>o.x)),Y=sy(d3.mean(m,o=>o.y))-46;ctx.font='400 26px "Instrument Serif",serif';ctx.fillStyle=scol(s);ctx.fillText(SUBJ[s][0],X,Y);ctx.font='500 11px "Geist Mono",monospace';ctx.fillStyle=C.muted;ctx.fillText(m.length+' note · da importare',X,Y+16)}
+    ctx.globalAlpha=1}
+  if(tNote>.02){const placed=[];ctx.font='400 21px "Instrument Serif",serif';
+    const order=NOTES.map(n=>{const c=centroid(n.id);return{n,X:sx(c.x),Y:sy(c.y)}}).sort((a,b)=>a.Y-b.Y);
+    for(const o of order){const t=o.n.t.length>30?o.n.t.replace('Teorema di ','Teor. ').replace(' Relativi e Assoluti','').replace(' Fondamentali','').replace(' sui Punti Stazionari',''):o.n.t;const w=ctx.measureText(t).width+28;let tries=0;
+      while(tries++<40&&placed.some(p=>Math.abs(p.X-o.X)<(p.w+w)/2+6&&Math.abs(p.Y-o.Y)<46))o.Y+=8;placed.push({X:o.X,Y:o.Y,w});o.n._p=[o.X,o.Y]}
+    for(const n of NOTES){const X=n._p[0],Y=n._p[1];let a=tNote;if(F&&F.note&&F.note!==n.id)a*=.3;ctx.globalAlpha=a;
+      const t=n.t.length>30?n.t.replace('Teorema di ','Teor. ').replace(' Relativi e Assoluti','').replace(' Fondamentali','').replace(' sui Punti Stazionari',''):n.t;
+      ctx.font='400 21px "Instrument Serif",serif';const w=ctx.measureText(t).width+28;
+      ctx.fillStyle=rgba(C.surface,.82);roundRect(X-w/2,Y-21,w,40,20);ctx.fill();ctx.strokeStyle=rgba(n.h,.7);ctx.lineWidth=1.2;ctx.stroke();
+      ctx.fillStyle=C.ink;ctx.fillText(t,X,Y+1);ctx.font='500 10px "Geist Mono",monospace';ctx.fillStyle=C.muted;
+      const ps=props.filter(p=>p.note===n.id);ctx.fillText(ps.length+' concetti · '+Math.round(n.m*100)+'%',X,Y+13);n._lab=[X-w/2,Y-21,w,40]}
+    ctx.globalAlpha=1}else NOTES.forEach(n=>n._lab=null);
+  if(tNote>.02){ctx.font='500 12px Geist,sans-serif';for(const o of others){if(tNote<.3)continue;ctx.globalAlpha=tNote*(F?.3:.85);ctx.fillStyle=C.muted;ctx.fillText(o.name.length>28?o.name.slice(0,26)+'…':o.name,sx(o.x),sy(o.y)+20)}ctx.globalAlpha=1}
+  if(tProp>.02){ctx.font='500 12px Geist,sans-serif';for(const p of props){const X=sx(p.x),Y=sy(p.y);if(X<-150||X>Wd+150||Y<-20||Y>Hd+40)continue;
+      let a=tProp*dimOf(p.id);if(lensOn&&!lensHit(p))a*=.2;if(p===S.hov||p===S.sel)a=1;if(a<.03)continue;ctx.globalAlpha=a;ctx.fillStyle=C.ink;
+      wrap(p.name,X,Y+pr(p)*Math.sqrt(k)*.9+15,Math.max(110,26*k))}ctx.globalAlpha=1}
+  return anyDue}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function wrap(t,x,y,w){const ws=t.split(' ');let line='',yy=y;for(const wd of ws){const tt=line?line+' '+wd:wd;if(ctx.measureText(tt).width>w&&line){ctx.fillText(line,x,yy);line=wd;yy+=15}else line=tt}ctx.fillText(line,x,yy)}
+let pulsing=false;function loop(now){if(dirty||pulsing){pulsing=draw(now)&&!reduce;dirty=false}requestAnimationFrame(loop)}
+
+// ── camera ──
+const zoom=d3.zoom().scaleExtent([.08,6]).on('zoom',ev=>{T=ev.transform;dirty=true});
+const sel=d3.select(cv).call(zoom).on('dblclick.zoom',null);
+function fit(list){list=list||nodes.filter(n=>n.kind!=='i'&&(S.fr||n.kind!=='g'));const xs=list.map(n=>n.x),ys=list.map(n=>n.y);const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  const L0=336,R0=$('card').classList.contains('show')?380:16,cw=Wd-L0-R0;const kk=Math.min(3,.88*Math.min((cw-60)/Math.max(60,x1-x0),(Hd-100)/Math.max(60,y1-y0)));
+  sel.transition().duration(reduce?0:800).ease(d3.easeCubicInOut).call(zoom.transform,d3.zoomIdentity.translate(L0+cw/2-kk*(x0+x1)/2,Hd/2-kk*(y0+y1)/2).scale(kk))}
+function focusOn(x,y,kk){const L0=336,R0=380,cw=Wd-L0-R0;sel.transition().duration(reduce?0:900).ease(d3.easeCubicInOut).call(zoom.transform,d3.zoomIdentity.translate(L0+cw/2-kk*x,Hd/2-kk*y).scale(kk))}
+$('zIn').onclick=()=>sel.transition().duration(300).call(zoom.scaleBy,1.5);
+$('zOut').onclick=()=>sel.transition().duration(300).call(zoom.scaleBy,1/1.5);
+$('zFit').onclick=()=>{S.path=null;fit()};
+
+// ── picking ──
+function pick(x,y){const k=T.k;
+  for(const n of NOTES){if(n._lab){const [a,b,w,h]=n._lab;if(x>=a&&x<=a+w&&y>=b&&y<=b+h)return{kind:'note',id:n.id}}}
+  let best=null,bd=1e9;for(const p of props){const r=pr(p)*Math.sqrt(k)*.9+8,d=Math.hypot(sx(p.x)-x,sy(p.y)-y);if(d<r&&d<bd){bd=d;best=p}}
+  if(best)return best;for(const o of others){const d=Math.hypot(sx(o.x)-x,sy(o.y)-y);if(d<12)return o}return null}
+const same=(a,b)=>a&&b&&a.kind===b.kind&&a.id===b.id;
+cv.addEventListener('pointermove',ev=>{const h=pick(ev.clientX,ev.clientY);if(!same(h,S.hov)&&(h||S.hov)){S.hov=h;dirty=true;cv.classList.toggle('hov',!!h)}});
+let down=null;cv.addEventListener('pointerdown',ev=>{down=[ev.clientX,ev.clientY]});
+cv.addEventListener('click',ev=>{if(down&&Math.hypot(ev.clientX-down[0],ev.clientY-down[1])>4)return;const h=pick(ev.clientX,ev.clientY);select(h)});
+
+// ── cards ──
+const card=$('card');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function row(p,tag){return'<li><button type="button" data-go="'+p.id+'"><i style="background:'+(p.u==='not'?'transparent;box-shadow:inset 0 0 0 1.5px '+C.muted:ucol(p.u))+'"></i>'+esc(p.name)+'<small>'+(tag||NB[p.note].t.replace('Teorema di ','').split(' ').slice(0,2).join(' '))+'</small></button></li>'}
+function select(x){S.sel=x;S.path=null;dirty=true;if(!x){card.classList.remove('show');return}
+  let h='<button class="x" type="button" aria-label="Chiudi">×</button>';
+  if(x.kind==='p'){const p=x,w=W[p.u],nt=NB[p.note];
+    h+='<div class="chips"><span><i style="background:'+nt.h+'"></i>concetto</span><span>livello '+p.d+'</span></div><h3>'+esc(p.name)+'</h3><span class="word" style="color:'+ucol(p.u)+';background:'+rgba(ucol(p.u),.14)+'">'+w[0]+'</span><p class="stmt">'+esc(p.st)+'</p>';
+    h+='<h4>'+(p.prov.length>1?'Compare in '+p.prov.length+' tue note: un nodo solo':'Dove compare')+'</h4><ul class="rows">'+p.prov.map((id,i)=>'<li class="s"><i style="background:'+NB[id].h+'"></i>'+esc(NB[id].t)+'<small>'+(i?'citato':'nato qui · '+esc(p.sec.split(' ')[0]))+'</small></li>').join('')+'</ul>';
+    const ps=(parents[p.id]||[]).map(i=>byId[i]),ks=(kids[p.id]||[]).map(i=>byId[i]);
+    if(ps.length)h+='<h4>Segue da</h4><ul class="rows">'+ps.map(q=>row(q)).join('')+'</ul>';else h+='<h4>Segue da</h4><p>È una base: non dipende da altri concetti.</p>';
+    if(ks.length)h+='<h4>Porta a</h4><ul class="rows">'+ks.map(q=>row(q)).join('')+'</ul>';
+    const A=[...anc[p.id]].map(i=>byId[i]),weak=A.filter(q=>q.u==='shaky'||q.u==='accepted'||q.u==='not');
+    h+='<div class="acts"><button class="pri" type="button" data-a="path">Cosa serve per capirlo ('+A.length+')</button><button type="button" data-a="para">Apri il paragrafo</button><button type="button" data-a="rip">Ripassa</button></div>';
+    if(A.length&&weak.length)h+='<p style="margin-top:12px">Tra le basi di questo concetto, <b>'+weak.length+' sono fragili</b>: '+weak.slice(0,3).map(q=>esc(q.name)).join(', ')+(weak.length>3?'…':'')+'.</p>'}
+  else if(x.kind==='note'){const n=NB[x.id],ps=props.filter(p=>p.note===n.id),sh=props.filter(p=>p.also.includes(n.id));const cnt=u=>ps.filter(p=>p.u===u).length;
+    h+='<div class="chips"><span><i style="background:'+n.h+'"></i>nota Obsidian</span><span>regione</span></div><h3>'+esc(n.t)+'</h3><div class="membar"><i style="width:'+Math.round(n.m*100)+'%;background:'+(n.m>=.7?C.good:n.m>=.5?C.warn:C.bad)+'"></i></div><p><b>'+Math.round(n.m*100)+'%</b> di memoria · prossimo ripasso '+(n.due===0?'<b>oggi</b>':n.due===1?'domani':'tra '+n.due+' giorni')+'</p>';
+    h+='<h4>'+ps.length+' concetti nati qui'+(sh.length?' · '+sh.length+' condivisi':'')+'</h4><div class="mix">'+['solid','shaky','accepted','not'].map(u=>'<i style="flex:'+cnt(u)+';background:'+(u==='not'?C.hair:ucol(u))+'"></i>').join('')+'</div><p>'+cnt('solid')+' li sai · '+cnt('shaky')+' incerti · '+cnt('accepted')+' accettati · '+cnt('not')+' mai studiati</p>';
+    h+='<ul class="rows">'+ps.map(q=>row(q,'livello '+q.d)).join('')+'</ul>';
+    if(sh.length)h+='<h4>Presi da altre note</h4><ul class="rows">'+sh.map(q=>row(q)).join('')+'</ul>';
+    const wl=WLN.filter(e=>e.includes(n.id)).map(e=>e[0]===n.id?e[1]:e[0]);h+='<h4>Link che hai scritto in Obsidian</h4><p>'+wl.map(i=>esc(NB[i].t)).join(' · ')+'</p>';
+    h+='<div class="acts"><button class="pri" type="button" data-a="study">Studia questa nota</button><button type="button" data-a="open">Apri la nota</button><button type="button" data-a="zoom">Entra nella regione</button></div>'}
+  else if(x.kind==='n'){h+='<div class="chips"><span><i style="background:'+scol(x.s)+'"></i>'+SUBJ[x.s][0]+'</span></div><h3>'+esc(x.name)+'</h3><p>Nota di Obsidian <b>non ancora importata</b>: quando la importi, Gemini ne estrae i concetti e le catene e diventa una regione come quelle di Analisi.</p><div class="acts"><button class="pri" type="button" data-a="import">Importa ed estrai i concetti</button></div>'}
+  card.innerHTML=h;card.classList.add('show');card.querySelector('.x').onclick=()=>select(null);
+  card.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{const p=byId[b.dataset.go];select(p);if(T.k<1.4)focusOn(p.x,p.y,1.8)});
+  card.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>act(b.dataset.a,x))}
+function act(a,x){
+  if(a==='path'){const set=new Set([x.id,...anc[x.id]]);S.path={set,root:x};dirty=true;fit([...set].map(i=>byId[i]));toast('Percorso: tutto quello che serve per capire «'+x.name+'»')}
+  else if(a==='zoom'){const c=centroid(x.id);focusOn(c.x,c.y,1.9)}
+  else toast({para:'Si aprirebbe la nota al paragrafo '+(x.sec||''),rip:'Si aprirebbe il Ripasso su questo concetto',study:'Si aprirebbe una sessione di Apprendimento',open:'Si aprirebbe la nota',import:'Gemini estrarrebbe concetti e catene da questa nota'}[a]||'')}
+let tt;function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2600)}
+addEventListener('keydown',e=>{if(e.key==='Escape'&&document.activeElement!==$('q')){select(null)}});
+
+// ── controls ──
+document.querySelectorAll('[data-lay]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-lay]').forEach(x=>x.setAttribute('aria-pressed',x===b));relayout(b.dataset.lay)});
+document.querySelectorAll('[data-lens]').forEach(b=>b.onclick=()=>{S.lens=b.dataset.lens;document.querySelectorAll('[data-lens]').forEach(x=>x.setAttribute('aria-pressed',x===b));dirty=true});
+[['tReg','reg'],['tWl','wl'],['tFr','fr']].forEach(([id,key])=>$(id).onclick=e=>{const b=e.currentTarget,on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on);S[key]=on;dirty=true});
+const q=$('q'),res=$('results');let hits=[],hi=-1;
+function renderRes(){res.innerHTML='';hits.forEach((x,i)=>{const li=document.createElement('li'),b=document.createElement('button');b.type='button';b.setAttribute('role','option');b.setAttribute('aria-selected',i===hi);
+  b.innerHTML='<i style="background:'+(x.kind==='p'?ucol(x.u):x.kind==='note'?NB[x.id].h:scol(x.s))+'"></i>'+esc(x.kind==='note'?NB[x.id].t:x.name)+'<small>'+(x.kind==='p'?'concetto':'nota')+'</small>';b.onclick=()=>go(x);li.appendChild(b);res.appendChild(li)})}
+function go(x){q.value='';hits=[];renderRes();if(x.kind==='p'){focusOn(x.x,x.y,1.9)}else if(x.kind==='note'){const c=centroid(x.id);focusOn(c.x,c.y,1.1)}else focusOn(x.x,x.y,1.2);select(x)}
+q.addEventListener('input',()=>{const v=q.value.trim().toLowerCase();hi=-1;if(!v){hits=[];renderRes();return}
+  hits=[...props.filter(p=>p.name.toLowerCase().includes(v)||p.st.toLowerCase().includes(v)),...NOTES.filter(n=>n.t.toLowerCase().includes(v)).map(n=>({kind:'note',id:n.id})),...others.filter(o=>o.name.toLowerCase().includes(v))].slice(0,8);renderRes()});
+q.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){hi=Math.min(hits.length-1,hi+1);renderRes();e.preventDefault()}else if(e.key==='ArrowUp'){hi=Math.max(0,hi-1);renderRes();e.preventDefault()}else if(e.key==='Enter'&&hits.length)go(hits[Math.max(0,hi)]);else if(e.key==='Escape'){q.value='';hits=[];renderRes()}});
+const tb=[...document.querySelectorAll('[data-t]')];
+function setTheme(t){document.documentElement.dataset.theme=t;dark=t==='lavagna';tb.forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t));readC();dirty=true;if(S.sel)select(S.sel)}
+tb.forEach(b=>b.onclick=()=>setTheme(b.dataset.t));
+setTheme(matchMedia('(prefers-color-scheme: light)').matches?'trattato':'lavagna');
+relayout('radial');
+fit();
+requestAnimationFrame(loop);
+window.__g={S,byId,props,NOTES,focusOn,select,act,fit,relayout,centroid,setLens:l=>document.querySelector('[data-lens="'+l+'"]').click()};
+})();
+</script>
+</body>
+</html>
