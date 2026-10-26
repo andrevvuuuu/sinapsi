@@ -1,0 +1,33 @@
+appId: it.andreaantonelli.sinapsi
+productName: Sinapsi
+directories:
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!tests/*'
+  - '!docs/*'
+  - '!scripts/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{vitest.config.ts,vitest.live.config.ts,playwright.config.ts}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+asarUnpack:
+  - resources/**
+mac:
+  target:
+    - target: dir
+      arch: arm64
+    - target: dmg
+      arch: arm64
+  identity: null
+  category: public.app-category.education
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    - NSCameraUsageDescription: Sinapsi usa la fotocamera per fotografare il foglio degli esercizi.
+    - NSMicrophoneUsageDescription: Sinapsi usa il microfono per le risposte a voce.
+  notarize: false
+dmg:
+  artifactName: Sinapsi-${version}.${ext}
+npmRebuild: false
