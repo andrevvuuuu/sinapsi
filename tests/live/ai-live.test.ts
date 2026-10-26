@@ -16,3 +16,16 @@ describe.runIf(process.env.LIVE_AI === '1')('live engines', () => {
     expect(r.data).toEqual({ ok: true })
   }, 200_000)
 })
+
+describe.runIf(process.env.LIVE_AI === '1')('live conversation', () => {
+  it('remembers across two Claude turns', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sinapsi-live-'))
+    const b = createBridge({ spawn: nodeSpawn, cacheDir: join(dir, 'c'), usageFile: join(dir, 'u.jsonl'), engines: async () => DEFAULT_ENGINES })
+    const S = z.object({ n: z.number() })
+    const js = { type: 'object', properties: { n: { type: 'integer' } }, required: ['n'] }
+    const id = crypto.randomUUID()
+    await b.converse({ task: 'teach', conversationId: id, resume: false, systemPrompt: 'Rispondi solo in JSON.', prompt: 'Ricorda il numero 7. Metti n=7.', schema: S, jsonSchema: js, cwd: dir })
+    const r = await b.converse({ task: 'teach', conversationId: id, resume: true, prompt: 'Quale numero ti ho detto? Mettilo in n.', schema: S, jsonSchema: js, cwd: dir })
+    expect(r.data).toEqual({ n: 7 })
+  }, 300_000)
+})
