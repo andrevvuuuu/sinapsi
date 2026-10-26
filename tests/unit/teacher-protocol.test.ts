@@ -30,6 +30,11 @@ describe('TeacherTurnSchema', () => {
     expect(s.type).toBe('object')
     expect(s.properties.blocks).toBeDefined()
   })
+  it('exports a schema the Claude CLI accepts (no $schema key, no tuples)', () => {
+    const text = JSON.stringify(teacherJsonSchema())
+    expect(text).not.toContain('$schema')
+    expect(text).not.toContain('prefixItems')
+  })
 })
 
 describe('formatLearnerReply', () => {

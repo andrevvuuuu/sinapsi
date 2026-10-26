@@ -49,9 +49,9 @@
 .sess input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:5px;background:var(--faint)}
 .sess input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7.5px;border-radius:50%;background:var(--warn);border:3px solid var(--surface)}
 .think{border:1px solid var(--hair);border-radius:14px;padding:6px 12px;margin-top:6px}
-.think textarea,.rt textarea,.sess .composer textarea{width:100%;border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;resize:none;outline:none}
+.think textarea,.rt textarea,.sess .sc-input textarea{width:100%;border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;resize:none;outline:none}
 .think textarea{min-height:44px}
-.think textarea::placeholder,.rt textarea::placeholder,.sess .composer textarea::placeholder{color:var(--muted);opacity:1}
+.think textarea::placeholder,.rt textarea::placeholder,.sess .sc-input textarea::placeholder{color:var(--muted);opacity:1}
 .act{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px}
 .act .hint{font:500 12px var(--mono);color:var(--muted)}
 .sess .pri{min-height:44px;padding:0 20px;border-radius:999px;border:0;background:var(--ink);color:var(--bg);font:500 15px var(--sans);cursor:pointer;white-space:nowrap}
@@ -64,8 +64,8 @@
 .invite .go{margin-left:auto;min-height:44px;padding:0 18px;border-radius:999px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-size:14px;white-space:nowrap}
 .rt{border:1px solid var(--hair);border-radius:18px;background:color-mix(in srgb,var(--surface) 80%,transparent);padding:8px 14px;margin-bottom:8px}
 .rt textarea{min-height:30px}
-.sess .composer{display:flex;gap:8px;align-items:flex-end}
-.sess .composer textarea{flex:1;min-height:40px;padding:8px 4px;font-size:16px}
+.sess .sc-input{display:flex;gap:8px;align-items:flex-end}
+.sess .sc-input textarea{flex:1;min-height:40px;padding:8px 4px;font-size:16px}
 .sess .side{border-left:1px solid var(--hair);background:var(--panel);padding:20px 16px;overflow:auto}
 .sess .side h2{margin:0 0 14px}
 .map{position:relative;display:flex;flex-direction:column;gap:14px;list-style:none;margin:0;padding:0}

@@ -12,7 +12,9 @@ export const ROLE_IT: Record<(typeof ROLES)[number], string> = {
 
 const BlockSchema = z.object({ type: z.literal('text'), md: z.string() })
 const PlanNodeSchema = z.object({ id: z.string().min(1), title: z.string().min(1), status: z.enum(['known', 'todo', 'goal']) })
-const PlanSchema = z.object({ nodes: z.array(PlanNodeSchema).min(1), edges: z.array(z.tuple([z.string(), z.string()])) })
+// Edges are [from, to] pairs; plain 2-item arrays keep the JSON Schema simple for the CLI.
+const Edge = z.array(z.string()).min(2).max(2) as unknown as z.ZodType<[string, string]>
+const PlanSchema = z.object({ nodes: z.array(PlanNodeSchema).min(1), edges: z.array(Edge) })
 const QuestionSchema = z.object({
   id: z.string().min(1),
   role: z.enum(ROLES),
@@ -59,8 +61,10 @@ export type Plan = z.infer<typeof PlanSchema>
 export type Question = z.infer<typeof QuestionSchema>
 export type TeacherTurn = z.infer<typeof TurnShape>
 
+/** JSON Schema 2020-12 without the "$schema" key (the Claude CLI rejects the remote reference). */
 export function teacherJsonSchema(): object {
-  return z.toJSONSchema(TurnShape)
+  const { $schema: _drop, ...rest } = z.toJSONSchema(TurnShape) as Record<string, unknown>
+  return rest
 }
 
 export const LearnerAnswerSchema = z.object({

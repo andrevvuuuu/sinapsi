@@ -102,7 +102,7 @@ export function SessionView({ id, onBack }: { id: string; onBack: () => void }):
               {q && <QuestionDock key={q.id} question={q} onAnswer={(a) => void api.answer(id, a)} onSay={(t) => void api.say(id, t)} />}
               {!q && s.awaiting === 'learner' && s.phase !== 'done' && (
                 <div className="shell">
-                  <div className="inner composer">
+                  <div className="inner sc-input">
                     <textarea aria-label="Fai una domanda al tutor" placeholder="Fai una domanda al tutor" value={free} rows={1} onChange={(e) => setFree(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendFree() } }} />
                     <button type="button" className="pri" disabled={!free.trim()} onClick={sendFree}>
                       Invia
