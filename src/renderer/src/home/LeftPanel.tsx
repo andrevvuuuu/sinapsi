@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { SessionSummary } from '../../../shared/api'
 import type { Settings } from '../../../shared/settings-schema'
 import type { TreeNode } from './build-tree'
 import { IconGear, IconPanel } from './icons'
@@ -9,6 +10,8 @@ const THEMES: [Settings['theme'], string][] = [['lavagna', 'Lavagna'], ['trattat
 
 type Props = {
   tree: TreeNode[]
+  sessions: SessionSummary[]
+  onOpenSession: (id: string) => void
   settings: Settings | null
   onClose: () => void
   onOpenNote: (path: string) => void
@@ -16,7 +19,7 @@ type Props = {
   onChooseVault: () => void
 }
 
-export function LeftPanel({ tree, settings, onClose, onOpenNote, onTheme, onChooseVault }: Props): React.JSX.Element {
+export function LeftPanel({ tree, sessions, onOpenSession, settings, onClose, onOpenNote, onTheme, onChooseVault }: Props): React.JSX.Element {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('Entrambe')
   const [open, setOpen] = useState(false)
   return (
@@ -38,7 +41,21 @@ export function LeftPanel({ tree, settings, onClose, onOpenNote, onTheme, onChoo
             </button>
           ))}
         </div>
-        <p className="empty">Nessuna sessione ancora.</p>
+        {filter === 'Pratica' || sessions.length === 0 ? (
+          <p className="empty">Nessuna sessione ancora.</p>
+        ) : (
+          <ul className="sessions">
+            {sessions.slice(0, 8).map((x) => (
+              <li key={x.id}>
+                <button type="button" onClick={() => onOpenSession(x.id)}>
+                  <i className="dot" aria-hidden="true" />
+                  <span className="t">{x.topic}</span>
+                  <span className="s">Apprendimento · {new Date(x.updatedAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <div className="divider" />
       <div className="psec scroll" style={{ flex: 1 }}>
