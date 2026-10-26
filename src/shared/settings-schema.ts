@@ -8,7 +8,7 @@ const EngineChoice = z.object({ engine: z.enum(['agy', 'claude']), model: z.stri
 export type EngineChoice = z.infer<typeof EngineChoice>
 
 const GEMINI: EngineChoice = { engine: 'agy', model: 'gemini-3.8-flash-high' }
-const CLAUDE: EngineChoice = { engine: 'claude' }
+const CLAUDE: EngineChoice = { engine: 'claude', model: 'sonnet' }
 export const DEFAULT_ENGINES: Record<Task, EngineChoice> = {
   extract: GEMINI,
   note: GEMINI,

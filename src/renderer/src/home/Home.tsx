@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { EngineStatus as Status, VaultResult } from '../../../shared/api'
+import type { EngineStatus as Status, SessionSummary, VaultResult } from '../../../shared/api'
 import type { Engine, Settings } from '../../../shared/settings-schema'
 import { buildTree } from './build-tree'
 import { Composer } from './Composer'
@@ -14,7 +14,7 @@ function applyTheme(theme: Settings['theme']): void {
   document.documentElement.dataset.theme = theme === 'system' ? (dark ? 'lavagna' : 'trattato') : theme
 }
 
-export default function Home(): React.JSX.Element {
+export default function Home({ onOpenSession }: { onOpenSession?: (id: string) => void } = {}): React.JSX.Element {
   const api = window.sinapsi
   const [index, setIndex] = useState<VaultResult | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -22,6 +22,7 @@ export default function Home(): React.JSX.Element {
   const [left, setLeft] = useState(true)
   const [right, setRight] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
+  const [sessions, setSessions] = useState<SessionSummary[]>([])
 
   const reload = useCallback(async () => {
     const [s, idx] = await Promise.all([api.settings.get(), api.vault.index()])
@@ -33,6 +34,7 @@ export default function Home(): React.JSX.Element {
   useEffect(() => {
     void reload()
     void api.ai.status().then(setStatus)
+    void api.session?.list().then(setSessions)
     const offVault = api.vault.onChange(setIndex)
     const offAi = api.ai.onStatus(setStatus)
     return () => {
@@ -61,6 +63,8 @@ export default function Home(): React.JSX.Element {
     <div className={'app' + (left ? '' : ' l-off') + (right ? '' : ' r-off')}>
       <LeftPanel
         tree={tree}
+        sessions={sessions}
+        onOpenSession={(id) => onOpenSession?.(id)}
         settings={settings}
         onClose={() => setLeft(false)}
         onOpenNote={(path) => void api.app.openExternal('obsidian://open?path=' + encodeURIComponent(path))}
@@ -112,7 +116,13 @@ export default function Home(): React.JSX.Element {
             {toast}
           </div>
         )}
-        <Composer onSubmit={() => setToast('Le sessioni arrivano nella prossima fase')} />
+        <Composer
+          onSubmit={async (mode, text) => {
+            if (mode !== 'Apprendimento' || !api.session) return setToast(`${mode}: arriva in una prossima fase`)
+            const id = await api.session.start(text)
+            onOpenSession?.(id)
+          }}
+        />
       </main>
       <NotebookPanel onClose={() => setRight(false)} />
     </div>

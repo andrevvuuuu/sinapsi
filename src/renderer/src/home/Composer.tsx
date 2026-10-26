@@ -3,7 +3,7 @@ import { IconSend } from './icons'
 
 const MODES = ['Apprendimento', 'Pratica', 'Ripasso'] as const
 
-export function Composer({ onSubmit }: { onSubmit: (mode: string, text: string) => void }): React.JSX.Element {
+export function Composer({ onSubmit }: { onSubmit: (mode: string, text: string) => unknown }): React.JSX.Element {
   const [mode, setMode] = useState<(typeof MODES)[number]>('Apprendimento')
   const [text, setText] = useState('')
   const send = (): void => {

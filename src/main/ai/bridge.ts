@@ -4,14 +4,14 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import type { Engine, EngineChoice, Task } from '../../shared/settings-schema'
 import { appendJsonl } from '../store/jsonl'
-import { buildArgs, parseOutput } from './engines'
+import { buildArgs, parseOutput, type CallOptions } from './engines'
 import { AiOutputError, AiSchemaError, AiTimeoutError, AuthRequiredError, EngineMissingError } from './errors'
 import { extractJson } from './json'
 
 export type SpawnFn = (
   cmd: string,
   args: string[],
-  opts: { timeoutMs: number }
+  opts: { timeoutMs: number; cwd?: string }
 ) => Promise<{ stdout: string; stderr: string; code: number | null; timedOut: boolean }>
 
 export type EngineStatus = 'idle' | 'busy' | 'auth' | 'missing' | 'error'
@@ -29,8 +29,20 @@ export interface AskResult<T> {
   fromCache: boolean
   engine: Engine
 }
+export interface ConverseRequest<T> {
+  task: Task
+  conversationId: string
+  resume: boolean
+  systemPrompt?: string
+  prompt: string
+  schema: z.ZodType<T>
+  jsonSchema: object
+  cwd?: string
+  timeoutMs?: number
+}
 export interface Bridge {
   ask<T>(req: AskRequest<T>): Promise<AskResult<T>>
+  converse<T>(req: ConverseRequest<T>): Promise<{ data: T; conversationId: string; engine: Engine }>
   status(): Record<Engine, EngineStatus>
   onStatus(cb: (s: Record<Engine, EngineStatus>) => void): () => void
 }
@@ -62,13 +74,14 @@ export function createBridge(deps: {
     return run
   }
 
-  async function callOnce(task: Task, engine: Engine, model: string | undefined, prompt: string, timeoutMs: number): Promise<string> {
-    const { cmd, args } = buildArgs(engine, prompt, model)
+  async function callOnce(task: Task, engine: Engine, prompt: string, timeoutMs: number, opts: CallOptions & { cwd?: string } = {}): Promise<{ text: string; conversationId?: string }> {
+    const model = opts.model
+    const { cmd, args } = buildArgs(engine, prompt, opts)
     const t0 = now()
     setState(engine, 'busy')
     let res
     try {
-      res = await deps.spawn(cmd, args, { timeoutMs })
+      res = await deps.spawn(cmd, args, { timeoutMs, cwd: opts.cwd })
     } catch (e) {
       const missing = (e as NodeJS.ErrnoException).code === 'ENOENT'
       setState(engine, missing ? 'missing' : 'error')
@@ -79,7 +92,7 @@ export function createBridge(deps: {
         const out = parseOutput(engine, res.stdout)
         await logUsage({ ts: t0, task, engine, model, inputTokens: out.inputTokens, outputTokens: out.outputTokens, ms: now() - t0, ok: true })
         setState(engine, 'idle')
-        return out.text
+        return { text: out.text, conversationId: out.conversationId }
       } catch {
         /* not a valid reply: fall through to the failure checks */
       }
@@ -103,7 +116,25 @@ export function createBridge(deps: {
     }
   }
 
+  async function converse<T>(req: ConverseRequest<T>): Promise<{ data: T; conversationId: string; engine: Engine }> {
+    const { engine, model } = (await deps.engines())[req.task]
+    const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT
+    return enqueue(engine, async () => {
+      const base = { model, systemPrompt: req.systemPrompt, jsonSchema: req.jsonSchema, cwd: req.cwd }
+      const first = await callOnce(req.task, engine, req.prompt, timeoutMs, { ...base, conversation: { id: req.conversationId, resume: req.resume } })
+      const convId = first.conversationId ?? req.conversationId
+      const v1 = validate(req.schema, first.text)
+      if (v1.ok) return { data: v1.value, conversationId: convId, engine }
+      const retry = `La risposta precedente non era valida: ${v1.error}. Rispondi di nuovo, solo con JSON valido secondo lo schema.`
+      const second = await callOnce(req.task, engine, retry, timeoutMs, { ...base, conversation: { id: convId, resume: true } })
+      const v2 = validate(req.schema, second.text)
+      if (v2.ok) return { data: v2.value, conversationId: second.conversationId ?? convId, engine }
+      throw new AiSchemaError(v2.error)
+    })
+  }
+
   return {
+    converse,
     status: () => ({ ...state }),
     onStatus(cb) {
       listeners.add(cb)
@@ -126,12 +157,12 @@ export function createBridge(deps: {
       }
       const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT
       const data = await enqueue(engine, async () => {
-        const text = await callOnce(req.task, engine, model, req.prompt, timeoutMs)
+        const text = (await callOnce(req.task, engine, req.prompt, timeoutMs, { model })).text
         if (!req.schema) return text
         const first = validate(req.schema, text)
         if (first.ok) return first.value
         const retryPrompt = `${req.prompt}\n\nLa risposta precedente non era valida: ${first.error}. Rispondi solo con JSON valido.`
-        const second = validate(req.schema, await callOnce(req.task, engine, model, retryPrompt, timeoutMs))
+        const second = validate(req.schema, (await callOnce(req.task, engine, retryPrompt, timeoutMs, { model })).text)
         if (second.ok) return second.value
         throw new AiSchemaError(second.error)
       })

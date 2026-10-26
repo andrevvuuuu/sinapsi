@@ -36,7 +36,7 @@ describe('AI bridge', () => {
     const b = bridge(async (cmd, args) => (calls.push([cmd, ...args]), ok(claudeOk('OK'))))
     const r = await b.ask({ task: 'teach', prompt: 'spiega' })
     expect(r).toMatchObject({ data: 'OK', engine: 'claude' })
-    expect(calls[0]).toEqual(['claude', '-p', 'spiega', '--output-format', 'json'])
+    expect(calls[0]).toEqual(['claude', '-p', 'spiega', '--output-format', 'json', '--model', 'sonnet'])
   })
 
   it('reports a login prompt as AuthRequiredError', async () => {

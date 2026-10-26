@@ -4,13 +4,31 @@ import type { Engine } from '../../shared/settings-schema'
 import { AiOutputError } from './errors'
 import type { SpawnFn } from './bridge'
 
-export function buildArgs(engine: Engine, prompt: string, model?: string): { cmd: string; args: string[] } {
-  const m = model ? ['--model', model] : []
-  if (engine === 'agy') return { cmd: 'agy', args: ['-p', prompt, '--output-format', 'json', '--print-timeout', '170s', ...m] }
-  return { cmd: 'claude', args: ['-p', prompt, '--output-format', 'json', ...m] }
+export type CallOptions = {
+  model?: string
+  conversation?: { id: string; resume: boolean }
+  systemPrompt?: string
+  jsonSchema?: object
 }
 
-export function parseOutput(engine: Engine, stdout: string): { text: string; inputTokens: number; outputTokens: number } {
+// The tutor only talks: no file, shell or web tools inside a conversation.
+const NO_TOOLS = 'Bash Edit Write Read Glob Grep WebFetch WebSearch Task NotebookEdit'
+
+export function buildArgs(engine: Engine, prompt: string, opts: CallOptions = {}): { cmd: string; args: string[] } {
+  const m = opts.model ? ['--model', opts.model] : []
+  const schema = opts.jsonSchema ? ['--json-schema', JSON.stringify(opts.jsonSchema)] : []
+  const conv = opts.conversation
+  if (engine === 'agy') {
+    const text = opts.systemPrompt && !conv?.resume ? `${opts.systemPrompt}\n\n${prompt}` : prompt
+    return { cmd: 'agy', args: ['-p', text, '--output-format', 'json', '--print-timeout', '170s', ...m, ...(conv?.resume ? ['--conversation', conv.id] : []), ...schema] }
+  }
+  const session = conv ? (conv.resume ? ['--resume', conv.id] : ['--session-id', conv.id]) : []
+  const system = opts.systemPrompt && !conv?.resume ? ['--system-prompt', opts.systemPrompt] : []
+  const lockdown = conv ? ['--tools', '', '--disallowedTools', NO_TOOLS, '--strict-mcp-config', '--setting-sources', ''] : []
+  return { cmd: 'claude', args: ['-p', prompt, '--output-format', 'json', ...m, ...session, ...system, ...schema, ...lockdown] }
+}
+
+export function parseOutput(engine: Engine, stdout: string): { text: string; inputTokens: number; outputTokens: number; conversationId?: string } {
   let o: Record<string, unknown>
   try {
     o = JSON.parse(stdout.trim())
@@ -19,8 +37,12 @@ export function parseOutput(engine: Engine, stdout: string): { text: string; inp
   }
   const usage = (o.usage ?? {}) as Record<string, number>
   const tokens = { inputTokens: usage.input_tokens ?? 0, outputTokens: usage.output_tokens ?? 0 }
-  if (engine === 'agy' && o.status === 'SUCCESS' && typeof o.response === 'string') return { text: o.response.trim(), ...tokens }
-  if (engine === 'claude' && o.is_error === false && typeof o.result === 'string') return { text: o.result.trim(), ...tokens }
+  if (engine === 'agy' && o.status === 'SUCCESS' && typeof o.response === 'string')
+    return { text: o.response.trim(), ...tokens, conversationId: typeof o.conversation_id === 'string' ? o.conversation_id : undefined }
+  if (engine === 'claude' && o.is_error === false && (typeof o.result === 'string' || o.structured_output)) {
+    const text = o.structured_output !== undefined && o.structured_output !== null ? JSON.stringify(o.structured_output) : String(o.result).trim()
+    return { text, ...tokens, conversationId: typeof o.session_id === 'string' ? o.session_id : undefined }
+  }
   throw new AiOutputError(`${engine}: risposta inattesa`)
 }
 
@@ -28,11 +50,11 @@ export function parseOutput(engine: Engine, stdout: string): { text: string; inp
  * Real process runner: stdin closed, cwd = home, own process group so a timeout kills the whole tree
  * (SIGTERM, then SIGKILL). Resolves even if a grandchild keeps the pipes open.
  */
-export const nodeSpawn: SpawnFn = (cmd, args, { timeoutMs }) =>
+export const nodeSpawn: SpawnFn = (cmd, args, { timeoutMs, cwd }) =>
   new Promise((resolve, reject) => {
     const home = homedir()
     const env = { ...process.env, PATH: [`${home}/.local/bin`, '/opt/homebrew/bin', '/usr/local/bin', process.env.PATH].join(':') }
-    const child = spawn(cmd, args, { cwd: home, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
+    const child = spawn(cmd, args, { cwd: cwd ?? home, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
     let stdout = ''
     let stderr = ''
     let timedOut = false
