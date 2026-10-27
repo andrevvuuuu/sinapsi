@@ -14,7 +14,9 @@ export const ReviewLineSchema = z.object({
   dontKnow: z.boolean().optional(),
   variantId: z.string().optional(),
   type: z.enum(EXERCISE_TYPES).optional(),
-  misconception: z.boolean().optional()
+  misconception: z.boolean().optional(),
+  /** Where the evidence came from: a Ripasso item (default) or a concluded Pratica problem. */
+  via: z.enum(['review', 'practice']).optional()
 })
 export type ReviewLine = z.infer<typeof ReviewLineSchema>
 
