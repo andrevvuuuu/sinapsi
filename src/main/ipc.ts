@@ -98,6 +98,7 @@ export function registerIpc(): { bridge: Bridge } {
       return 'error' in idx ? null : idx
     },
     readNote: (path) => readFile(path, 'utf8'),
+    games: async () => (await settings.load()).gamesInSessions,
     onUpdate: (s) => {
       broadcast(CH.sessionUpdated, s)
       // Studying a note is the moment to (re)extract its concepts.

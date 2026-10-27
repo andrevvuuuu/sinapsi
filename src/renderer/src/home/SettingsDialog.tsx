@@ -22,6 +22,7 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
   const [bg, setBg] = useState(settings.backgroundExtraction)
   const [daily, setDaily] = useState(String(settings.dailyExtractionLimit))
   const [size, setSize] = useState(String(settings.reviewSessionSize))
+  const [games, setGames] = useState(settings.gamesInSessions)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const first = useRef<HTMLButtonElement>(null)
@@ -51,7 +52,7 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
     if (!Number.isInteger(d) || d < 0 || d > 50) return setError('Note al giorno: un numero da 0 a 50.')
     if (!Number.isInteger(n) || n < 1 || n > 20) return setError('Domande per Ripasso: un numero da 1 a 20.')
     try {
-      onSaved(await window.sinapsi.settings.set({ engines, backgroundExtraction: bg, dailyExtractionLimit: d, reviewSessionSize: n }))
+      onSaved(await window.sinapsi.settings.set({ engines, backgroundExtraction: bg, dailyExtractionLimit: d, reviewSessionSize: n, gamesInSessions: games }))
       setError(null)
       setSaved(true)
     } catch (e) {
@@ -135,6 +136,13 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
             <label className="sd-row">
               Note al giorno
               <input type="number" min={0} max={50} value={daily} onChange={(e) => (setDaily(e.target.value), setSaved(false))} />
+            </label>
+          </section>
+          <section>
+            <h3>Apprendimento</h3>
+            <label className="sd-row">
+              <input type="checkbox" checked={games} onChange={(e) => (setGames(e.target.checked), setSaved(false))} />
+              Giochi nelle sessioni (Lampo, Coppie, Ricomponi, Trova l’intruso, Tabù)
             </label>
           </section>
           <section>

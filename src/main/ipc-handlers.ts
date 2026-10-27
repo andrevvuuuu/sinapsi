@@ -29,7 +29,8 @@ const Patch = z
     backgroundExtraction: z.boolean(),
     dailyExtractionLimit: z.number().int().min(0).max(50),
     reviewSessionSize: z.number().int().min(1).max(20),
-    exerciseTypes: z.array(z.enum(EXERCISE_TYPES)).min(1)
+    exerciseTypes: z.array(z.enum(EXERCISE_TYPES)).min(1),
+    gamesInSessions: z.boolean()
   })
   .partial()
   .strict()
