@@ -13,6 +13,8 @@ export type CallOptions = {
   timeoutMs?: number
   /** One-shot calls that must only answer from the prompt (the notebook). */
   noTools?: boolean
+  /** One-shot calls that may only read files in their working folder (the photo of a sheet). */
+  readOnly?: boolean
 }
 
 // The tutor only talks: no file, shell or web tools inside a conversation.
@@ -29,8 +31,9 @@ export function buildArgs(engine: Engine, prompt: string, opts: CallOptions = {}
   }
   const session = conv ? (conv.resume ? ['--resume', conv.id] : ['--session-id', conv.id]) : []
   const system = opts.systemPrompt && !conv?.resume ? ['--system-prompt', opts.systemPrompt] : []
+  const readOnly = opts.readOnly && !conv ? ['--tools', 'Read', '--allowedTools', 'Read', '--strict-mcp-config', '--setting-sources', ''] : []
   const lockdown = conv || opts.noTools ? ['--tools', '', '--disallowedTools', NO_TOOLS, '--strict-mcp-config', '--setting-sources', ''] : []
-  return { cmd: 'claude', args: ['-p', prompt, '--output-format', 'json', ...m, ...session, ...system, ...schema, ...lockdown] }
+  return { cmd: 'claude', args: ['-p', prompt, '--output-format', 'json', ...m, ...session, ...system, ...schema, ...lockdown, ...readOnly] }
 }
 
 export function parseOutput(engine: Engine, stdout: string): { text: string; inputTokens: number; outputTokens: number; conversationId?: string } {
