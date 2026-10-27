@@ -1,0 +1,50 @@
+/* Union graph: adapted from docs/prototipi/grafo-v2.html, scoped under .graph */
+.graph{position:absolute;inset:0;overflow:hidden}
+.graph canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.graph canvas.hov{cursor:pointer}
+.graph .gpanel,.graph .gcard,.graph .gzoom{background:color-mix(in srgb,var(--surface) 86%,transparent);border:1px solid var(--hair);box-shadow:var(--inner);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.graph .gpanel{position:absolute;top:64px;left:16px;z-index:5;width:290px;max-height:calc(100% - 200px);overflow:auto;border-radius:22px;padding:14px}
+.graph .gpanel h2{font:400 28px/1 var(--serif);margin:2px 4px 4px}
+.graph .meta{font:500 12px var(--mono);color:var(--muted);margin:0 4px 12px;line-height:1.5}
+.graph .gsearch{position:relative}
+.graph .gsearch input{width:100%;min-height:44px;border-radius:14px;border:1px solid var(--hair);background:var(--faint);color:var(--ink);font:inherit;padding:0 14px}
+.graph .gsearch input::placeholder{color:var(--muted)}
+.graph .gsearch input:focus-visible{outline:none;border-color:var(--accent)}
+.graph .gresults{list-style:none;margin:6px 0 0;padding:0}
+.graph .gresults li{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 10px;border-radius:10px;cursor:pointer;font-size:14px}
+.graph .gresults li:hover,.graph .gresults li[aria-selected="true"]{background:var(--faint)}
+.graph .gresults small{margin-left:auto;font:500 11px var(--mono);color:var(--muted)}
+.graph .gsec{margin-top:14px;padding-top:12px;border-top:1px solid var(--hair)}
+.graph .gsec h3{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 4px 8px}
+.graph .gseg{display:flex;gap:2px;padding:3px;border-radius:12px;background:var(--faint)}
+.graph .gseg button{flex:1;min-height:40px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
+.graph .gseg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--hair)}
+.graph .hint{font-size:12.5px;color:var(--muted);margin:8px 4px 0;line-height:1.45}
+.graph .gtoggles{display:flex;flex-wrap:wrap;gap:6px}
+.graph .gtoggles button{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
+.graph .gtoggles button[aria-pressed="true"]{color:var(--ink);border-color:var(--ink)}
+.graph .gstatus{margin:12px 4px 0;font-size:13px;color:var(--muted)}
+.graph .gstatus.err{color:var(--bad)}
+.graph .gstatus button{border:0;background:none;color:var(--ink);text-decoration:underline;cursor:pointer;padding:0;min-height:0}
+.graph .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:8px;animation:g-pulse 1.4s ease-in-out infinite}
+@keyframes g-pulse{50%{opacity:.25}}
+.graph .gzoom{position:absolute;right:16px;bottom:150px;z-index:5;display:flex;flex-direction:column;border-radius:16px;overflow:hidden}
+.graph .gzoom button{width:44px;height:44px;border:0;background:transparent;color:var(--ink);font-size:18px;cursor:pointer}
+.graph .gzoom button+button{border-top:1px solid var(--hair)}
+.graph .gcard{position:absolute;top:64px;right:16px;z-index:6;width:340px;max-height:calc(100% - 220px);overflow:auto;border-radius:22px;padding:18px 18px 16px}
+.graph .gcard .x{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;border:0;background:var(--faint);color:var(--ink);cursor:pointer;font-size:18px}
+.graph .gcard .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.graph .gcard .chips span{font:500 11px var(--mono);color:var(--muted);padding:3px 8px;border-radius:999px;border:1px solid var(--hair)}
+.graph .gcard h3{font:400 28px/1.1 var(--serif);margin:0 40px 8px 0}
+.graph .gcard h4{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:16px 0 6px}
+.graph .gcard p,.graph .gcard .stmt{font-size:14.5px;margin:0}
+.graph .gcard .rows{list-style:none;margin:0;padding:0}
+.graph .gcard .rows li.s{display:flex;gap:8px;align-items:baseline;font-size:14px;padding:4px 0}
+.graph .gcard .rows button{width:100%;display:flex;align-items:center;gap:10px;min-height:40px;padding:0 8px;border:0;border-radius:10px;background:transparent;text-align:left;cursor:pointer;font-size:14px;color:var(--ink)}
+.graph .gcard .rows button:hover{background:var(--faint)}
+.graph .gcard .rows i{width:9px;height:9px;border-radius:50%;flex:none}
+.graph .gcard small{margin-left:auto;font:500 11px var(--mono);color:var(--muted);text-align:right}
+.graph .gcard .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.graph .gcard .acts button{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--ink);font:500 13px var(--sans);cursor:pointer}
+.graph .gcard .acts button.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.graph .pulse{animation:none}}

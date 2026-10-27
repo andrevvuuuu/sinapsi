@@ -72,7 +72,7 @@ export function createLayout(model: GraphModel, opts: { mode: LayoutMode; saved?
   for (const [a, b] of model.wikilinks) if (byId.get(a)?.kind === 'note' && byId.get(b)?.kind === 'note') links.push({ source: a, target: b, wikilink: true })
 
   // Concepts of one note gather around their region's centre.
-  const clusterPull = (strength: number) => {
+  const clusterPull = (strength: number): ((alpha: number) => void) => {
     const f = (alpha: number): void => {
       const cen = new Map<string, { x: number; y: number; n: number }>()
       for (const p of nodes) {
@@ -93,7 +93,7 @@ export function createLayout(model: GraphModel, opts: { mode: LayoutMode; saved?
     return f
   }
   // Depth anchoring: foundations at the centre (or bottom), what derives from them outwards (or up).
-  const depthForce = () => (alpha: number): void => {
+  const depthForce = (): ((alpha: number) => void) => (alpha: number): void => {
     const k = 0.8 * alpha
     for (const n of nodes) {
       if (n.kind !== 'concept' && n.kind !== 'junction') continue
