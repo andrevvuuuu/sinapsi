@@ -32,6 +32,24 @@ test('a full learning session with the scripted tutor', async () => {
   await win.getByRole('button', { name: /^A:/ }).click()
   await win.getByRole('button', { name: 'Invia risposta' }).click()
   await expect(win.getByText('Corretto').last()).toBeVisible()
+  // game: Coppie
+  const coppie = win.getByRole('region', { name: 'Gioco «Coppie»' })
+  await coppie.getByRole('group', { name: 'Voci' }).getByRole('button', { name: 'Rolle' }).click()
+  await coppie.getByRole('group', { name: 'Corrispondenti' }).getByRole('button', { name: 'derivata nulla in un punto' }).click()
+  await coppie.getByRole('group', { name: 'Voci' }).getByRole('button', { name: 'Lagrange' }).click()
+  await coppie.getByRole('group', { name: 'Corrispondenti' }).getByRole('button', { name: 'tangente parallela alla corda' }).click()
+  await expect(coppie.getByText('2/2')).toBeVisible()
+  await coppie.getByRole('button', { name: 'Continua' }).click()
+  // game: Lampo
+  const lampo = win.getByRole('region', { name: 'Gioco «Lampo»' })
+  for (const v of ['Vero', 'Falso', 'Vero']) {
+    await lampo.getByRole('button', { name: v }).click()
+    await win.waitForTimeout(1300)
+  }
+  await expect(lampo.getByText('3/3')).toBeVisible()
+  await win.screenshot({ path: 'test-results/game.png' })
+  await lampo.getByRole('button', { name: 'Continua' }).click()
+  await expect(win.getByLabel('Punteggio')).toContainText('serie')
   // recall
   await win.getByLabel('La tua risposta').fill('pendenza media, Rolle, funzione g')
   await win.getByRole('button', { name: 'Invia risposta' }).click()

@@ -73,6 +73,18 @@ Nel riquadro in basso della home scegli **Pratica** (vuoto: i suggeriti per oggi
 - **Foto del foglio**: l'iPhone compare tra le fotocamere (Continuity Camera), oppure scegli un'immagine. Claude trascrive il foglio in testo e LaTeX; controlli e correggi prima di mandarlo.
 - Ogni problema concluso e ogni esercizio corretto aggiornano la **memoria** dei concetti (e quindi il grafo e il Ripasso).
 
+## Giochi nell'Apprendimento
+
+Ogni tanto, al posto di una normale verifica, il tutor propone un gioco breve su quello che ti ha appena spiegato (si possono spegnere in Impostazioni → Apprendimento):
+
+- **Lampo**: vero o falso contro il tempo (8 secondi a frase), con la serie;
+- **Coppie**: abbina ogni teorema, simbolo o ipotesi a ciò che gli corrisponde;
+- **Ricomponi**: rimetti in ordine i passi di una dimostrazione;
+- **Trova l'intruso**: una riga della derivazione è sbagliata, trovala e di' perché;
+- **Tabù**: spiega un concetto senza usare le parole proibite (il tutor giudica la spiegazione).
+
+Il risultato arriva al tutor come una risposta. In alto vedi i punti e la serie; nel riepilogo finale anche la serie migliore e la **calibrazione** (quanto la tua fiducia corrisponde a quello che sai davvero). "Salta il gioco" è sempre disponibile.
+
 ## Per lo sviluppo
 
 ```bash

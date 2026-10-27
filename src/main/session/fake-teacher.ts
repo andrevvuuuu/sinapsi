@@ -24,6 +24,30 @@ export const FAKE_SCRIPT: TeacherTurn[] = [
     blocks: [{ type: 'text', md: 'La pendenza media è $$\\frac{f(b)-f(a)}{b-a}$$' }],
     question: { id: 'q5', role: 'check', kind: 'choice', prompt: 'Pendenza tra $(1,2)$ e $(3,8)$?', options: ['3', '6'], correct: 0, why: ['(8−2)/(3−1) = 3.', 'È solo il dislivello.'], nodeId: 'corda' }
   },
+  {
+    phase: 'teach',
+    blocks: [{ type: 'text', md: 'Giusto. Un gioco veloce prima di andare avanti.' }],
+    question: { id: 'q5b', role: 'check', kind: 'game', prompt: 'Abbina ogni teorema a ciò che garantisce.', game: { type: 'match', pairs: [['Rolle', 'derivata nulla in un punto'], ['Lagrange', 'tangente parallela alla corda']] }, nodeId: 'lagrange' }
+  },
+  {
+    phase: 'consolidate',
+    blocks: [{ type: 'text', md: 'Ultimo giro: vero o falso, svelto.' }],
+    question: {
+      id: 'q5c',
+      role: 'recall',
+      kind: 'game',
+      prompt: 'Lampo sul teorema di Lagrange.',
+      game: {
+        type: 'speed',
+        items: [
+          { statement: 'Lagrange richiede $f$ derivabile in $(a,b)$', true: true, why: 'È un’ipotesi.' },
+          { statement: 'Il punto $c$ è sempre unico', true: false, why: 'Ne esiste almeno uno.' },
+          { statement: 'Rolle è un caso particolare di Lagrange', true: true, why: 'Con $f(a)=f(b)$.' }
+        ]
+      },
+      nodeId: 'lagrange'
+    }
+  },
   { phase: 'consolidate', blocks: [{ type: 'text', md: 'Abbiamo finito.' }], question: { id: 'q6', role: 'recall', kind: 'open', prompt: 'Svuota la testa: scrivi tutto quello che ricordi.', nodeId: 'lagrange' } },
   { phase: 'done', blocks: [{ type: 'text', md: 'Ecco cosa resta.' }], summary: { learned: ['Pendenza della corda'], shaky: ['Funzione ausiliaria g'], misconceptions: [] } }
 ]
