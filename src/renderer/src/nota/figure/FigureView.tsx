@@ -30,7 +30,9 @@ export function FigureView({ fig, step }: { fig: Figure; step?: number }): React
   const svgRef = useRef<SVGSVGElement>(null)
   const anim = useRef<number | null>(null)
   const paramsRef = useRef(params)
-  paramsRef.current = params
+  useEffect(() => {
+    paramsRef.current = params
+  }, [params])
 
   // Proof steps move the parameters to the step's values, smoothly unless motion is reduced.
   useEffect(() => {
@@ -70,14 +72,17 @@ export function FigureView({ fig, step }: { fig: Figure; step?: number }): React
     setParams((cur) => ({ ...cur, [id]: clamp(round6(v), p.min, p.max) }))
   }
 
+  // Roots depend on the other parameters, not on the one being searched.
+  const searched = fig.points?.param
+  const others = JSON.stringify(Object.fromEntries(fig.params.filter((q) => q.id !== searched).map((q) => [q.id, params[q.id]])))
   const roots = useMemo(() => {
     if (!fig.points) return []
-    const p = fig.params.find((q) => q.id === fig.points!.param)
+    const pts = fig.points
+    const p = fig.params.find((q) => q.id === pts.param)
     if (!p) return []
-    return findRoots((v) => evalIn(fig, fig.points!.expr, makeScope(fig, { ...params, [p.id]: v })), [p.min, p.max])
-    // Roots depend on the other parameters, not on the one being searched.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fig, ...fig.params.filter((q) => q.id !== fig.points?.param).map((q) => params[q.id])])
+    const base = JSON.parse(others) as Record<string, number>
+    return findRoots((v) => evalIn(fig, pts.expr, makeScope(fig, { ...base, [p.id]: v })), [p.min, p.max])
+  }, [fig, others])
 
   const anyGreen = fig.elements.some((el) => visible(el) && isGreen(el))
 
