@@ -51,18 +51,23 @@ describe('order', () => {
 describe('fill, match, estimate, spot the error', () => {
   it('fill is correct when every blank is right', () => {
     const { last } = mount({ type: 'fill', prompt: 'Completa', text: 'Continua su {{(a,b)|*[a,b]}} e derivabile su {{*(a,b)|[a,b]}}.', answer: 'x' })
-    const [a, b] = screen.getAllByRole('combobox')
-    fireEvent.change(a, { target: { value: '1' } })
+    const pick = (box: number, k: number): void => {
+      fireEvent.click(screen.getAllByRole('combobox')[box])
+      fireEvent.click(screen.getAllByRole('option')[k])
+    }
+    pick(0, 1)
     expect(last().ready).toBe(false)
-    fireEvent.change(b, { target: { value: '1' } })
+    pick(1, 1)
     expect(last()).toMatchObject({ correct: false, ready: true })
-    fireEvent.change(b, { target: { value: '0' } })
+    pick(1, 0)
     expect(last()).toMatchObject({ correct: true })
   })
   it('match is correct when every pair is right', () => {
     const { last } = mount({ type: 'match', prompt: 'Abbina', pairs: [['Weierstrass', 'max e min'], ['Fermat', 'derivata nulla']], answer: 'x' })
-    fireEvent.change(screen.getByLabelText('Weierstrass'), { target: { value: 'max e min' } })
-    fireEvent.change(screen.getByLabelText('Fermat'), { target: { value: 'derivata nulla' } })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Weierstrass' }))
+    fireEvent.click(screen.getByRole('option', { name: 'max e min' }))
+    fireEvent.click(screen.getByRole('combobox', { name: 'Fermat' }))
+    fireEvent.click(screen.getByRole('option', { name: 'derivata nulla' }))
     expect(last()).toMatchObject({ correct: true, ready: true })
   })
   it('estimate accepts a decimal comma within the tolerance', () => {

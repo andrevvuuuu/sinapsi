@@ -55,7 +55,7 @@ describe('FigureView', () => {
     fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-pressed')).toBe('true')
     const list = screen.getByTestId('points')
-    const btn = within(list).getByRole('button', { name: /x ≈ 0,00/ })
+    const btn = within(list).getByRole('button', { name: /p ≈ 0,00/ })
     fireEvent.click(btn)
     expect((screen.getByRole('slider', { name: /Punto c/ }) as HTMLInputElement).value).toBe('0')
   })

@@ -1,0 +1,8 @@
+/* MathSelect: a select whose options render formulas */
+.msel{position:relative;display:inline-block}
+.msel>button{min-height:44px;min-width:64px;padding:0 12px;border-radius:10px;border:1px solid var(--hair);background:var(--surface);color:var(--ink);cursor:pointer;font:inherit}
+.msel[data-state="ok"]>button{border-color:var(--good)}.msel[data-state="no"]>button{border-color:var(--bad)}
+.msel-list{position:absolute;left:0;top:calc(100% + 4px);z-index:20;min-width:100%;display:flex;flex-direction:column;padding:6px;border-radius:12px;background:var(--surface);border:1px solid var(--hair);box-shadow:0 20px 40px -20px rgba(0,0,0,.5)}
+.msel-list [role="option"]{min-height:40px;display:flex;align-items:center;padding:4px 10px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.msel-list [role="option"].hi,.msel-list [role="option"]:hover{background:var(--faint)}
+.msel-list [role="option"][aria-selected="true"]{font-weight:600}

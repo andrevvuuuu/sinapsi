@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { blanks, type Exercise } from '../../../../shared/exercise-schema'
+import { MathSelect } from '../../components/MathSelect'
+import { blanks, type Exercise, blankParts } from '../../../../shared/exercise-schema'
 import { RichText } from '../../session/RichText'
 import { plain, shuffled, type ExerciseState } from './shared'
 
@@ -13,7 +14,7 @@ export function Fill({
   onChange: (s: ExerciseState) => void
 }): React.JSX.Element {
   const groups = useMemo(() => blanks(exercise.text), [exercise.text])
-  const parts = exercise.text.split(/\{\{[^{}]+\}\}/)
+  const parts = blankParts(exercise.text)
   const [picked, setPicked] = useState<(number | null)[]>(groups.map(() => null))
   const choose = (g: number, v: number): void => {
     const p = [...picked]
@@ -31,22 +32,14 @@ export function Fill({
         <span key={i}>
           <RichText md={t} className="inline" />
           {i < groups.length && (
-            <select
-              aria-label={`Spazio ${i + 1}`}
-              value={picked[i] ?? ''}
+            <MathSelect
+              label={`Spazio ${i + 1}`}
+              options={groups[i].options}
+              value={picked[i] ?? null}
               disabled={locked}
-              data-state={locked ? (picked[i] === groups[i].correct ? 'ok' : 'no') : undefined}
-              onChange={(e) => choose(i, Number(e.target.value))}
-            >
-              <option value="" disabled>
-                …
-              </option>
-              {groups[i].options.map((o, k) => (
-                <option key={k} value={k}>
-                  {plain(o)}
-                </option>
-              ))}
-            </select>
+              state={locked ? (picked[i] === groups[i].correct ? 'ok' : 'no') : undefined}
+              onChange={(k) => choose(i, k)}
+            />
           )}
         </span>
       ))}
@@ -80,25 +73,17 @@ export function Match({
   return (
     <div className="rv-match">
       {exercise.pairs.map(([left, right], i) => (
-        <label key={i}>
+        <div key={i} className="rv-pair">
           <span>{plain(left)}</span>
-          <select
-            aria-label={plain(left)}
-            value={picked[i] ?? ''}
+          <MathSelect
+            label={plain(left)}
+            options={rights}
+            value={picked[i] === undefined ? null : rights.indexOf(picked[i])}
             disabled={locked}
-            data-state={locked ? (picked[i] === right ? 'ok' : 'no') : undefined}
-            onChange={(e) => choose(i, e.target.value)}
-          >
-            <option value="" disabled>
-              …
-            </option>
-            {rights.map((r) => (
-              <option key={r} value={r}>
-                {plain(r)}
-              </option>
-            ))}
-          </select>
-        </label>
+            state={locked ? (picked[i] === right ? 'ok' : 'no') : undefined}
+            onChange={(k) => choose(i, rights[k])}
+          />
+        </div>
       ))}
     </div>
   )

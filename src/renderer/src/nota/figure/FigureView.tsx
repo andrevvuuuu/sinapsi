@@ -223,6 +223,8 @@ export function FigureView({ fig, step, onParams }: { fig: Figure; step?: number
               const y = at(r)
               if (!Number.isFinite(y)) return null
               const [px, py] = toPx(r, y)
+              // A point off the plotted window gets no ring floating outside the figure.
+              if (px < PAD || px > W - PAD || py < PAD || py > H - PAD) return null
               return <circle key={r} className="ring" cx={px} cy={py} r={10} />
             })}
           {fig.elements.map((el, i) => (el.kind === 'point' ? renderEl(el, i) : null))}
@@ -264,7 +266,7 @@ export function FigureView({ fig, step, onParams }: { fig: Figure; step?: number
                 ) : (
                   roots.map((r) => (
                     <button key={r} type="button" className="nv-chip small" onClick={() => setParam(fig.points!.param, r)}>
-                      x ≈ {fmt(r)}
+                      {fig.points!.param} ≈ {fmt(r)}
                     </button>
                   ))
                 ))}

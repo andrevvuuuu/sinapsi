@@ -134,14 +134,15 @@ const Top = z.object({
   eyebrow: z.string().default(''),
   aka: z.array(z.string()).default([]),
   lede: z.string().default(''),
-  tldr: z.array(z.string()).max(6).default([]),
+  // Longer than asked: trimmed, never a reason to throw the whole note away.
+  tldr: z.array(z.string()).default([]).transform((a) => a.slice(0, 6)),
   provenance: z
     .object({ fromNote: z.array(z.string()).default([]), added: z.array(z.string()).default([]), flagged: z.array(z.string()).default([]) })
     .default({ fromNote: [], added: [], flagged: [] }),
   sections: z
     .array(z.object({ id: z.string().optional(), num: z.string().default(''), title: str, titleEm: z.string().optional(), blocks: z.array(z.unknown()).default([]) }))
     .min(1)
-    .max(30),
+    .transform((a) => a.slice(0, 30)),
   recap: z
     .object({ ideas: z.array(z.string()).default([]), formulas: z.array(z.object({ label: z.string(), tex: z.string() })).default([]) })
     .default({ ideas: [], formulas: [] })
