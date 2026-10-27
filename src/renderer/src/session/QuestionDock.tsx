@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ROLE_IT, type LearnerAnswer, type Question } from '../../../shared/teacher-protocol'
 import { RichText } from './RichText'
 import { GameDock } from './games/GameDock'
@@ -13,6 +13,9 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
   const [pick, setPick] = useState<number | 'idk' | null>(null)
   const [confidence, setConfidence] = useState(50)
   const [text, setText] = useState('')
+  // A new question takes the focus, so screen readers and the keyboard start from it.
+  const head = useRef<HTMLDivElement>(null)
+  useEffect(() => head.current?.focus(), [revealed])
 
   if (q.kind === 'game') return <GameDock question={q} onAnswer={onAnswer} />
 
@@ -21,7 +24,11 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
       <div className="shell">
         <div className="inner">
           <div className="lab">Il piano</div>
+          <div ref={head} tabIndex={-1} className="q-head">
+            <div ref={head} tabIndex={-1} className="q-head">
           <RichText md={q.prompt} className="q" />
+        </div>
+          </div>
           <div className="sc-input">
             <textarea aria-label="Chiedi una modifica al piano" placeholder="Vuoi cambiare qualcosa? Scrivilo qui." value={text} onChange={(e) => setText(e.target.value)} rows={1} />
           </div>
@@ -89,7 +96,9 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
     <div className="shell">
       <div className="inner">
         <div className="lab">{ROLE_IT[q.role]}</div>
-        <RichText md={q.prompt} className="q" />
+        <div ref={head} tabIndex={-1} className="q-head">
+          <RichText md={q.prompt} className="q" />
+        </div>
         {isChoice && (
           <>
             <div className="opts" role="group" aria-label="Opzioni">

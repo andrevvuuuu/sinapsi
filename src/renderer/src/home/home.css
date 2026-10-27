@@ -145,3 +145,6 @@
 .sd-error{margin:0;font-size:13px;color:var(--bad)}
 .sd-ok{margin:0;font-size:13px;color:var(--good)}
 .app aside.left .seg[aria-label="Sessioni da mostrare"] button{padding:0 6px;font-size:12px;min-height:44px}
+
+.composer-hint{margin:6px 10px 2px;font-size:13px;color:var(--bad)}
+.q-head:focus{outline:none}

@@ -7,7 +7,9 @@ export function Composer({ onSubmit, due = 0 }: { onSubmit: (mode: string, text:
   const [mode, setMode] = useState<(typeof MODES)[number]>('Apprendimento')
   const [text, setText] = useState('')
   // Ripasso works with no text: it reviews what is fading.
-  const canSend = mode === 'Ripasso' || mode === 'Pratica' || !!text.trim()
+  // An Apprendimento topic is at most 500 characters (the session refuses longer ones).
+  const tooLong = mode === 'Apprendimento' && text.trim().length > 500
+  const canSend = !tooLong && (mode === 'Ripasso' || mode === 'Pratica' || !!text.trim())
   const send = (): void => {
     if (!canSend) return
     onSubmit(mode, text.trim())
@@ -43,6 +45,11 @@ export function Composer({ onSubmit, due = 0 }: { onSubmit: (mode: string, text:
               <IconSend />
             </button>
           </div>
+          {tooLong && (
+            <p className="composer-hint" role="alert">
+              Argomento troppo lungo: massimo 500 caratteri (ne hai scritti {text.trim().length}).
+            </p>
+          )}
         </div>
       </div>
     </div>

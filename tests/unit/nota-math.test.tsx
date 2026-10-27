@@ -28,7 +28,10 @@ describe('math fields render as formulas', () => {
   it('glossary symbols without $', () => {
     const { container } = render(<Glossary block={{ type: 'glossary', rows: [{ symbol: '\\frac{f(b) - f(a)}{b - a}', read: 'rapporto incrementale', meaning: 'pendenza della secante' }] }} />)
     expect(container.querySelector('td .katex')).toBeTruthy()
-    expect(container.textContent).not.toContain('\\frac')
+    // The TeX source only survives inside the hidden MathML annotation, never as visible text.
+    const visible = container.querySelector('td')!.cloneNode(true) as HTMLElement
+    visible.querySelectorAll('annotation').forEach((a) => a.remove())
+    expect(visible.textContent).not.toContain('\\frac')
   })
   it('the formal side of a decode block', () => {
     const { container } = render(<BlockView mode="leggi" block={{ type: 'decode', formal: '\\forall f \\in C^0([a, b]) \\implies \\exists c', read: 'per ogni', meaning: 'esiste' }} />)

@@ -61,7 +61,11 @@ export function reduceSession(events: SessionEvent[]): SessionState {
         s.phase = t.phase
         s.hasTeacherTurn = true
         if (e.conversationId) s.conversationId = e.conversationId
-        if (t.plan) s.plan = t.plan
+        if (t.plan) {
+          s.plan = t.plan
+          // A node the new plan dropped cannot be "adesso" any more.
+          if (s.currentNodeId && !t.plan.nodes.some((n) => n.id === s.currentNodeId)) s.currentNodeId = undefined
+        }
         if (t.summary) s.summary = t.summary
         const next = t.question?.nodeId
         if (next && next !== s.currentNodeId) {
