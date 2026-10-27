@@ -122,7 +122,8 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
         break
       case 'answers':
         if (!s.exam) break
-        s.exam.answers = e.answers
+        // Drafts carry only the answers that changed; the delivery carries them all.
+        s.exam.answers = e.final ? e.answers : Object.fromEntries(Object.entries({ ...s.exam.answers, ...e.answers }).filter(([, v]) => v !== ''))
         if (e.final) {
           s.exam.delivered = true
           s.awaiting = 'tutor'

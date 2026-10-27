@@ -203,7 +203,8 @@ export function PracticeSetup({ initialText = '', onBack, onStarted }: { initial
                 </p>
               )}
               <div className="startrow">
-                <input
+                <textarea
+                  rows={free.includes('\n') ? 4 : 1}
                   aria-label="Argomento libero"
                   placeholder="Scrivi un argomento (es. «autovalori») o incolla un esercizio d'esame"
                   value={free}
@@ -212,7 +213,8 @@ export function PracticeSetup({ initialText = '', onBack, onStarted }: { initial
                     setToast('')
                   }}
                   onKeyDown={(e) => {
-                    if (e.key !== 'Enter' || !free.trim() || !catalog) return
+                    // Enter looks for concepts; Shift+Enter keeps the lines of a pasted problem.
+                    if (e.key !== 'Enter' || e.shiftKey || !free.trim() || !catalog) return
                     e.preventDefault()
                     const raw = free.trim()
                     const hits = matchConcepts(catalog, raw)

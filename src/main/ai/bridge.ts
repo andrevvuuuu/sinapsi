@@ -26,6 +26,8 @@ export interface AskRequest<T> {
   cwd?: string
   noTools?: boolean
   readOnly?: boolean
+  /** Pins the engine for this call, whatever the settings say (the photo needs Claude's Read tool). */
+  engine?: EngineChoice
 }
 export interface AskResult<T> {
   data: T | string
@@ -144,7 +146,7 @@ export function createBridge(deps: {
       return () => listeners.delete(cb)
     },
     async ask<T>(req: AskRequest<T>): Promise<AskResult<T>> {
-      const choice = (await deps.engines())[req.task]
+      const choice = req.engine ?? (await deps.engines())[req.task]
       const { engine, model } = choice
       const key = createHash('sha256').update([engine, model ?? '', req.prompt, req.schemaName ?? schemaId(req.schema)].join('|')).digest('hex')
       const cacheFile = join(deps.cacheDir, `${key}.json`)

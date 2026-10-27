@@ -58,6 +58,14 @@ function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText
     }
   }, [cam, camOn])
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   const read = async (bytes: Uint8Array): Promise<void> => {
     setState({ k: 'reading' })
     try {
@@ -158,6 +166,8 @@ function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText
                   aria-label="Scegli un’immagine…"
                   onChange={(e) => {
                     const f = e.target.files?.[0]
+                    // Cleared at once, so choosing the same file again still triggers a reading.
+                    e.target.value = ''
                     if (f) void f.arrayBuffer().then((b) => read(new Uint8Array(b)))
                   }}
                 />

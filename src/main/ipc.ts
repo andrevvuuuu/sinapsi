@@ -8,7 +8,7 @@ import { makeGraphHandlers, makeHandlers, makeNotebookHandlers, makeNoteHandlers
 import { createExamService } from './practice/exam'
 import { fakeTutor } from './practice/fake-tutor'
 import { buildCatalog, buildMaterialContext } from './practice/material'
-import { transcribePhoto } from './practice/photo'
+import { cleanupPhotos, transcribePhoto } from './practice/photo'
 import { createPracticeRunner } from './practice/runner'
 import { createNotebookChat } from './notebook/chat'
 import { fakeMedia } from './notebook/fake-media'
@@ -297,6 +297,7 @@ export function registerIpc(): { bridge: Bridge } {
     onUpdate: (s: unknown) => broadcast(CH.practiceUpdated, s)
   }
   const practice = createPracticeRunner(practiceDeps)
+  void cleanupPhotos(practiceDir, Date.now()).catch(() => undefined)
   const exam = createExamService({ ...practiceDeps, runner: practice })
   const ph = makePracticeHandlers({
     runner: practice,

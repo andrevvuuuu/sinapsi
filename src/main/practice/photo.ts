@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdir, readdir, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
 import type { Bridge } from '../ai/bridge'
@@ -36,6 +36,8 @@ export async function transcribePhoto(input: { bridge: Pick<Bridge, 'ask'>; dir:
   }
   const r = await input.bridge.ask({
     task: 'grade',
+    // Always Claude: only its CLI runs with the read-only lockdown.
+    engine: { engine: 'claude', model: 'sonnet' },
     readOnly: true,
     cwd: input.dir,
     timeoutMs: 120_000,
@@ -46,4 +48,29 @@ Rispondi solo con JSON: {"readable":true,"text":"..."}`
   const out = r.data as z.infer<typeof PhotoSchema>
   if (!out.readable || !out.text.trim()) throw new Error('Non riesco a leggere il foglio: rifai la foto più da vicino e con più luce.')
   return unescapeOver(out.text).trim()
+}
+
+const MONTH = 30 * 86_400_000
+
+/** Photos of sheets older than 30 days are deleted (each can weigh up to 15 MB). */
+export async function cleanupPhotos(practiceDir: string, now: number, maxAge = MONTH): Promise<void> {
+  let sessions: string[]
+  try {
+    sessions = await readdir(practiceDir)
+  } catch {
+    return
+  }
+  for (const s of sessions) {
+    const dir = join(practiceDir, s)
+    let files: string[]
+    try {
+      files = (await readdir(dir)).filter((f) => f.startsWith('foglio-'))
+    } catch {
+      continue
+    }
+    for (const f of files) {
+      const st = await stat(join(dir, f)).catch(() => null)
+      if (st && now - st.mtimeMs > maxAge) await rm(join(dir, f), { force: true })
+    }
+  }
 }

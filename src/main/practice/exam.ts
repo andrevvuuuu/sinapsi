@@ -106,10 +106,13 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
       })
       const total = Math.min(30, Math.round(items.reduce((a, b) => a + b.points, 0)))
       const lode = total === 30 && items.every((it, i) => it.points === sheet.problems[i].points)
+      // Idempotent: a grading that runs again after a crash finds its lines already written.
+      const written = new Set((await deps.memory.read()).filter((r) => r.ref?.startsWith(`exam:${id}:`)).map((r) => `${r.ref}|${r.conceptId}`))
       for (const [i, p] of sheet.problems.entries()) {
         const share = items[i].points / p.points
         const g: Grade = share >= 1 ? 3 : share >= 0.5 ? 2 : 1
-        for (const conceptId of new Set(p.targets)) await deps.memory.append({ conceptId, at: now(), grade: g, correct: share >= 0.5, via: 'practice' })
+        const ref = `exam:${id}:${p.id}`
+        for (const conceptId of new Set(p.targets)) if (!written.has(`${ref}|${conceptId}`)) await deps.memory.append({ conceptId, at: now(), grade: g, correct: share >= 0.5, via: 'practice', ref })
       }
       runner.inflight.delete(id)
       await runner.append(id, { t: 'graded', grade: { items, note: unescapeOver(reply.note), total, lode }, at: now() })
@@ -147,7 +150,11 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
       runner.serial(id, async () => {
         const s = await runner.load(id)
         if (!s.exam || s.exam.delivered) return
-        await runner.append(id, { t: 'answers', answers, final: false, at: now() })
+        // Only what changed since the last save: a three-hour exam no longer rewrites every answer each time.
+        const prev = s.exam.answers
+        const diff = Object.fromEntries([...new Set([...Object.keys(prev), ...Object.keys(answers)])].filter((k) => (answers[k] ?? '') !== (prev[k] ?? '')).map((k) => [k, answers[k] ?? '']))
+        if (!Object.keys(diff).length) return
+        await runner.append(id, { t: 'answers', answers: diff, final: false, at: now() })
       }),
     deliver,
     /** Time keeps running while the app is closed: an exam past its end is delivered with the saved drafts. */

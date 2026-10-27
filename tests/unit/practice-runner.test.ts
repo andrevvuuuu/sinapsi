@@ -52,7 +52,7 @@ describe('training', () => {
     await runner.submit(id, { kind: 'thinking', text: 'uso il valor medio' })
     expect((converse.mock.calls[2][0] as unknown as { prompt: string; resume: boolean })).toMatchObject({ prompt: 'Il mio ragionamento: uso il valor medio', resume: true })
     const reviews = await mem.read()
-    expect(reviews).toEqual([
+    expect(reviews).toMatchObject([
       { conceptId: 'n_1', at: 1000, grade: 1, correct: true, via: 'practice' },
       { conceptId: 'n_2', at: 1000, grade: 1, correct: true, via: 'practice' }
     ])

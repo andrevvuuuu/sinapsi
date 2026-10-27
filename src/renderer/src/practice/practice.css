@@ -114,8 +114,8 @@
 .pr .custom span{font:500 13px var(--mono);color:var(--muted);padding-right:6px}
 .pr .rules{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .pr .startrow{display:flex;align-items:center;gap:10px;margin-top:14px;border-top:1px solid var(--hair);padding-top:12px}
-.pr .startrow input{flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;outline:none;min-height:42px;padding:0 4px}
-.pr .startrow input::placeholder{color:var(--muted)}
+.pr .startrow textarea{resize:vertical;flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;outline:none;min-height:42px;padding:0 4px}
+.pr .startrow textarea::placeholder{color:var(--muted)}
 .pr .startrow .pri{white-space:nowrap}
 .pr .timer{display:inline-flex;align-items:center;gap:6px;font:500 14px var(--mono);padding:6px 12px;border-radius:999px;background:var(--faint);color:var(--ink)}
 .pr .timer::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
