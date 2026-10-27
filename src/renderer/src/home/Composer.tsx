@@ -3,11 +3,13 @@ import { IconSend } from './icons'
 
 const MODES = ['Apprendimento', 'Pratica', 'Ripasso'] as const
 
-export function Composer({ onSubmit }: { onSubmit: (mode: string, text: string) => unknown }): React.JSX.Element {
+export function Composer({ onSubmit, due = 0 }: { onSubmit: (mode: string, text: string) => unknown; due?: number }): React.JSX.Element {
   const [mode, setMode] = useState<(typeof MODES)[number]>('Apprendimento')
   const [text, setText] = useState('')
+  // Ripasso works with no text: it reviews what is fading.
+  const canSend = mode === 'Ripasso' || !!text.trim()
   const send = (): void => {
-    if (!text.trim()) return
+    if (!canSend) return
     onSubmit(mode, text.trim())
     setText('')
   }
@@ -19,6 +21,7 @@ export function Composer({ onSubmit }: { onSubmit: (mode: string, text: string) 
             {MODES.map((m) => (
               <button key={m} type="button" aria-pressed={m === mode} onClick={() => setMode(m)}>
                 {m}
+                {m === 'Ripasso' && due > 0 && <span className="due">{due}</span>}
               </button>
             ))}
           </div>
@@ -26,7 +29,7 @@ export function Composer({ onSubmit }: { onSubmit: (mode: string, text: string) 
             <textarea
               rows={1}
               aria-label="Cosa vuoi studiare?"
-              placeholder="Cosa vuoi studiare?"
+              placeholder={mode === 'Ripasso' ? 'Cosa vuoi ripassare? Vuoto: quello che sta sbiadendo' : 'Cosa vuoi studiare?'}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
@@ -36,7 +39,7 @@ export function Composer({ onSubmit }: { onSubmit: (mode: string, text: string) 
                 }
               }}
             />
-            <button type="button" className="send" aria-label="Inizia" disabled={!text.trim()} onClick={send}>
+            <button type="button" className="send" aria-label="Inizia" disabled={!canSend} onClick={send}>
               <IconSend />
             </button>
           </div>

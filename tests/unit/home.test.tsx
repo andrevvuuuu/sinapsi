@@ -81,4 +81,15 @@ describe('Home', () => {
     expect(onOpenSource).toHaveBeenCalledWith('/v/Matematica/Teorema di Rolle.md')
     expect(screen.queryByText(/Il grafo apparirà quando/)).toBeNull()
   })
+
+  it('starts a review from the composer, even without text, and shows how much is due', async () => {
+    window.sinapsi = { ...mockApi(idx), review: { memory: vi.fn(async () => ({ a: { due: 1 }, b: { due: Date.now() + 1e9 } })) } } as never
+    const onOpenReview = vi.fn()
+    render(<Home onOpenReview={onOpenReview} />)
+    const seg = await screen.findByRole('button', { name: /Ripasso/ })
+    await vi.waitFor(() => expect(seg.textContent).toContain('1'))
+    fireEvent.click(seg)
+    fireEvent.click(screen.getByRole('button', { name: 'Inizia' }))
+    expect(onOpenReview).toHaveBeenCalledWith('')
+  })
 })

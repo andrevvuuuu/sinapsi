@@ -6,7 +6,15 @@ import type { ExerciseState } from './shared'
 const LETTERS = 'ABCDEF'
 type Pick = Extract<Exercise, { type: 'mc' | 'counterexample' }>
 
-export function Choice({ exercise, locked, onChange }: { exercise: Pick; locked: boolean; onChange: (s: ExerciseState) => void }): React.JSX.Element {
+export function Choice({
+  exercise,
+  locked,
+  onChange
+}: {
+  exercise: Pick
+  locked: boolean
+  onChange: (s: ExerciseState) => void
+}): React.JSX.Element {
   const [pick, setPick] = useState<number | null>(null)
   return (
     <div className="rv-opts" role="group" aria-label="Opzioni">
@@ -17,7 +25,9 @@ export function Choice({ exercise, locked, onChange }: { exercise: Pick; locked:
           className="opt"
           aria-pressed={pick === k}
           disabled={locked}
-          data-state={locked ? (k === exercise.correct ? 'ok' : k === pick ? 'no' : undefined) : undefined}
+          data-state={
+            locked ? (k === exercise.correct ? 'ok' : k === pick ? 'no' : undefined) : undefined
+          }
           onClick={() => {
             setPick(k)
             onChange({ answer: o, correct: k === exercise.correct, ready: true })
@@ -33,12 +43,24 @@ export function Choice({ exercise, locked, onChange }: { exercise: Pick; locked:
   )
 }
 
-export function TrueFalse({ exercise, locked, onChange }: { exercise: Extract<Exercise, { type: 'truefalse' }>; locked: boolean; onChange: (s: ExerciseState) => void }): React.JSX.Element {
+export function TrueFalse({
+  exercise,
+  locked,
+  onChange
+}: {
+  exercise: Extract<Exercise, { type: 'truefalse' }>
+  locked: boolean
+  onChange: (s: ExerciseState) => void
+}): React.JSX.Element {
   const [value, setValue] = useState<boolean | null>(null)
   const [why, setWhy] = useState('')
   const report = (v: boolean | null, w: string): void => {
     if (v === null) return
-    onChange({ answer: `${v ? 'Vero' : 'Falso'}${w.trim() ? ` — ${w.trim()}` : ''}`, correct: v === exercise.value, ready: true })
+    onChange({
+      answer: `${v ? 'Vero' : 'Falso'}${w.trim() ? ` — ${w.trim()}` : ''}`,
+      correct: v === exercise.value,
+      ready: true
+    })
   }
   return (
     <div className="rv-tf">
@@ -52,7 +74,9 @@ export function TrueFalse({ exercise, locked, onChange }: { exercise: Extract<Ex
             type="button"
             aria-pressed={value === v}
             disabled={locked}
-            data-state={locked ? (v === exercise.value ? 'ok' : v === value ? 'no' : undefined) : undefined}
+            data-state={
+              locked ? (v === exercise.value ? 'ok' : v === value ? 'no' : undefined) : undefined
+            }
             onClick={() => {
               setValue(v)
               report(v, why)

@@ -8,7 +8,15 @@ import { Order, SpotError } from './exercises/Steps'
 export type { ExerciseState }
 
 /** One exercise: it reports its state; the review card decides when to check it. */
-export function ExerciseView({ exercise, locked, onChange }: { exercise: Exercise; locked: boolean; onChange: (s: ExerciseState) => void }): React.JSX.Element {
+export function ExerciseView({
+  exercise,
+  locked,
+  onChange
+}: {
+  exercise: Exercise
+  locked: boolean
+  onChange: (s: ExerciseState) => void
+}): React.JSX.Element {
   switch (exercise.type) {
     case 'mc':
     case 'counterexample':

@@ -3,7 +3,15 @@ import { blanks, type Exercise } from '../../../../shared/exercise-schema'
 import { RichText } from '../../session/RichText'
 import { plain, shuffled, type ExerciseState } from './shared'
 
-export function Fill({ exercise, locked, onChange }: { exercise: Extract<Exercise, { type: 'fill' }>; locked: boolean; onChange: (s: ExerciseState) => void }): React.JSX.Element {
+export function Fill({
+  exercise,
+  locked,
+  onChange
+}: {
+  exercise: Extract<Exercise, { type: 'fill' }>
+  locked: boolean
+  onChange: (s: ExerciseState) => void
+}): React.JSX.Element {
   const groups = useMemo(() => blanks(exercise.text), [exercise.text])
   const parts = exercise.text.split(/\{\{[^{}]+\}\}/)
   const [picked, setPicked] = useState<(number | null)[]>(groups.map(() => null))
@@ -11,7 +19,11 @@ export function Fill({ exercise, locked, onChange }: { exercise: Extract<Exercis
     const p = [...picked]
     p[g] = v
     setPicked(p)
-    onChange({ answer: p.map((x, i) => (x === null ? '…' : groups[i].options[x])).join(' / '), correct: p.every((x, i) => x === groups[i].correct), ready: p.every((x) => x !== null) })
+    onChange({
+      answer: p.map((x, i) => (x === null ? '…' : groups[i].options[x])).join(' / '),
+      correct: p.every((x, i) => x === groups[i].correct),
+      ready: p.every((x) => x !== null)
+    })
   }
   return (
     <p className="rv-fill">
@@ -19,7 +31,13 @@ export function Fill({ exercise, locked, onChange }: { exercise: Extract<Exercis
         <span key={i}>
           <RichText md={t} className="inline" />
           {i < groups.length && (
-            <select aria-label={`Spazio ${i + 1}`} value={picked[i] ?? ''} disabled={locked} data-state={locked ? (picked[i] === groups[i].correct ? 'ok' : 'no') : undefined} onChange={(e) => choose(i, Number(e.target.value))}>
+            <select
+              aria-label={`Spazio ${i + 1}`}
+              value={picked[i] ?? ''}
+              disabled={locked}
+              data-state={locked ? (picked[i] === groups[i].correct ? 'ok' : 'no') : undefined}
+              onChange={(e) => choose(i, Number(e.target.value))}
+            >
               <option value="" disabled>
                 …
               </option>
@@ -36,8 +54,19 @@ export function Fill({ exercise, locked, onChange }: { exercise: Extract<Exercis
   )
 }
 
-export function Match({ exercise, locked, onChange }: { exercise: Extract<Exercise, { type: 'match' }>; locked: boolean; onChange: (s: ExerciseState) => void }): React.JSX.Element {
-  const rights = useMemo(() => shuffled(exercise.pairs, exercise.prompt).map((i) => exercise.pairs[i][1]), [exercise])
+export function Match({
+  exercise,
+  locked,
+  onChange
+}: {
+  exercise: Extract<Exercise, { type: 'match' }>
+  locked: boolean
+  onChange: (s: ExerciseState) => void
+}): React.JSX.Element {
+  const rights = useMemo(
+    () => shuffled(exercise.pairs, exercise.prompt).map((i) => exercise.pairs[i][1]),
+    [exercise]
+  )
   const [picked, setPicked] = useState<Record<number, string>>({})
   const choose = (i: number, v: string): void => {
     const p = { ...picked, [i]: v }
@@ -53,7 +82,13 @@ export function Match({ exercise, locked, onChange }: { exercise: Extract<Exerci
       {exercise.pairs.map(([left, right], i) => (
         <label key={i}>
           <span>{plain(left)}</span>
-          <select aria-label={plain(left)} value={picked[i] ?? ''} disabled={locked} data-state={locked ? (picked[i] === right ? 'ok' : 'no') : undefined} onChange={(e) => choose(i, e.target.value)}>
+          <select
+            aria-label={plain(left)}
+            value={picked[i] ?? ''}
+            disabled={locked}
+            data-state={locked ? (picked[i] === right ? 'ok' : 'no') : undefined}
+            onChange={(e) => choose(i, e.target.value)}
+          >
             <option value="" disabled>
               …
             </option>
@@ -69,7 +104,15 @@ export function Match({ exercise, locked, onChange }: { exercise: Extract<Exerci
   )
 }
 
-export function Estimate({ exercise, locked, onChange }: { exercise: Extract<Exercise, { type: 'estimate' }>; locked: boolean; onChange: (s: ExerciseState) => void }): React.JSX.Element {
+export function Estimate({
+  exercise,
+  locked,
+  onChange
+}: {
+  exercise: Extract<Exercise, { type: 'estimate' }>
+  locked: boolean
+  onChange: (s: ExerciseState) => void
+}): React.JSX.Element {
   const [text, setText] = useState('')
   return (
     <div className="rv-est">
@@ -85,7 +128,11 @@ export function Estimate({ exercise, locked, onChange }: { exercise: Extract<Exe
           onChange={(e) => {
             setText(e.target.value)
             const v = Number(e.target.value.trim().replace(/\s/g, '').replace(',', '.'))
-            onChange({ answer: e.target.value, correct: Number.isFinite(v) && Math.abs(v - exercise.value) <= exercise.tolerance, ready: e.target.value.trim() !== '' && Number.isFinite(v) })
+            onChange({
+              answer: e.target.value,
+              correct: Number.isFinite(v) && Math.abs(v - exercise.value) <= exercise.tolerance,
+              ready: e.target.value.trim() !== '' && Number.isFinite(v)
+            })
           }}
         />
         {exercise.unit && <RichText md={exercise.unit} className="inline" />}
@@ -94,7 +141,13 @@ export function Estimate({ exercise, locked, onChange }: { exercise: Extract<Exe
   )
 }
 
-export function Open({ locked, onChange }: { locked: boolean; onChange: (s: ExerciseState) => void }): React.JSX.Element {
+export function Open({
+  locked,
+  onChange
+}: {
+  locked: boolean
+  onChange: (s: ExerciseState) => void
+}): React.JSX.Element {
   const [text, setText] = useState('')
   return (
     <div className="rv-open">
