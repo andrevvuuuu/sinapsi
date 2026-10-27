@@ -10,7 +10,7 @@ const NotebookLine = z.discriminatedUnion('op', [
   z.object({ op: z.literal('update'), id: z.string(), name: z.string().optional(), subject: z.string().nullable().optional(), link: z.string().nullable().optional() }),
   z.object({ op: z.literal('delete'), id: z.string() })
 ])
-const Status = z.object({ status: z.enum(['queued', 'processing', 'ready', 'failed']), progress: z.number().optional(), error: z.string().optional(), info: z.string().optional() })
+const Status = z.object({ status: z.enum(['queued', 'processing', 'ready', 'failed']), progress: z.number().optional(), error: z.string().optional(), info: z.string().optional(), title: z.string().optional() })
 const SourceLine = z.discriminatedUnion('op', [
   z.object({ op: z.literal('add'), id: z.string(), notebookId: z.string(), kind: z.enum(SOURCE_KINDS), title: z.string(), origin: z.string(), at: z.number() }),
   z.object({ op: z.literal('status'), id: z.string() }).merge(Status),
@@ -35,7 +35,7 @@ export function notebookStore(dir: string, now: () => number = Date.now) {
       else {
         const s = out.get(l.id)
         if (!s) continue
-        out.set(l.id, { ...s, status: l.status, progress: l.progress, error: l.error, info: l.info ?? (l.status === 'ready' ? undefined : s.info) })
+        out.set(l.id, { ...s, title: l.title ?? s.title, status: l.status, progress: l.progress, error: l.error, info: l.info ?? (l.status === 'ready' ? undefined : s.info) })
       }
     }
     return out

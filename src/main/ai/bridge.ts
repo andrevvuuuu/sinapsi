@@ -11,7 +11,7 @@ import { extractJson } from './json'
 export type SpawnFn = (
   cmd: string,
   args: string[],
-  opts: { timeoutMs: number; cwd?: string }
+  opts: { timeoutMs: number; cwd?: string; onOutput?: (chunk: string) => void }
 ) => Promise<{ stdout: string; stderr: string; code: number | null; timedOut: boolean }>
 
 export type EngineStatus = 'idle' | 'busy' | 'auth' | 'missing' | 'error'

@@ -24,7 +24,7 @@ const tidy = (t: string): string =>
 export async function readPdf(file: string): Promise<SourceText> {
   const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs')
   const data = new Uint8Array(await readFile(file))
-  const task = getDocument({ data, useSystemFonts: true, isEvalSupported: false })
+  const task = getDocument({ data, useSystemFonts: true })
   const doc = await task.promise
   const segments: Segment[] = []
   let empty = 0

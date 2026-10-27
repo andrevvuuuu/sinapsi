@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import type { Engine } from '../../shared/settings-schema'
 import { AiOutputError } from './errors'
@@ -52,10 +53,25 @@ export function parseOutput(engine: Engine, stdout: string): { text: string; inp
  * Real process runner: stdin closed, cwd = home, own process group so a timeout kills the whole tree
  * (SIGTERM, then SIGKILL). Resolves even if a grandchild keeps the pipes open.
  */
-export const nodeSpawn: SpawnFn = (cmd, args, { timeoutMs, cwd }) =>
+/** Python's per-version bin folders, where pip puts yt-dlp and mlx_whisper. */
+function pythonBins(home: string): string[] {
+  const list = (dir: string, sub: string): string[] => {
+    try {
+      return readdirSync(dir)
+        .sort()
+        .reverse()
+        .map((v) => `${dir}/${v}/${sub}`)
+    } catch {
+      return []
+    }
+  }
+  return [...list(`${home}/Library/Python`, 'bin'), ...list('/Library/Frameworks/Python.framework/Versions', 'bin')]
+}
+
+export const nodeSpawn: SpawnFn = (cmd, args, { timeoutMs, cwd, onOutput }) =>
   new Promise((resolve, reject) => {
     const home = homedir()
-    const env = { ...process.env, PATH: [`${home}/.local/bin`, '/opt/homebrew/bin', '/usr/local/bin', process.env.PATH].join(':') }
+    const env = { ...process.env, PATH: [`${home}/.local/bin`, '/opt/homebrew/bin', '/usr/local/bin', process.env.PATH, ...pythonBins(home)].join(':') }
     const child = spawn(cmd, args, { cwd: cwd ?? home, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
     let stdout = ''
     let stderr = ''
@@ -81,10 +97,14 @@ export const nodeSpawn: SpawnFn = (cmd, args, { timeoutMs, cwd }) =>
     }
     child.stdout.on('data', (d) => {
       stdout += d
+      onOutput?.(String(d))
       // A login prompt waits for input forever: stop at once instead of waiting for the timeout.
       if (/authentication page/i.test(stdout)) killTree()
     })
-    child.stderr.on('data', (d) => (stderr += d))
+    child.stderr.on('data', (d) => {
+      stderr += d
+      onOutput?.(String(d))
+    })
     const timer = setTimeout(() => {
       timedOut = true
       killTree()
