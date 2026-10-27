@@ -29,8 +29,24 @@ export function fakeTutor(): Pick<Bridge, 'converse' | 'ask'> {
       state.set(req.conversationId, st)
       return { data: req.schema.parse(turn(req.prompt, st)), conversationId: req.conversationId, engine: 'claude' as const }
     }) as Bridge['converse'],
-    ask: (async () => {
-      throw new Error('fake tutor: ask non previsto')
+    ask: (async (req: { prompt: string; schema?: { parse(x: unknown): unknown } }) => {
+      await new Promise((r) => setTimeout(r, 50))
+      const parse = (x: unknown): unknown => (req.schema ? req.schema.parse(x) : x)
+      if (req.prompt.startsWith('Prepara una prova'))
+        return {
+          data: parse({
+            title: 'Prova scritta di prova',
+            problems: [
+              { id: 'e1', statement: 'Calcola $\\lim_{x\\to 0} \\frac{\\sin x}{x}$.', points: 12, targets: [], modelSolution: 'Vale $1$.' },
+              { id: 'e2', statement: 'Enuncia e dimostra il teorema di Rolle.', points: 18, targets: [], modelSolution: 'Weierstrass e Fermat.' }
+            ]
+          }),
+          fromCache: false,
+          engine: 'claude' as const
+        }
+      if (req.prompt.startsWith('Correggi questa prova'))
+        return { data: parse({ items: [{ id: 'e1', points: 12, comment: 'Corretto.' }, { id: 'e2', points: 9, comment: 'Manca la derivabilità.', miss: 'execution' }], note: 'Riprendi le ipotesi di Rolle.' }), fromCache: false, engine: 'claude' as const }
+      return { data: parse({ readable: true, text: '$|\\sin a - \\sin b| = |\\cos c|\\,|a-b| \\le |a-b|$' }), fromCache: false, engine: 'claude' as const }
     }) as Bridge['ask']
   }
 }
