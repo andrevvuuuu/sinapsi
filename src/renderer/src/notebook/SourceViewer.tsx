@@ -35,7 +35,9 @@ export function SourceViewer({ source, excerpt, onClose }: { source: Source; exc
       live = false
     }
   }, [api, source.id])
-  useEffect(() => focus.current?.scrollIntoView({ block: 'center' }), [text, excerpt])
+  useEffect(() => {
+    focus.current?.scrollIntoView({ block: 'center' })
+  }, [text, excerpt])
 
   const target = excerpt && text ? text.segments.findIndex((s) => s.label === excerpt.label && marked(s.text, excerpt.text) !== s.text) : -1
   return (

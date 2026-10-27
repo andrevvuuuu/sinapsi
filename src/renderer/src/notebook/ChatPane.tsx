@@ -17,7 +17,10 @@ type Props = {
 export function ChatPane({ turns, pending, selected, ready, onAsk, onRetry, onCite }: Props): React.JSX.Element {
   const [q, setQ] = useState('')
   const end = useRef<HTMLDivElement>(null)
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [turns.length, pending])
+  // Braces: scrollIntoView may return a promise, and an effect must not return anything but a cleanup.
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' })
+  }, [turns.length, pending])
   const canAsk = !pending && selected > 0 && q.trim().length > 0
   const send = (): void => {
     if (!canAsk) return

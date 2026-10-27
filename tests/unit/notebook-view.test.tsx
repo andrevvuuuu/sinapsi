@@ -140,3 +140,27 @@ describe('NotebookPanel', () => {
     expect(onOpen).toHaveBeenLastCalledWith(NB)
   })
 })
+
+describe('scrolling', () => {
+  it('survives a scrollIntoView that returns a promise (newer Chromium) when the answer arrives', async () => {
+    const before = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = vi.fn(() => Promise.resolve()) as never
+    try {
+      let turns: ChatTurn[] = []
+      const api = mount(nb(), turns)
+      let notify: (e: { notebookId?: string }) => void = () => undefined
+      api.notebook.onUpdate.mockImplementation(((cb: typeof notify) => ((notify = cb), () => undefined)) as never)
+      cleanup()
+      render(<NotebookView id={NB} onBack={vi.fn()} />)
+      await screen.findByText('Chiedi alle tue fonti', { selector: 'h2' })
+      turns = [{ role: 'user', text: 'Domanda?', at: 1, sourceIds: ['s1'] }, answer]
+      api.notebook.chat.mockImplementation(async () => turns)
+      await act(async () => notify({ notebookId: NB }))
+      expect(await screen.findByText('Nel corso si chiama lemma del cammello.')).toBeTruthy()
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Fonte 2: Dispensa, p. 2' })))
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Chiudi la fonte' })))
+    } finally {
+      Element.prototype.scrollIntoView = before
+    }
+  })
+})
