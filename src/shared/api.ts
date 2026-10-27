@@ -5,6 +5,8 @@ import type { SessionState, SessionSummary } from '../main/session/events'
 import type { NoteMeta, StoredNote } from '../main/notes/store'
 
 export type { SessionState, SessionSummary, NoteMeta, StoredNote }
+export type { GraphData, ExtractorStatus } from './graph-types'
+export type GraphPositions = Record<string, [number, number]>
 export type NoteRequest = { sourcePath?: string; sessionId?: string }
 
 export type EngineStatus = 'idle' | 'busy' | 'auth' | 'missing' | 'error'
@@ -30,7 +32,13 @@ export const CH = {
   notesList: 'notes:list',
   notesGet: 'notes:get',
   notesRetry: 'notes:retry',
-  notesUpdated: 'notes:updated'
+  notesUpdated: 'notes:updated',
+  graphGet: 'graph:get',
+  graphExtract: 'graph:extract',
+  graphStatus: 'graph:status',
+  graphChanged: 'graph:changed',
+  graphPositions: 'graph:positions',
+  graphSavePositions: 'graph:save-positions'
 } as const
 
 export interface SinapsiApi {
@@ -63,5 +71,14 @@ export interface SinapsiApi {
     get(id: string): Promise<StoredNote>
     retry(id: string): Promise<void>
     onUpdate(cb: (m: NoteMeta) => void): () => void
+  }
+  graph: {
+    get(): Promise<import('./graph-types').GraphData>
+    /** manual (default) always re-extracts; study skips a note unchanged since its last extraction. */
+    extract(path: string, reason?: 'manual' | 'study'): Promise<void>
+    status(): Promise<import('./graph-types').ExtractorStatus>
+    onChange(cb: (e: { status: import('./graph-types').ExtractorStatus; graph?: import('./graph-types').GraphData }) => void): () => void
+    positions(): Promise<GraphPositions>
+    savePositions(p: GraphPositions): Promise<void>
   }
 }

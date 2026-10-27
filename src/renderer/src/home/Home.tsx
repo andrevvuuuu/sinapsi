@@ -7,6 +7,7 @@ import { EngineStatus } from './EngineStatus'
 import { IconPanel } from './icons'
 import { LeftPanel } from './LeftPanel'
 import { NotebookPanel } from './NotebookPanel'
+import { GraphView } from '../graph/GraphView'
 import './home.css'
 
 function applyTheme(theme: Settings['theme']): void {
@@ -105,6 +106,17 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource }: HomePr
               </button>
             </div>
           </div>
+        ) : index && 'notes' in index && index.notes.length > 0 && api.graph ? (
+          <GraphView
+            index={index}
+            onOpenNote={(path) => onOpenSource?.(path)}
+            onStudy={(title) =>
+              void api.session
+                ?.start(title)
+                .then((id) => onOpenSession?.(id))
+                .catch((e) => setToast(e instanceof Error ? e.message : String(e)))
+            }
+          />
         ) : (
           <div className="placeholder">
             <div>

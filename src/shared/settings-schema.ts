@@ -8,10 +8,12 @@ const EngineChoice = z.object({ engine: z.enum(['agy', 'claude']), model: z.stri
 export type EngineChoice = z.infer<typeof EngineChoice>
 
 const GEMINI: EngineChoice = { engine: 'agy', model: 'gemini-3.8-flash-high' }
+// Medium: high made the agent think for minutes on short replies (spike, 27/10).
+const GEMINI_MEDIUM: EngineChoice = { engine: 'agy', model: 'gemini-3.8-flash-medium' }
 const CLAUDE: EngineChoice = { engine: 'claude', model: 'sonnet' }
 export const DEFAULT_ENGINES: Record<Task, EngineChoice> = {
-  extract: GEMINI,
-  note: { engine: 'agy', model: 'gemini-3.8-flash-medium' },
+  extract: GEMINI_MEDIUM,
+  note: GEMINI_MEDIUM,
   variants: GEMINI,
   notebook: GEMINI,
   teach: CLAUDE,
@@ -27,7 +29,9 @@ export function settingsSchema(home: string) {
     engines: z
       .object(Object.fromEntries(TASKS.map((t) => [t, EngineChoice.catch(DEFAULT_ENGINES[t])])) as Record<Task, z.ZodCatch<typeof EngineChoice>>)
       .catch(DEFAULT_ENGINES),
-    excludedFolders: z.array(z.string()).catch(DEFAULT_EXCLUDED)
+    excludedFolders: z.array(z.string()).catch(DEFAULT_EXCLUDED),
+    backgroundExtraction: z.boolean().catch(true),
+    dailyExtractionLimit: z.number().int().min(0).max(50).catch(6)
   })
 }
 export type Settings = z.infer<ReturnType<typeof settingsSchema>>

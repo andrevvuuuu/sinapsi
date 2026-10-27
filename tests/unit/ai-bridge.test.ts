@@ -40,7 +40,7 @@ describe('AI bridge', () => {
     const b = bridge(async (cmd, args) => (calls.push([cmd, ...args]), ok(agyOk('ciao'))))
     const r = await b.ask({ task: 'extract', prompt: 'x' })
     expect(r).toMatchObject({ data: 'ciao', engine: 'agy', fromCache: false })
-    expect(calls[0]).toEqual(['agy', '-p', 'x', '--output-format', 'json', '--print-timeout', '170s', '--disable-slash-commands', '--model', 'gemini-3.8-flash-high'])
+    expect(calls[0]).toEqual(['agy', '-p', 'x', '--output-format', 'json', '--print-timeout', '170s', '--disable-slash-commands', '--model', 'gemini-3.8-flash-medium'])
     const usage = JSON.parse((await readFile(join(dir, 'usage.jsonl'), 'utf8')).trim())
     expect(usage).toMatchObject({ task: 'extract', engine: 'agy', inputTokens: 100, outputTokens: 5, ok: true })
   })
@@ -111,5 +111,17 @@ describe('extractJson', () => {
     expect(extractJson('{"a":1}')).toEqual({ a: 1 })
     expect(extractJson('Ecco:\n```json\n[1,2]\n```\nfine')).toEqual([1, 2])
     expect(extractJson('Risposta: {"b":{"c":2}} grazie')).toEqual({ b: { c: 2 } })
+  })
+})
+
+describe('extractJson with LaTeX written with single backslashes', () => {
+  it('repairs invalid escapes such as \\sum and \\mathbb', () => {
+    expect(extractJson('{"s":"$\\sum_i \\mathbb{R}$"}')).toEqual({ s: '$\\sum_i \\mathbb{R}$' })
+  })
+  it('keeps LaTeX commands that start like JSON escapes when the text needs repair', () => {
+    expect(extractJson('{"s":"$\\frac{a}{b} \\to \\beta \\nabla \\rho \\in A$"}')).toEqual({ s: '$\\frac{a}{b} \\to \\beta \\nabla \\rho \\in A$' })
+  })
+  it('leaves real escapes alone', () => {
+    expect(extractJson('{"s":"riga\\nriga \\"citata\\" \\u00e8 \\\\in","t":"\\in"}')).toEqual({ s: 'riga\nriga "citata" è \\in', t: '\\in' })
   })
 })

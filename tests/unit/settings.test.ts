@@ -15,7 +15,7 @@ describe('settings', () => {
     const s = await loadSettings()
     expect(s.vaultPath.endsWith('/Obsidian Vault')).toBe(true)
     expect(s.engines.teach.engine).toBe('claude')
-    expect(s.engines.extract).toEqual({ engine: 'agy', model: 'gemini-3.8-flash-high' })
+    expect(s.engines.extract).toEqual({ engine: 'agy', model: 'gemini-3.8-flash-medium' })
     expect(s.excludedFolders).toEqual(['.obsidian', '.antigravity', '.trash', 'Prompts'])
   })
 
