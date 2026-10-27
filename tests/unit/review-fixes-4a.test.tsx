@@ -35,7 +35,7 @@ describe('positions persist on a real vault', () => {
   it('saves the positions after the first layout, without waiting for a layout change', async () => {
     const savePositions = vi.fn(async () => undefined)
     window.sinapsi = { graph: { get: vi.fn(async () => empty), status: vi.fn(async () => ({ queued: [] })), extract: vi.fn(), onChange: () => () => undefined, positions: vi.fn(async () => ({})), savePositions } } as never
-    render(<GraphView index={index} onStudy={vi.fn()} onOpenNote={vi.fn()} />)
+    render(<GraphView menuOpen index={index} onStudy={vi.fn()} onOpenNote={vi.fn()} />)
     await vi.waitFor(() => expect(savePositions).toHaveBeenCalled(), { timeout: 4000 })
     expect(Object.keys(savePositions.mock.calls[0][0])).toContain(LONG)
   })
@@ -78,7 +78,7 @@ describe('extraction buttons say why they failed', () => {
   it('shows the error of a refused extraction and hides the button for unavailable notes', async () => {
     const extract = vi.fn(async () => Promise.reject(new Error("Error invoking remote method 'graph:extract': Error: Nota non trovata nel vault")))
     window.sinapsi = { graph: { get: vi.fn(async () => empty), status: vi.fn(async () => ({ queued: [] })), extract, onChange: () => () => undefined, positions: vi.fn(async () => ({})), savePositions: vi.fn(async () => undefined) } } as never
-    render(<GraphView index={index} onStudy={vi.fn()} onOpenNote={vi.fn()} />)
+    render(<GraphView menuOpen index={index} onStudy={vi.fn()} onOpenNote={vi.fn()} />)
     const box = await screen.findByRole('combobox', { name: 'Cerca nel grafo' })
     fireEvent.change(box, { target: { value: 'nuvola' } })
     fireEvent.click(screen.getByRole('option', { name: /Nuvola/ }))

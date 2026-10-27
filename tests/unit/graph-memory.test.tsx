@@ -46,7 +46,7 @@ function mount() {
     review: { memory: vi.fn(async () => memory) }
   } as never
   const onReview = vi.fn()
-  render(<GraphView index={index} onStudy={vi.fn()} onOpenNote={vi.fn()} onReview={onReview} />)
+  render(<GraphView menuOpen index={index} onStudy={vi.fn()} onOpenNote={vi.fn()} onReview={onReview} />)
   return { onReview }
 }
 async function pick(q: string, label: RegExp): Promise<HTMLElement> {

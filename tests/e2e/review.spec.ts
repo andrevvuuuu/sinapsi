@@ -16,7 +16,7 @@ test('a review of freshly extracted concepts updates their memory in the graph',
   await win.getByRole('button', { name: '← Home' }).click()
 
   // composer → Ripasso, no text
-  await win.getByRole('button', { name: /^Ripasso/ }).click()
+  await win.getByRole('group', { name: 'Tipo di sessione' }).getByRole('button', { name: /^Ripasso/ }).click()
   await win.getByRole('button', { name: 'Inizia' }).click()
   await expect(win.getByRole('heading', { name: /3 concetti da fissare/ })).toBeVisible()
   await expect(win.getByRole('group', { name: 'Esercizi' }).getByRole('button')).toHaveCount(10)
@@ -34,6 +34,7 @@ test('a review of freshly extracted concepts updates their memory in the graph',
   await win.screenshot({ path: 'test-results/review.png' })
   await win.getByRole('button', { name: 'Torna alla home' }).click()
 
+  await win.getByRole('button', { name: 'Vista del grafo' }).click()
   await win.getByRole('combobox', { name: 'Cerca nel grafo' }).fill('Weierstrass')
   await win.getByRole('option', { name: /Weierstrass.*concetto/ }).click()
   await expect(win.getByRole('dialog', { name: 'Dettagli' }).getByText(/la sai · \d+%/)).toBeVisible()

@@ -42,7 +42,7 @@ function mount(status: ExtractorStatus = { queued: [] }) {
   window.sinapsi = { graph: api } as never
   const onStudy = vi.fn()
   const onOpenNote = vi.fn()
-  render(<GraphView index={index} onStudy={onStudy} onOpenNote={onOpenNote} />)
+  render(<GraphView menuOpen index={index} onStudy={onStudy} onOpenNote={onOpenNote} />)
   return { api, onStudy, onOpenNote, push: (e: Parameters<typeof push>[0]) => act(() => push(e)) }
 }
 

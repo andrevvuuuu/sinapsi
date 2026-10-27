@@ -49,12 +49,15 @@ export function GraphView({
   index,
   onStudy,
   onOpenNote,
-  onReview
+  onReview,
+  menuOpen = false
 }: {
   index: VaultIndex
   onStudy: (title: string) => void
   onOpenNote: (path: string) => void
   onReview?: (conceptIds: string[]) => void
+  /** Start with the graph menu open (it normally waits behind its round button). */
+  menuOpen?: boolean
 }): React.JSX.Element {
   const api = window.sinapsi.graph
   const [graph, setGraph] = useState<GraphData | null>(null)
@@ -66,6 +69,32 @@ export function GraphView({
   const [query, setQuery] = useState('')
   const [hi, setHi] = useState(-1)
   const [options, setOptions] = useState(false)
+  // The graph menu sits behind a round button; it opens and closes with a short scale-and-fade.
+  const [menu, setMenu] = useState<'closed' | 'open' | 'closing'>(menuOpen ? 'open' : 'closed')
+  const menuBtn = useRef<HTMLButtonElement>(null)
+  const menuOpenRef = useRef(menu === 'open')
+  useEffect(() => {
+    menuOpenRef.current = menu === 'open'
+  }, [menu])
+  const panelRef = useRef<HTMLElement>(null)
+  const closeMenu = useCallback((focus = true) => {
+    setMenu((m) => (m === 'closed' ? m : typeof window.matchMedia !== 'function' || reducedMotion() ? 'closed' : 'closing'))
+    if (focus) menuBtn.current?.focus()
+  }, [])
+  useEffect(() => {
+    if (menu !== 'closing') return
+    const t = setTimeout(() => setMenu('closed'), 160)
+    return () => clearTimeout(t)
+  }, [menu])
+  useEffect(() => {
+    if (menu !== 'open') return
+    const off = (e: PointerEvent): void => {
+      const t = e.target as Node
+      if (!panelRef.current?.contains(t) && !menuBtn.current?.contains(t)) closeMenu(false)
+    }
+    document.addEventListener('pointerdown', off)
+    return () => document.removeEventListener('pointerdown', off)
+  }, [menu, closeMenu])
   const [memory, setMemory] = useState<Record<string, Memory>>({})
   const [lens, setLens] = useState<Lens>('all')
   const [now] = useState(() => Date.now())
@@ -118,11 +147,12 @@ export function GraphView({
   )
   const modelRef = useRef(model)
   const indexRef = useRef(index)
+  // The draw loop reads these refs: they must follow every new model (an empty deps list left the canvas blank).
   useEffect(() => {
     modelRef.current = model
     indexRef.current = index
     dirty.current = true
-  }, [])
+  }, [model, index])
   const memoryRef = useRef(memory)
   const lensRef = useRef<Lens>(lens)
   const nowRef = useRef(now)
@@ -201,7 +231,8 @@ export function GraphView({
       const ys = ns.map((n) => n.y!)
       const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
       const { W, H } = size.current
-      const L0 = 330
+      // Leave room for the graph menu only while it is open.
+      const L0 = menuOpenRef.current ? 330 : 70
       const cw = Math.max(200, W - L0 - (sel ? 370 : 16))
       const k = Math.min(
         3,
@@ -223,10 +254,11 @@ export function GraphView({
     const s = selRef.current
     if (!n || !z || !s) return
     const { W, H } = size.current
-    const cw = W - 330 - 370
+    const L0 = menuOpenRef.current ? 330 : 70
+    const cw = W - L0 - 370
     s.transition()
       .duration(reducedMotion() ? 0 : 900)
-      .call(z.transform, zoomIdentity.translate(330 + cw / 2 - k * n.x!, H / 2 - k * n.y!).scale(k))
+      .call(z.transform, zoomIdentity.translate(L0 + cw / 2 - k * n.x!, H / 2 - k * n.y!).scale(k))
   }, [])
 
   // Canvas, zoom, resize, theme and the draw loop.
@@ -404,7 +436,40 @@ export function GraphView({
           choose(pick(e.clientX - r.left, e.clientY - r.top))
         }}
       />
-      <section className="gpanel" aria-label="Controlli del grafo">
+      <button
+        ref={menuBtn}
+        type="button"
+        className={'gmenu-btn' + (menu === 'open' ? ' on' : '')}
+        aria-label="Vista del grafo"
+        aria-expanded={menu === 'open'}
+        aria-controls="graph-menu"
+        onClick={() => (menu === 'open' ? closeMenu() : setMenu('open'))}
+      >
+        <svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <circle cx="5" cy="5" r="2" />
+          <circle cx="13" cy="6" r="2" />
+          <circle cx="8" cy="13" r="2" />
+          <path d="M6.8 5.6 11 5.9M6 6.8l1.4 4.3M12 7.8l-2.7 3.6" />
+        </svg>
+      </button>
+      {menu === 'closed' && (
+        <div className="gstatus-mini">
+          <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
+        </div>
+      )}
+      {menu !== 'closed' && (
+      <section
+        ref={panelRef}
+        id="graph-menu"
+        className={'gpanel' + (menu === 'closing' ? ' closing' : '')}
+        aria-label="Controlli del grafo"
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && !e.defaultPrevented) {
+            e.preventDefault()
+            closeMenu()
+          }
+        }}
+      >
         <h2>Il tuo grafo</h2>
         <p className="meta">
           {model
@@ -428,7 +493,7 @@ export function GraphView({
               if (e.key === 'ArrowDown') setHi(Math.min(hits.length - 1, hi + 1))
               else if (e.key === 'ArrowUp') setHi(Math.max(0, hi - 1))
               else if (e.key === 'Enter' && hits.length) go(hits[Math.max(0, hi)])
-              else if (e.key === 'Escape') setQuery('')
+              else if (e.key === 'Escape' && query) setQuery('')
               else return
               e.preventDefault()
             }}
@@ -516,6 +581,7 @@ export function GraphView({
         )}
         <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
       </section>
+      )}
       <div className="gzoom" role="group" aria-label="Zoom">
         <button
           type="button"

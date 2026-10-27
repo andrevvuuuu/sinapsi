@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Home from '../../src/renderer/src/home/Home'
 import type { SinapsiApi, VaultResult } from '../../src/shared/api'
@@ -74,6 +74,7 @@ describe('Home', () => {
     } as never
     const onOpenSource = vi.fn()
     render(<Home onOpenSource={onOpenSource} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Vista del grafo' }))
     expect(await screen.findByRole('heading', { name: 'Il tuo grafo' })).toBeTruthy()
     fireEvent.change(screen.getByRole('combobox', { name: 'Cerca nel grafo' }), { target: { value: 'rolle' } })
     fireEvent.click(screen.getByRole('option', { name: /Teorema di Rolle/ }))
@@ -86,7 +87,7 @@ describe('Home', () => {
     window.sinapsi = { ...mockApi(idx), review: { memory: vi.fn(async () => ({ a: { due: 1 }, b: { due: Date.now() + 1e9 } })) } } as never
     const onOpenReview = vi.fn()
     render(<Home onOpenReview={onOpenReview} />)
-    const seg = await screen.findByRole('button', { name: /Ripasso/ })
+    const seg = within(await screen.findByRole('group', { name: 'Tipo di sessione' })).getByRole('button', { name: /Ripasso/ })
     await vi.waitFor(() => expect(seg.textContent).toContain('1'))
     fireEvent.click(seg)
     fireEvent.click(screen.getByRole('button', { name: 'Inizia' }))
