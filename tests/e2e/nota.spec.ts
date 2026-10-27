@@ -9,6 +9,7 @@ test('a nota viva written from an Obsidian note, with live figure and quiz', asy
     env: { ...process.env, SINAPSI_FAKE_NOTE: '1', SINAPSI_VAULT: resolve('tests/fixtures/vault'), SINAPSI_DATA: mkdtempSync(join(tmpdir(), 'sinapsi-e2e-')) }
   })
   const win = await app.firstWindow()
+  await win.getByText('Matematica', { exact: true }).click()
   await win.getByRole('button', { name: 'Teorema di Rolle' }).click()
   await win.getByRole('button', { name: 'Crea la nota viva' }).click()
   await expect(win.getByRole('heading', { level: 1, name: /Teorema di Rolle/ })).toBeVisible()
