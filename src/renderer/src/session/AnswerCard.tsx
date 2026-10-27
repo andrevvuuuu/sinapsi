@@ -1,7 +1,19 @@
-import { ROLE_IT, type LearnerAnswer, type Question } from '../../../shared/teacher-protocol'
+import { GAME_IT, ROLE_IT, type LearnerAnswer, type Question } from '../../../shared/teacher-protocol'
 import { RichText } from './RichText'
 
 export function AnswerCard({ q, a }: { q: Question; a: LearnerAnswer }): React.JSX.Element {
+  if (q.kind === 'game' && q.game && a.game) {
+    const g = a.game
+    return (
+      <div className="card">
+        <div className="row">
+          <span className="lab">{`Gioco · ${GAME_IT[q.game.type]}`}</span>
+          {g.total > 0 ? <span className={'chip ' + (g.score / g.total >= 0.7 ? 'ok' : 'no')}>{`${g.score}/${g.total}`}</span> : <span className="chip">{g.detail === 'saltato' ? 'saltato' : 'inviata'}</span>}
+        </div>
+        {g.detail !== 'saltato' && <div className="th">{g.detail}</div>}
+      </div>
+    )
+  }
   const graded = q.kind === 'choice' && q.correct !== undefined
   const right = graded && a.choice === q.correct
   return (

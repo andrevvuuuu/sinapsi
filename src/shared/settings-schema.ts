@@ -34,7 +34,8 @@ export function settingsSchema(home: string) {
     backgroundExtraction: z.boolean().catch(true),
     dailyExtractionLimit: z.number().int().min(0).max(50).catch(6),
     reviewSessionSize: z.number().int().min(1).max(20).catch(12),
-    exerciseTypes: z.array(z.enum(EXERCISE_TYPES)).min(1).catch([...EXERCISE_TYPES])
+    exerciseTypes: z.array(z.enum(EXERCISE_TYPES)).min(1).catch([...EXERCISE_TYPES]),
+    gamesInSessions: z.boolean().catch(true)
   })
 }
 export type Settings = z.infer<ReturnType<typeof settingsSchema>>

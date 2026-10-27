@@ -4,6 +4,7 @@ import { AnswerCard } from './AnswerCard'
 import { PlanMap } from './PlanMap'
 import { QuestionDock } from './QuestionDock'
 import { RichText } from './RichText'
+import { sessionScore } from '../../../shared/score'
 import './session.css'
 
 const PHASE: Record<SessionState['phase'], string> = { probe: 'Misura', plan: 'Piano', teach: 'Insegnamento', consolidate: 'Consolidamento', done: 'Conclusa' }
@@ -42,6 +43,7 @@ export function SessionView({ id, onBack, onOpenNota }: { id: string; onBack: ()
   }, [s?.items.length, s?.awaiting])
 
   if (!s) return <div className="sess" />
+  const score = sessionScore(s.items)
   const q = s.awaiting === 'learner' ? s.pendingQuestion : undefined
   const sendFree = (): void => {
     if (!free.trim()) return
@@ -58,6 +60,11 @@ export function SessionView({ id, onBack, onOpenNota }: { id: string; onBack: ()
         <h1>{s.topic}</h1>
         <span className="phase">{s.items.length <= 1 && !s.hasTeacherTurn ? 'Obiettivo' : PHASE[s.phase]}</span>
         <span className="sp" />
+        {(score.points > 0 || score.games > 0) && (
+          <span className="score-pill" aria-label="Punteggio">
+            {`★ ${score.points} · serie ${score.streak}`}
+          </span>
+        )}
         {s.noteTitle && <span className="notechip">Dalla tua nota: {s.noteTitle}</span>}
       </header>
       <div className="body">
@@ -75,6 +82,9 @@ export function SessionView({ id, onBack, onOpenNota }: { id: string; onBack: ()
                         <h3>Hai imparato</h3>
                         <ul>{it.turn.summary.learned.map((x, k) => <li key={k}><RichText md={x} className="inline" /></li>)}</ul>
                         {it.turn.summary.shaky.length > 0 && (<><h3>Ancora incerto</h3><ul>{it.turn.summary.shaky.map((x, k) => <li key={k}><RichText md={x} className="inline" /></li>)}</ul></>)}
+                        <p className="score-line">
+                          {`Punti ${score.points} · serie migliore ${score.bestStreak}${score.games ? ` · giochi ${score.games}` : ''}${score.calibration !== null ? ` · calibrazione ${score.calibration}%` : ''}`}
+                        </p>
                         {it.turn.summary.misconceptions.length > 0 && (<><h3>Misconcezioni</h3><ul>{it.turn.summary.misconceptions.map((x, k) => <li key={k}><RichText md={x} className="inline" /></li>)}</ul></>)}
                       </div>
                     )}
