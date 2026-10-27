@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ROLE_IT, type LearnerAnswer, type Question } from '../../../shared/teacher-protocol'
 import { RichText } from './RichText'
+import { GameDock } from './games/GameDock'
 
 const LETTERS = 'ABCDEF'
 
@@ -12,6 +13,8 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
   const [pick, setPick] = useState<number | 'idk' | null>(null)
   const [confidence, setConfidence] = useState(50)
   const [text, setText] = useState('')
+
+  if (q.kind === 'game') return <GameDock question={q} onAnswer={onAnswer} />
 
   if (q.role === 'plan') {
     return (
