@@ -90,8 +90,22 @@ export function createNotebookChat(deps: { bridge: Pick<Bridge, 'ask'>; store: N
     deps.onTurn(notebookId)
   }
 
+  // One question at a time per notebook, even across windows and views.
+  const busy = new Set<string>()
   return {
+    busy: (notebookId: string): boolean => busy.has(notebookId),
     async ask(notebookId: string, question: string, sourceIds: string[]): Promise<void> {
+      if (busy.has(notebookId)) throw new Error('C’è già una domanda in corso in questo notebook: aspetta la risposta.')
+      busy.add(notebookId)
+      try {
+        await answer(notebookId, question, sourceIds)
+      } finally {
+        busy.delete(notebookId)
+      }
+    }
+  }
+
+  async function answer(notebookId: string, question: string, sourceIds: string[]): Promise<void> {
       const history = await store.chat(notebookId)
       await append(notebookId, { role: 'user', text: question, at: now(), sourceIds })
       const nb = (await store.notebooks()).find((n) => n.id === notebookId)
@@ -125,7 +139,6 @@ export function createNotebookChat(deps: { bridge: Pick<Bridge, 'ask'>; store: N
       } catch (e) {
         await append(notebookId, { role: 'error', at: now(), text: e instanceof Error ? e.message : String(e) })
       }
-    }
   }
 }
 export type NotebookChat = ReturnType<typeof createNotebookChat>

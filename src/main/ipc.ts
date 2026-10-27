@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain, powerMonitor, powerSaveBlocker, shell, systemPreferences } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, powerMonitor, powerSaveBlocker, shell, systemPreferences } from 'electron'
 import { join } from 'node:path'
 import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
@@ -178,6 +178,10 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.notebookAddVault, (_e, id, path) => nbh.addVault(id, path))
   ipcMain.handle(CH.notebookRemoveSource, (_e, id) => nbh.removeSource(id))
   ipcMain.handle(CH.notebookRetrySource, (_e, id) => nbh.retrySource(id))
+  ipcMain.handle(CH.notebookRefreshSource, (_e, id) => nbh.refreshSource(id))
+  ipcMain.handle(CH.notebookBusy, (_e, id) => nbh.busy(id))
+  // Quitting stops whisper and yt-dlp instead of leaving them running.
+  app.on('before-quit', () => ingest.stopAll())
   ipcMain.handle(CH.notebookText, (_e, id) => nbh.text(id))
   ipcMain.handle(CH.notebookChat, (_e, id) => nbh.chat(id))
   ipcMain.handle(CH.notebookAsk, (_e, id, q, ids) => nbh.ask(id, q, ids))

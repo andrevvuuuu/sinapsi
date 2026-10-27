@@ -20,6 +20,8 @@ export type Source = {
   addedAt: number
   status: SourceStatus
   progress?: number
+  /** Live only: the first transcription downloads the model. */
+  stage?: 'download' | 'transcribe'
   error?: string
   /** What the reader found: "34 pagine", "52 min", warnings. */
   info?: string

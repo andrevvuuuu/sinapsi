@@ -28,19 +28,33 @@ export async function readPdf(file: string): Promise<SourceText> {
   const doc = await task.promise
   const segments: Segment[] = []
   let empty = 0
+  const pages: string[] = []
   try {
     for (let p = 1; p <= doc.numPages; p++) {
       const page = await doc.getPage(p)
       const content = await page.getTextContent()
       let text = ''
       for (const it of content.items) if ('str' in it) text += it.str + (it.hasEOL ? '\n' : ' ')
-      text = tidy(text)
-      if (text.replace(/\s/g, '').length < MIN_PAGE_TEXT) empty++
-      else segments.push({ label: `p. ${p}`, text })
+      pages.push(tidy(text))
     }
   } finally {
     await task.destroy()
   }
+  // Running headers and footers (the same line on most pages, page numbers aside) are not content:
+  // without this a scanned book with a printed header looked like text.
+  const key = (l: string): string => l.toLowerCase().replace(/\d+/g, '#').replace(/\s+/g, ' ').trim()
+  const seen = new Map<string, number>()
+  for (const p of pages) for (const k of new Set(p.split('\n').map(key).filter(Boolean))) seen.set(k, (seen.get(k) ?? 0) + 1)
+  const boiler = new Set(pages.length >= 3 ? [...seen].filter(([, n]) => n >= Math.max(2, Math.ceil(pages.length / 2))).map(([k]) => k) : [])
+  pages.forEach((raw, i) => {
+    const text = raw
+      .split('\n')
+      .filter((l) => !boiler.has(key(l)))
+      .join('\n')
+      .trim()
+    if (text.replace(/\s/g, '').length < MIN_PAGE_TEXT) empty++
+    else segments.push({ label: `p. ${i + 1}`, text })
+  })
   if (!segments.length) throw new Error('PDF senza testo (scansione): non lo posso leggere')
   const warnings = empty ? [`${empty} ${empty === 1 ? 'pagina' : 'pagine'} senza testo (scansioni): non le posso leggere`] : []
   return { segments, warnings }
@@ -91,7 +105,8 @@ export async function readSlides(file: string): Promise<SourceText> {
 }
 
 export function readTextDoc(raw: string): SourceText {
-  const text = raw.replace(/^---\n[\s\S]*?\n---\n?/, '').replace(/\r\n/g, '\n')
+  // Line endings first: a file saved on Windows has \r\n around its frontmatter too.
+  const text = raw.replace(/\r\n/g, '\n').replace(/^---\n[\s\S]*?\n---\n?/, '')
   if (!text.trim()) throw new Error('Documento vuoto')
   const lines = text.split('\n')
   const hasHeadings = lines.some((l) => /^#{1,6}\s+\S/.test(l))

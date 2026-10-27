@@ -153,8 +153,8 @@ const Question = z.string().trim().min(1).max(4000)
 
 export function makeNotebookHandlers(d: {
   store: NotebookStore
-  ingest: Pick<Ingestor, 'addFiles' | 'addYoutube' | 'addVaultNote' | 'retry' | 'remove' | 'decorate'>
-  chat: Pick<NotebookChat, 'ask'>
+  ingest: Pick<Ingestor, 'addFiles' | 'addYoutube' | 'addVaultNote' | 'retry' | 'remove' | 'decorate'> & Partial<Pick<Ingestor, 'refresh' | 'removeNotebook'>>
+  chat: Pick<NotebookChat, 'ask'> & Partial<Pick<NotebookChat, 'busy'>>
   vault: () => Promise<VaultIndex | null>
   chooseFiles: () => Promise<string[]>
   openPath: (path: string) => Promise<unknown> | void
@@ -173,7 +173,12 @@ export function makeNotebookHandlers(d: {
     list: async () => d.ingest.decorate(await d.store.notebooks()),
     create: async (name: unknown) => d.store.create(Name.parse(name)),
     update: async (id: unknown, patch: unknown) => d.store.update(await notebook(id), NotebookPatch.parse(patch)),
-    remove: async (id: unknown) => d.store.remove(await notebook(id)),
+    remove: async (id: unknown) => {
+      const nb = await notebook(id)
+      return d.ingest.removeNotebook ? d.ingest.removeNotebook(nb) : d.store.remove(nb)
+    },
+    busy: async (id: unknown) => d.chat.busy?.(await notebook(id)) ?? false,
+    refreshSource: async (id: unknown) => d.ingest.refresh?.((await source(id)).id),
     addFiles: async (id: unknown, paths: unknown) => {
       const nb = await notebook(id)
       return d.ingest.addFiles(nb, z.array(AbsPath).min(1).max(200).parse(paths))
