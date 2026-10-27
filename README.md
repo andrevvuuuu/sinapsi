@@ -43,6 +43,16 @@ Al centro della home c'è il **grafo unito**: le tue note Obsidian e i **concett
 - Cerca un concetto o una nota; nella scheda: "Segue da", "Porta a", **Cosa serve per capirlo** (tutto ciò su cui poggia), "Studia questa nota".
 - I puntini sul bordo sono la **frontiera**: note citate nei tuoi MOC ma non ancora scritte.
 
+## Ripasso
+
+Nel riquadro in basso scegli **Ripasso** e premi invio (vuoto = quello che sta sbiadendo; oppure scrivi un argomento, es. "Lagrange"). Dal grafo: **Ripassa** su un concetto o **Ripassa questa nota**.
+
+- Ogni concetto del grafo ha una **memoria** (FSRS): la percentuale è la probabilità che te lo ricordi oggi.
+- Le domande cambiano ogni volta: Gemini prepara **4–5 varianti** per concetto (la prima volta servono un paio di minuti) di 10 tipi: risposta aperta, scelta multipla, vero/falso e perché, riordina i passi, completa, abbina, controesempio, stima, trova l'errore, sul grafico. Nella prima schermata scegli quali usare.
+- Dai la tua **fiducia**; le risposte aperte le corregge Claude. Il voto (Di nuovo / Difficile / Bene / Facile) è **proposto**, e puoi cambiarlo: decide quando rivedrai il concetto.
+- Sbagliato **con sicurezza** = possibile **misconcezione**: il riepilogo ti propone di ristudiare il concetto con il tutor.
+- Nel grafo i concetti sono colorati per memoria (verde la sai, giallo incerto, rosso debole, vuoto mai visto); le lenti **Da ripassare**, **Mai visti** e **Basi fragili** li evidenziano.
+
 ## Per lo sviluppo
 
 ```bash

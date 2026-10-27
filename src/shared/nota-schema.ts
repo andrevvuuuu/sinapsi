@@ -92,7 +92,8 @@ function checkFigure(f: z.infer<typeof FigureBase>, ctx: z.RefinementCtx): void 
   }
   for (const sp of f.stepParams ?? []) for (const k of Object.keys(sp)) if (!params.includes(k)) fail(`passo su parametro sconosciuto «${k}»`)
 }
-const Figure = FigureBase.superRefine(checkFigure)
+export const FigureSchema = FigureBase.superRefine(checkFigure)
+const Figure = FigureSchema
 
 const Quiz = z
   .object({ type: z.literal('quiz'), prompt: str, options: z.array(str).min(2).max(6), correct: z.number().int().min(0), why: z.array(str), fromNote: z.boolean().optional() })

@@ -5,9 +5,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ExtractorStatus, GraphData } from '../../../shared/graph-types'
 import type { VaultIndex } from '../../../shared/vault-types'
 import { RichText } from '../session/RichText'
-import { draw, radiusOf, type Colors, type Sel } from './draw'
+import { draw, radiusOf, type Colors, type Lens, type Sel } from './draw'
 import { createLayout, type Layout, type LayoutMode, type SimNode } from './layout'
-import { buildModel, modelKey, type GraphModel, type SearchHit } from './model'
+import { buildModel, lensCounts, modelKey, type GraphModel, type SearchHit } from './model'
+import type { Memory } from '../../../shared/memory-types'
 import './graph.css'
 
 const MODES: [LayoutMode, string, string][] = [
@@ -47,11 +48,13 @@ const title = (index: VaultIndex, path: string): string =>
 export function GraphView({
   index,
   onStudy,
-  onOpenNote
+  onOpenNote,
+  onReview
 }: {
   index: VaultIndex
   onStudy: (title: string) => void
   onOpenNote: (path: string) => void
+  onReview?: (conceptIds: string[]) => void
 }): React.JSX.Element {
   const api = window.sinapsi.graph
   const [graph, setGraph] = useState<GraphData | null>(null)
@@ -63,6 +66,9 @@ export function GraphView({
   const [query, setQuery] = useState('')
   const [hi, setHi] = useState(-1)
   const [options, setOptions] = useState(false)
+  const [memory, setMemory] = useState<Record<string, Memory>>({})
+  const [lens, setLens] = useState<Lens>('all')
+  const [now] = useState(() => Date.now())
 
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -117,6 +123,26 @@ export function GraphView({
     indexRef.current = index
     dirty.current = true
   }, [])
+  const memoryRef = useRef(memory)
+  const lensRef = useRef<Lens>(lens)
+  const nowRef = useRef(now)
+  useEffect(() => {
+    memoryRef.current = memory
+    lensRef.current = lens
+    dirty.current = true
+  }, [memory, lens])
+  // Memory changes after each review: reload it when the graph changes too.
+  useEffect(() => {
+    let alive = true
+    void window.sinapsi.review
+      ?.memory()
+      .then((m) => alive && setMemory(m))
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [key])
+  const counts = model ? lensCounts(model, memory, now) : { due: 0, never: 0, fragile: 0 }
   const [extractError, setExtractError] = useState<string | null>(null)
   const extract = (path: string): void => {
     setExtractError(null)
@@ -259,6 +285,9 @@ export function GraphView({
             hov: hov.current,
             sel: selStateRef.current,
             path: pathRef.current,
+            memory: memoryRef.current,
+            lens: lensRef.current,
+            now: nowRef.current,
             subjectColor: (sj) =>
               index.subjects.find((x) => x.id === sj)?.color ?? colors.current!.muted,
             offscreen: offscreen.current!
@@ -421,6 +450,23 @@ export function GraphView({
             </ul>
           )}
         </div>
+        <div className="gsec">
+          <h3>Evidenzia</h3>
+          <div className="gseg glens" role="group" aria-label="Evidenzia">
+            {(
+              [
+                ['all', 'Tutto'],
+                ['due', `Da ripassare (${counts.due})`],
+                ['never', `Mai visti (${counts.never})`],
+                ['fragile', `Basi fragili (${counts.fragile})`]
+              ] as [Lens, string][]
+            ).map(([l, label]) => (
+              <button key={l} type="button" aria-pressed={lens === l} onClick={() => setLens(l)}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <button
           type="button"
           className="gmore"
@@ -524,6 +570,8 @@ export function GraphView({
           onStudy={onStudy}
           onOpenNote={onOpenNote}
           onExtract={extract}
+          memory={memory}
+          onReview={onReview}
         />
       )}
     </div>
@@ -590,6 +638,8 @@ type CardProps = {
   onStudy: (title: string) => void
   onOpenNote: (path: string) => void
   onExtract: (path: string) => void
+  memory: Record<string, Memory>
+  onReview?: (conceptIds: string[]) => void
 }
 
 function Card({
@@ -601,7 +651,9 @@ function Card({
   onPath,
   onStudy,
   onOpenNote,
-  onExtract
+  onExtract,
+  memory,
+  onReview
 }: CardProps): React.JSX.Element {
   const conceptRow = (id: string, tag?: string): React.JSX.Element | null => {
     const c = model.concepts.find((x) => x.id === id)
@@ -631,6 +683,11 @@ function Card({
         <div className="chips">
           <span>concetto</span>
           <span>livello {c.depth}</span>
+          <span className={'mem ' + (memory[c.id]?.state ?? 'mai visto').replace(' ', '-')}>
+            {memory[c.id]
+              ? `${memory[c.id].state} · ${Math.round((memory[c.id].R ?? 0) * 100)}%`
+              : 'mai visto'}
+          </span>
         </div>
         <h3>{c.name}</h3>
         <RichText md={c.statement} className="stmt" />
@@ -666,6 +723,11 @@ function Card({
           <button type="button" className="pri" onClick={() => onPath([c.id, ...anc])}>
             Cosa serve per capirlo ({anc.length})
           </button>
+          {onReview && (
+            <button type="button" onClick={() => onReview([c.id])}>
+              Ripassa
+            </button>
+          )}
           <button type="button" onClick={() => onOpenNote(c.birth)}>
             Apri la nota
           </button>
@@ -713,6 +775,11 @@ function Card({
           <button type="button" className="pri" onClick={() => onStudy(r.title)}>
             Studia questa nota
           </button>
+          {onReview && (
+            <button type="button" onClick={() => onReview(r.concepts)}>
+              Ripassa questa nota
+            </button>
+          )}
           <button type="button" onClick={() => onOpenNote(r.notePath)}>
             Apri la nota
           </button>

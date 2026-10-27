@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { EXERCISE_TYPES } from './memory-types'
 
 export const TASKS = ['extract', 'note', 'variants', 'notebook', 'teach', 'grade'] as const
 export type Task = (typeof TASKS)[number]
@@ -31,7 +32,9 @@ export function settingsSchema(home: string) {
       .catch(DEFAULT_ENGINES),
     excludedFolders: z.array(z.string()).catch(DEFAULT_EXCLUDED),
     backgroundExtraction: z.boolean().catch(true),
-    dailyExtractionLimit: z.number().int().min(0).max(50).catch(6)
+    dailyExtractionLimit: z.number().int().min(0).max(50).catch(6),
+    reviewSessionSize: z.number().int().min(1).max(20).catch(12),
+    exerciseTypes: z.array(z.enum(EXERCISE_TYPES)).min(1).catch([...EXERCISE_TYPES])
   })
 }
 export type Settings = z.infer<ReturnType<typeof settingsSchema>>

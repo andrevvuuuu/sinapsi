@@ -45,6 +45,13 @@ const api: SinapsiApi = {
     onChange: (cb) => subscribe(CH.graphChanged, cb),
     positions: () => ipcRenderer.invoke(CH.graphPositions),
     savePositions: (p) => ipcRenderer.invoke(CH.graphSavePositions, p)
+  },
+  review: {
+    plan: (opts) => ipcRenderer.invoke(CH.reviewPlan, opts),
+    grade: (req) => ipcRenderer.invoke(CH.reviewGrade, req),
+    record: (r) => ipcRenderer.invoke(CH.reviewRecord, r),
+    memory: () => ipcRenderer.invoke(CH.reviewMemory),
+    intervals: (id) => ipcRenderer.invoke(CH.reviewIntervals, id)
   }
 }
 

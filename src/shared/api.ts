@@ -6,6 +6,8 @@ import type { NoteMeta, StoredNote } from '../main/notes/store'
 
 export type { SessionState, SessionSummary, NoteMeta, StoredNote }
 export type { GraphData, ExtractorStatus } from './graph-types'
+export type { Memory, ReviewLine, Grade } from './memory-types'
+export type { ReviewItem, ReviewPlan, GradeResult } from '../main/memory/review'
 export type GraphPositions = Record<string, [number, number]>
 export type NoteRequest = { sourcePath?: string; sessionId?: string }
 
@@ -38,7 +40,12 @@ export const CH = {
   graphStatus: 'graph:status',
   graphChanged: 'graph:changed',
   graphPositions: 'graph:positions',
-  graphSavePositions: 'graph:save-positions'
+  graphSavePositions: 'graph:save-positions',
+  reviewPlan: 'review:plan',
+  reviewGrade: 'review:grade',
+  reviewRecord: 'review:record',
+  reviewMemory: 'review:memory',
+  reviewIntervals: 'review:intervals'
 } as const
 
 export interface SinapsiApi {
@@ -80,5 +87,12 @@ export interface SinapsiApi {
     onChange(cb: (e: { status: import('./graph-types').ExtractorStatus; graph?: import('./graph-types').GraphData }) => void): () => void
     positions(): Promise<GraphPositions>
     savePositions(p: GraphPositions): Promise<void>
+  }
+  review: {
+    plan(opts?: { conceptIds?: string[]; weakest?: boolean }): Promise<import('../main/memory/review').ReviewPlan>
+    grade(req: { conceptId: string; exercise: import('./exercise-schema').Exercise; answer: string; confidence: number }): Promise<import('../main/memory/review').GradeResult>
+    record(r: import('./memory-types').ReviewLine): Promise<{ memory: import('./memory-types').Memory; intervals: Record<import('./memory-types').Grade, string> }>
+    memory(): Promise<Record<string, import('./memory-types').Memory>>
+    intervals(conceptId: string): Promise<Record<import('./memory-types').Grade, string>>
   }
 }

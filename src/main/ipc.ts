@@ -4,7 +4,11 @@ import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { makeGraphHandlers, makeHandlers, makeNoteHandlers, makeSessionHandlers } from './ipc-handlers'
+import { makeGraphHandlers, makeHandlers, makeNoteHandlers, makeReviewHandlers, makeSessionHandlers } from './ipc-handlers'
+import { fakeReviewBridge } from './memory/fake-review'
+import { createReviewService } from './memory/review'
+import { memoryStore } from './memory/store'
+import { variantsStore } from './memory/variants'
 import { fakeExtractBridge } from './graph/fake-extract'
 import { createExtractor, type Extractor } from './graph/jobs'
 import { graphStore } from './graph/store'
@@ -165,6 +169,24 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.graphExtract, (_e, path, reason) => gh.extract(path, reason))
   ipcMain.handle(CH.graphPositions, () => gh.positions())
   ipcMain.handle(CH.graphSavePositions, (_e, p) => gh.savePositions(p))
+
+  const memoryDir = join(dataDir(), 'memory')
+  const review = createReviewService({
+    bridge: process.env.SINAPSI_FAKE_REVIEW === '1' ? fakeReviewBridge() : bridge,
+    memory: memoryStore(memoryDir),
+    variants: variantsStore(memoryDir),
+    graph: () => extractor.graph(),
+    vault: vaultOrNull,
+    readNote: (path) => readFile(path, 'utf8'),
+    settings: async () => settings.load(),
+    workDir: join(dataDir(), 'ai-work')
+  })
+  const rh = makeReviewHandlers(review)
+  ipcMain.handle(CH.reviewPlan, (_e, opts) => rh.plan(opts))
+  ipcMain.handle(CH.reviewGrade, (_e, req) => rh.grade(req))
+  ipcMain.handle(CH.reviewRecord, (_e, r) => rh.record(r))
+  ipcMain.handle(CH.reviewMemory, () => rh.memory())
+  ipcMain.handle(CH.reviewIntervals, (_e, id) => rh.intervals(id))
 
   // Background extraction: a few notes a day, only while the Mac is idle.
   const tick = async (): Promise<void> => {

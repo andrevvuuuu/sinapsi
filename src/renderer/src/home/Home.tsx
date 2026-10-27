@@ -15,9 +15,14 @@ function applyTheme(theme: Settings['theme']): void {
   document.documentElement.dataset.theme = theme === 'system' ? (dark ? 'lavagna' : 'trattato') : theme
 }
 
-type HomeProps = { onOpenSession?: (id: string) => void; onOpenNota?: (id: string) => void; onOpenSource?: (path: string) => void }
+type HomeProps = {
+  onOpenSession?: (id: string) => void
+  onOpenNota?: (id: string) => void
+  onOpenSource?: (path: string) => void
+  onOpenReview?: (query: string, conceptIds?: string[]) => void
+}
 
-export default function Home({ onOpenSession, onOpenNota, onOpenSource }: HomeProps = {}): React.JSX.Element {
+export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenReview }: HomeProps = {}): React.JSX.Element {
   const api = window.sinapsi
   const [index, setIndex] = useState<VaultResult | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -27,6 +32,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource }: HomePr
   const [toast, setToast] = useState<string | null>(null)
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [notes, setNotes] = useState<NoteMeta[]>([])
+  const [due, setDue] = useState(0)
 
   const reload = useCallback(async () => {
     const [s, idx] = await Promise.all([api.settings.get(), api.vault.index()])
@@ -39,6 +45,10 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource }: HomePr
     void reload()
     void api.ai.status().then(setStatus)
     void api.session?.list().then(setSessions)
+    void api.review
+      ?.memory()
+      .then((m) => setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length))
+      .catch(() => undefined)
     const loadNotes = (): void => void api.notes?.list().then(setNotes)
     loadNotes()
     const offNotes = api.notes?.onUpdate(loadNotes)
@@ -109,6 +119,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource }: HomePr
         ) : index && 'notes' in index && index.notes.length > 0 && api.graph ? (
           <GraphView
             index={index}
+            onReview={(ids) => onOpenReview?.('', ids)}
             onOpenNote={(path) => onOpenSource?.(path)}
             onStudy={(title) =>
               void api.session
@@ -138,7 +149,9 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource }: HomePr
           </div>
         )}
         <Composer
+          due={due}
           onSubmit={async (mode, text) => {
+            if (mode === 'Ripasso') return onOpenReview?.(text)
             if (mode !== 'Apprendimento' || !api.session) return setToast(`${mode}: arriva in una prossima fase`)
             const id = await api.session.start(text)
             onOpenSession?.(id)
