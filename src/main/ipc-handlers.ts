@@ -10,6 +10,10 @@ import { TASKS, type Engine, type Settings } from '../shared/settings-schema'
 import { LearnerAnswerSchema, type LearnerAnswer } from '../shared/teacher-protocol'
 import type { SessionRunner } from './session/runner'
 import type { VaultIndex } from '../shared/vault-types'
+import { NOTEBOOKLM_PREFIX } from '../shared/notebook-types'
+import type { Ingestor } from './notebook/ingest'
+import type { NotebookChat } from './notebook/chat'
+import type { NotebookStore } from './notebook/store'
 
 const Choice = z.object({ engine: z.enum(['agy', 'claude']), model: z.string().optional() }).strict()
 const Patch = z
@@ -122,5 +126,75 @@ export function makeReviewHandlers(svc: ReviewService) {
     record: async (r: unknown) => svc.record(ReviewLineSchema.parse(r)),
     memory: () => svc.memory(),
     intervals: async (id: unknown) => svc.intervals(z.string().min(1).max(64).parse(id))
+  }
+}
+
+const Name = z.string().trim().min(1).max(80)
+const NotebookPatch = z
+  .object({
+    name: Name,
+    subject: z.string().min(1).max(200).nullable(),
+    link: z
+      .string()
+      .trim()
+      .max(2048)
+      .refine((u) => u.startsWith(NOTEBOOKLM_PREFIX), 'serve un link https://notebooklm.google.com/…')
+      .nullable()
+  })
+  .partial()
+  .strict()
+const AbsPath = z.string().min(2).max(4096).refine((p) => p.startsWith('/'), 'percorso non valido')
+const Question = z.string().trim().min(1).max(4000)
+
+export function makeNotebookHandlers(d: {
+  store: NotebookStore
+  ingest: Pick<Ingestor, 'addFiles' | 'addYoutube' | 'addVaultNote' | 'retry' | 'remove' | 'decorate'>
+  chat: Pick<NotebookChat, 'ask'>
+  vault: () => Promise<VaultIndex | null>
+  chooseFiles: () => Promise<string[]>
+  openPath: (path: string) => Promise<unknown> | void
+}) {
+  async function notebook(id: unknown): Promise<string> {
+    const nb = Id.parse(id)
+    if (!(await d.store.notebooks()).some((n) => n.id === nb)) throw new Error('Notebook non trovato')
+    return nb
+  }
+  async function source(id: unknown): Promise<import('../shared/notebook-types').Source> {
+    const s = await d.store.source(Id.parse(id))
+    if (!s) throw new Error('Fonte non trovata')
+    return s
+  }
+  return {
+    list: async () => d.ingest.decorate(await d.store.notebooks()),
+    create: async (name: unknown) => d.store.create(Name.parse(name)),
+    update: async (id: unknown, patch: unknown) => d.store.update(await notebook(id), NotebookPatch.parse(patch)),
+    remove: async (id: unknown) => d.store.remove(await notebook(id)),
+    addFiles: async (id: unknown, paths: unknown) => {
+      const nb = await notebook(id)
+      return d.ingest.addFiles(nb, z.array(AbsPath).min(1).max(200).parse(paths))
+    },
+    chooseFiles: async (id: unknown) => {
+      const nb = await notebook(id)
+      const paths = await d.chooseFiles()
+      return paths.length ? d.ingest.addFiles(nb, paths) : { added: [], rejected: [] }
+    },
+    addYoutube: async (id: unknown, url: unknown) => d.ingest.addYoutube(await notebook(id), z.string().trim().max(2048).parse(url)),
+    addVault: async (id: unknown, path: unknown) => {
+      const nb = await notebook(id)
+      const p = z.string().max(4096).parse(path)
+      const note = (await d.vault())?.notes.find((n) => n.path === p && n.available)
+      if (!note) throw new Error('Nota non trovata nel vault')
+      return d.ingest.addVaultNote(nb, note.path, note.title)
+    },
+    removeSource: async (id: unknown) => d.ingest.remove((await source(id)).id),
+    retrySource: async (id: unknown) => d.ingest.retry((await source(id)).id),
+    text: async (id: unknown) => d.store.readText((await source(id)).id),
+    chat: async (id: unknown) => d.store.chat(await notebook(id)),
+    ask: async (id: unknown, question: unknown, sourceIds: unknown) => d.chat.ask(await notebook(id), Question.parse(question), z.array(Id).max(500).parse(sourceIds)),
+    openFile: async (id: unknown) => {
+      const s = await source(id)
+      if (s.kind === 'youtube' || s.kind === 'vault') throw new Error('Questa fonte non ha un file')
+      await d.openPath(`${d.store.filesDir(s.id)}/${s.origin}`)
+    }
   }
 }

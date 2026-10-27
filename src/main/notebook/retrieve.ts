@@ -62,9 +62,9 @@ export function tokens(s: string): string[] {
 
 /**
  * Everything, in source order, when the selected sources fit the prompt; otherwise the best BM25 chunks
- * up to PICK_BUDGET chars, still in source order so neighbouring passages read naturally.
+ * up to `pick` chars, still in source order so neighbouring passages read naturally.
  */
-export function selectExcerpts(chunks: Chunk[], query: string, budget = FULL_BUDGET): { excerpts: Chunk[]; full: boolean } {
+export function selectExcerpts(chunks: Chunk[], query: string, budget = FULL_BUDGET, pick = PICK_BUDGET): { excerpts: Chunk[]; full: boolean } {
   const total = chunks.reduce((n, c) => n + c.text.length, 0)
   if (total <= budget) return { excerpts: chunks, full: true }
   const q = [...new Set(tokens(query))]
@@ -90,7 +90,7 @@ export function selectExcerpts(chunks: Chunk[], query: string, budget = FULL_BUD
   const picked: Chunk[] = []
   let used = 0
   for (const { c } of ranked) {
-    if (used + c.text.length > PICK_BUDGET) continue
+    if (used + c.text.length > pick) continue
     picked.push(c)
     used += c.text.length
   }

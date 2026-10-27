@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 import { CH, type SinapsiApi } from '../shared/api'
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
@@ -52,6 +52,24 @@ const api: SinapsiApi = {
     record: (r) => ipcRenderer.invoke(CH.reviewRecord, r),
     memory: () => ipcRenderer.invoke(CH.reviewMemory),
     intervals: (id) => ipcRenderer.invoke(CH.reviewIntervals, id)
+  },
+  notebook: {
+    list: () => ipcRenderer.invoke(CH.notebookList),
+    create: (name) => ipcRenderer.invoke(CH.notebookCreate, name),
+    update: (id, patch) => ipcRenderer.invoke(CH.notebookUpdate, id, patch),
+    remove: (id) => ipcRenderer.invoke(CH.notebookRemove, id),
+    addFiles: (id, paths) => ipcRenderer.invoke(CH.notebookAddFiles, id, paths),
+    chooseFiles: (id) => ipcRenderer.invoke(CH.notebookChooseFiles, id),
+    addYoutube: (id, url) => ipcRenderer.invoke(CH.notebookAddYoutube, id, url),
+    addVault: (id, path) => ipcRenderer.invoke(CH.notebookAddVault, id, path),
+    removeSource: (id) => ipcRenderer.invoke(CH.notebookRemoveSource, id),
+    retrySource: (id) => ipcRenderer.invoke(CH.notebookRetrySource, id),
+    text: (id) => ipcRenderer.invoke(CH.notebookText, id),
+    chat: (id) => ipcRenderer.invoke(CH.notebookChat, id),
+    ask: (id, q, ids) => ipcRenderer.invoke(CH.notebookAsk, id, q, ids),
+    openFile: (id) => ipcRenderer.invoke(CH.notebookOpenFile, id),
+    pathForFile: (file) => webUtils.getPathForFile(file),
+    onUpdate: (cb) => subscribe(CH.notebookUpdated, cb)
   }
 }
 

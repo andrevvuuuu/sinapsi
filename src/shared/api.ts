@@ -8,6 +8,7 @@ export type { SessionState, SessionSummary, NoteMeta, StoredNote }
 export type { GraphData, ExtractorStatus } from './graph-types'
 export type { Memory, ReviewLine, Grade } from './memory-types'
 export type { ReviewItem, ReviewPlan, GradeResult } from '../main/memory/review'
+export type { Notebook, Source, SourceText, ChatTurn, Excerpt } from './notebook-types'
 export type GraphPositions = Record<string, [number, number]>
 export type NoteRequest = { sourcePath?: string; sessionId?: string }
 
@@ -45,7 +46,22 @@ export const CH = {
   reviewGrade: 'review:grade',
   reviewRecord: 'review:record',
   reviewMemory: 'review:memory',
-  reviewIntervals: 'review:intervals'
+  reviewIntervals: 'review:intervals',
+  notebookList: 'notebook:list',
+  notebookCreate: 'notebook:create',
+  notebookUpdate: 'notebook:update',
+  notebookRemove: 'notebook:remove',
+  notebookAddFiles: 'notebook:add-files',
+  notebookChooseFiles: 'notebook:choose-files',
+  notebookAddYoutube: 'notebook:add-youtube',
+  notebookAddVault: 'notebook:add-vault',
+  notebookRemoveSource: 'notebook:remove-source',
+  notebookRetrySource: 'notebook:retry-source',
+  notebookText: 'notebook:text',
+  notebookChat: 'notebook:chat',
+  notebookAsk: 'notebook:ask',
+  notebookOpenFile: 'notebook:open-file',
+  notebookUpdated: 'notebook:updated'
 } as const
 
 export interface SinapsiApi {
@@ -94,5 +110,25 @@ export interface SinapsiApi {
     record(r: import('./memory-types').ReviewLine): Promise<{ memory: import('./memory-types').Memory; intervals: Record<import('./memory-types').Grade, string> }>
     memory(): Promise<Record<string, import('./memory-types').Memory>>
     intervals(conceptId: string): Promise<Record<import('./memory-types').Grade, string>>
+  }
+  notebook: {
+    list(): Promise<import('./notebook-types').Notebook[]>
+    create(name: string): Promise<string>
+    update(id: string, patch: { name?: string; subject?: string | null; link?: string | null }): Promise<void>
+    remove(id: string): Promise<void>
+    addFiles(id: string, paths: string[]): Promise<{ added: string[]; rejected: string[] }>
+    chooseFiles(id: string): Promise<{ added: string[]; rejected: string[] }>
+    addYoutube(id: string, url: string): Promise<string>
+    addVault(id: string, path: string): Promise<string>
+    removeSource(id: string): Promise<void>
+    retrySource(id: string): Promise<void>
+    text(sourceId: string): Promise<import('./notebook-types').SourceText | null>
+    chat(id: string): Promise<import('./notebook-types').ChatTurn[]>
+    /** Resolves when the answer (or the error) has been written to the chat. */
+    ask(id: string, question: string, sourceIds: string[]): Promise<void>
+    openFile(sourceId: string): Promise<void>
+    /** Path of a dropped file (Electron's webUtils). */
+    pathForFile(file: File): string
+    onUpdate(cb: (e: { notebookId?: string }) => void): () => void
   }
 }

@@ -4,7 +4,13 @@ import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { makeGraphHandlers, makeHandlers, makeNoteHandlers, makeReviewHandlers, makeSessionHandlers } from './ipc-handlers'
+import { makeGraphHandlers, makeHandlers, makeNotebookHandlers, makeNoteHandlers, makeReviewHandlers, makeSessionHandlers } from './ipc-handlers'
+import { createNotebookChat } from './notebook/chat'
+import { fakeMedia } from './notebook/fake-media'
+import { fakeNotebookBridge } from './notebook/fake-notebook'
+import { notebookSourcesFor } from './notebook/for-notes'
+import { ACCEPTED_EXTENSIONS, createIngestor } from './notebook/ingest'
+import { notebookStore } from './notebook/store'
 import { fakeReviewBridge } from './memory/fake-review'
 import { createReviewService } from './memory/review'
 import { memoryStore } from './memory/store'
@@ -106,7 +112,67 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.sessionSay, (_e, id, text) => background(sh.say(id, text)))
   ipcMain.handle(CH.sessionRetry, (_e, id) => background(sh.retry(id)))
 
+  const vaultIndexOrNull = async (): Promise<import('../shared/vault-types').VaultIndex | null> => {
+    const idx = await h.vaultIndex()
+    return 'error' in idx ? null : idx
+  }
+  const nbStore = notebookStore(join(dataDir(), 'notebook'))
+  // Progress arrives many times a second: the window hears about it at most every 300 ms.
+  let nbTimer: ReturnType<typeof setTimeout> | null = null
+  const nbChanged = (): void => {
+    if (nbTimer) return
+    nbTimer = setTimeout(() => {
+      nbTimer = null
+      broadcast(CH.notebookUpdated, {})
+    }, 300)
+  }
+  const ingest = createIngestor({
+    store: nbStore,
+    run: process.env.SINAPSI_FAKE_MEDIA === '1' ? fakeMedia() : nodeSpawn,
+    readVault: (path) => readFile(path, 'utf8'),
+    onChange: nbChanged
+  })
+  void ingest.fixStale().catch((e) => console.warn('[notebook] fixStale', e))
+  const nbChat = createNotebookChat({
+    bridge: process.env.SINAPSI_FAKE_NOTEBOOK === '1' ? fakeNotebookBridge() : bridge,
+    store: nbStore,
+    workDir: join(dataDir(), 'ai-work'),
+    onTurn: (notebookId) => broadcast(CH.notebookUpdated, { notebookId })
+  })
+  const nbh = makeNotebookHandlers({
+    store: nbStore,
+    ingest,
+    chat: nbChat,
+    vault: vaultIndexOrNull,
+    chooseFiles: async () => {
+      const r = await dialog.showOpenDialog({ title: 'Importa fonti', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Fonti', extensions: ACCEPTED_EXTENSIONS }] })
+      return r.canceled ? [] : r.filePaths
+    },
+    openPath: (p) => shell.openPath(p)
+  })
+  ipcMain.handle(CH.notebookList, () => nbh.list())
+  ipcMain.handle(CH.notebookCreate, (_e, name) => nbh.create(name))
+  ipcMain.handle(CH.notebookUpdate, async (_e, id, patch) => {
+    await nbh.update(id, patch)
+    nbChanged()
+  })
+  ipcMain.handle(CH.notebookRemove, async (_e, id) => {
+    await nbh.remove(id)
+    nbChanged()
+  })
+  ipcMain.handle(CH.notebookAddFiles, (_e, id, paths) => nbh.addFiles(id, paths))
+  ipcMain.handle(CH.notebookChooseFiles, (_e, id) => nbh.chooseFiles(id))
+  ipcMain.handle(CH.notebookAddYoutube, (_e, id, url) => nbh.addYoutube(id, url))
+  ipcMain.handle(CH.notebookAddVault, (_e, id, path) => nbh.addVault(id, path))
+  ipcMain.handle(CH.notebookRemoveSource, (_e, id) => nbh.removeSource(id))
+  ipcMain.handle(CH.notebookRetrySource, (_e, id) => nbh.retrySource(id))
+  ipcMain.handle(CH.notebookText, (_e, id) => nbh.text(id))
+  ipcMain.handle(CH.notebookChat, (_e, id) => nbh.chat(id))
+  ipcMain.handle(CH.notebookAsk, (_e, id, q, ids) => nbh.ask(id, q, ids))
+  ipcMain.handle(CH.notebookOpenFile, (_e, id) => nbh.openFile(id))
+
   const notes = createNoteGenerator({
+    sources: notebookSourcesFor({ store: nbStore, vault: vaultIndexOrNull }),
     bridge: process.env.SINAPSI_FAKE_NOTE === '1' ? fakeNoteBridge() : bridge,
     dir: join(dataDir(), 'notes'),
     workDir: join(dataDir(), 'ai-work'),
