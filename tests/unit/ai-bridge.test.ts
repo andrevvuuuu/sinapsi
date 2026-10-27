@@ -113,3 +113,15 @@ describe('extractJson', () => {
     expect(extractJson('Risposta: {"b":{"c":2}} grazie')).toEqual({ b: { c: 2 } })
   })
 })
+
+describe('extractJson with LaTeX written with single backslashes', () => {
+  it('repairs invalid escapes such as \\sum and \\mathbb', () => {
+    expect(extractJson('{"s":"$\\sum_i \\mathbb{R}$"}')).toEqual({ s: '$\\sum_i \\mathbb{R}$' })
+  })
+  it('keeps LaTeX commands that start like JSON escapes when the text needs repair', () => {
+    expect(extractJson('{"s":"$\\frac{a}{b} \\to \\beta \\nabla \\rho \\in A$"}')).toEqual({ s: '$\\frac{a}{b} \\to \\beta \\nabla \\rho \\in A$' })
+  })
+  it('leaves real escapes alone', () => {
+    expect(extractJson('{"s":"riga\\nriga \\"citata\\" \\u00e8 \\\\in","t":"\\in"}')).toEqual({ s: 'riga\nriga "citata" è \\in', t: '\\in' })
+  })
+})

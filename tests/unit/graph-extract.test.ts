@@ -117,3 +117,9 @@ describe('buildExtractPrompt', () => {
     expect(p).toContain('Teorema di Lagrange')
   })
 })
+
+describe('extract prompt and LaTeX', () => {
+  it('asks for doubled backslashes inside JSON strings', () => {
+    expect(buildExtractPrompt({ noteTitle: 't', noteText: 'x', candidates: [] })).toContain('ogni backslash va raddoppiato (\\\\frac')
+  })
+})

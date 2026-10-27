@@ -10,7 +10,7 @@ export function buildExtractPrompt(input: { noteTitle: string; noteText: string;
 - Ogni catena è un insieme di premesse che INSIEME implicano una conclusione. Solo l'implicazione giustifica una catena: dove il legame è storico o narrativo non c'è catena. Argomenti indipendenti per la stessa conclusione sono catene separate.
 - Il grafo contiene solo idee VERE sul mondo, mai qualcosa su Andrea, sullo studio o su questa lettura. Un errore comune entra come la sua correzione vera.
 - Estrai le idee portanti, quelle che un manuale insegnerebbe: definizioni, teoremi, lemmi, criteri, conseguenze. Non gli esempi o le glosse di notazione che nessun argomento usa, non la numerazione della nota.
-- "name": un'etichetta brevissima (al massimo 6 parole, es. "Teorema di Fermat"). "statement": un enunciato autosufficiente e preciso, comprensibile da chi non ha mai visto la nota; formule in LaTeX con $…$.
+- "name": un'etichetta brevissima (al massimo 6 parole, es. "Teorema di Fermat"). "statement": un enunciato autosufficiente e preciso, comprensibile da chi non ha mai visto la nota; formule in LaTeX con $…$; dentro le stringhe JSON ogni backslash va raddoppiato (\\\\frac, \\\\mathbb).
 - "section": il titolo della sezione della nota (es. "§2 Enunciato") dove l'idea è detta.`,
     `IDEE GIÀ NEL GRAFO (da questa nota e da note collegate). Se un'idea della nota È una di queste, anche detta con altre parole o con un'altra precisione, NON crearne una nuova: scrivi { "ref": "n_…" }. Parafrasi e riformulazioni della stessa affermazione vanno unite; restano separate solo affermazioni davvero diverse. Puoi usare questi id anche come premesse o conclusioni delle catene.
 ${cands || '(nessuna)'}`,
