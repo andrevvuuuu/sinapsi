@@ -11,7 +11,7 @@ const KINDS: Record<string, SourceKind> = {
   '.pptx': 'slides',
   '.txt': 'text',
   '.md': 'text',
-  ...Object.fromEntries(['.m4a', '.mp3', '.wav', '.aac', '.flac', '.ogg', '.mp4', '.mov', '.m4v', '.webm'].map((e) => [e, 'audio' as const]))
+  ...Object.fromEntries(['.m4a', '.mp3', '.wav', '.aiff', '.aif', '.aac', '.flac', '.ogg', '.opus', '.mp4', '.mov', '.m4v', '.webm'].map((e) => [e, 'audio' as const]))
 }
 export const ACCEPTED_EXTENSIONS = Object.keys(KINDS).map((e) => e.slice(1))
 

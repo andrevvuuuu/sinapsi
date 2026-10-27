@@ -156,3 +156,14 @@ describe('ingest', () => {
     expect(await store.readText(added[0])).toBeNull()
   })
 })
+
+describe('audio formats', () => {
+  it.each(['lezione.aiff', 'lezione.aif', 'lezione.opus', 'LEZIONE.M4A'])('accepts %s as audio', async (name) => {
+    const f = join(dir, name)
+    await writeFile(f, 'x')
+    const { ing } = setup()
+    expect((await ing.addFiles(nb, [f])).rejected).toEqual([])
+    await ing.idle()
+    expect((await sources())[0].kind).toBe('audio')
+  })
+})

@@ -53,6 +53,16 @@ Nel riquadro in basso scegli **Ripasso** e premi invio (vuoto = quello che sta s
 - Sbagliato **con sicurezza** = possibile **misconcezione**: il riepilogo ti propone di ristudiare il concetto con il tutor.
 - Nel grafo i concetti sono colorati per memoria (verde la sai, giallo incerto, rosso debole, vuoto mai visto); le lenti **Da ripassare**, **Mai visti** e **Basi fragili** li evidenziano.
 
+## Notebook
+
+Nel pannello a destra della home: **Nuovo notebook**, poi dentro il notebook aggiungi le fonti con **File…** (PDF, PowerPoint .pptx, testo e Markdown, audio e video), **YouTube** (incolla il link) o **Nota del vault**. Puoi anche trascinare i file sulla colonna delle fonti.
+
+- Le fonti si leggono una alla volta: i PDF per pagina, le slide per numero, le registrazioni e i video con **trascrizione locale** (mlx_whisper, sul Mac, senza quota; la prima volta scarica il modello, circa 1,6 GB). Per YouTube usa i sottotitoli se ci sono, altrimenti scarica l'audio e lo trascrive (yt-dlp).
+- La chat risponde **solo dalle fonti selezionate** (le caselle a sinistra): ogni frase cita la fonte con un numero; cliccalo e vedi il passo evidenziato (per i video, il pulsante apre YouTube in quel minuto). Le frasi senza fonte vengono tolte e te lo dice; quello che le fonti non dicono compare in "Le fonti non dicono".
+- **Materia**: collega il notebook a una materia del vault; le note vive di quella materia useranno anche gli estratti delle sue fonti.
+- **Collega NotebookLM**: incolla il link del notebook con lo stesso argomento su NotebookLM; poi il pulsante lo apre.
+- Le pagine scansionate (senza testo) non si possono leggere: il notebook te lo segnala.
+
 ## Per lo sviluppo
 
 ```bash

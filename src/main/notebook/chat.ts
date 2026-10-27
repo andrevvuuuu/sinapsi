@@ -1,3 +1,4 @@
+import { mkdir } from 'node:fs/promises'
 import { z } from 'zod'
 import type { Bridge } from '../ai/bridge'
 import type { ChatTurn, Claim, Excerpt } from '../../shared/notebook-types'
@@ -86,6 +87,7 @@ export function createNotebookChat(deps: { bridge: Pick<Bridge, 'ask'>; store: N
       const { excerpts: picked } = selectExcerpts(chunks, [...recent, question].join(' '))
       const excerpts: Excerpt[] = picked.map((c, i) => ({ n: i + 1, sourceId: c.sourceId, title: c.title, label: c.label, text: c.text, ...(c.start !== undefined ? { start: c.start } : {}) }))
       try {
+        await mkdir(deps.workDir, { recursive: true })
         const r = await deps.bridge.ask({ task: 'notebook', prompt: buildAskPrompt({ notebookName: nb.name, excerpts, history, question }), schema: NotebookReplySchema, timeoutMs: TIMEOUT, cwd: deps.workDir })
         const g = groundReply(r.data as NotebookReply, excerpts)
         const cited = new Set(g.claims.flatMap((c) => c.sources))

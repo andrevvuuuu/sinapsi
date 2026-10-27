@@ -109,3 +109,18 @@ describe('ask', () => {
     expect((await store.chat(nb))[1]).toMatchObject({ role: 'error', text: 'Nessuna fonte pronta tra quelle selezionate.' })
   })
 })
+
+describe('work folder', () => {
+  it('creates the AI work folder before calling the engine (a missing cwd looks like a missing program)', async () => {
+    const { existsSync } = await import('node:fs')
+    const work = join(dir, 'non-ancora', 'w')
+    let existed = false
+    const ask = vi.fn(async (req: { cwd: string; schema: { parse(x: unknown): unknown } }) => {
+      existed = existsSync(req.cwd)
+      return { data: req.schema.parse({ claims: [], missing: 'x' }), fromCache: false, engine: 'agy' as const }
+    })
+    const chat = createNotebookChat({ bridge: { ask } as never, store, workDir: work, onTurn: vi.fn() })
+    await chat.ask(nb, 'x', ['s1'])
+    expect(existed).toBe(true)
+  })
+})
