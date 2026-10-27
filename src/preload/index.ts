@@ -30,6 +30,13 @@ const api: SinapsiApi = {
     say: (id, text) => ipcRenderer.invoke(CH.sessionSay, id, text),
     retry: (id) => ipcRenderer.invoke(CH.sessionRetry, id),
     onUpdate: (cb) => subscribe(CH.sessionUpdated, cb)
+  },
+  notes: {
+    create: (req) => ipcRenderer.invoke(CH.notesCreate, req),
+    list: () => ipcRenderer.invoke(CH.notesList),
+    get: (id) => ipcRenderer.invoke(CH.notesGet, id),
+    retry: (id) => ipcRenderer.invoke(CH.notesRetry, id),
+    onUpdate: (cb) => subscribe(CH.notesUpdated, cb)
   }
 }
 

@@ -1,3 +1,4 @@
+import type { NoteGenerator } from './notes/generator'
 import { access } from 'node:fs/promises'
 import { z } from 'zod'
 import type { EngineStatus, VaultResult } from '../shared/api'
@@ -71,5 +72,19 @@ export function makeSessionHandlers(runner: SessionRunner) {
     answer: async (id: unknown, a: unknown) => runner.answer(Id.parse(id), LearnerAnswerSchema.parse(a) as LearnerAnswer),
     say: async (id: unknown, text: unknown) => runner.say(Id.parse(id), Text.parse(text)),
     retry: async (id: unknown) => runner.retry(Id.parse(id))
+  }
+}
+
+const NoteRequest = z
+  .object({ sourcePath: z.string().min(1).max(1024).optional(), sessionId: Id.optional() })
+  .strict()
+  .refine((r) => r.sourcePath || r.sessionId, 'serve una nota o una sessione')
+
+export function makeNoteHandlers(gen: NoteGenerator) {
+  return {
+    create: async (req: unknown) => gen.create(NoteRequest.parse(req)),
+    list: () => gen.list(),
+    get: async (id: unknown) => gen.get(Id.parse(id)),
+    retry: async (id: unknown) => gen.retry(Id.parse(id))
   }
 }

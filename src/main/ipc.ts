@@ -4,7 +4,9 @@ import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
 import { readFile } from 'node:fs/promises'
-import { makeHandlers, makeSessionHandlers } from './ipc-handlers'
+import { makeHandlers, makeNoteHandlers, makeSessionHandlers } from './ipc-handlers'
+import { fakeNoteBridge } from './notes/fake-note'
+import { createNoteGenerator } from './notes/generator'
 import { fakeTeacher } from './session/fake-teacher'
 import { createSessionRunner } from './session/runner'
 import { dataDir } from './store/paths'
@@ -89,5 +91,23 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.sessionAnswer, (_e, id, a) => background(sh.answer(id, a)))
   ipcMain.handle(CH.sessionSay, (_e, id, text) => background(sh.say(id, text)))
   ipcMain.handle(CH.sessionRetry, (_e, id) => background(sh.retry(id)))
+
+  const notes = createNoteGenerator({
+    bridge: process.env.SINAPSI_FAKE_NOTE === '1' ? fakeNoteBridge() : bridge,
+    dir: join(dataDir(), 'notes'),
+    workDir: join(dataDir(), 'ai-work'),
+    vault: async () => {
+      const idx = await h.vaultIndex()
+      return 'error' in idx ? null : idx
+    },
+    readNote: (path) => readFile(path, 'utf8'),
+    session: (id) => runner.get(id).catch(() => null),
+    onUpdate: (m) => broadcast(CH.notesUpdated, m)
+  })
+  const nh = makeNoteHandlers(notes)
+  ipcMain.handle(CH.notesCreate, (_e, req) => nh.create(req))
+  ipcMain.handle(CH.notesList, () => nh.list())
+  ipcMain.handle(CH.notesGet, (_e, id) => nh.get(id))
+  ipcMain.handle(CH.notesRetry, (_e, id) => nh.retry(id))
   return { bridge }
 }

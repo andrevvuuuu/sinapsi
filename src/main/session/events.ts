@@ -15,6 +15,7 @@ export type SessionState = {
   id: string
   topic: string
   noteTitle?: string
+  notePath?: string
   phase: TeacherTurn['phase']
   plan?: Plan
   currentNodeId?: string
@@ -40,7 +41,7 @@ export function reduceSession(events: SessionEvent[]): SessionState {
     s.updatedAt = Math.max(s.updatedAt, e.at)
     switch (e.t) {
       case 'created':
-        Object.assign(s, { id: e.id, topic: e.topic, noteTitle: e.noteTitle, createdAt: e.at })
+        Object.assign(s, { id: e.id, topic: e.topic, noteTitle: e.noteTitle, notePath: e.notePath, createdAt: e.at })
         break
       case 'learner': {
         const q = e.question ?? s.pendingQuestion

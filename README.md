@@ -20,6 +20,19 @@ Se in alto nell'app compare "serve l'accesso", apri il Terminale, scrivi `agy` (
 
 Sinapsi **legge** il vault `~/Obsidian Vault` e **non lo modifica mai**. Per cambiare cartella: ingranaggio in basso a sinistra → Cambia cartella.
 
+## Note vive
+
+Clic su una nota nell'elenco a sinistra → **Crea la nota viva**; oppure, alla fine di una sessione di Apprendimento, **Crea la nota viva** nella scheda finale. Gemini legge la tua nota Obsidian (e la sessione, se c'è) e in 3–4 minuti scrive una pagina da cui studiare:
+
+- figure da toccare: cursori, punti da trascinare, elementi che **diventano verdi** quando la condizione è vera, tasto **Mostra i punti**;
+- dimostrazioni passo per passo, con la figura che segue lo scorrimento;
+- quiz e flashcard accanto ai paragrafi, esercizi svolti, da completare e da fare da solo;
+- **Prova da solo** (in alto) copre le soluzioni finché non hai scritto la tua;
+- strati **Sessione**, **Quiz** e **Fonti** da accendere e spegnere;
+- le imprecisioni della tua nota sono **segnalate, non corrette**: "Copia la correzione per Obsidian" la mette negli appunti.
+
+Le note vive restano nell'elenco **Note vive** a sinistra.
+
 ## Per lo sviluppo
 
 ```bash

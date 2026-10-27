@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { EngineStatus as Status, SessionSummary, VaultResult } from '../../../shared/api'
+import type { EngineStatus as Status, NoteMeta, SessionSummary, VaultResult } from '../../../shared/api'
 import type { Engine, Settings } from '../../../shared/settings-schema'
 import { buildTree } from './build-tree'
 import { Composer } from './Composer'
@@ -14,7 +14,9 @@ function applyTheme(theme: Settings['theme']): void {
   document.documentElement.dataset.theme = theme === 'system' ? (dark ? 'lavagna' : 'trattato') : theme
 }
 
-export default function Home({ onOpenSession }: { onOpenSession?: (id: string) => void } = {}): React.JSX.Element {
+type HomeProps = { onOpenSession?: (id: string) => void; onOpenNota?: (id: string) => void; onOpenSource?: (path: string) => void }
+
+export default function Home({ onOpenSession, onOpenNota, onOpenSource }: HomeProps = {}): React.JSX.Element {
   const api = window.sinapsi
   const [index, setIndex] = useState<VaultResult | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -23,6 +25,7 @@ export default function Home({ onOpenSession }: { onOpenSession?: (id: string) =
   const [right, setRight] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
   const [sessions, setSessions] = useState<SessionSummary[]>([])
+  const [notes, setNotes] = useState<NoteMeta[]>([])
 
   const reload = useCallback(async () => {
     const [s, idx] = await Promise.all([api.settings.get(), api.vault.index()])
@@ -35,11 +38,15 @@ export default function Home({ onOpenSession }: { onOpenSession?: (id: string) =
     void reload()
     void api.ai.status().then(setStatus)
     void api.session?.list().then(setSessions)
+    const loadNotes = (): void => void api.notes?.list().then(setNotes)
+    loadNotes()
+    const offNotes = api.notes?.onUpdate(loadNotes)
     const offVault = api.vault.onChange(setIndex)
     const offAi = api.ai.onStatus(setStatus)
     return () => {
       offVault()
       offAi()
+      offNotes?.()
     }
   }, [api, reload])
 
@@ -65,9 +72,11 @@ export default function Home({ onOpenSession }: { onOpenSession?: (id: string) =
         tree={tree}
         sessions={sessions}
         onOpenSession={(id) => onOpenSession?.(id)}
+        notes={notes}
+        onOpenNota={(id) => onOpenNota?.(id)}
         settings={settings}
         onClose={() => setLeft(false)}
-        onOpenNote={(path) => void api.app.openExternal('obsidian://open?path=' + encodeURIComponent(path))}
+        onOpenNote={(path) => onOpenSource?.(path)}
         onTheme={(t) => void setTheme(t)}
         onChooseVault={() => void chooseVault()}
       />

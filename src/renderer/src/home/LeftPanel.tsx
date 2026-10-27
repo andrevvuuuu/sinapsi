@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { SessionSummary } from '../../../shared/api'
+import type { NoteMeta, SessionSummary } from '../../../shared/api'
 import type { Settings } from '../../../shared/settings-schema'
 import type { TreeNode } from './build-tree'
 import { IconGear, IconPanel } from './icons'
@@ -12,6 +12,8 @@ type Props = {
   tree: TreeNode[]
   sessions: SessionSummary[]
   onOpenSession: (id: string) => void
+  notes: NoteMeta[]
+  onOpenNota: (id: string) => void
   settings: Settings | null
   onClose: () => void
   onOpenNote: (path: string) => void
@@ -19,7 +21,7 @@ type Props = {
   onChooseVault: () => void
 }
 
-export function LeftPanel({ tree, sessions, onOpenSession, settings, onClose, onOpenNote, onTheme, onChooseVault }: Props): React.JSX.Element {
+export function LeftPanel({ tree, sessions, onOpenSession, notes, onOpenNota, settings, onClose, onOpenNote, onTheme, onChooseVault }: Props): React.JSX.Element {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('Entrambe')
   const [open, setOpen] = useState(false)
   return (
@@ -57,6 +59,27 @@ export function LeftPanel({ tree, sessions, onOpenSession, settings, onClose, on
           </ul>
         )}
       </div>
+      {notes.length > 0 && (
+        <>
+          <div className="divider" />
+          <div className="psec">
+            <h2>Note vive</h2>
+            <ul className="sessions">
+              {notes.slice(0, 8).map((n) => (
+                <li key={n.id}>
+                  <button type="button" onClick={() => onOpenNota(n.id)}>
+                    <i className={'dot nv-' + n.status} aria-hidden="true" />
+                    <span className="t">{n.title}</span>
+                    <span className="s">
+                      {n.status === 'generating' ? 'in scrittura…' : n.status === 'error' ? 'da riprovare' : new Date(n.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
       <div className="divider" />
       <div className="psec scroll" style={{ flex: 1 }}>
         <h2>Note</h2>

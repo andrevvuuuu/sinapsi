@@ -21,12 +21,26 @@ function bridge(spawn: SpawnFn) {
 }
 
 describe('AI bridge', () => {
+  it('gives agy a print timeout matching a long request, a working folder and no slash commands', async () => {
+    const calls: { args: string[]; cwd?: string }[] = []
+    const b = bridge(async (_cmd, args, o) => (calls.push({ args, cwd: o.cwd }), ok(agyOk('ok'))))
+    await b.ask({ task: 'note', prompt: 'n', timeoutMs: 480_000, cwd: '/tmp/lavoro' })
+    const a = calls[0].args
+    expect(a[a.indexOf('--print-timeout') + 1]).toBe('470s')
+    expect(a).toContain('--disable-slash-commands')
+    expect(calls[0].cwd).toBe('/tmp/lavoro')
+  })
+
+  it('writes the nota viva with Gemini Flash medium by default', () => {
+    expect(DEFAULT_ENGINES.note).toEqual({ engine: 'agy', model: 'gemini-3.8-flash-medium' })
+  })
+
   it('routes extract to agy with the Gemini model and logs usage', async () => {
     const calls: string[][] = []
     const b = bridge(async (cmd, args) => (calls.push([cmd, ...args]), ok(agyOk('ciao'))))
     const r = await b.ask({ task: 'extract', prompt: 'x' })
     expect(r).toMatchObject({ data: 'ciao', engine: 'agy', fromCache: false })
-    expect(calls[0]).toEqual(['agy', '-p', 'x', '--output-format', 'json', '--print-timeout', '170s', '--model', 'gemini-3.8-flash-high'])
+    expect(calls[0]).toEqual(['agy', '-p', 'x', '--output-format', 'json', '--print-timeout', '170s', '--disable-slash-commands', '--model', 'gemini-3.8-flash-high'])
     const usage = JSON.parse((await readFile(join(dir, 'usage.jsonl'), 'utf8')).trim())
     expect(usage).toMatchObject({ task: 'extract', engine: 'agy', inputTokens: 100, outputTokens: 5, ok: true })
   })
