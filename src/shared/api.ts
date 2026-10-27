@@ -2,8 +2,10 @@ import type { Engine, Settings } from './settings-schema'
 import type { VaultIndex } from './vault-types'
 import type { LearnerAnswer } from './teacher-protocol'
 import type { SessionState, SessionSummary } from '../main/session/events'
+import type { NoteMeta, StoredNote } from '../main/notes/store'
 
-export type { SessionState, SessionSummary }
+export type { SessionState, SessionSummary, NoteMeta, StoredNote }
+export type NoteRequest = { sourcePath?: string; sessionId?: string }
 
 export type EngineStatus = 'idle' | 'busy' | 'auth' | 'missing' | 'error'
 export type VaultResult = VaultIndex | { error: 'missing' | 'unreadable'; path: string }
@@ -23,7 +25,12 @@ export const CH = {
   sessionAnswer: 'session:answer',
   sessionSay: 'session:say',
   sessionRetry: 'session:retry',
-  sessionUpdated: 'session:updated'
+  sessionUpdated: 'session:updated',
+  notesCreate: 'notes:create',
+  notesList: 'notes:list',
+  notesGet: 'notes:get',
+  notesRetry: 'notes:retry',
+  notesUpdated: 'notes:updated'
 } as const
 
 export interface SinapsiApi {
@@ -49,5 +56,12 @@ export interface SinapsiApi {
     say(id: string, text: string): Promise<void>
     retry(id: string): Promise<void>
     onUpdate(cb: (s: SessionState) => void): () => void
+  }
+  notes: {
+    create(req: NoteRequest): Promise<string>
+    list(): Promise<NoteMeta[]>
+    get(id: string): Promise<StoredNote>
+    retry(id: string): Promise<void>
+    onUpdate(cb: (m: NoteMeta) => void): () => void
   }
 }
