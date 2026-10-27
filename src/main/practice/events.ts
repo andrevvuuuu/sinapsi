@@ -52,6 +52,13 @@ export type PracticeState = {
 }
 export type PracticeSummary = { id: string; topic: string; mode: 'train' | 'exam'; done: boolean; updatedAt: number }
 
+/** A copy without the hidden solution. */
+function withoutSolution<T extends { modelSolution?: string }>(p: T): Omit<T, 'modelSolution'> {
+  const copy: Partial<T> = { ...p }
+  delete copy.modelSolution
+  return copy as Omit<T, 'modelSolution'>
+}
+
 /** Pure: the public state of a practice session, rebuilt from its log. Hidden solutions stay out until revealed. */
 export function reducePractice(events: PracticeEvent[]): PracticeState {
   const s: PracticeState = { id: '', mode: 'train', material: { conceptIds: [], sourceIds: [], free: '' }, topic: '', phase: 'warmup', items: [], problems: [], paused: false, awaiting: 'learner', hasTutorTurn: false, createdAt: 0, updatedAt: 0 }
@@ -73,7 +80,7 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
         break
       case 'tutor': {
         const { problem, ...rest } = e.turn
-        const publicProblem = problem ? (({ modelSolution: _hidden, ...pub }) => pub)(problem) : undefined
+        const publicProblem = problem ? withoutSolution(problem) : undefined
         s.items.push({ kind: 'tutor', turn: publicProblem ? { ...rest, problem: publicProblem } : rest })
         s.phase = e.turn.phase
         s.hasTutorTurn = true
@@ -104,7 +111,7 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
         break
       case 'exam':
         sheet = e.sheet
-        s.exam = { sheet: { title: e.sheet.title, problems: e.sheet.problems.map(({ modelSolution: _m, ...p }) => p) }, endsAt: e.endsAt, answers: {}, delivered: false }
+        s.exam = { sheet: { title: e.sheet.title, problems: e.sheet.problems.map(withoutSolution) }, endsAt: e.endsAt, answers: {}, delivered: false }
         s.awaiting = 'learner'
         break
       case 'answers':

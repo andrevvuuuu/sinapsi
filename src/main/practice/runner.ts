@@ -158,7 +158,7 @@ export function createPracticeRunner(deps: PracticeDeps) {
       }),
     get: (id: string): Promise<PracticeState> => load(id),
     async list(): Promise<PracticeSummary[]> {
-      let names: string[] = []
+      let names: string[]
       try {
         names = (await readdir(deps.dir)).filter((n) => n.endsWith('.jsonl'))
       } catch {
