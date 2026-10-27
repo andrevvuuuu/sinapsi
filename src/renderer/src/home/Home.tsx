@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { EngineStatus as Status, NoteMeta, SessionSummary, VaultResult } from '../../../shared/api'
+import type { EngineStatus as Status, NoteMeta, PracticeSummary, SessionSummary, VaultResult } from '../../../shared/api'
 import type { Engine, Settings } from '../../../shared/settings-schema'
 import { buildTree } from './build-tree'
 import { Composer } from './Composer'
@@ -21,9 +21,11 @@ type HomeProps = {
   onOpenSource?: (path: string) => void
   onOpenReview?: (query: string, conceptIds?: string[]) => void
   onOpenNotebook?: (id: string) => void
+  onOpenPractice?: (text: string) => void
+  onOpenPracticeSession?: (id: string) => void
 }
 
-export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenReview, onOpenNotebook }: HomeProps = {}): React.JSX.Element {
+export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenReview, onOpenNotebook, onOpenPractice, onOpenPracticeSession }: HomeProps = {}): React.JSX.Element {
   const api = window.sinapsi
   const [index, setIndex] = useState<VaultResult | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -32,6 +34,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
   const [right, setRight] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
   const [sessions, setSessions] = useState<SessionSummary[]>([])
+  const [practices, setPractices] = useState<PracticeSummary[]>([])
   const [notes, setNotes] = useState<NoteMeta[]>([])
   const [due, setDue] = useState(0)
 
@@ -46,6 +49,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
     void reload()
     void api.ai.status().then(setStatus)
     void api.session?.list().then(setSessions)
+    void api.practice?.list().then(setPractices).catch(() => undefined)
     void api.review
       ?.memory()
       .then((m) => setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length))
@@ -83,6 +87,8 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
       <LeftPanel
         tree={tree}
         sessions={sessions}
+        practices={practices}
+        onOpenPractice={(id) => onOpenPracticeSession?.(id)}
         onOpenSession={(id) => onOpenSession?.(id)}
         notes={notes}
         onOpenNota={(id) => onOpenNota?.(id)}
@@ -153,6 +159,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
           due={due}
           onSubmit={async (mode, text) => {
             if (mode === 'Ripasso') return onOpenReview?.(text)
+            if (mode === 'Pratica') return onOpenPractice?.(text)
             if (mode !== 'Apprendimento' || !api.session) return setToast(`${mode}: arriva in una prossima fase`)
             const id = await api.session.start(text)
             onOpenSession?.(id)

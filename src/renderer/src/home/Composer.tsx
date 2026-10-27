@@ -7,7 +7,7 @@ export function Composer({ onSubmit, due = 0 }: { onSubmit: (mode: string, text:
   const [mode, setMode] = useState<(typeof MODES)[number]>('Apprendimento')
   const [text, setText] = useState('')
   // Ripasso works with no text: it reviews what is fading.
-  const canSend = mode === 'Ripasso' || !!text.trim()
+  const canSend = mode === 'Ripasso' || mode === 'Pratica' || !!text.trim()
   const send = (): void => {
     if (!canSend) return
     onSubmit(mode, text.trim())
@@ -29,7 +29,7 @@ export function Composer({ onSubmit, due = 0 }: { onSubmit: (mode: string, text:
             <textarea
               rows={1}
               aria-label="Cosa vuoi studiare?"
-              placeholder={mode === 'Ripasso' ? 'Cosa vuoi ripassare? Vuoto: quello che sta sbiadendo' : 'Cosa vuoi studiare?'}
+              placeholder={mode === 'Ripasso' ? 'Cosa vuoi ripassare? Vuoto: quello che sta sbiadendo' : mode === 'Pratica' ? 'Su cosa ti alleni? Vuoto: i suggeriti per oggi' : 'Cosa vuoi studiare?'}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {

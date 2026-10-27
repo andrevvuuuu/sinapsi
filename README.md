@@ -63,6 +63,16 @@ Nel pannello a destra della home: **Nuovo notebook**, poi dentro il notebook agg
 - **Collega NotebookLM**: incolla il link del notebook con lo stesso argomento su NotebookLM; poi il pulsante lo apre.
 - Le pagine scansionate (senza testo) non si possono leggere: il notebook te lo segnala.
 
+## Pratica
+
+Nel riquadro in basso della home scegli **Pratica** (vuoto: i suggeriti per oggi; oppure scrivi un argomento o incolla un esercizio d'esame).
+
+- **Materiale**: i due concetti più urgenti sono già scelti; i suggeriti hanno accanto il motivo (da ripassare, memoria bassa, mai praticato). **Scegli…** apre tutto il grafo (materia → nota → concetti, con la memoria) e le **fonti dei notebook** (temi d'esame, eserciziari: il tutor li usa così come sono o ne crea di simili).
+- **Allenamento** (Claude, metodo Learn Harness): problemi che non annunciano il teorema da usare; **Dammi un indizio** sale di un gradino alla volta (R0 → R5); scrivi il ragionamento o manda la **foto del foglio**; quando concludi vedi verdetto e soluzione di riferimento, poi fai domande o passi al **Prossimo problema**. A destra l'arco: riscaldamento, corpo mescolato, ritest finale di tutto ciò che hai sbagliato.
+- **Simulazione d'esame**: durata 30/60/90 minuti o a scelta (5–300); compito da 30 punti, niente aiuti né correzioni durante; le risposte si salvano da sole e allo scadere si consegna da solo; poi voto in trentesimi, commento per esercizio, soluzioni e **Ritesta gli errori in allenamento**.
+- **Foto del foglio**: l'iPhone compare tra le fotocamere (Continuity Camera), oppure scegli un'immagine. Claude trascrive il foglio in testo e LaTeX; controlli e correggi prima di mandarlo.
+- Ogni problema concluso e ogni esercizio corretto aggiornano la **memoria** dei concetti (e quindi il grafo e il Ripasso).
+
 ## Per lo sviluppo
 
 ```bash

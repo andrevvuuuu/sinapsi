@@ -14,6 +14,10 @@ import { NOTEBOOKLM_PREFIX } from '../shared/notebook-types'
 import type { Ingestor } from './notebook/ingest'
 import type { NotebookChat } from './notebook/chat'
 import type { NotebookStore } from './notebook/store'
+import type { PracticeRunner } from './practice/runner'
+import type { ExamService } from './practice/exam'
+import { MaterialSchema, type Catalog, type Material } from '../shared/practice-types'
+import { SubmissionSchema } from '../shared/practice-protocol'
 
 const Choice = z.object({ engine: z.enum(['agy', 'claude']), model: z.string().optional() }).strict()
 const Patch = z
@@ -196,5 +200,49 @@ export function makeNotebookHandlers(d: {
       if (s.kind === 'youtube' || s.kind === 'vault') throw new Error('Questa fonte non ha un file')
       await d.openPath(`${d.store.filesDir(s.id)}/${s.origin}`)
     }
+  }
+}
+
+const MaterialInput = MaterialSchema.strict().refine((m) => m.conceptIds.length + m.sourceIds.length > 0 || m.free.trim().length > 0, 'Scegli almeno un concetto, una fonte o scrivi un argomento')
+const Duration = z.number().int().min(5).max(300).refine((n) => n % 5 === 0, 'la durata va a passi di 5 minuti')
+const Answers = z.record(z.string().max(64), z.string().max(20_000)).refine((a) => Object.keys(a).length <= 50, 'troppe risposte')
+
+/** "Rolle, Lagrange, Fermat e altri 2 · 1 fonte": the label of a practice session in lists. */
+export function practiceTopic(m: Material, names: Map<string, string>): string {
+  const concepts = m.conceptIds.map((id) => names.get(id) ?? id)
+  let head = concepts.slice(0, 3).join(', ') + (concepts.length > 3 ? ` e altri ${concepts.length - 3}` : '')
+  if (!head && m.free.trim()) {
+    const f = m.free.trim().replace(/\s+/g, ' ')
+    head = f.length > 40 ? f.slice(0, f.slice(0, 40).lastIndexOf(' ') > 0 ? f.slice(0, 40).lastIndexOf(' ') : 40) + '…' : f
+  }
+  const src = m.sourceIds.length ? `${m.sourceIds.length} ${m.sourceIds.length === 1 ? 'fonte' : 'fonti'}` : ''
+  return [head, src].filter(Boolean).join(' · ') || 'Pratica'
+}
+
+export function makePracticeHandlers(d: {
+  runner: Pick<PracticeRunner, 'create' | 'submit' | 'retry' | 'list'>
+  exam: Pick<ExamService, 'start' | 'retry' | 'save' | 'deliver' | 'get'>
+  catalog: () => Promise<Catalog>
+  photo: (id: string, bytes: Uint8Array) => Promise<string>
+  camera: () => Promise<boolean>
+}) {
+  return {
+    catalog: () => d.catalog(),
+    create: async (m: unknown) => d.runner.create(MaterialInput.parse(m) as Material),
+    submit: async (id: unknown, s: unknown) => d.runner.submit(Id.parse(id), SubmissionSchema.parse(s)),
+    get: async (id: unknown) => d.exam.get(Id.parse(id)),
+    retry: async (id: unknown) => {
+      const pid = Id.parse(id)
+      return (await d.exam.get(pid)).mode === 'exam' ? d.exam.retry(pid) : d.runner.retry(pid)
+    },
+    list: () => d.runner.list(),
+    examStart: async (m: unknown, minutes: unknown) => d.exam.start(MaterialInput.parse(m) as Material, Duration.parse(minutes)),
+    examSave: async (id: unknown, a: unknown) => d.exam.save(Id.parse(id), Answers.parse(a)),
+    examDeliver: async (id: unknown, a: unknown) => d.exam.deliver(Id.parse(id), Answers.parse(a)),
+    photo: async (id: unknown, bytes: unknown) => {
+      if (!(bytes instanceof Uint8Array)) throw new Error('foto non valida')
+      return d.photo(Id.parse(id), bytes)
+    },
+    camera: () => d.camera()
   }
 }

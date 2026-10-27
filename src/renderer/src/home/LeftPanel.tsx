@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { NoteMeta, SessionSummary } from '../../../shared/api'
+import type { NoteMeta, PracticeSummary, SessionSummary } from '../../../shared/api'
 import type { Settings } from '../../../shared/settings-schema'
 import type { TreeNode } from './build-tree'
 import { IconGear, IconPanel } from './icons'
@@ -11,6 +11,8 @@ const THEMES: [Settings['theme'], string][] = [['lavagna', 'Lavagna'], ['trattat
 type Props = {
   tree: TreeNode[]
   sessions: SessionSummary[]
+  practices?: PracticeSummary[]
+  onOpenPractice?: (id: string) => void
   onOpenSession: (id: string) => void
   notes: NoteMeta[]
   onOpenNota: (id: string) => void
@@ -21,7 +23,7 @@ type Props = {
   onChooseVault: () => void
 }
 
-export function LeftPanel({ tree, sessions, onOpenSession, notes, onOpenNota, settings, onClose, onOpenNote, onTheme, onChooseVault }: Props): React.JSX.Element {
+export function LeftPanel({ tree, sessions, practices = [], onOpenPractice, onOpenSession, notes, onOpenNota, settings, onClose, onOpenNote, onTheme, onChooseVault }: Props): React.JSX.Element {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('Entrambe')
   const [open, setOpen] = useState(false)
   return (
@@ -43,21 +45,30 @@ export function LeftPanel({ tree, sessions, onOpenSession, notes, onOpenNota, se
             </button>
           ))}
         </div>
-        {filter === 'Pratica' || sessions.length === 0 ? (
-          <p className="empty">Nessuna sessione ancora.</p>
-        ) : (
-          <ul className="sessions">
-            {sessions.slice(0, 8).map((x) => (
-              <li key={x.id}>
-                <button type="button" onClick={() => onOpenSession(x.id)}>
-                  <i className="dot" aria-hidden="true" />
-                  <span className="t">{x.topic}</span>
-                  <span className="s">Apprendimento · {new Date(x.updatedAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        {(() => {
+          const day = (t: number): string => new Date(t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
+          const rows = [
+            ...(filter === 'Pratica' ? [] : sessions.map((x) => ({ id: x.id, topic: x.topic, at: x.updatedAt, kind: 'Apprendimento', open: () => onOpenSession(x.id) }))),
+            ...(filter === 'Apprendimento' ? [] : practices.map((x) => ({ id: x.id, topic: x.topic, at: x.updatedAt, kind: x.mode === 'exam' ? 'Simulazione' : 'Pratica', open: () => onOpenPractice?.(x.id) })))
+          ].sort((a, b) => b.at - a.at)
+          return rows.length === 0 ? (
+            <p className="empty">Nessuna sessione ancora.</p>
+          ) : (
+            <ul className="sessions">
+              {rows.slice(0, 8).map((x) => (
+                <li key={x.id}>
+                  <button type="button" onClick={x.open}>
+                    <i className="dot" aria-hidden="true" />
+                    <span className="t">{x.topic}</span>
+                    <span className="s">
+                      {x.kind} · {day(x.at)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )
+        })()}
       </div>
       {notes.length > 0 && (
         <>

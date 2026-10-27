@@ -9,6 +9,8 @@ export type { GraphData, ExtractorStatus } from './graph-types'
 export type { Memory, ReviewLine, Grade } from './memory-types'
 export type { ReviewItem, ReviewPlan, GradeResult } from '../main/memory/review'
 export type { Notebook, Source, SourceText, ChatTurn, Excerpt } from './notebook-types'
+export type { PracticeState, PracticeSummary, PracticeItem, PracticeProblem } from '../main/practice/events'
+export type { Catalog, Material } from './practice-types'
 export type GraphPositions = Record<string, [number, number]>
 export type NoteRequest = { sourcePath?: string; sessionId?: string }
 
@@ -61,7 +63,19 @@ export const CH = {
   notebookChat: 'notebook:chat',
   notebookAsk: 'notebook:ask',
   notebookOpenFile: 'notebook:open-file',
-  notebookUpdated: 'notebook:updated'
+  notebookUpdated: 'notebook:updated',
+  practiceCatalog: 'practice:catalog',
+  practiceCreate: 'practice:create',
+  practiceSubmit: 'practice:submit',
+  practiceRetry: 'practice:retry',
+  practiceGet: 'practice:get',
+  practiceList: 'practice:list',
+  practiceExamStart: 'practice:exam-start',
+  practiceExamSave: 'practice:exam-save',
+  practiceExamDeliver: 'practice:exam-deliver',
+  practicePhoto: 'practice:photo',
+  practiceCamera: 'practice:camera',
+  practiceUpdated: 'practice:updated'
 } as const
 
 export interface SinapsiApi {
@@ -130,5 +144,22 @@ export interface SinapsiApi {
     /** Path of a dropped file (Electron's webUtils). */
     pathForFile(file: File): string
     onUpdate(cb: (e: { notebookId?: string }) => void): () => void
+  }
+  practice: {
+    catalog(): Promise<import('./practice-types').Catalog>
+    /** Returns at once; the first problem arrives through onUpdate. */
+    create(material: import('./practice-types').Material): Promise<string>
+    submit(id: string, s: import('./practice-protocol').Submission): Promise<void>
+    retry(id: string): Promise<void>
+    get(id: string): Promise<import('../main/practice/events').PracticeState>
+    list(): Promise<import('../main/practice/events').PracticeSummary[]>
+    examStart(material: import('./practice-types').Material, minutes: number): Promise<string>
+    examSave(id: string, answers: Record<string, string>): Promise<void>
+    examDeliver(id: string, answers: Record<string, string>): Promise<void>
+    /** Transcription of the photo of a sheet (text + LaTeX). */
+    photo(id: string, bytes: Uint8Array): Promise<string>
+    /** Asks macOS for the camera (Continuity Camera shows the iPhone among the cameras). */
+    camera(): Promise<boolean>
+    onUpdate(cb: (s: import('../main/practice/events').PracticeState) => void): () => void
   }
 }

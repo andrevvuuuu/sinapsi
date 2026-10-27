@@ -87,3 +87,11 @@ export function extractJson(text: string): unknown {
   }
   throw new SyntaxError('nessun JSON nella risposta')
 }
+
+/**
+ * Text a model escaped twice (asked for JSON, it doubled the backslashes): "\\frac" back to "\frac",
+ * and a literal "\n" not starting a LaTeX command back to a new line.
+ */
+export function unescapeOver(s: string): string {
+  return s.replace(/\\\\(?=[a-zA-Z])/g, '\\').replace(/\\n(?![a-zA-Z])/g, '\n')
+}

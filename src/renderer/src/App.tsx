@@ -3,6 +3,8 @@ import Home from './home/Home'
 import { NotaView } from './nota/NotaView'
 import { NotePicker } from './nota/NotePicker'
 import { NotebookView } from './notebook/NotebookView'
+import { PracticeSetup } from './practice/PracticeSetup'
+import { PracticeView } from './practice/PracticeView'
 import { ReviewView } from './review/ReviewView'
 import { SessionView } from './session/SessionView'
 
@@ -13,6 +15,8 @@ type View =
   | { view: 'source'; path: string }
   | { view: 'review'; query?: string; conceptIds?: string[] }
   | { view: 'notebook'; id: string }
+  | { view: 'practice-setup'; text?: string }
+  | { view: 'practice'; id: string }
 
 export default function App(): React.JSX.Element {
   const [v, setV] = useState<View>({ view: 'home' })
@@ -21,6 +25,9 @@ export default function App(): React.JSX.Element {
   if (v.view === 'session') return <SessionView id={v.id} onBack={home} onOpenNota={openNota} />
   if (v.view === 'nota') return <NotaView key={v.id} id={v.id} onBack={home} />
   if (v.view === 'notebook') return <NotebookView key={v.id} id={v.id} onBack={home} />
+  const openPractice = (id: string): void => setV({ view: 'practice', id })
+  if (v.view === 'practice-setup') return <PracticeSetup initialText={v.text} onBack={home} onStarted={openPractice} />
+  if (v.view === 'practice') return <PracticeView key={v.id} id={v.id} onBack={home} onStarted={openPractice} />
   const study = (topic: string): void =>
     void window.sinapsi.session
       .start(topic)
@@ -44,6 +51,8 @@ export default function App(): React.JSX.Element {
       onOpenNota={openNota}
       onOpenSource={(path) => setV({ view: 'source', path })}
       onOpenNotebook={(id) => setV({ view: 'notebook', id })}
+      onOpenPractice={(text) => setV({ view: 'practice-setup', text })}
+      onOpenPracticeSession={openPractice}
       onOpenReview={(query, conceptIds) =>
         setV({ view: 'review', query: query || undefined, conceptIds })
       }
