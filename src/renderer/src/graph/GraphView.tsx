@@ -7,7 +7,7 @@ import type { VaultIndex } from '../../../shared/vault-types'
 import { RichText } from '../session/RichText'
 import { draw, radiusOf, type Colors, type Sel } from './draw'
 import { createLayout, type Layout, type LayoutMode, type SimNode } from './layout'
-import { buildModel, type GraphModel, type SearchHit } from './model'
+import { buildModel, modelKey, type GraphModel, type SearchHit } from './model'
 import './graph.css'
 
 const MODES: [LayoutMode, string, string][] = [
@@ -103,10 +103,34 @@ export function GraphView({
     }
   }, [api])
 
+  // Rebuilt only when the content changes: every graph:changed and vault event brings new objects.
+  const key = graph ? modelKey(graph, index) : ''
   const model: GraphModel | null = useMemo(
     () => (graph ? buildModel(graph, index) : null),
-    [graph, index]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [key]
   )
+  const modelRef = useRef(model)
+  const indexRef = useRef(index)
+  useEffect(() => {
+    modelRef.current = model
+    indexRef.current = index
+    dirty.current = true
+  }, [])
+  const [extractError, setExtractError] = useState<string | null>(null)
+  const extract = (path: string): void => {
+    setExtractError(null)
+    api
+      .extract(path)
+      .catch((e) =>
+        setExtractError(
+          (e instanceof Error ? e.message : String(e)).replace(
+            /^Error invoking remote method '[^']+': (Error: )?/,
+            ''
+          )
+        )
+      )
+  }
 
   // A new model keeps the positions it already had (the graph grows without reshuffling).
   useEffect(() => {
@@ -116,13 +140,16 @@ export function GraphView({
     l.tick(l.warmup)
     l.sim.on('tick', () => (dirty.current = true))
     let saveTimer: ReturnType<typeof setTimeout> | undefined
-    l.sim.on('end', () => {
+    // Manual ticks send no 'end' event: save after the warm-up too, and after every settled restart.
+    const save = (): void => {
       clearTimeout(saveTimer)
       saveTimer = setTimeout(
         () => void api.savePositions(l.positions()).catch(() => undefined),
         2000
       )
-    })
+    }
+    l.sim.on('end', save)
+    save()
     layoutRef.current?.sim.stop()
     layoutRef.current = l
     dirty.current = true
@@ -211,6 +238,8 @@ export function GraphView({
     let raf = 0
     const loop = (): void => {
       const l = layoutRef.current
+      const model = modelRef.current
+      const index = indexRef.current
       if (dirty.current && l && model) {
         dirty.current = false
         const ctx = cv.getContext('2d')
@@ -439,7 +468,7 @@ export function GraphView({
             </div>
           </>
         )}
-        <StatusLine status={status} index={index} onRetry={(p) => void api.extract(p)} />
+        <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
       </section>
       <div className="gzoom" role="group" aria-label="Zoom">
         <button
@@ -494,7 +523,7 @@ export function GraphView({
           }}
           onStudy={onStudy}
           onOpenNote={onOpenNote}
-          onExtract={(p) => void api.extract(p)}
+          onExtract={extract}
         />
       )}
     </div>
@@ -504,12 +533,20 @@ export function GraphView({
 function StatusLine({
   status,
   index,
-  onRetry
+  onRetry,
+  error
 }: {
   status: ExtractorStatus
   index: VaultIndex
   onRetry: (path: string) => void
+  error: string | null
 }): React.JSX.Element | null {
+  if (error && !status.running)
+    return (
+      <p className="gstatus err" role="alert">
+        {error}
+      </p>
+    )
   if (status.running)
     return (
       <p className="gstatus" role="status">
@@ -696,12 +733,14 @@ function Card({
         </div>
         <h3>{n.title}</h3>
         <p>
-          {n.extracted
-            ? 'Estratta: non contiene concetti portanti.'
-            : 'Non ancora estratta: quando la estrai, Gemini ne ricava i concetti e le catene di ragionamento, e la nota diventa una regione del grafo.'}
+          {!n.available
+            ? 'Non ancora scaricata da iCloud: aprila in Obsidian perché venga scaricata, poi potrai estrarla.'
+            : n.extracted
+              ? 'Estratta: non contiene concetti portanti.'
+              : 'Non ancora estratta: quando la estrai, Gemini ne ricava i concetti e le catene di ragionamento, e la nota diventa una regione del grafo.'}
         </p>
         <div className="acts">
-          {!n.extracted && (
+          {!n.extracted && n.available && (
             <button type="button" className="pri" onClick={() => onExtract(n.path)}>
               Estrai i concetti
             </button>

@@ -30,7 +30,7 @@ export const rgba = (color: string, a: number): string => {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`
 }
 const ease = (t: number): number => (t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t))
-export const radiusOf = (m: GraphModel, n: SimNode): number => 4.2 + (m.concepts.find((c) => c.id === n.id)?.notes.length ?? 1) * 1.6 + Math.min(3, (m.kids.get(n.id)?.length ?? 0) * 0.6)
+export const radiusOf = (m: GraphModel, n: SimNode): number => 4.2 + (m.conceptById.get(n.id)?.notes.length ?? 1) * 1.6 + Math.min(3, (m.kids.get(n.id)?.length ?? 0) * 0.6)
 
 /** Which nodes stay lit while something is hovered, selected, or a path is shown. */
 export function focusSet(s: Pick<DrawState, 'model' | 'hov' | 'sel' | 'path'>): Set<string> | null {
@@ -214,7 +214,8 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
   // Obsidian notes not extracted yet.
   for (const n of layout.nodes) {
     if (n.kind !== 'note') continue
-    const moc = model.notes.find((x) => x.path === n.id)?.moc
+    const note = model.noteByPath.get(n.id)
+    const moc = note && 'moc' in note ? note.moc : false
     ctx.globalAlpha = dim(n.id) === 1 ? 1 : 0.15
     ctx.beginPath()
     ctx.arc(sx(n.x!), sy(n.y!), Math.max(2.5, (moc ? 9 : 5) * Math.sqrt(k)), 0, 7)
@@ -332,7 +333,7 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       ctx.font = '500 12px Geist,sans-serif'
       for (const n of layout.nodes) {
         if (n.kind !== 'note') continue
-        const t = model.notes.find((x) => x.path === n.id)?.title ?? ''
+        const t = model.noteByPath.get(n.id)?.title ?? ''
         ctx.globalAlpha = tNote * (F ? 0.3 : 0.85)
         ctx.fillStyle = C.muted
         ctx.fillText(t.length > 28 ? t.slice(0, 26) + '…' : t, sx(n.x!), sy(n.y!) + 20)

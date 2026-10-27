@@ -10,7 +10,7 @@ export type Region = { notePath: string; title: string; subject: string | null; 
 export type VConcept = Concept & { region: string }
 export type Junction = { id: string; premises: string[]; conclusion: string; depth: number }
 export type Arrow = { from: string; to: string; chain: string; head: boolean }
-export type ONote = { path: string; title: string; subject: string | null; moc: boolean; extracted: boolean }
+export type ONote = { path: string; title: string; subject: string | null; moc: boolean; extracted: boolean; available: boolean }
 export type SearchHit = { kind: 'concept' | 'region' | 'note'; id: string; label: string }
 export type GraphModel = {
   regions: Region[]
@@ -24,6 +24,8 @@ export type GraphModel = {
   maxDepth: number
   parents: Map<string, string[]>
   kids: Map<string, string[]>
+  conceptById: Map<string, VConcept>
+  noteByPath: Map<string, ONote | { path: string; title: string }>
   search(q: string, limit?: number): SearchHit[]
   /** Display name of a subject: its folder name when it matches the tag (tags carry no spaces). */
   subjectName(id: string | null | undefined): string
@@ -77,7 +79,7 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
 
   const notes: ONote[] = index.notes
     .filter((n) => !regionMap.has(n.path))
-    .map((n) => ({ path: n.path, title: n.title, subject: n.subject, moc: isMoc(n), extracted: n.path in g.extracted }))
+    .map((n) => ({ path: n.path, title: n.title, subject: n.subject, moc: isMoc(n), extracted: n.path in g.extracted, available: n.available }))
 
   const seen = new Set<string>()
   const wikilinks: [string, string][] = []
@@ -111,6 +113,8 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
     maxDepth: Math.max(0, ...g.concepts.map((c) => c.depth)),
     parents,
     kids,
+    conceptById: new Map(concepts.map((c) => [c.id, c])),
+    noteByPath: new Map<string, ONote | { path: string; title: string }>([...index.notes.map((n) => [n.path, { path: n.path, title: n.title }] as const), ...notes.map((n) => [n.path, n] as const)]),
     subjectName(id) {
       if (!id) return ''
       const key = fold(id).replace(/[^a-z0-9]/g, '')
@@ -131,4 +135,15 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
       return hits.slice(0, limit)
     }
   }
+}
+
+/** A cheap content signature: equal data in new objects (every graph:changed, every vault event) gives the same key. */
+export function modelKey(g: GraphData, index: VaultIndex): string {
+  return JSON.stringify([
+    g.concepts.map((c) => [c.id, c.notes, c.depth, c.name]),
+    g.chains.map((c) => [c.id, c.premises, c.conclusion]),
+    Object.keys(g.extracted).sort(),
+    index.notes.map((n) => [n.path, n.title, n.subject, n.available, n.links.map((l) => l.target + (l.resolved ? '' : '?'))]),
+    index.subjects
+  ])
 }

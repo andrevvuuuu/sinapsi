@@ -139,7 +139,11 @@ export function registerIpc(): { bridge: Bridge } {
       const id = powerSaveBlocker.start('prevent-app-suspension')
       return () => powerSaveBlocker.stop(id)
     },
-    onChange: (status) => void extractor.graph().then((graph) => broadcast(CH.graphChanged, { status, graph }), () => broadcast(CH.graphChanged, { status })),
+    // The graph only changes when a run ends: while one is running, send the status alone.
+    onChange: (status) =>
+      status.running
+        ? broadcast(CH.graphChanged, { status })
+        : void extractor.graph().then((graph) => broadcast(CH.graphChanged, { status, graph }), () => broadcast(CH.graphChanged, { status })),
     priorities: async () => {
       const idx = await vaultOrNull()
       if (!idx) return []

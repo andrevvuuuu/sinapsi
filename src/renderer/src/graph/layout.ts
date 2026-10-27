@@ -132,6 +132,9 @@ export function createLayout(model: GraphModel, opts: { mode: LayoutMode; saved?
     return mode === 'vertical' && n.kind === 'concept' ? 0.06 : mode === 'free' ? 0.04 : 0
   }
 
+  // Reused positions only need settling, not a full shake.
+  if (reused >= nodes.length * 0.8) sim.alpha(0.3)
+
   return {
     nodes,
     links,

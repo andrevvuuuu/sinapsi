@@ -90,7 +90,7 @@ export function makeNoteHandlers(gen: NoteGenerator) {
   }
 }
 
-const Positions = z.record(z.string().max(64), z.tuple([z.number().finite(), z.number().finite()])).refine((p) => Object.keys(p).length <= 20_000, 'troppe posizioni')
+const Positions = z.record(z.string().max(2048), z.tuple([z.number().finite(), z.number().finite()])).refine((p) => Object.keys(p).length <= 20_000, 'troppe posizioni')
 
 export function makeGraphHandlers(x: Extractor, positions: { read(): Promise<unknown>; write(p: Record<string, [number, number]>): Promise<void> }) {
   return {

@@ -22,6 +22,8 @@ export const ExtractionLineSchema = z.object({
   chains: z.number(),
   dropped: z.number(),
   ok: z.boolean(),
+  /** A background check that found the note unchanged: no AI call, does not count toward the daily limit. */
+  skipped: z.boolean().optional(),
   error: z.string().optional()
 })
 export type PropLine = z.infer<typeof PropLineSchema>

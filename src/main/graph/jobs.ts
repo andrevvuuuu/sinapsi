@@ -69,7 +69,7 @@ export function createExtractor(deps: {
       const g = deriveGraph(await deps.store.read())
       if (reason !== 'manual' && g.extracted[path]?.hash === h) {
         // Touched but unchanged: record it, so the background pass does not pick it again.
-        if (reason === 'background') await deps.store.append('extraction', { notePath: path, hash: h, at: now(), reason, nodes: 0, chains: 0, dropped: 0, ok: true })
+        if (reason === 'background') await deps.store.append('extraction', { notePath: path, hash: h, at: now(), reason, nodes: 0, chains: 0, dropped: 0, ok: true, skipped: true })
         return
       }
       const title = index.notes.find((n) => n.path === path)!.title
@@ -127,7 +127,7 @@ export function createExtractor(deps: {
       if (!enabled || idleSeconds < IDLE_SECONDS || pending.size > 0) return null
       const ledgers = await deps.store.read()
       const today = day(now())
-      if (ledgers.extractions.filter((e) => e.reason === 'background' && day(e.at) === today).length >= dailyLimit) return null
+      if (ledgers.extractions.filter((e) => e.reason === 'background' && !e.skipped && day(e.at) === today).length >= dailyLimit) return null
       const index = await deps.vault()
       if (!index) return null
       const g = deriveGraph(ledgers)
