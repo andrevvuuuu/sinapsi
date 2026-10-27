@@ -101,6 +101,12 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
           s.active = undefined
           s.paused = true
         }
+        // Closing the session with a problem still open: it counts as left, and its solution is shown.
+        const open = s.problems.find((x) => x.id === s.active)
+        if (e.turn.phase === 'done' && open) {
+          Object.assign(open, { status: 'done', outcome: 'surrendered', verdict: 'Sessione chiusa con il problema aperto.', retest: true, modelSolution: solutions.get(open.id) })
+          s.active = undefined
+        }
         if (e.turn.summary) s.summary = e.turn.summary
         s.awaiting = 'learner'
         break

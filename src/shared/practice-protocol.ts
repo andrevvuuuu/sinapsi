@@ -40,10 +40,14 @@ export const PracticeTurnSchema = TurnShape.superRefine((t, ctx) => {
   if (t.problem?.lines && t.problem.lines.length < 2) ctx.addIssue({ code: 'custom', message: '"lines" ha almeno due righe' })
 })
 
-/** The rules a turn must also satisfy against the session so far. null when fine. */
-export function checkTurnAgainst(state: { active?: string }, t: PracticeTurn): string | null {
+/** The rules a turn must also satisfy against the session so far and what Andrea just asked. null when fine. */
+export function checkTurnAgainst(state: { active?: string; problems?: { id: string }[] }, t: PracticeTurn, asked?: Submission['kind']): string | null {
   if (t.problem && state.active) return `c'è già un problema aperto (${state.active}): concludilo prima di proporne un altro`
+  if (t.problem && state.problems?.some((p) => p.id === t.problem!.id)) return `l'id "${t.problem.id}" è già stato usato: dai al problema un id nuovo`
   if ((t.conclude || t.hint) && !state.active) return 'non c\'è nessun problema aperto: proponi un problema con "problem"'
+  if (asked === 'dismiss' && !t.conclude) return 'Andrea ha lasciato il problema: concludi con "conclude" e outcome "surrendered"'
+  if ((asked === 'start' || asked === 'next') && !t.problem && t.phase !== 'done') return 'Andrea aspetta il prossimo problema: proponilo con "problem" (oppure chiudi con "done")'
+  if (asked === 'end' && t.phase !== 'done') return 'Andrea ha chiuso la sessione: rispondi con phase "done" e "summary"'
   return null
 }
 

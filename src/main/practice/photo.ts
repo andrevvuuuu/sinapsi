@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process'
 import { mkdir, readdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
@@ -17,14 +18,22 @@ function kindOf(b: Uint8Array): 'png' | 'jpg' | 'heic' | null {
 }
 
 /** Saves the photo of Andrea's sheet beside the session and has Claude transcribe it (text + LaTeX), nothing more. */
-export async function transcribePhoto(input: { bridge: Pick<Bridge, 'ask'>; dir: string; bytes: Uint8Array }): Promise<string> {
+const sipsToJpeg = (from: string, to: string): Promise<void> =>
+  new Promise((resolve, reject) => execFile('/usr/bin/sips', ['-s', 'format', 'jpeg', from, '--out', to], (e) => (e ? reject(new Error('Non riesco a convertire la foto HEIC')) : resolve())))
+
+export async function transcribePhoto(input: { bridge: Pick<Bridge, 'ask'>; dir: string; bytes: Uint8Array; convert?: (from: string, to: string) => Promise<void> }): Promise<string> {
   if (input.bytes.length > PHOTO_MAX) throw new Error('La foto è troppo grande (massimo 15 MB)')
   const ext = kindOf(input.bytes)
   if (!ext) throw new Error('Il file non è un’immagine (JPG, PNG o HEIC)')
   await mkdir(input.dir, { recursive: true })
-  const n = (await readdir(input.dir)).filter((f) => f.startsWith('foglio-')).length + 1
-  const name = `foglio-${n}.${ext}`
+  const n = new Set((await readdir(input.dir)).filter((f) => f.startsWith('foglio-')).map((f) => f.replace(/\.\w+$/, ''))).size + 1
+  let name = `foglio-${n}.${ext}`
   await writeFile(join(input.dir, name), input.bytes)
+  // Claude reads JPEG and PNG, not the iPhone's HEIC.
+  if (ext === 'heic') {
+    await (input.convert ?? sipsToJpeg)(join(input.dir, name), join(input.dir, `foglio-${n}.jpg`))
+    name = `foglio-${n}.jpg`
+  }
   const r = await input.bridge.ask({
     task: 'grade',
     readOnly: true,

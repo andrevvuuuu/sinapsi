@@ -124,7 +124,7 @@ describe('PracticeView — training', () => {
     render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
     const dock = await screen.findByRole('region', { name: 'Problema' })
     expect(within(dock).getByText(/Mostra che/)).toBeTruthy()
-    fireEvent.click(within(dock).getByRole('button', { name: 'Dammi un indizio' }))
+    await act(async () => fireEvent.click(within(dock).getByRole('button', { name: 'Dammi un indizio' })))
     expect(a.practice.submit).toHaveBeenCalledWith(ID, { kind: 'hint' })
     fireEvent.change(within(dock).getByLabelText('Il tuo ragionamento'), { target: { value: 'valor medio' } })
     await act(async () => fireEvent.click(within(dock).getByRole('button', { name: 'Invia' })))

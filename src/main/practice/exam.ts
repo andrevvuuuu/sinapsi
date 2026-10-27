@@ -10,10 +10,21 @@ const TIMEOUT = 300_000
 
 /** Points scaled to a total of 30, in half points; the last problem absorbs the rounding. */
 export function normalizePoints(points: number[]): number[] {
-  const sum = points.reduce((a, b) => a + b, 0) || 1
-  const out = points.map((p) => Math.max(0.5, Math.round(((p * 30) / sum) * 2) / 2))
-  out[out.length - 1] += 30 - out.reduce((a, b) => a + b, 0)
-  return out
+  // Largest remainder in half points (60 units): every problem gets at least one unit, the total is exact.
+  const w = points.map((p) => (p > 0 ? p : 1))
+  const sum = w.reduce((a, b) => a + b, 0)
+  const raw = w.map((p) => (p * 60) / sum)
+  const units = raw.map((r) => Math.max(1, Math.floor(r)))
+  let left = 60 - units.reduce((a, b) => a + b, 0)
+  const byRemainder = raw.map((_, i) => i).sort((a, b) => raw[b] - Math.floor(raw[b]) - (raw[a] - Math.floor(raw[a])) || a - b)
+  for (let k = 0; left > 0; k = (k + 1) % units.length, left--) units[byRemainder[k]]++
+  const byUnits = units.map((_, i) => i).sort((a, b) => units[b] - units[a])
+  for (let k = 0; left < 0; k = (k + 1) % units.length) {
+    if (units[byUnits[k]] <= 1) continue
+    units[byUnits[k]]--
+    left++
+  }
+  return units.map((u) => u / 2)
 }
 
 function sheetPrompt(context: string, minutes: number): string {
@@ -62,7 +73,12 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
       const context = await deps.material(s.material)
       const r = await deps.bridge.ask({ task: 'teach', prompt: sheetPrompt(context, s.durationMin ?? 60), schema: ExamSheetSchema, timeoutMs: TIMEOUT, cwd: deps.dir })
       const raw = r.data as ExamSheet
-      const sheet: ExamSheet = { title: unescapeOver(raw.title), problems: raw.problems.map((p) => ({ ...p, statement: unescapeOver(p.statement), modelSolution: unescapeOver(p.modelSolution) })) }
+      if (new Set(raw.problems.map((p) => p.id)).size !== raw.problems.length) throw new Error('due esercizi con lo stesso id')
+      const known = new Set(s.material.conceptIds)
+      const sheet: ExamSheet = {
+        title: unescapeOver(raw.title),
+        problems: raw.problems.map((p) => ({ ...p, targets: p.targets.filter((x) => known.has(x)), statement: unescapeOver(p.statement), modelSolution: unescapeOver(p.modelSolution) }))
+      }
       const points = normalizePoints(sheet.problems.map((p) => p.points))
       runner.inflight.delete(id)
       await runner.append(id, { t: 'exam', sheet: { ...sheet, problems: sheet.problems.map((p, i) => ({ ...p, points: points[i] })) }, endsAt: now() + (s.durationMin ?? 60) * 60_000, at: now() })
@@ -81,8 +97,11 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
     try {
       const r = await deps.bridge.ask({ task: 'teach', prompt: gradePrompt(sheet, s.exam.answers), schema: ExamGradeReplySchema, timeoutMs: TIMEOUT, cwd: deps.dir })
       const reply = r.data as Omit<ExamGrade, 'total' | 'lode'>
-      const items = sheet.problems.map((p) => {
-        const it = reply.items.find((x) => x.id === p.id)
+      // The grader sometimes renames the ids ("1", "Esercizio 1"): fall back to the order, else refuse.
+      const byId = sheet.problems.every((p) => reply.items.some((x) => x.id === p.id))
+      if (!byId && reply.items.length !== sheet.problems.length) throw new Error('la correzione non corrisponde agli esercizi del compito')
+      const items = sheet.problems.map((p, i) => {
+        const it = byId ? reply.items.find((x) => x.id === p.id) : reply.items[i]
         return { id: p.id, points: Math.min(p.points, Math.max(0, Math.round((it?.points ?? 0) * 2) / 2)), comment: unescapeOver(it?.comment ?? ''), ...(it?.miss ? { miss: it.miss } : {}) }
       })
       const total = Math.min(30, Math.round(items.reduce((a, b) => a + b.points, 0)))

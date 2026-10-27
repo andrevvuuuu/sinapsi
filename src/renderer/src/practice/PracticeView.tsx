@@ -14,13 +14,30 @@ function ProblemDock({ problem, sessionId, onSend }: { problem: PracticeProblem;
   const [text, setText] = useState('')
   const [line, setLine] = useState<number | undefined>(undefined)
   const [photoText, setPhotoText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const sending = useRef(false)
   const area = useRef<HTMLTextAreaElement>(null)
+  // One request at a time: a double click must not cost a second hint.
+  const once = async (sub: Submission): Promise<boolean> => {
+    if (sending.current) return false
+    sending.current = true
+    setBusy(true)
+    try {
+      await onSend(sub)
+      return true
+    } catch {
+      return false
+    } finally {
+      sending.current = false
+      setBusy(false)
+    }
+  }
   useEffect(() => area.current?.focus(), [problem.id])
   const ready = !!text.trim() || !!photoText || line !== undefined
   const send = async (): Promise<void> => {
     if (!ready) return
     const sub: Submission = { kind: 'thinking', ...(line !== undefined ? { line } : {}), ...(text.trim() ? { text: text.trim() } : {}), ...(photoText ? { photoText } : {}) }
-    await onSend(sub)
+    if (!(await once(sub))) return
     setText('')
     setPhotoText('')
     setLine(undefined)
@@ -70,21 +87,21 @@ function ProblemDock({ problem, sessionId, onSend }: { problem: PracticeProblem;
         </div>
         <div className="row">
           <PhotoButton sessionId={sessionId} onText={(t) => setPhotoText((p) => [p, t].filter(Boolean).join('\n\n'))} />
-          <button type="button" className="ghost warn" onClick={() => void onSend({ kind: 'hint' })}>
+          <button type="button" className="ghost warn" disabled={busy} onClick={() => void once({ kind: 'hint' })}>
             Dammi un indizio
           </button>
           <button
             type="button"
             className="ghost quiet"
             onClick={() => {
-              if (window.confirm('Lasciare questo problema? Vedrai la soluzione e tornerà nel ritest.')) void onSend({ kind: 'dismiss' })
+              if (window.confirm('Lasciare questo problema? Vedrai la soluzione e tornerà nel ritest.')) void once({ kind: 'dismiss' })
             }}
           >
             Lascia il problema
           </button>
           <span className="sp" />
           <span className="hintk">↵ invia</span>
-          <button type="button" className="pri" disabled={!ready} onClick={() => void send()}>
+          <button type="button" className="pri" disabled={!ready || busy} onClick={() => void send()}>
             Invia
           </button>
         </div>
@@ -274,6 +291,14 @@ export function PracticeView({ id, onBack, onStarted }: { id: string; onBack: ()
                 </div>
               )
             })}
+            {s.awaiting === 'retry' && s.items.at(-1)?.kind !== 'error' && (
+              <div className="pr-err">
+                <p>La risposta del tutor si è interrotta (l’app è stata chiusa mentre pensava).</p>
+                <button type="button" className="ghost" onClick={() => void api.retry(id)}>
+                  Riprova
+                </button>
+              </div>
+            )}
             {s.awaiting === 'tutor' && (
               <div className="msg pr-pending" role="status">
                 <span className="typing" aria-hidden="true">
@@ -294,7 +319,7 @@ export function PracticeView({ id, onBack, onStarted }: { id: string; onBack: ()
                 </p>
               )}
               {learner && active && <ProblemDock key={active.id} problem={active} sessionId={id} onSend={send} />}
-              {learner && !active && s.paused && (
+              {learner && !active && (
                 <div className="shell">
                   <form
                     className="inner pr-ask"

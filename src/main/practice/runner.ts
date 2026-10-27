@@ -76,8 +76,8 @@ export function createPracticeRunner(deps: PracticeDeps) {
     if (!s.lastLearnerText) return
     inflight.add(id)
     deps.onUpdate({ ...s, awaiting: 'tutor' })
-    const attempts = s.items.filter((i) => i.kind === 'error').length
-    let conversationId = s.conversationId ?? (s.hasTutorTurn || attempts === 0 ? id : uuid())
+    // Until the tutor has answered once, every attempt opens a fresh conversation: a quit mid-call may have created one.
+    let conversationId = s.conversationId ?? uuid()
     let resume = s.hasTutorTurn
     try {
       const ask = async (prompt: string): Promise<PracticeTurn> => {
@@ -95,16 +95,22 @@ export function createPracticeRunner(deps: PracticeDeps) {
         resume = true
         return r.data
       }
+      const asked = [...s.items].reverse().find((i) => i.kind === 'learner')
+      const kind = asked?.kind === 'learner' ? asked.submission.kind : undefined
       let turn = await ask(s.lastLearnerText)
-      const problem = checkTurnAgainst(s, turn)
+      const problem = checkTurnAgainst(s, turn, kind)
       if (problem) {
         turn = await ask(`Il turno precedente non va bene: ${problem}. Rimanda il turno corretto, secondo il protocollo.`)
-        const again = checkTurnAgainst(s, turn)
-        if (again) throw new Error(again)
+        const again = checkTurnAgainst(s, turn, kind)
+        // Leaving a problem must always show its solution, whatever the tutor does.
+        if (again && kind === 'dismiss' && s.active) turn = { phase: s.phase, blocks: [], conclude: { outcome: 'surrendered', verdict: 'Problema lasciato.', retest: true } }
+        else if (again) throw new Error(again)
       }
-      await record(s, turn)
+      // Only concepts of the material can be targets: a guessed id would become a phantom in memory.
+      if (turn.problem) turn = { ...turn, problem: { ...turn.problem, targets: turn.problem.targets.filter((x) => s.material.conceptIds.includes(x)) } }
       inflight.delete(id)
       await append(id, { t: 'tutor', turn, conversationId, at: now() })
+      await record(s, turn)
     } catch (e) {
       inflight.delete(id)
       await append(id, { t: 'error', message: friendly(e), at: now() })

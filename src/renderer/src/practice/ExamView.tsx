@@ -17,26 +17,36 @@ export function ExamView({ state, onBack, onStarted }: { state: PracticeState; o
   useEffect(() => {
     latest.current = answers
   }, [answers])
+  const MAX = 20_000
   const running = !!exam && !exam.delivered
 
+  const [alert, setAlert] = useState<string | null>(null)
   const deliver = (): void => {
     if (delivered.current) return
     delivered.current = true
-    void api.examDeliver(state.id, filled(latest.current))
+    setAlert(null)
+    api.examDeliver(state.id, filled(latest.current)).catch((e: unknown) => {
+      delivered.current = false
+      setAlert(`Consegna non riuscita: ${(e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`)
+    })
   }
 
   useEffect(() => {
     if (!running) return
     const tick = setInterval(() => setNow(Date.now()), 500)
-    const save = setInterval(() => {
+    const flush = (): void => {
       const json = JSON.stringify(filled(latest.current))
-      if (json === saved.current) return
-      saved.current = json
-      void api.examSave(state.id, filled(latest.current)).catch(() => undefined)
-    }, SAVE_EVERY)
+      if (json === saved.current || delivered.current) return
+      void api.examSave(state.id, filled(latest.current)).then(() => (saved.current = json), () => undefined)
+    }
+    const save = setInterval(flush, SAVE_EVERY)
+    window.addEventListener('beforeunload', flush)
     return () => {
       clearInterval(tick)
       clearInterval(save)
+      window.removeEventListener('beforeunload', flush)
+      // Leaving the exam (← Home) keeps what was typed since the last save.
+      flush()
     }
   }, [api, running, state.id])
 
@@ -179,16 +189,22 @@ export function ExamView({ state, onBack, onStarted }: { state: PracticeState; o
             <div className="work">
               <textarea
                 aria-label={`Risposta all’esercizio ${i + 1}`}
+                maxLength={MAX}
                 placeholder="Scrivi qui la soluzione (LaTeX con $…$) o fotografa il foglio."
                 value={answers[p.id] ?? ''}
                 onChange={(e) => setAnswers((a) => ({ ...a, [p.id]: e.target.value }))}
               />
             </div>
             <div className="row">
-              <PhotoButton sessionId={state.id} onText={(t) => setAnswers((a) => ({ ...a, [p.id]: [a[p.id]?.trim(), t].filter(Boolean).join('\n\n') }))} />
+              <PhotoButton sessionId={state.id} onText={(t) => setAnswers((a) => ({ ...a, [p.id]: [a[p.id]?.trim(), t].filter(Boolean).join('\n\n').slice(0, MAX) }))} />
             </div>
           </section>
         ))}
+        {alert && (
+          <p className="pr-alert" role="alert">
+            {alert}
+          </p>
+        )}
         <div className="row">
           <span className="sp" />
           <button
