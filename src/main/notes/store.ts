@@ -21,7 +21,9 @@ export type NoteMeta = Omit<StoredNote, 'nota'> & { title: string }
 export const toMeta = ({ nota, ...rest }: StoredNote): NoteMeta => ({ ...rest, title: nota?.title ?? rest.sourceTitle })
 
 /** One JSON file per nota viva; whole-file writes through a temp file, so a crash never leaves half a note. */
-export function noteStore(dir: string) {
+export type NoteStore = { write(n: StoredNote): Promise<void>; read(id: string): Promise<StoredNote>; all(): Promise<StoredNote[]> }
+
+export function noteStore(dir: string): NoteStore {
   const file = (id: string): string => join(dir, `${id}.json`)
   return {
     async write(n: StoredNote): Promise<void> {
