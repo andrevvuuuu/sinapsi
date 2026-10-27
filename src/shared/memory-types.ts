@@ -33,3 +33,13 @@ export type Memory = {
 }
 
 export const stateOf = (R: number | null): MemoryState => (R === null ? 'mai visto' : R >= 0.85 ? 'la sai' : R >= 0.6 ? 'incerto' : 'debole')
+
+/**
+ * The grade the app proposes (Andrea can change it): sure and right → Bene; right but unsure →
+ * Difficile; half right → Difficile; wrong or "Non lo so" → Di nuovo.
+ */
+export function proposeGrade(r: { correct: boolean | 'partial'; confidence: number; dontKnow?: boolean }): Grade {
+  if (r.dontKnow || r.correct === false) return 1
+  if (r.correct === 'partial') return 2
+  return r.confidence < 50 ? 2 : 3
+}

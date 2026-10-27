@@ -1,3 +1,6 @@
+import type { ReviewService } from './memory/review'
+import { ExerciseSchema } from '../shared/exercise-schema'
+import { ReviewLineSchema } from '../shared/memory-types'
 import type { Extractor } from './graph/jobs'
 import type { NoteGenerator } from './notes/generator'
 import { access } from 'node:fs/promises'
@@ -102,5 +105,18 @@ export function makeGraphHandlers(x: Extractor, positions: { read(): Promise<unk
       return r.success ? r.data : {}
     },
     savePositions: async (p: unknown) => positions.write(Positions.parse(p))
+  }
+}
+
+const PlanOpts = z.object({ conceptIds: z.array(z.string().min(1).max(64)).max(200).optional(), weakest: z.boolean().optional() }).strict()
+const GradeReq = z.object({ conceptId: z.string().min(1).max(64), exercise: ExerciseSchema, answer: z.string().max(10_000), confidence: z.number().min(0).max(100) })
+
+export function makeReviewHandlers(svc: ReviewService) {
+  return {
+    plan: async (opts: unknown) => svc.plan(PlanOpts.parse(opts ?? {})),
+    grade: async (req: unknown) => svc.grade(GradeReq.parse(req)),
+    record: async (r: unknown) => svc.record(ReviewLineSchema.parse(r)),
+    memory: () => svc.memory(),
+    intervals: async (id: unknown) => svc.intervals(z.string().min(1).max(64).parse(id))
   }
 }

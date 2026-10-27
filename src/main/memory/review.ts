@@ -1,0 +1,173 @@
+import { mkdir } from 'node:fs/promises'
+import type { Bridge } from '../ai/bridge'
+import type { Exercise } from '../../shared/exercise-schema'
+import type { Concept, GraphData } from '../../shared/graph-types'
+import { proposeGrade, type ExerciseType, type Grade, type Memory, type ReviewLine } from '../../shared/memory-types'
+import type { VaultIndex } from '../../shared/vault-types'
+import { memoryOf, previewIntervals } from './fsrs'
+import { buildGradePrompt, GradeSchema } from './grade-prompt'
+import type { MemoryStore } from './store'
+import { buildVariantsPrompt, fallbackExercise, variantsReplySchema, type VariantsStore } from './variants'
+
+export type ReviewItem = {
+  conceptId: string
+  name: string
+  notePath: string
+  noteTitle: string
+  subject: string | null
+  R: number | null
+  exercise: Exercise
+  variantId: string | null
+}
+export type ReviewPlan = { items: ReviewItem[]; due: number }
+export type GradeResult = { verdict: 'ok' | 'partial' | 'wrong'; feedback: string; proposed: Grade }
+export type ReviewService = {
+  plan(opts?: { conceptIds?: string[]; weakest?: boolean }): Promise<ReviewPlan>
+  grade(req: { conceptId: string; exercise: Exercise; answer: string; confidence: number }): Promise<GradeResult>
+  record(r: ReviewLine): Promise<{ memory: Memory; intervals: Record<Grade, string> }>
+  memory(): Promise<Record<string, Memory>>
+  intervals(conceptId: string): Promise<Record<Grade, string>>
+}
+
+export const NEW_PER_SESSION = 5
+const VARIANTS_TIMEOUT = 300_000
+const GRADE_TIMEOUT = 120_000
+
+/** Next item from a different note than the previous one, when there is one: subjects get mixed. */
+function interleave<T extends { notePath: string }>(xs: T[]): T[] {
+  const rest = [...xs]
+  const out: T[] = []
+  while (rest.length) {
+    const prev = out.at(-1)?.notePath
+    const i = Math.max(0, rest.findIndex((x) => x.notePath !== prev))
+    out.push(rest.splice(i, 1)[0])
+  }
+  return out
+}
+
+export function createReviewService(deps: {
+  bridge: Pick<Bridge, 'ask'>
+  memory: MemoryStore
+  variants: VariantsStore
+  graph: () => Promise<GraphData>
+  vault: () => Promise<VaultIndex | null>
+  readNote: (path: string) => Promise<string>
+  settings: () => Promise<{ reviewSessionSize: number; exerciseTypes: ExerciseType[] }>
+  now?: () => number
+  workDir: string
+}): ReviewService {
+  const now = deps.now ?? Date.now
+  // Generation already tried in this run for a concept and set of types: never loop on quota.
+  const attempted = new Set<string>()
+
+  async function ensureVariants(concepts: Concept[], allowed: Set<ExerciseType>, index: VaultIndex | null): Promise<void> {
+    const have = await deps.variants.read()
+    const missing = concepts.filter((c) => {
+      const key = `${c.id}|${[...allowed].sort().join(',')}`
+      if (attempted.has(key)) return false
+      if (have.some((v) => v.conceptId === c.id && allowed.has(v.exercise.type))) return false
+      attempted.add(key)
+      return true
+    })
+    const byNote = new Map<string, Concept[]>()
+    for (const c of missing) byNote.set(c.birth, [...(byNote.get(c.birth) ?? []), c])
+    await mkdir(deps.workDir, { recursive: true })
+    for (const [notePath, cs] of byNote) {
+      try {
+        const text = await deps.readNote(notePath).catch(() => '')
+        const title = index?.notes.find((n) => n.path === notePath)?.title ?? notePath.split('/').pop()!.replace(/\.md$/, '')
+        const r = await deps.bridge.ask({
+          task: 'variants',
+          prompt: buildVariantsPrompt({ noteTitle: title, noteText: text, concepts: cs }),
+          schema: variantsReplySchema(new Set(cs.map((c) => c.id)), now),
+          timeoutMs: VARIANTS_TIMEOUT,
+          cwd: deps.workDir
+        })
+        for (const v of (r.data as { variants: Awaited<ReturnType<VariantsStore['read']>> }).variants) await deps.variants.append(v)
+      } catch (e) {
+        console.warn('[review] varianti non generate', notePath, e)
+      }
+    }
+  }
+
+  return {
+    async plan(opts = {}) {
+      const [g, reviews, settings, index] = await Promise.all([deps.graph(), deps.memory.read(), deps.settings(), deps.vault()])
+      const t = now()
+      const mem = memoryOf(reviews, t)
+      const byId = new Map(g.concepts.map((c) => [c.id, c]))
+      const R = (id: string): number => mem.get(id)?.R ?? -1
+      const dueIds = g.concepts.filter((c) => (mem.get(c.id)?.due ?? Infinity) <= t).map((c) => c.id)
+      let chosen: Concept[]
+      if (opts.conceptIds) chosen = opts.conceptIds.map((id) => byId.get(id)).filter((c): c is Concept => !!c)
+      else if (opts.weakest) {
+        const reviewed = g.concepts.filter((c) => mem.has(c.id)).sort((a, b) => R(a.id) - R(b.id))
+        const fresh = g.concepts.filter((c) => !mem.has(c.id)).sort((a, b) => a.depth - b.depth)
+        chosen = [...reviewed, ...fresh].slice(0, settings.reviewSessionSize)
+      } else {
+        const due = dueIds.map((id) => byId.get(id)!).sort((a, b) => R(a.id) - R(b.id))
+        const fresh = g.concepts.filter((c) => !mem.has(c.id)).sort((a, b) => a.depth - b.depth).slice(0, NEW_PER_SESSION)
+        chosen = [...due, ...fresh].slice(0, settings.reviewSessionSize)
+      }
+
+      const allowed = new Set(settings.exerciseTypes.length ? settings.exerciseTypes : (['open'] as ExerciseType[]))
+      await ensureVariants(chosen, allowed, index)
+      const variants = await deps.variants.read()
+      const lastAsked = new Map<string, number>()
+      for (const r of reviews) if (r.variantId) lastAsked.set(r.variantId, Math.max(lastAsked.get(r.variantId) ?? 0, r.at))
+
+      const items: ReviewItem[] = chosen.map((c) => {
+        const mine = variants.filter((v) => v.conceptId === c.id && allowed.has(v.exercise.type))
+        const lastType = [...reviews].filter((r) => r.conceptId === c.id && r.type).sort((a, b) => b.at - a.at)[0]?.type
+        // Never-asked first, then the least recently asked; a different type from last time when possible.
+        const pick = [...mine].sort((a, b) => (lastAsked.get(a.id) ?? -1) - (lastAsked.get(b.id) ?? -1) || Number(a.exercise.type === lastType) - Number(b.exercise.type === lastType))[0]
+        const note = index?.notes.find((n) => n.path === c.birth)
+        return {
+          conceptId: c.id,
+          name: c.name,
+          notePath: c.birth,
+          noteTitle: note?.title ?? c.birth.split('/').pop()!.replace(/\.md$/, ''),
+          subject: note?.subject ?? null,
+          R: mem.get(c.id)?.R ?? null,
+          exercise: pick?.exercise ?? fallbackExercise(c),
+          variantId: pick?.id ?? null
+        }
+      })
+      return { items: opts.conceptIds ? items : interleave(items), due: dueIds.length }
+    },
+
+    async grade(req) {
+      try {
+        const c = (await deps.graph()).concepts.find((x) => x.id === req.conceptId)
+        await mkdir(deps.workDir, { recursive: true })
+        const r = await deps.bridge.ask({
+          task: 'grade',
+          prompt: buildGradePrompt({ concept: { name: c?.name ?? '', statement: c?.statement ?? '' }, exercise: req.exercise, answer: req.answer, confidence: req.confidence }),
+          schema: GradeSchema,
+          timeoutMs: GRADE_TIMEOUT,
+          cwd: deps.workDir
+        })
+        const { verdict, feedback } = r.data as { verdict: GradeResult['verdict']; feedback: string }
+        return { verdict, feedback, proposed: proposeGrade({ correct: verdict === 'ok' ? true : verdict === 'partial' ? 'partial' : false, confidence: req.confidence }) }
+      } catch (e) {
+        console.warn('[review] correzione non riuscita', e)
+        return { verdict: 'partial', feedback: 'Non sono riuscito a correggere: valuta tu confrontando con la risposta di riferimento.', proposed: 2 }
+      }
+    },
+
+    async record(r) {
+      await deps.memory.append(r)
+      const reviews = (await deps.memory.read()).filter((x) => x.conceptId === r.conceptId)
+      const t = now()
+      return { memory: memoryOf(reviews, t).get(r.conceptId)!, intervals: previewIntervals(reviews, t) }
+    },
+
+    async memory() {
+      return Object.fromEntries(memoryOf(await deps.memory.read(), now()))
+    },
+
+    async intervals(conceptId) {
+      return previewIntervals((await deps.memory.read()).filter((r) => r.conceptId === conceptId), now())
+    }
+  }
+}
