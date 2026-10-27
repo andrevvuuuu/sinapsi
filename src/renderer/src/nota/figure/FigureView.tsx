@@ -23,7 +23,7 @@ function initial(fig: Figure, step?: number): Record<string, number> {
  * draggable points move the parameters; "greenWhen" recolours an element when its condition is met;
  * "Mostra i punti" finds where that happens.
  */
-export function FigureView({ fig, step }: { fig: Figure; step?: number }): React.JSX.Element {
+export function FigureView({ fig, step, onParams }: { fig: Figure; step?: number; onParams?: (p: Record<string, number>) => void }): React.JSX.Element {
   const uid = useId().replace(/:/g, '')
   const [params, setParams] = useState<Record<string, number>>(() => initial(fig, step))
   const [showPts, setShowPts] = useState(false)
@@ -32,6 +32,9 @@ export function FigureView({ fig, step }: { fig: Figure; step?: number }): React
   const paramsRef = useRef(params)
   useEffect(() => {
     paramsRef.current = params
+    onParams?.(params)
+    // onParams is a callback from the parent: reporting on param changes only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params])
 
   // Proof steps move the parameters to the step's values, smoothly unless motion is reduced.
