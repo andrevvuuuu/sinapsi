@@ -57,28 +57,38 @@ export function createReviewService(deps: {
   workDir: string
 }): ReviewService {
   const now = deps.now ?? Date.now
-  // Generation already tried in this run for a concept and set of types: never loop on quota.
-  const attempted = new Set<string>()
+  // One generation per concept and type set per app run: a second plan waits for the one in flight
+  // instead of starting another (or falling back), and a failure never loops on quota.
+  const attempted = new Map<string, Promise<void>>()
 
-  async function ensureVariants(concepts: Concept[], allowed: Set<ExerciseType>, index: VaultIndex | null): Promise<void> {
+  // Plans run their variant check one after the other: the second sees what the first generated.
+  let gate: Promise<unknown> = Promise.resolve()
+  function ensureVariants(concepts: Concept[], allowed: Set<ExerciseType>, index: VaultIndex | null): Promise<void> {
+    const run = gate.then(() => generateMissing(concepts, allowed, index))
+    gate = run.catch(() => undefined)
+    return run
+  }
+
+  async function generateMissing(concepts: Concept[], allowed: Set<ExerciseType>, index: VaultIndex | null): Promise<void> {
     const have = await deps.variants.read()
-    const missing = concepts.filter((c) => {
-      const key = `${c.id}|${[...allowed].sort().join(',')}`
-      if (attempted.has(key)) return false
-      if (have.some((v) => v.conceptId === c.id && allowed.has(v.exercise.type))) return false
-      attempted.add(key)
-      return true
-    })
+    const typesKey = [...allowed].sort().join(',')
+    const waiting: Promise<void>[] = []
+    const missing: Concept[] = []
+    for (const c of concepts) {
+      const pending = attempted.get(`${c.id}|${typesKey}`)
+      if (pending) waiting.push(pending)
+      else if (!have.some((v) => v.conceptId === c.id && allowed.has(v.exercise.type))) missing.push(c)
+    }
     const byNote = new Map<string, Concept[]>()
     for (const c of missing) byNote.set(c.birth, [...(byNote.get(c.birth) ?? []), c])
     await mkdir(deps.workDir, { recursive: true })
-    for (const [notePath, cs] of byNote) {
+    const generateNote = async (notePath: string, cs: Concept[]): Promise<void> => {
       try {
         const text = await deps.readNote(notePath).catch(() => '')
         const title = index?.notes.find((n) => n.path === notePath)?.title ?? notePath.split('/').pop()!.replace(/\.md$/, '')
         const r = await deps.bridge.ask({
           task: 'variants',
-          prompt: buildVariantsPrompt({ noteTitle: title, noteText: text, concepts: cs }),
+          prompt: buildVariantsPrompt({ noteTitle: title, noteText: text, concepts: cs, types: [...allowed] }),
           schema: variantsReplySchema(new Set(cs.map((c) => c.id)), now),
           timeoutMs: VARIANTS_TIMEOUT,
           cwd: deps.workDir
@@ -88,6 +98,17 @@ export function createReviewService(deps: {
         console.warn('[review] varianti non generate', notePath, e)
       }
     }
+    // Notes in parallel, a few at a time (agy queues per engine anyway; this caps prompt reads).
+    const jobs = [...byNote]
+    const runNext = async (): Promise<void> => {
+      const job = jobs.shift()
+      if (!job) return
+      const p = generateNote(job[0], job[1])
+      for (const c of job[1]) attempted.set(`${c.id}|${typesKey}`, p)
+      await p
+      await runNext()
+    }
+    await Promise.all([...waiting, ...Array.from({ length: Math.min(3, jobs.length) }, runNext)])
   }
 
   return {

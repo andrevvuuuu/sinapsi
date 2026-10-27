@@ -1,6 +1,6 @@
 import type { ReviewService } from './memory/review'
 import { ExerciseSchema } from '../shared/exercise-schema'
-import { ReviewLineSchema } from '../shared/memory-types'
+import { EXERCISE_TYPES, ReviewLineSchema } from '../shared/memory-types'
 import type { Extractor } from './graph/jobs'
 import type { NoteGenerator } from './notes/generator'
 import { access } from 'node:fs/promises'
@@ -17,7 +17,11 @@ const Patch = z
     vaultPath: z.string().min(1),
     theme: z.enum(['lavagna', 'trattato', 'system']),
     engines: z.object(Object.fromEntries(TASKS.map((t) => [t, Choice])) as Record<(typeof TASKS)[number], typeof Choice>).strict(),
-    excludedFolders: z.array(z.string())
+    excludedFolders: z.array(z.string()),
+    backgroundExtraction: z.boolean(),
+    dailyExtractionLimit: z.number().int().min(0).max(50),
+    reviewSessionSize: z.number().int().min(1).max(20),
+    exerciseTypes: z.array(z.enum(EXERCISE_TYPES)).min(1)
   })
   .partial()
   .strict()

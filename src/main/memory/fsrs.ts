@@ -1,4 +1,4 @@
-import { createEmptyCard, fsrs, generatorParameters, Rating, type Card, type Grade as FsrsGrade } from 'ts-fsrs'
+import { createEmptyCard, fsrs, generatorParameters, Rating, State, type Card, type Grade as FsrsGrade } from 'ts-fsrs'
 import { stateOf, type Grade, type Memory, type ReviewLine } from '../../shared/memory-types'
 
 const scheduler = fsrs(generatorParameters({ enable_fuzz: false }))
@@ -18,8 +18,8 @@ export function memoryOf(reviews: ReviewLine[], now: number): Map<string, Memory
   const out = new Map<string, Memory>()
   for (const [conceptId, rs] of byConcept) {
     const card = replay(rs)
-    const last = [...rs].sort((a, b) => a.at - b.at).at(-1)!
-    const R = scheduler.get_retrievability(card, new Date(now), false) as number
+    const last = [...rs].sort((a, b) => a.at - b.at || a.grade - b.grade).at(-1)!
+    const R = displayedR(card, last.grade, now)
     out.set(conceptId, {
       conceptId,
       state: stateOf(R),
@@ -32,6 +32,27 @@ export function memoryOf(reviews: ReviewLine[], now: number): Map<string, Memory
     })
   }
   return out
+}
+
+const DAY = 86_400_000
+// FSRS-5 forgetting curve, with fractional days (ts-fsrs rounds elapsed time to whole days,
+// which kept R at 100% for the whole day of a review).
+const DECAY = -0.5
+const FACTOR = 19 / 81
+const curve = (days: number, stability: number): number => Math.pow(1 + (FACTOR * Math.max(0, days)) / Math.max(stability, 1e-6), DECAY)
+
+/**
+ * Right after a lapse the card is in (re)learning: the curve still says ~100% for minutes,
+ * but what Andrea should see is the answer he just gave. "Di nuovo" shows as weak, "Difficile" as uncertain.
+ */
+function displayedR(card: Card, lastGrade: Grade, now: number): number {
+  const since = card.last_review ? (now - card.last_review.getTime()) / DAY : 0
+  const R = curve(since, card.stability)
+  if (card.state === State.Learning || card.state === State.Relearning) {
+    if (lastGrade === 1) return Math.min(R, 0.4)
+    if (lastGrade === 2) return Math.min(R, 0.75)
+  }
+  return R
 }
 
 /** What each grade would schedule now, in Italian ("10 min", "4 giorni"). */

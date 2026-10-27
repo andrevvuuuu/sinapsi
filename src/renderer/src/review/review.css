@@ -623,3 +623,8 @@
     animation: none;
   }
 }
+.rv .rv-err {
+  color: var(--bad);
+  font-size: 14px;
+  margin: 8px 0 0;
+}

@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import { ExerciseSchema, VariantLineSchema, type Exercise, type VariantLine } from '../../shared/exercise-schema'
 import type { Concept } from '../../shared/graph-types'
+import { EXERCISE_TYPES, type ExerciseType } from '../../shared/memory-types'
 import { capNote } from '../session/prompt'
 import { appendJsonl, readJsonl } from '../store/jsonl'
 
@@ -45,11 +46,25 @@ export function fallbackExercise(c: Concept): Exercise {
   return { type: 'open', prompt: `Senza guardare: che cosa dice «${c.name}»?`, answer: c.statement }
 }
 
-export function buildVariantsPrompt(input: { noteTitle: string; noteText: string; concepts: Concept[] }): string {
+const FORMAT: Record<ExerciseType, string> = {
+  open: '  { "type": "open" }                                                    // risposta aperta',
+  mc: '  { "type": "mc", "options": ["…","…"], "correct": 0 }                  // 2–6 opzioni, indice da 0',
+  truefalse: '  { "type": "truefalse", "statement": "…", "value": true }              // vero/falso: Andrea spiega anche perché',
+  order: '  { "type": "order", "steps": ["…","…","…"] }                           // 3–8 passi NELL\'ORDINE GIUSTO (l\'app li mescola)',
+  fill: '  { "type": "fill", "text": "… {{sbagliata|*giusta|sbagliata}} …" }     // l\'asterisco segna quella giusta',
+  match: '  { "type": "match", "pairs": [["sinistra","destra"], …] }              // 2–6 coppie giuste (l\'app mescola la destra)',
+  counterexample: '  { "type": "counterexample", "options": ["…","…"], "correct": 1 }      // scegli il controesempio',
+  estimate: '  { "type": "estimate", "value": 3, "tolerance": 0.1, "unit": "…" }     // stima numerica',
+  spoterror: '  { "type": "spoterror", "steps": ["…","…","…"], "wrong": 1, "why": "…" } // un passo sbagliato in una catena',
+  graph: '  { "type": "graph", "figure": Figura, "param": "p", "target": "f\'(p) - 0" } // la figura senza "points", "readouts" né "greenWhen"'
+}
+
+export function buildVariantsPrompt(input: { noteTitle: string; noteText: string; concepts: Concept[]; types?: ExerciseType[] }): string {
+  const types = input.types?.length ? input.types : [...EXERCISE_TYPES]
   return [
     `Prepari le domande di ripasso di Sinapsi per Andrea (Scienze matematiche per l'IA). Il ripasso a intervalli chiede un concetto quando sta per dimenticarlo, e ogni volta in una forma nuova: per questo ti chiedo più varianti per ogni concetto.`,
     `REGOLE
-- Per ogni concetto qui sotto: 4 o 5 esercizi, di almeno 3 tipi diversi, ognuno da un'angolazione diversa: richiamo (farlo venire in mente), distinzione (non confonderlo con concetti vicini), composizione (usarlo in un ragionamento o in un calcolo).
+- Per ogni concetto qui sotto: 4 o 5 esercizi, di tipi diversi quando possibile, ognuno da un'angolazione diversa: richiamo (farlo venire in mente), distinzione (non confonderlo con concetti vicini), composizione (usarlo in un ragionamento o in un calcolo).
 - Mai la stessa domanda riformulata: ogni esercizio deve chiedere qualcosa di diverso. Mai rivelare la risposta nel testo della domanda.
 - "answer" è la risposta di riferimento, completa e precisa, mostrata dopo che Andrea ha risposto.
 - Usa "graph" solo se il concetto riguarda la forma di una funzione (tangenti, crescenza, massimi…): la figura segue il formato delle figure delle note vive e "target" è un'espressione del parametro che vale 0 nel punto giusto.
@@ -58,17 +73,9 @@ export function buildVariantsPrompt(input: { noteTitle: string; noteText: string
 ${input.concepts.map((c) => `${c.id} | ${c.name} | ${c.statement.replace(/\s+/g, ' ')}`).join('\n')}`,
     `FORMATO (un solo oggetto JSON):
 { "concepts": [ { "id": "n_…", "exercises": [ Esercizio, … ] } ] }
+Usa SOLO questi tipi: ${types.map((t) => `"${t}"`).join(', ')}.${types.length < 3 ? ' (Qui bastano anche tipi ripetuti, con domande diverse.)' : ''}
 Esercizio, tutti con "prompt" e "answer":
-  { "type": "open" }                                                    // risposta aperta
-  { "type": "mc", "options": ["…","…"], "correct": 0 }                  // 2–6 opzioni, indice da 0
-  { "type": "truefalse", "statement": "…", "value": true }              // vero/falso: Andrea spiega anche perché
-  { "type": "order", "steps": ["…","…","…"] }                           // 3–8 passi NELL'ORDINE GIUSTO (l'app li mescola)
-  { "type": "fill", "text": "… {{sbagliata|*giusta|sbagliata}} …" }     // l'asterisco segna quella giusta
-  { "type": "match", "pairs": [["sinistra","destra"], …] }              // 2–6 coppie giuste (l'app mescola la destra)
-  { "type": "counterexample", "options": ["…","…"], "correct": 1 }      // scegli il controesempio
-  { "type": "estimate", "value": 3, "tolerance": 0.1, "unit": "…" }     // stima numerica
-  { "type": "spoterror", "steps": ["…","…","…"], "wrong": 1, "why": "…" } // un passo sbagliato in una catena
-  { "type": "graph", "figure": Figura, "param": "p", "target": "f'(p) - 0" }`,
+${types.map((t) => FORMAT[t]).join('\n')}`,
     `NOTA DI ORIGINE «${input.noteTitle}» (per il contesto e la notazione di Andrea)\n\n${capNote(input.noteText)}`,
     `Non usare strumenti né file. Rispondi solo con l'oggetto JSON, senza testo prima o dopo.`
   ].join('\n\n---\n\n')

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReviewItem } from '../../../main/memory/review'
 import { proposeGrade, type ExerciseType, type Grade } from '../../../shared/memory-types'
 import { EXERCISE_TYPES } from '../../../shared/memory-types'
@@ -62,6 +62,10 @@ export function ReviewView({
   const [intervals, setIntervals] = useState<Record<Grade, string> | null>(null)
   const [results, setResults] = useState<Result[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [typeError, setTypeError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const nextRef = useRef<HTMLButtonElement>(null)
+  const questionRef = useRef<HTMLDivElement>(null)
   const [startedAt] = useState(() => Date.now())
   const [endedAt, setEndedAt] = useState<number | null>(null)
 
@@ -109,8 +113,16 @@ export function ReviewView({
   const toggleType = (t: ExerciseType): void => {
     const next = types.includes(t) ? types.filter((x) => x !== t) : [...types, t]
     if (!next.length) return
+    const before = types
     setTypes(next)
-    void api.settings.set({ exerciseTypes: next }).then(() => load())
+    setTypeError(null)
+    api.settings
+      .set({ exerciseTypes: next })
+      .then(() => load())
+      .catch((e) => {
+        setTypes(before)
+        setTypeError(`Scelta non salvata: ${remote(e)}`)
+      })
   }
 
   const next = (): void => {
@@ -177,8 +189,10 @@ export function ReviewView({
   }
 
   async function advance(): Promise<void> {
+    if (saving) return
     const item = items![i]
     const v = verdict!
+    setSaving(true)
     try {
       const r = await api.review.record({
         conceptId: item.conceptId,
@@ -198,9 +212,21 @@ export function ReviewView({
     } catch (e) {
       setError(remote(e))
       return
+    } finally {
+      setSaving(false)
     }
+    setError(null)
     next()
   }
+
+  // Keyboard and VoiceOver users land where the next action is: "Prossima" after the check,
+  // the question when a new item appears.
+  useEffect(() => {
+    if (verdict) nextRef.current?.focus()
+  }, [verdict])
+  useEffect(() => {
+    if (i >= 0 && items && i < items.length) questionRef.current?.focus()
+  }, [i, items])
 
   const top = (
     <header className="rv-top drag">
@@ -314,6 +340,11 @@ export function ReviewView({
                 </ul>
                 <div className="rv-types">
                   <div className="lab">Esercizi</div>
+                  {typeError && (
+                    <p role="alert" className="rv-err">
+                      {typeError}
+                    </p>
+                  )}
                   <div className="rv-chips" role="group" aria-label="Esercizi">
                     {EXERCISE_TYPES.map((t) => (
                       <button
@@ -437,7 +468,7 @@ export function ReviewView({
             <span className="chip">{MODE[item.exercise.type]}</span>
             <span className="chip">{TYPE_LABEL[item.exercise.type]}</span>
           </div>
-          <div id="rv-q" className="rv-q">
+          <div id="rv-q" className="rv-q" ref={questionRef} tabIndex={-1}>
             <RichText md={item.exercise.prompt} />
           </div>
           <div
@@ -522,7 +553,13 @@ export function ReviewView({
                 <button type="button" className="link" onClick={() => onOpenNote(item.notePath)}>
                   Apri nella nota
                 </button>
-                <button type="button" className="pri" onClick={() => void advance()}>
+                <button
+                  type="button"
+                  className="pri"
+                  ref={nextRef}
+                  disabled={saving}
+                  onClick={() => void advance()}
+                >
                   {i === items.length - 1 ? 'Vedi riepilogo' : 'Prossima'}
                 </button>
               </div>

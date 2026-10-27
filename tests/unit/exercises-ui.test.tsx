@@ -89,6 +89,7 @@ describe('graph and open', () => {
       target: "f'(p)",
       answer: 'In 0.'
     })
+    fireEvent.change(screen.getByRole('slider', { name: 'Punto' }), { target: { value: '0.5' } })
     expect(last()).toMatchObject({ correct: false, ready: true })
     fireEvent.change(screen.getByRole('slider', { name: 'Punto' }), { target: { value: '0' } })
     expect(last()).toMatchObject({ correct: true })
