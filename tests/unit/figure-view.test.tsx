@@ -59,6 +59,10 @@ describe('FigureView', () => {
     fireEvent.click(btn)
     expect((screen.getByRole('slider', { name: /Punto c/ }) as HTMLInputElement).value).toBe('0')
   })
+  it('does not draw a point that falls outside the view', () => {
+    render(<FigureView fig={{ ...fig, elements: [fig.elements[0], { kind: 'point', x: '1', y: '5', label: 'B' }] }} />)
+    expect(screen.queryByTestId('el-1')).toBeNull()
+  })
   it('says so when there is no point in range', () => {
     render(<FigureView fig={{ ...fig, points: { ...fig.points!, expr: "f'(p) - 10" } }} />)
     fireEvent.click(screen.getByRole('button', { name: 'Mostra i punti' }))

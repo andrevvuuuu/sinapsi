@@ -141,6 +141,8 @@ export function FigureView({ fig, step }: { fig: Figure; step?: number }): React
       case 'point': {
         const [x, y] = [ev(el.x), ev(el.y)]
         if (![x, y].every(Number.isFinite)) return null
+        // Points are drawn above the clip (so their halo is never cut): skip those outside the view.
+        if (x < x0 || x > x1 || y < y0 || y > y1) return null
         const [px, py] = toPx(x, y)
         const p = el.drag ? fig.params.find((q) => q.id === el.drag) : undefined
         const dot = (
