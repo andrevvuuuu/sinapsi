@@ -195,3 +195,31 @@ describe('exam delivery', () => {
     expect(api.practice.examDeliver).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('camera', () => {
+  it('turns the camera off while Andrea checks the text, and back on for "Rifai la foto"', async () => {
+    const stop = vi.fn()
+    const streams: object[] = []
+    const getUserMedia = vi.fn(async () => {
+      const s = { getTracks: () => [{ stop }] }
+      streams.push(s)
+      return s
+    })
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia, enumerateDevices: async () => [{ kind: 'videoinput', deviceId: 'iphone', label: 'Fotocamera di iPhone' }] } })
+    const open: PracticeState = { ...base, awaiting: 'learner', hasTutorTurn: true, problems: [{ ...problem, modelSolution: undefined, status: 'active', phase: 'warmup', hints: 0, maxRung: null }], active: 'p1' }
+    const api = mountView(open) as unknown as { practice: Record<string, ReturnType<typeof vi.fn>> }
+    api.practice.camera = vi.fn(async () => true)
+    api.practice.photo = vi.fn(async () => 'testo letto')
+    fireEvent.click(await screen.findByRole('button', { name: 'Foto del foglio' }))
+    await vi.waitFor(() => expect(getUserMedia).toHaveBeenCalledWith(expect.objectContaining({ video: expect.objectContaining({ deviceId: { exact: 'iphone' } }) })))
+    const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'f.jpg', { type: 'image/jpeg' })
+    await act(async () => fireEvent.change(screen.getByLabelText('Scegli un’immagine…'), { target: { files: [file] } }))
+    await screen.findByLabelText('Letto dal foglio — controlla e correggi')
+    await vi.waitFor(() => expect(stop).toHaveBeenCalled())
+    const calls = getUserMedia.mock.calls.length
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Rifai la foto' })))
+    await vi.waitFor(() => expect(getUserMedia.mock.calls.length).toBeGreaterThan(calls))
+    const video = document.querySelector('video') as HTMLVideoElement & { srcObject: unknown }
+    await vi.waitFor(() => expect(video.srcObject).toBe(streams.at(-1)))
+  })
+})

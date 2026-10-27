@@ -38,8 +38,10 @@ function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText
     }
   }, [api])
 
+  // The camera runs only while shooting: off while Andrea checks the text, back on for "Rifai la foto".
+  const camOn = state.k !== 'read'
   useEffect(() => {
-    if (!cam || !navigator.mediaDevices) return
+    if (!cam || !camOn || !navigator.mediaDevices) return
     let live = true
     void navigator.mediaDevices
       .getUserMedia({ video: { deviceId: { exact: cam }, width: { ideal: 1920 } } })
@@ -54,7 +56,7 @@ function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText
       stream.current?.getTracks().forEach((t) => t.stop())
       stream.current = null
     }
-  }, [cam])
+  }, [cam, camOn])
 
   const read = async (bytes: Uint8Array): Promise<void> => {
     setState({ k: 'reading' })
@@ -123,7 +125,17 @@ function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText
                     ))}
                   </select>
                 )}
-                <video ref={video} className="pr-video" autoPlay playsInline muted />
+                <video
+                  ref={(el) => {
+                    video.current = el
+                    // A new <video> after "Rifai la foto" gets the running stream.
+                    if (el && stream.current && el.srcObject !== stream.current) el.srcObject = stream.current
+                  }}
+                  className="pr-video"
+                  autoPlay
+                  playsInline
+                  muted
+                />
                 <p className="mt-hint">Con l’iPhone vicino e lo stesso Apple ID, compare tra le fotocamere (Continuity Camera).</p>
               </>
             )}
