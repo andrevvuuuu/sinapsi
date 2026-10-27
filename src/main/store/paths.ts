@@ -8,3 +8,12 @@ export function dataDir(): string {
   mkdirSync(dir, { recursive: true })
   return dir
 }
+
+/**
+ * A test instance (SINAPSI_DATA set) gets its own Chromium profile: on macOS the default profile
+ * folder ("sinapsi") is the data folder of the real app, and Chromium locks a profile for one
+ * instance at a time — parallel e2e runs and the open app made each other quit at launch.
+ */
+export function chromiumProfileDir(env: NodeJS.ProcessEnv = process.env): string | null {
+  return env.SINAPSI_DATA ? join(env.SINAPSI_DATA, 'chromium') : null
+}
