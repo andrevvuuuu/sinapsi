@@ -25,6 +25,8 @@ export type GraphModel = {
   parents: Map<string, string[]>
   kids: Map<string, string[]>
   search(q: string, limit?: number): SearchHit[]
+  /** Display name of a subject: its folder name when it matches the tag (tags carry no spaces). */
+  subjectName(id: string | null | undefined): string
 }
 
 const fold = (s: string): string => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
@@ -109,6 +111,15 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
     maxDepth: Math.max(0, ...g.concepts.map((c) => c.depth)),
     parents,
     kids,
+    subjectName(id) {
+      if (!id) return ''
+      const key = fold(id).replace(/[^a-z0-9]/g, '')
+      for (const n of index.notes) {
+        if (n.subject !== id) continue
+        for (const part of n.folder.split('/')) if (fold(part).replace(/[^a-z0-9]/g, '') === key) return part
+      }
+      return id.charAt(0).toUpperCase() + id.slice(1).replace(/[-_]/g, ' ')
+    },
     search(q, limit = 8) {
       const v = fold(q.trim())
       if (!v) return []

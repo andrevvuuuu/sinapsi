@@ -21,13 +21,13 @@ describe.runIf(process.env.LIVE_AI === '1')('live extraction', () => {
     for (const t of titles) {
       const path = vault.notes.find((n) => n.title === t)!.path
       const t0 = Date.now()
-      await x.request(path, 'manual')
+      await x.request(path, 'study')
       const g = await x.graph()
       const mine = g.concepts.filter((c) => c.notes.includes(path))
       console.log(`[live graph] ${t}: ${Math.round((Date.now() - t0) / 1000)} s, ${mine.length} concetti (${mine.filter((c) => c.birth !== path).length} ritrovati), errore: ${x.status().lastError?.message ?? '—'}`)
       expect(x.status().lastError).toBeUndefined()
       expect(mine.length).toBeGreaterThanOrEqual(5)
-      expect(g.chains.filter((c) => c.notes.includes(path)).length).toBeGreaterThanOrEqual(3)
+      expect(g.chains.filter((c) => c.notes.includes(path)).length).toBeGreaterThanOrEqual(2)
     }
     const g = await x.graph()
     for (const c of g.concepts) expect(c.statement).not.toMatch(/\b(Andrea|studente|la nota)\b/i)

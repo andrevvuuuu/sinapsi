@@ -89,4 +89,16 @@ describe('buildModel', () => {
     expect(a).toEqual(m.regions.map((r) => r.hue))
     for (const h of a) expect(h).toMatch(/^#[0-9a-f]{6}$/)
   })
+
+  it('names a subject after the folder that matches its tag', () => {
+    const idx: VaultIndex = {
+      ...index,
+      subjects: [{ id: 'educazionecivica', color: '#000000' }, { id: 'bodybuilding', color: '#111111' }],
+      notes: [{ ...vnote('Costituzione', { subject: 'educazionecivica' }), folder: 'Educazione Civica/Diritti' }, vnote('Panca', { subject: 'bodybuilding' })]
+    }
+    const mm = buildModel({ concepts: [], chains: [], extracted: {} }, idx)
+    expect(mm.subjectName('educazionecivica')).toBe('Educazione Civica')
+    expect(mm.subjectName('bodybuilding')).toBe('Bodybuilding')
+    expect(mm.subjectName(null)).toBe('')
+  })
 })

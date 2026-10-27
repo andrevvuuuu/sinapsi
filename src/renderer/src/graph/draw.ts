@@ -282,12 +282,18 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       if (!subj) continue
       bySubject.set(subj, [...(bySubject.get(subj) ?? []), n])
     }
-    for (const [subj, ns] of bySubject) {
-      const X = sx(ns.reduce((a, n) => a + n.x!, 0) / ns.length)
-      const Y = Math.min(...ns.map((n) => sy(n.y!))) - 26
-      ctx.font = '400 30px "Instrument Serif",serif'
-      ctx.fillStyle = s.subjectColor(subj)
-      ctx.fillText(subj.charAt(0).toUpperCase() + subj.slice(1), X, Y)
+    // Subject names avoid each other, like the region labels.
+    const placed: { X: number; Y: number; w: number }[] = []
+    ctx.font = '400 30px "Instrument Serif",serif'
+    const order = [...bySubject].map(([subj, ns]) => ({ subj, X: sx(ns.reduce((a, n) => a + n.x!, 0) / ns.length), Y: Math.min(...ns.map((n) => sy(n.y!))) - 26 })).sort((a, b) => a.Y - b.Y)
+    for (const o of order) {
+      const label = model.subjectName(o.subj)
+      const w = ctx.measureText(label).width
+      let tries = 0
+      while (tries++ < 40 && placed.some((p) => Math.abs(p.X - o.X) < (p.w + w) / 2 + 10 && Math.abs(p.Y - o.Y) < 34)) o.Y -= 10
+      placed.push({ X: o.X, Y: o.Y, w })
+      ctx.fillStyle = s.subjectColor(o.subj)
+      ctx.fillText(label, o.X, o.Y)
     }
     ctx.globalAlpha = 1
   }

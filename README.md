@@ -33,6 +33,16 @@ Clic su una nota nell'elenco a sinistra → **Crea la nota viva**; oppure, alla 
 
 Le note vive restano nell'elenco **Note vive** a sinistra.
 
+## Grafo
+
+Al centro della home c'è il **grafo unito**: le tue note Obsidian e i **concetti** che Gemini ne estrae, collegati dalle **catene di ragionamento** (premesse ⇒ conclusione), come in Learn Harness.
+
+- I concetti vengono estratti **quando apri o studi una nota**, e in background **quando il Mac è inattivo** (al massimo 6 note al giorno, dalle materie che stai studiando). Una nota non cambiata non viene estratta di nuovo.
+- Ogni nota estratta è una **regione colorata**; un concetto presente in più note è **un nodo solo** (cerchio tratteggiato).
+- **Radiale**: le basi al centro, ciò che ne deriva verso l'esterno. **A piani**: le basi in basso. **Libera**: come in Obsidian.
+- Cerca un concetto o una nota; nella scheda: "Segue da", "Porta a", **Cosa serve per capirlo** (tutto ciò su cui poggia), "Studia questa nota".
+- I puntini sul bordo sono la **frontiera**: note citate nei tuoi MOC ma non ancora scritte.
+
 ## Per lo sviluppo
 
 ```bash
