@@ -1,10 +1,15 @@
 import { polygonHull } from 'd3-polygon'
 import { BASE, SPACING, type Layout, type SimNode } from './layout'
-import type { GraphModel } from './model'
+import { fragileBases, type GraphModel } from './model'
 
 /** Canvas drawing of the union graph, ported from docs/prototipi/grafo-v2.html. */
-export type Colors = Record<'bg' | 'ink' | 'muted' | 'hair' | 'accent' | 'good' | 'warn' | 'bad' | 'pen' | 'surface', string>
+export type Colors = Record<
+  'bg' | 'ink' | 'muted' | 'hair' | 'accent' | 'good' | 'warn' | 'bad' | 'pen' | 'surface',
+  string
+>
 export type Sel = { kind: 'concept' | 'region' | 'note'; id: string }
+export type Lens = 'all' | 'due' | 'never' | 'fragile'
+type Mem = { state: string; R: number | null; due: number | null }
 export type DrawState = {
   model: GraphModel
   layout: Layout
@@ -20,6 +25,9 @@ export type DrawState = {
   path: Set<string> | null
   subjectColor: (s: string | null | undefined) => string
   offscreen: HTMLCanvasElement
+  memory: Record<string, Mem>
+  lens: Lens
+  now: number
 }
 export type DrawOut = { regionLabels: Map<string, [number, number, number, number]> }
 
@@ -30,15 +38,20 @@ export const rgba = (color: string, a: number): string => {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`
 }
 const ease = (t: number): number => (t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t))
-export const radiusOf = (m: GraphModel, n: SimNode): number => 4.2 + (m.conceptById.get(n.id)?.notes.length ?? 1) * 1.6 + Math.min(3, (m.kids.get(n.id)?.length ?? 0) * 0.6)
+export const radiusOf = (m: GraphModel, n: SimNode): number =>
+  4.2 +
+  (m.conceptById.get(n.id)?.notes.length ?? 1) * 1.6 +
+  Math.min(3, (m.kids.get(n.id)?.length ?? 0) * 0.6)
 
 /** Which nodes stay lit while something is hovered, selected, or a path is shown. */
 export function focusSet(s: Pick<DrawState, 'model' | 'hov' | 'sel' | 'path'>): Set<string> | null {
   if (s.path) return s.path
   const f = s.hov ?? s.sel
   if (!f) return null
-  if (f.kind === 'concept') return new Set([f.id, ...(s.model.parents.get(f.id) ?? []), ...(s.model.kids.get(f.id) ?? [])])
-  if (f.kind === 'region') return new Set(s.model.concepts.filter((c) => c.notes.includes(f.id)).map((c) => c.id))
+  if (f.kind === 'concept')
+    return new Set([f.id, ...(s.model.parents.get(f.id) ?? []), ...(s.model.kids.get(f.id) ?? [])])
+  if (f.kind === 'region')
+    return new Set(s.model.concepts.filter((c) => c.notes.includes(f.id)).map((c) => c.id))
   return new Set([f.id])
 }
 
@@ -61,7 +74,11 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
   const centroids = new Map<string, { x: number; y: number }>()
   for (const r of model.regions) {
     const ns = r.concepts.map(node).filter((n): n is SimNode => !!n)
-    if (ns.length) centroids.set(r.notePath, { x: ns.reduce((a, n) => a + n.x!, 0) / ns.length, y: ns.reduce((a, n) => a + n.y!, 0) / ns.length })
+    if (ns.length)
+      centroids.set(r.notePath, {
+        x: ns.reduce((a, n) => a + n.x!, 0) / ns.length,
+        y: ns.reduce((a, n) => a + n.y!, 0) / ns.length
+      })
   }
 
   // Depth rings: the edge of what you know.
@@ -126,7 +143,8 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
         for (const id of r.concepts) {
           const n = node(id)
           if (!n) continue
-          for (let a = 0; a < 6; a++) pts.push([sx(n.x! + Math.cos(a * 1.047) * 26), sy(n.y! + Math.sin(a * 1.047) * 26)])
+          for (let a = 0; a < 6; a++)
+            pts.push([sx(n.x! + Math.cos(a * 1.047) * 26), sy(n.y! + Math.sin(a * 1.047) * 26)])
         }
         const h = polygonHull(pts)
         if (!h) continue
@@ -179,7 +197,11 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
     if (l.wikilink) continue
     const a = l.source as SimNode
     const b = l.target as SimNode
-    const lit = !F || (F.has(a.id) || a.kind === 'junction') && (F.has(b.id) || b.kind === 'junction') && (F.has(a.id) || F.has(b.id))
+    const lit =
+      !F ||
+      ((F.has(a.id) || a.kind === 'junction') &&
+        (F.has(b.id) || b.kind === 'junction') &&
+        (F.has(a.id) || F.has(b.id)))
     const al = (0.18 + 0.5 * tProp) * (lit ? 1 : 0.06)
     ctx.strokeStyle = rgba(C.ink, al)
     const [x1, y1, x2, y2] = [sx(a.x!), sy(a.y!), sx(b.x!), sy(b.y!)]
@@ -224,7 +246,10 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
     ctx.lineWidth = 1.6
     ctx.strokeStyle = s.subjectColor(n.subject)
     ctx.stroke()
-    if ((s.sel?.kind === 'note' && s.sel.id === n.id) || (s.hov?.kind === 'note' && s.hov.id === n.id)) {
+    if (
+      (s.sel?.kind === 'note' && s.sel.id === n.id) ||
+      (s.hov?.kind === 'note' && s.hov.id === n.id)
+    ) {
       ctx.beginPath()
       ctx.arc(sx(n.x!), sy(n.y!), Math.max(2.5, 5 * Math.sqrt(k)) + 7, 0, 7)
       ctx.strokeStyle = C.ink
@@ -234,8 +259,20 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
     ctx.globalAlpha = 1
   }
 
-  // Concepts: filled with their region's colour; a dashed ring when they appear in several notes.
+  // Concepts: coloured by memory (la sai / incerto / debole), hollow when never reviewed;
+  // a dashed ring when they appear in several notes, a warm ring when due.
   const regionOf = new Map(model.regions.map((r) => [r.notePath, r]))
+  const fragile = s.lens === 'fragile' ? fragileBases(model, s.memory) : null
+  const lensHit = (id: string): boolean =>
+    s.lens === 'due'
+      ? (s.memory[id]?.due ?? Infinity) <= s.now
+      : s.lens === 'never'
+        ? !s.memory[id]
+        : s.lens === 'fragile'
+          ? fragile!.has(id)
+          : true
+  const memColor = (state: string | undefined): string | null =>
+    state === 'la sai' ? C.good : state === 'incerto' ? C.warn : state === 'debole' ? C.bad : null
   for (const c of model.concepts) {
     const n = node(c.id)
     if (!n) continue
@@ -243,7 +280,7 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
     const Y = sy(n.y!)
     if (X < -30 || Y < -30 || X > W + 30 || Y > H + 30) continue
     const r = Math.max(1.8, radiusOf(model, n) * Math.sqrt(k) * 0.9)
-    ctx.globalAlpha = dim(c.id)
+    ctx.globalAlpha = s.lens !== 'all' && !lensHit(c.id) ? Math.min(dim(c.id), 0.12) : dim(c.id)
     if (c.notes.length > 1) {
       ctx.beginPath()
       ctx.arc(X, Y, r + 3.5, 0, 7)
@@ -253,10 +290,28 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       ctx.stroke()
       ctx.setLineDash([])
     }
+    const mem = s.memory[c.id]
+    const mc = memColor(mem?.state)
     ctx.beginPath()
-    ctx.arc(X, Y, r, 0, 7)
-    ctx.fillStyle = regionOf.get(c.region)?.hue ?? C.muted
-    ctx.fill()
+    if (mc) {
+      ctx.arc(X, Y, r, 0, 7)
+      ctx.fillStyle = mc
+      ctx.fill()
+    } else {
+      ctx.arc(X, Y, Math.max(1, r - 0.7), 0, 7)
+      ctx.fillStyle = C.bg
+      ctx.fill()
+      ctx.lineWidth = 1.6
+      ctx.strokeStyle = regionOf.get(c.region)?.hue ?? C.muted
+      ctx.stroke()
+    }
+    if (mem && (mem.due ?? Infinity) <= s.now) {
+      ctx.beginPath()
+      ctx.arc(X, Y, r + 6, 0, 7)
+      ctx.strokeStyle = rgba(C.warn, 0.6)
+      ctx.lineWidth = 1.2
+      ctx.stroke()
+    }
     if (s.sel?.kind === 'concept' && s.sel.id === c.id) {
       ctx.beginPath()
       ctx.arc(X, Y, r + 9, 0, 7)
@@ -279,19 +334,34 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
     ctx.globalAlpha = tSubj
     const bySubject = new Map<string, SimNode[]>()
     for (const n of layout.nodes) {
-      const subj = n.kind === 'note' ? n.subject : n.kind === 'concept' ? regionOf.get(n.region!)?.subject : undefined
+      const subj =
+        n.kind === 'note'
+          ? n.subject
+          : n.kind === 'concept'
+            ? regionOf.get(n.region!)?.subject
+            : undefined
       if (!subj) continue
       bySubject.set(subj, [...(bySubject.get(subj) ?? []), n])
     }
     // Subject names avoid each other, like the region labels.
     const placed: { X: number; Y: number; w: number }[] = []
     ctx.font = '400 30px "Instrument Serif",serif'
-    const order = [...bySubject].map(([subj, ns]) => ({ subj, X: sx(ns.reduce((a, n) => a + n.x!, 0) / ns.length), Y: Math.min(...ns.map((n) => sy(n.y!))) - 26 })).sort((a, b) => a.Y - b.Y)
+    const order = [...bySubject]
+      .map(([subj, ns]) => ({
+        subj,
+        X: sx(ns.reduce((a, n) => a + n.x!, 0) / ns.length),
+        Y: Math.min(...ns.map((n) => sy(n.y!))) - 26
+      }))
+      .sort((a, b) => a.Y - b.Y)
     for (const o of order) {
       const label = model.subjectName(o.subj)
       const w = ctx.measureText(label).width
       let tries = 0
-      while (tries++ < 40 && placed.some((p) => Math.abs(p.X - o.X) < (p.w + w) / 2 + 10 && Math.abs(p.Y - o.Y) < 34)) o.Y -= 10
+      while (
+        tries++ < 40 &&
+        placed.some((p) => Math.abs(p.X - o.X) < (p.w + w) / 2 + 10 && Math.abs(p.Y - o.Y) < 34)
+      )
+        o.Y -= 10
       placed.push({ X: o.X, Y: o.Y, w })
       ctx.fillStyle = s.subjectColor(o.subj)
       ctx.fillText(label, o.X, o.Y)
@@ -309,7 +379,11 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       const t = shortTitle(o.r.title)
       const w = ctx.measureText(t).width + 28
       let tries = 0
-      while (tries++ < 40 && placed.some((p) => Math.abs(p.X - o.X) < (p.w + w) / 2 + 6 && Math.abs(p.Y - o.Y) < 46)) o.Y += 8
+      while (
+        tries++ < 40 &&
+        placed.some((p) => Math.abs(p.X - o.X) < (p.w + w) / 2 + 6 && Math.abs(p.Y - o.Y) < 46)
+      )
+        o.Y += 8
       placed.push({ X: o.X, Y: o.Y, w })
       let a = tNote
       if (s.sel?.kind === 'region' && s.sel.id !== o.r.notePath) a *= 0.3
@@ -325,7 +399,14 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       ctx.fillText(t, o.X, o.Y + 1)
       ctx.font = '500 10px "Geist Mono",monospace'
       ctx.fillStyle = C.muted
-      ctx.fillText(`${o.r.concepts.length} concetti`, o.X, o.Y + 13)
+      const rs = o.r.concepts
+        .map((id) => s.memory[id]?.R)
+        .filter((x): x is number => typeof x === 'number')
+      ctx.fillText(
+        `${o.r.concepts.length} concetti${rs.length ? ` · ${Math.round((rs.reduce((a, b) => a + b, 0) / rs.length) * 100)}%` : ''}`,
+        o.X,
+        o.Y + 13
+      )
       out.regionLabels.set(o.r.notePath, [o.X - w / 2, o.Y - 21, w, 40])
     }
     ctx.globalAlpha = 1
@@ -350,7 +431,11 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       const Y = sy(n.y!)
       if (X < -150 || X > W + 150 || Y < -20 || Y > H + 40) continue
       let a = tProp * dim(c.id)
-      if ((s.hov?.kind === 'concept' && s.hov.id === c.id) || (s.sel?.kind === 'concept' && s.sel.id === c.id)) a = 1
+      if (
+        (s.hov?.kind === 'concept' && s.hov.id === c.id) ||
+        (s.sel?.kind === 'concept' && s.sel.id === c.id)
+      )
+        a = 1
       if (a < 0.03) continue
       ctx.globalAlpha = a
       ctx.fillStyle = C.ink
@@ -361,9 +446,23 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
   return out
 }
 
-export const shortTitle = (t: string): string => (t.length > 30 ? t.replace('Teorema di ', 'Teor. ').replace(' Relativi e Assoluti', '').replace(' Fondamentali', '').replace(' sui Punti Stazionari', '') : t)
+export const shortTitle = (t: string): string =>
+  t.length > 30
+    ? t
+        .replace('Teorema di ', 'Teor. ')
+        .replace(' Relativi e Assoluti', '')
+        .replace(' Fondamentali', '')
+        .replace(' sui Punti Stazionari', '')
+    : t
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+): void {
   ctx.beginPath()
   ctx.moveTo(x + r, y)
   ctx.arcTo(x + w, y, x + w, y + h, r)

@@ -119,6 +119,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
         ) : index && 'notes' in index && index.notes.length > 0 && api.graph ? (
           <GraphView
             index={index}
+            onReview={(ids) => onOpenReview?.('', ids)}
             onOpenNote={(path) => onOpenSource?.(path)}
             onStudy={(title) =>
               void api.session
