@@ -245,7 +245,7 @@ export function FigureView({ fig, step }: { fig: Figure; step?: number }): React
         )}
         {fig.points && (
           <div className="pts">
-            <button type="button" className="chip" aria-pressed={showPts} onClick={() => setShowPts(!showPts)}>
+            <button type="button" className="nv-chip" aria-pressed={showPts} onClick={() => setShowPts(!showPts)}>
               {fig.points.label}
             </button>
             <span data-testid="points" aria-live="polite" className="ptl">
@@ -254,7 +254,7 @@ export function FigureView({ fig, step }: { fig: Figure; step?: number }): React
                   'Nessun punto in questo intervallo'
                 ) : (
                   roots.map((r) => (
-                    <button key={r} type="button" className="chip small" onClick={() => setParam(fig.points!.param, r)}>
+                    <button key={r} type="button" className="nv-chip small" onClick={() => setParam(fig.points!.param, r)}>
                       x ≈ {fmt(r)}
                     </button>
                   ))
