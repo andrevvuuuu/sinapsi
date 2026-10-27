@@ -69,10 +69,22 @@ describe('NotePicker', () => {
     const notes = { list: vi.fn(async () => list), create: vi.fn(async () => '22222222-2222-4222-8222-222222222222'), onUpdate: () => () => undefined }
     const app = { openExternal: vi.fn(async () => undefined) }
     const vault = { index: vi.fn(async () => ({ root: '/vault', notes: [{ path: PATH, title: 'Teorema di Rolle', available: true }], subjects: [], scannedAt: 1 })) }
-    window.sinapsi = { notes, app, vault } as never
+    const graph = {
+      extract: vi.fn(async () => undefined),
+      get: vi.fn(async () => ({ concepts: [{ id: 'n_a', notes: [PATH] }, { id: 'n_b', notes: ['/x.md'] }], chains: [], extracted: {} })),
+      onChange: () => () => undefined
+    }
+    window.sinapsi = { notes, app, vault, graph } as never
     render(<NotePicker path={PATH} onOpenNota={onOpenNota} onBack={vi.fn()} />)
-    return { notes, onOpenNota, app }
+    return { notes, onOpenNota, app, graph }
   }
+  it('extracts the concepts of the note it opens, and on request again', async () => {
+    const { graph } = mountPicker([])
+    expect(await screen.findByText('1 concetto nel grafo')).toBeTruthy()
+    expect(graph.extract).toHaveBeenCalledWith(PATH, 'study')
+    fireEvent.click(screen.getByRole('button', { name: 'Estrai di nuovo i concetti' }))
+    expect(graph.extract).toHaveBeenLastCalledWith(PATH)
+  })
   it('creates a nota viva from the Obsidian note and opens it', async () => {
     const { notes, onOpenNota } = mountPicker([])
     fireEvent.click(await screen.findByRole('button', { name: 'Crea la nota viva' }))

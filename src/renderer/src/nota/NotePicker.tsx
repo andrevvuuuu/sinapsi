@@ -10,6 +10,21 @@ export function NotePicker({ path, onOpenNota, onBack }: { path: string; onOpenN
   const [mine, setMine] = useState<NoteMeta[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [concepts, setConcepts] = useState<number | null>(null)
+
+  // Opening a note is a moment to extract its concepts (skipped when unchanged since last time).
+  useEffect(() => {
+    if (!api.graph) return
+    let alive = true
+    const count = (): void => void api.graph.get().then((g) => alive && setConcepts(g.concepts.filter((c) => c.notes.includes(path)).length))
+    count()
+    void api.graph.extract(path, 'study').catch(() => undefined)
+    const off = api.graph.onChange((e) => e.graph && alive && setConcepts(e.graph.concepts.filter((c) => c.notes.includes(path)).length))
+    return () => {
+      alive = false
+      off()
+    }
+  }, [api, path])
 
   useEffect(() => {
     let alive = true
@@ -56,6 +71,14 @@ export function NotePicker({ path, onOpenNota, onBack }: { path: string; onOpenN
           </button>
         </div>
         {error && <p role="alert">{error}</p>}
+        {concepts !== null && (
+          <p className="nv-concepts">
+            {concepts === 1 ? '1 concetto nel grafo' : `${concepts} concetti nel grafo`}
+            <button type="button" className="nv-chip" onClick={() => void api.graph.extract(path).catch(() => undefined)}>
+              Estrai di nuovo i concetti
+            </button>
+          </p>
+        )}
         {mine && mine.length > 0 && (
           <ul className="nv-list">
             {mine.map((m) => (

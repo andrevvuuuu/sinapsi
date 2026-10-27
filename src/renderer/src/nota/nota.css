@@ -235,3 +235,4 @@
 .nota .nv-list small{margin-left:auto;color:var(--muted);font:500 12px var(--mono)}
 .nota .dot{width:8px;height:8px;border-radius:50%;background:var(--good);flex:none}
 .nota .dot.generating{background:var(--accent)}.nota .dot.error{background:var(--bad)}
+.nota .nv-concepts{display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:15px;margin-top:20px}

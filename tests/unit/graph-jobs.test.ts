@@ -61,6 +61,14 @@ describe('extractor', () => {
     await Promise.all([x.request('/v/Rolle.md', 'manual'), x.request('/v/Rolle.md', 'manual')])
     expect(ask).toHaveBeenCalledTimes(1)
   })
+  it('keeps the Mac awake while it extracts, and lets it sleep after', async () => {
+    const release = vi.fn()
+    const keepAwake = vi.fn(() => release)
+    const x = createExtractor({ bridge: { ask: vi.fn(async () => reply('Rolle')) } as never, store, vault: async () => index, readNote: async (p) => texts[p], workDir: join(dir, 'w'), onChange: () => undefined, keepAwake })
+    await x.request('/v/Rolle.md', 'manual')
+    expect(keepAwake).toHaveBeenCalledTimes(1)
+    expect(release).toHaveBeenCalledTimes(1)
+  })
   it('rejects notes that are not readable in the vault', async () => {
     const { x } = setup()
     await expect(x.request('/v/Nuvola.md', 'manual')).rejects.toThrow('Nota non trovata nel vault')

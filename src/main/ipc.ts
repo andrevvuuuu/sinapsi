@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain, powerMonitor, shell } from 'electron'
+import { BrowserWindow, dialog, ipcMain, powerMonitor, powerSaveBlocker, shell } from 'electron'
 import { join } from 'node:path'
 import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
@@ -135,6 +135,10 @@ export function registerIpc(): { bridge: Bridge } {
     vault: vaultOrNull,
     readNote: (path) => readFile(path, 'utf8'),
     workDir: join(dataDir(), 'ai-work'),
+    keepAwake: () => {
+      const id = powerSaveBlocker.start('prevent-app-suspension')
+      return () => powerSaveBlocker.stop(id)
+    },
     onChange: (status) => void extractor.graph().then((graph) => broadcast(CH.graphChanged, { status, graph }), () => broadcast(CH.graphChanged, { status })),
     priorities: async () => {
       const idx = await vaultOrNull()
@@ -154,7 +158,7 @@ export function registerIpc(): { bridge: Bridge } {
   })
   ipcMain.handle(CH.graphGet, () => gh.get())
   ipcMain.handle(CH.graphStatus, () => gh.status())
-  ipcMain.handle(CH.graphExtract, (_e, path) => gh.extract(path))
+  ipcMain.handle(CH.graphExtract, (_e, path, reason) => gh.extract(path, reason))
   ipcMain.handle(CH.graphPositions, () => gh.positions())
   ipcMain.handle(CH.graphSavePositions, (_e, p) => gh.savePositions(p))
 

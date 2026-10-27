@@ -11,20 +11,48 @@ import { buildModel, type GraphModel, type SearchHit } from './model'
 import './graph.css'
 
 const MODES: [LayoutMode, string, string][] = [
-  ['radial', 'Radiale', "Le basi al centro, ciò che ne deriva verso l'esterno. Il bordo è il limite di quello che sai; oltre, la frontiera."],
+  [
+    'radial',
+    'Radiale',
+    "Le basi al centro, ciò che ne deriva verso l'esterno. Il bordo è il limite di quello che sai; oltre, la frontiera."
+  ],
   ['vertical', 'A piani', 'Le basi in basso, le conseguenze sopra: le frecce salgono.'],
   ['free', 'Libera', 'Ogni nota è una regione che si dispone liberamente, come in Obsidian.']
 ]
-const TOKENS: (keyof Colors)[] = ['bg', 'ink', 'muted', 'hair', 'accent', 'good', 'warn', 'bad', 'pen', 'surface']
-const reducedMotion = (): boolean => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const TOKENS: (keyof Colors)[] = [
+  'bg',
+  'ink',
+  'muted',
+  'hair',
+  'accent',
+  'good',
+  'warn',
+  'bad',
+  'pen',
+  'surface'
+]
+const reducedMotion = (): boolean =>
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
 const readColors = (): Colors => {
   const st = getComputedStyle(document.documentElement)
-  return Object.fromEntries(TOKENS.map((k) => [k, st.getPropertyValue(`--${k}`).trim() || '#888888'])) as Colors
+  return Object.fromEntries(
+    TOKENS.map((k) => [k, st.getPropertyValue(`--${k}`).trim() || '#888888'])
+  ) as Colors
 }
-const title = (index: VaultIndex, path: string): string => index.notes.find((n) => n.path === path)?.title ?? path.split('/').pop()!.replace(/\.md$/, '')
+const title = (index: VaultIndex, path: string): string =>
+  index.notes.find((n) => n.path === path)?.title ?? path.split('/').pop()!.replace(/\.md$/, '')
 
 /** The union graph: Obsidian notes and Learn Harness concepts in one picture (approved prototype grafo-v2). */
-export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; onStudy: (title: string) => void; onOpenNote: (path: string) => void }): React.JSX.Element {
+export function GraphView({
+  index,
+  onStudy,
+  onOpenNote
+}: {
+  index: VaultIndex
+  onStudy: (title: string) => void
+  onOpenNote: (path: string) => void
+}): React.JSX.Element {
   const api = window.sinapsi.graph
   const [graph, setGraph] = useState<GraphData | null>(null)
   const [status, setStatus] = useState<ExtractorStatus>({ queued: [] })
@@ -34,6 +62,7 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
   const [path, setPath] = useState<Set<string> | null>(null)
   const [query, setQuery] = useState('')
   const [hi, setHi] = useState(-1)
+  const [options, setOptions] = useState(false)
 
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -56,12 +85,14 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
 
   useEffect(() => {
     let alive = true
-    void Promise.all([api.get(), api.status(), api.positions().catch(() => ({}))]).then(([g, st, pos]) => {
-      if (!alive) return
-      savedRef.current = pos
-      setStatus(st)
-      setGraph(g)
-    })
+    void Promise.all([api.get(), api.status(), api.positions().catch(() => ({}))]).then(
+      ([g, st, pos]) => {
+        if (!alive) return
+        savedRef.current = pos
+        setStatus(st)
+        setGraph(g)
+      }
+    )
     const off = api.onChange((e) => {
       setStatus(e.status)
       if (e.graph) setGraph(e.graph)
@@ -72,7 +103,10 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
     }
   }, [api])
 
-  const model: GraphModel | null = useMemo(() => (graph ? buildModel(graph, index) : null), [graph, index])
+  const model: GraphModel | null = useMemo(
+    () => (graph ? buildModel(graph, index) : null),
+    [graph, index]
+  )
 
   // A new model keeps the positions it already had (the graph grows without reshuffling).
   useEffect(() => {
@@ -84,7 +118,10 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
     let saveTimer: ReturnType<typeof setTimeout> | undefined
     l.sim.on('end', () => {
       clearTimeout(saveTimer)
-      saveTimer = setTimeout(() => void api.savePositions(l.positions()).catch(() => undefined), 2000)
+      saveTimer = setTimeout(
+        () => void api.savePositions(l.positions()).catch(() => undefined),
+        2000
+      )
     })
     layoutRef.current?.sim.stop()
     layoutRef.current = l
@@ -97,23 +134,35 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, api])
 
-  const fit = useCallback((ids?: string[]) => {
-    const l = layoutRef.current
-    const z = zoomRef.current
-    const s = selRef.current
-    if (!l || !z || !s) return
-    const ns = ids ? ids.map((id) => l.byId.get(id)).filter((n): n is SimNode => !!n) : l.nodes.filter((n) => n.kind !== 'junction')
-    if (!ns.length) return
-    const xs = ns.map((n) => n.x!)
-    const ys = ns.map((n) => n.y!)
-    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
-    const { W, H } = size.current
-    const L0 = 330
-    const cw = Math.max(200, W - L0 - (sel ? 370 : 16))
-    const k = Math.min(3, 0.88 * Math.min((cw - 60) / Math.max(60, x1 - x0), (H - 140) / Math.max(60, y1 - y0)))
-    const t = zoomIdentity.translate(L0 + cw / 2 - (k * (x0 + x1)) / 2, H / 2 - (k * (y0 + y1)) / 2).scale(k)
-    s.transition().duration(reducedMotion() ? 0 : 800).call(z.transform, t)
-  }, [sel])
+  const fit = useCallback(
+    (ids?: string[]) => {
+      const l = layoutRef.current
+      const z = zoomRef.current
+      const s = selRef.current
+      if (!l || !z || !s) return
+      const ns = ids
+        ? ids.map((id) => l.byId.get(id)).filter((n): n is SimNode => !!n)
+        : l.nodes.filter((n) => n.kind !== 'junction')
+      if (!ns.length) return
+      const xs = ns.map((n) => n.x!)
+      const ys = ns.map((n) => n.y!)
+      const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
+      const { W, H } = size.current
+      const L0 = 330
+      const cw = Math.max(200, W - L0 - (sel ? 370 : 16))
+      const k = Math.min(
+        3,
+        0.88 * Math.min((cw - 60) / Math.max(60, x1 - x0), (H - 140) / Math.max(60, y1 - y0))
+      )
+      const t = zoomIdentity
+        .translate(L0 + cw / 2 - (k * (x0 + x1)) / 2, H / 2 - (k * (y0 + y1)) / 2)
+        .scale(k)
+      s.transition()
+        .duration(reducedMotion() ? 0 : 800)
+        .call(z.transform, t)
+    },
+    [sel]
+  )
 
   const focusOn = useCallback((id: string, k: number) => {
     const n = layoutRef.current?.byId.get(id)
@@ -122,7 +171,9 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
     if (!n || !z || !s) return
     const { W, H } = size.current
     const cw = W - 330 - 370
-    s.transition().duration(reducedMotion() ? 0 : 900).call(z.transform, zoomIdentity.translate(330 + cw / 2 - k * n.x!, H / 2 - k * n.y!).scale(k))
+    s.transition()
+      .duration(reducedMotion() ? 0 : 900)
+      .call(z.transform, zoomIdentity.translate(330 + cw / 2 - k * n.x!, H / 2 - k * n.y!).scale(k))
   }, [])
 
   // Canvas, zoom, resize, theme and the draw loop.
@@ -179,7 +230,8 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
             hov: hov.current,
             sel: selStateRef.current,
             path: pathRef.current,
-            subjectColor: (sj) => index.subjects.find((x) => x.id === sj)?.color ?? colors.current!.muted,
+            subjectColor: (sj) =>
+              index.subjects.find((x) => x.id === sj)?.color ?? colors.current!.muted,
             offscreen: offscreen.current!
           })
           labels.current = out.regionLabels
@@ -225,7 +277,8 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
   function pick(x: number, y: number): Sel | null {
     const l = layoutRef.current
     if (!l || !model) return null
-    for (const [id, [a, b, w, h]] of labels.current) if (x >= a && x <= a + w && y >= b && y <= b + h) return { kind: 'region', id }
+    for (const [id, [a, b, w, h]] of labels.current)
+      if (x >= a && x <= a + w && y >= b && y <= b + h) return { kind: 'region', id }
     const { k, x: tx, y: ty } = T.current
     let best: Sel | null = null
     let bd = Infinity
@@ -284,14 +337,22 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
         }}
         onPointerDown={(e) => (down.current = [e.clientX, e.clientY])}
         onClick={(e) => {
-          if (down.current && Math.hypot(e.clientX - down.current[0], e.clientY - down.current[1]) > 4) return
+          if (
+            down.current &&
+            Math.hypot(e.clientX - down.current[0], e.clientY - down.current[1]) > 4
+          )
+            return
           const r = e.currentTarget.getBoundingClientRect()
           choose(pick(e.clientX - r.left, e.clientY - r.top))
         }}
       />
       <section className="gpanel" aria-label="Controlli del grafo">
         <h2>Il tuo grafo</h2>
-        <p className="meta">{model ? `${model.concepts.length} concetti da ${model.regions.length} note · ${new Set(model.arrows.map((a) => a.chain)).size} catene · ${multi} in più note` : 'Carico il grafo…'}</p>
+        <p className="meta">
+          {model
+            ? `${model.concepts.length} concetti da ${model.regions.length} note · ${new Set(model.arrows.map((a) => a.chain)).size} catene · ${multi} in più note`
+            : 'Carico il grafo…'}
+        </p>
         <div className="gsearch">
           <input
             role="combobox"
@@ -317,7 +378,13 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
           {hits.length > 0 && (
             <ul role="listbox" id="graph-results" className="gresults">
               {hits.map((h, i) => (
-                <li key={`${h.kind}:${h.id}`} id={`gr-${i}`} role="option" aria-selected={i === hi} onClick={() => go(h)}>
+                <li
+                  key={`${h.kind}:${h.id}`}
+                  id={`gr-${i}`}
+                  role="option"
+                  aria-selected={i === hi}
+                  onClick={() => go(h)}
+                >
                   <span>{h.label}</span>
                   <small>{h.kind === 'concept' ? 'concetto' : 'nota'}</small>
                 </li>
@@ -325,37 +392,79 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
             </ul>
           )}
         </div>
-        <div className="gsec">
-          <h3>Disposizione</h3>
-          <div className="gseg" role="group" aria-label="Disposizione">
-            {MODES.map(([m, label]) => (
-              <button key={m} type="button" aria-pressed={mode === m} onClick={() => changeMode(m)}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <p className="hint">{MODES.find((m) => m[0] === mode)![2]}</p>
-        </div>
-        <div className="gsec gtoggles">
-          {(
-            [
-              ['regions', 'Regioni'],
-              ['wikilinks', 'Link di Obsidian'],
-              ['frontier', `Frontiera${model ? ` (${model.frontier.length})` : ''}`]
-            ] as const
-          ).map(([key, label]) => (
-            <button key={key} type="button" aria-pressed={show[key]} onClick={() => setShow({ ...show, [key]: !show[key] })}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <button
+          type="button"
+          className="gmore"
+          aria-expanded={options}
+          onClick={() => setOptions(!options)}
+        >
+          Disposizione e strati
+          <span aria-hidden="true">{options ? '−' : '+'}</span>
+        </button>
+        {options && (
+          <>
+            <div className="gsec">
+              <h3>Disposizione</h3>
+              <div className="gseg" role="group" aria-label="Disposizione">
+                {MODES.map(([m, label]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={mode === m}
+                    onClick={() => changeMode(m)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="hint">{MODES.find((m) => m[0] === mode)![2]}</p>
+            </div>
+            <div className="gsec gtoggles">
+              {(
+                [
+                  ['regions', 'Regioni'],
+                  ['wikilinks', 'Link di Obsidian'],
+                  ['frontier', `Frontiera${model ? ` (${model.frontier.length})` : ''}`]
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={show[key]}
+                  onClick={() => setShow({ ...show, [key]: !show[key] })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
         <StatusLine status={status} index={index} onRetry={(p) => void api.extract(p)} />
       </section>
       <div className="gzoom" role="group" aria-label="Zoom">
-        <button type="button" aria-label="Avvicina" onClick={() => selRef.current && zoomRef.current && selRef.current.transition().duration(300).call(zoomRef.current.scaleBy, 1.5)}>
+        <button
+          type="button"
+          aria-label="Avvicina"
+          onClick={() =>
+            selRef.current &&
+            zoomRef.current &&
+            selRef.current.transition().duration(300).call(zoomRef.current.scaleBy, 1.5)
+          }
+        >
           +
         </button>
-        <button type="button" aria-label="Allontana" onClick={() => selRef.current && zoomRef.current && selRef.current.transition().duration(300).call(zoomRef.current.scaleBy, 1 / 1.5)}>
+        <button
+          type="button"
+          aria-label="Allontana"
+          onClick={() =>
+            selRef.current &&
+            zoomRef.current &&
+            selRef.current
+              .transition()
+              .duration(300)
+              .call(zoomRef.current.scaleBy, 1 / 1.5)
+          }
+        >
           −
         </button>
         <button
@@ -392,12 +501,21 @@ export function GraphView({ index, onStudy, onOpenNote }: { index: VaultIndex; o
   )
 }
 
-function StatusLine({ status, index, onRetry }: { status: ExtractorStatus; index: VaultIndex; onRetry: (path: string) => void }): React.JSX.Element | null {
+function StatusLine({
+  status,
+  index,
+  onRetry
+}: {
+  status: ExtractorStatus
+  index: VaultIndex
+  onRetry: (path: string) => void
+}): React.JSX.Element | null {
   if (status.running)
     return (
       <p className="gstatus" role="status">
         <span className="pulse" aria-hidden="true" />
-        Sto estraendo «{title(index, status.running)}»…{status.queued.length > 0 ? ` (${status.queued.length} in coda)` : ''}
+        Sto estraendo «{title(index, status.running)}»…
+        {status.queued.length > 0 ? ` (${status.queued.length} in coda)` : ''}
       </p>
     )
   if (status.lastError)
@@ -437,14 +555,27 @@ type CardProps = {
   onExtract: (path: string) => void
 }
 
-function Card({ sel, model, index, onClose, onSelect, onPath, onStudy, onOpenNote, onExtract }: CardProps): React.JSX.Element {
+function Card({
+  sel,
+  model,
+  index,
+  onClose,
+  onSelect,
+  onPath,
+  onStudy,
+  onOpenNote,
+  onExtract
+}: CardProps): React.JSX.Element {
   const conceptRow = (id: string, tag?: string): React.JSX.Element | null => {
     const c = model.concepts.find((x) => x.id === id)
     if (!c) return null
     return (
       <li key={id}>
         <button type="button" onClick={() => onSelect({ kind: 'concept', id })}>
-          <i style={{ background: model.regions.find((r) => r.notePath === c.region)?.hue }} aria-hidden="true" />
+          <i
+            style={{ background: model.regions.find((r) => r.notePath === c.region)?.hue }}
+            aria-hidden="true"
+          />
           {c.name}
           <small>{tag ?? title(index, c.region)}</small>
         </button>
@@ -466,17 +597,28 @@ function Card({ sel, model, index, onClose, onSelect, onPath, onStudy, onOpenNot
         </div>
         <h3>{c.name}</h3>
         <RichText md={c.statement} className="stmt" />
-        <h4>{c.notes.length > 1 ? `Compare in ${c.notes.length} tue note: un nodo solo` : 'Dove compare'}</h4>
+        <h4>
+          {c.notes.length > 1
+            ? `Compare in ${c.notes.length} tue note: un nodo solo`
+            : 'Dove compare'}
+        </h4>
         <ul className="rows">
           {c.notes.map((p, i) => (
             <li key={p} className="s">
               {title(index, p)}
-              <small>{i === 0 ? 'nata qui' : 'ritrovata'}{c.sections[p] ? ` · ${c.sections[p]}` : ''}</small>
+              <small>
+                {i === 0 ? 'nata qui' : 'ritrovata'}
+                {c.sections[p] ? ` · ${c.sections[p]}` : ''}
+              </small>
             </li>
           ))}
         </ul>
         <h4>Segue da</h4>
-        {ps.length ? <ul className="rows">{[...new Set(ps)].map((p) => conceptRow(p))}</ul> : <p>È una base: non dipende da altri concetti.</p>}
+        {ps.length ? (
+          <ul className="rows">{[...new Set(ps)].map((p) => conceptRow(p))}</ul>
+        ) : (
+          <p>È una base: non dipende da altri concetti.</p>
+        )}
         {ks.length > 0 && (
           <>
             <h4>Porta a</h4>
@@ -496,8 +638,12 @@ function Card({ sel, model, index, onClose, onSelect, onPath, onStudy, onOpenNot
   } else if (sel.kind === 'region') {
     const r = model.regions.find((x) => x.notePath === sel.id)
     if (!r) return <></>
-    const shared = model.concepts.filter((c) => c.region !== r.notePath && c.notes.includes(r.notePath))
-    const links = model.wikilinks.filter((w) => w.includes(r.notePath)).map((w) => (w[0] === r.notePath ? w[1] : w[0]))
+    const shared = model.concepts.filter(
+      (c) => c.region !== r.notePath && c.notes.includes(r.notePath)
+    )
+    const links = model.wikilinks
+      .filter((w) => w.includes(r.notePath))
+      .map((w) => (w[0] === r.notePath ? w[1] : w[0]))
     body = (
       <>
         <div className="chips">
@@ -506,9 +652,14 @@ function Card({ sel, model, index, onClose, onSelect, onPath, onStudy, onOpenNot
         </div>
         <h3>{r.title}</h3>
         <h4>
-          {r.concepts.length} concetti nati qui{shared.length ? ` · ${shared.length} presi da altre note` : ''}
+          {r.concepts.length} concetti nati qui
+          {shared.length ? ` · ${shared.length} presi da altre note` : ''}
         </h4>
-        <ul className="rows">{r.concepts.map((id) => conceptRow(id, `livello ${model.concepts.find((c) => c.id === id)?.depth ?? 0}`))}</ul>
+        <ul className="rows">
+          {r.concepts.map((id) =>
+            conceptRow(id, `livello ${model.concepts.find((c) => c.id === id)?.depth ?? 0}`)
+          )}
+        </ul>
         {shared.length > 0 && (
           <>
             <h4>Presi da altre note</h4>

@@ -96,7 +96,7 @@ export function makeGraphHandlers(x: Extractor, positions: { read(): Promise<unk
   return {
     get: () => x.graph(),
     status: () => x.status(),
-    extract: async (path: unknown) => x.request(z.string().min(1).max(1024).parse(path), 'manual'),
+    extract: async (path: unknown, reason: unknown = 'manual') => x.request(z.string().min(1).max(1024).parse(path), z.enum(['manual', 'study']).parse(reason)),
     positions: async () => {
       const r = Positions.safeParse(await positions.read().catch(() => ({})))
       return r.success ? r.data : {}

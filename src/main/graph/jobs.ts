@@ -43,6 +43,8 @@ export function createExtractor(deps: {
   onChange: (s: ExtractorStatus) => void
   /** Subject ids being studied (sessions, notes vive): their notes are extracted first. */
   priorities?: () => Promise<string[]>
+  /** Holds off system sleep during a call (background runs start right when the Mac goes idle). */
+  keepAwake?: () => () => void
 }): Extractor {
   const now = deps.now ?? Date.now
   const status: ExtractorStatus = { queued: [] }
@@ -60,6 +62,7 @@ export function createExtractor(deps: {
     status.queued = status.queued.filter((p) => p !== path)
     status.running = path
     notify()
+    const release = deps.keepAwake?.()
     try {
       const text = await deps.readNote(path)
       const h = hash(text)
@@ -97,6 +100,7 @@ export function createExtractor(deps: {
         .append('extraction', { notePath: path, hash: '', at: now(), reason, nodes: 0, chains: 0, dropped: 0, ok: false, error: message })
         .catch(() => undefined)
     } finally {
+      release?.()
       status.running = undefined
       notify()
     }

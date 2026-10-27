@@ -104,9 +104,13 @@ describe('GraphView', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Dettagli' })).toBeNull()
   })
-  it('switches layout', async () => {
+  it('keeps layout options folded until asked, then switches layout', async () => {
     mount()
     await screen.findByText(/4 concetti/)
+    expect(screen.queryByRole('button', { name: 'A piani' })).toBeNull()
+    const more = screen.getByRole('button', { name: 'Disposizione e strati' })
+    expect(more.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(more)
     const b = screen.getByRole('button', { name: 'A piani' })
     fireEvent.click(b)
     expect(b.getAttribute('aria-pressed')).toBe('true')

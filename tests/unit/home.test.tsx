@@ -62,4 +62,23 @@ describe('Home', () => {
     fireEvent.click(screen.getByRole('button', { name: /Teorema di Lagrange/ }))
     expect(onOpenNota).toHaveBeenCalledWith(ID)
   })
+
+  it('shows the union graph in the centre and opens a note from it', async () => {
+    const ID = '11111111-1111-4111-8111-111111111111'
+    HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as never
+    const start = vi.fn(async () => ID)
+    window.sinapsi = {
+      ...mockApi(idx),
+      session: { list: vi.fn(async () => []), start },
+      graph: { get: vi.fn(async () => ({ concepts: [], chains: [], extracted: {} })), status: vi.fn(async () => ({ queued: [] })), onChange: () => () => undefined, positions: vi.fn(async () => ({})), savePositions: vi.fn(), extract: vi.fn() }
+    } as never
+    const onOpenSource = vi.fn()
+    render(<Home onOpenSource={onOpenSource} />)
+    expect(await screen.findByRole('heading', { name: 'Il tuo grafo' })).toBeTruthy()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Cerca nel grafo' }), { target: { value: 'rolle' } })
+    fireEvent.click(screen.getByRole('option', { name: /Teorema di Rolle/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apri la nota' }))
+    expect(onOpenSource).toHaveBeenCalledWith('/v/Matematica/Teorema di Rolle.md')
+    expect(screen.queryByText(/Il grafo apparirà quando/)).toBeNull()
+  })
 })

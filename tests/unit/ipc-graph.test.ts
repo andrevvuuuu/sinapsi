@@ -15,6 +15,12 @@ describe('graph handlers', () => {
     expect(x.request).toHaveBeenCalledWith('/v/a.md', 'manual')
     await expect(h.extract(42)).rejects.toThrow()
   })
+  it('extracts as "study" when a note is opened, skipping unchanged notes', async () => {
+    const { h, x } = setup()
+    await h.extract('/v/a.md', 'study')
+    expect(x.request).toHaveBeenCalledWith('/v/a.md', 'study')
+    await expect(h.extract('/v/a.md', 'background')).rejects.toThrow()
+  })
   it('returns empty positions for a corrupt file', async () => {
     expect(await setup({ n_a: ['x', 1] }).h.positions()).toEqual({})
     expect(await setup('rotto').h.positions()).toEqual({})

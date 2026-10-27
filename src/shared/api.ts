@@ -74,7 +74,8 @@ export interface SinapsiApi {
   }
   graph: {
     get(): Promise<import('./graph-types').GraphData>
-    extract(path: string): Promise<void>
+    /** manual (default) always re-extracts; study skips a note unchanged since its last extraction. */
+    extract(path: string, reason?: 'manual' | 'study'): Promise<void>
     status(): Promise<import('./graph-types').ExtractorStatus>
     onChange(cb: (e: { status: import('./graph-types').ExtractorStatus; graph?: import('./graph-types').GraphData }) => void): () => void
     positions(): Promise<GraphPositions>

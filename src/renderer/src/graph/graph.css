@@ -48,3 +48,7 @@
 .graph .gcard .acts button{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--ink);font:500 13px var(--sans);cursor:pointer}
 .graph .gcard .acts button.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.graph .pulse{animation:none}}
+.graph .gpanel{width:270px}
+.graph .gmore{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:40px;margin-top:10px;padding:0 6px;border:0;border-radius:10px;background:transparent;color:var(--muted);font:500 13px var(--sans);cursor:pointer}
+.graph .gmore:hover{background:var(--faint);color:var(--ink)}
+.graph .gcard{width:300px}
