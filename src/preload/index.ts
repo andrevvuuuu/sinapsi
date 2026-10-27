@@ -70,6 +70,20 @@ const api: SinapsiApi = {
     openFile: (id) => ipcRenderer.invoke(CH.notebookOpenFile, id),
     pathForFile: (file) => webUtils.getPathForFile(file),
     onUpdate: (cb) => subscribe(CH.notebookUpdated, cb)
+  },
+  practice: {
+    catalog: () => ipcRenderer.invoke(CH.practiceCatalog),
+    create: (m) => ipcRenderer.invoke(CH.practiceCreate, m),
+    submit: (id, s) => ipcRenderer.invoke(CH.practiceSubmit, id, s),
+    retry: (id) => ipcRenderer.invoke(CH.practiceRetry, id),
+    get: (id) => ipcRenderer.invoke(CH.practiceGet, id),
+    list: () => ipcRenderer.invoke(CH.practiceList),
+    examStart: (m, minutes) => ipcRenderer.invoke(CH.practiceExamStart, m, minutes),
+    examSave: (id, a) => ipcRenderer.invoke(CH.practiceExamSave, id, a),
+    examDeliver: (id, a) => ipcRenderer.invoke(CH.practiceExamDeliver, id, a),
+    photo: (id, bytes) => ipcRenderer.invoke(CH.practicePhoto, id, bytes),
+    camera: () => ipcRenderer.invoke(CH.practiceCamera),
+    onUpdate: (cb) => subscribe(CH.practiceUpdated, cb)
   }
 }
 

@@ -1,10 +1,15 @@
-import { BrowserWindow, dialog, ipcMain, powerMonitor, powerSaveBlocker, shell } from 'electron'
+import { BrowserWindow, dialog, ipcMain, powerMonitor, powerSaveBlocker, shell, systemPreferences } from 'electron'
 import { join } from 'node:path'
 import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { makeGraphHandlers, makeHandlers, makeNotebookHandlers, makeNoteHandlers, makeReviewHandlers, makeSessionHandlers } from './ipc-handlers'
+import { makeGraphHandlers, makeHandlers, makeNotebookHandlers, makeNoteHandlers, makePracticeHandlers, makeReviewHandlers, makeSessionHandlers, practiceTopic } from './ipc-handlers'
+import { createExamService } from './practice/exam'
+import { fakeTutor } from './practice/fake-tutor'
+import { buildCatalog, buildMaterialContext } from './practice/material'
+import { transcribePhoto } from './practice/photo'
+import { createPracticeRunner } from './practice/runner'
 import { createNotebookChat } from './notebook/chat'
 import { fakeMedia } from './notebook/fake-media'
 import { fakeNotebookBridge } from './notebook/fake-notebook'
@@ -253,6 +258,63 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.reviewRecord, (_e, r) => rh.record(r))
   ipcMain.handle(CH.reviewMemory, () => rh.memory())
   ipcMain.handle(CH.reviewIntervals, (_e, id) => rh.intervals(id))
+
+  const practiceDir = join(dataDir(), 'practice')
+  const practiceBridge = process.env.SINAPSI_FAKE_PRACTICE === '1' ? fakeTutor() : bridge
+  const conceptNames = async (): Promise<Map<string, string>> => new Map((await extractor.graph()).concepts.map((c) => [c.id, c.name]))
+  const practiceDeps = {
+    bridge: practiceBridge,
+    dir: practiceDir,
+    material: async (m: import('../shared/practice-types').Material) =>
+      buildMaterialContext({
+        material: m,
+        graph: await extractor.graph(),
+        readNote: (path) => readFile(path, 'utf8'),
+        sourceText: async (id) => {
+          const src = await nbStore.source(id)
+          const text = src && (await nbStore.readText(id))
+          return src && text ? { title: src.title, text } : null
+        }
+      }),
+    topic: async (m: import('../shared/practice-types').Material) => practiceTopic(m, await conceptNames()),
+    memory: memoryStore(memoryDir),
+    onUpdate: (s: unknown) => broadcast(CH.practiceUpdated, s)
+  }
+  const practice = createPracticeRunner(practiceDeps)
+  const exam = createExamService({ ...practiceDeps, runner: practice })
+  const ph = makePracticeHandlers({
+    runner: practice,
+    exam,
+    catalog: async () =>
+      buildCatalog({ graph: await extractor.graph(), memory: await review.memory(), practiced: await practice.practiced(), vault: await vaultOrNull(), notebooks: await nbStore.notebooks(), now: Date.now() }),
+    photo: (id, bytes) => transcribePhoto({ bridge: practiceBridge, dir: join(practiceDir, id), bytes }),
+    camera: async () => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess('camera') : true)
+  })
+  const bg = (p: Promise<unknown>): void => void p.catch((e) => console.warn('[practice]', e))
+  ipcMain.handle(CH.practiceCatalog, () => ph.catalog())
+  ipcMain.handle(CH.practiceCreate, async (_e, m) => {
+    const id = await ph.create(m)
+    bg(ph.retry(id))
+    return id
+  })
+  ipcMain.handle(CH.practiceSubmit, (_e, id, s) => {
+    // Validation errors reach the window; the tutor's turn arrives through practice:updated.
+    const run = ph.submit(id, s)
+    bg(run)
+    return run.then(() => undefined)
+  })
+  ipcMain.handle(CH.practiceRetry, (_e, id) => bg(ph.retry(id)))
+  ipcMain.handle(CH.practiceGet, (_e, id) => ph.get(id))
+  ipcMain.handle(CH.practiceList, () => ph.list())
+  ipcMain.handle(CH.practiceExamStart, async (_e, m, minutes) => {
+    const id = await ph.examStart(m, minutes)
+    bg(ph.retry(id))
+    return id
+  })
+  ipcMain.handle(CH.practiceExamSave, (_e, id, a) => ph.examSave(id, a))
+  ipcMain.handle(CH.practiceExamDeliver, (_e, id, a) => bg(ph.examDeliver(id, a)))
+  ipcMain.handle(CH.practicePhoto, (_e, id, bytes) => ph.photo(id, bytes))
+  ipcMain.handle(CH.practiceCamera, () => ph.camera())
 
   // Background extraction: a few notes a day, only while the Mac is idle.
   const tick = async (): Promise<void> => {
