@@ -35,7 +35,9 @@ export function Order({
     <ol className="rv-order">
       {order.map((i, pos) => (
         <li key={i} data-state={locked ? (i === pos ? 'ok' : 'no') : undefined}>
-          <span className="txt">{exercise.steps[i]}</span>
+          <span className="txt">
+            <RichText md={exercise.steps[i]} className="inline" />
+          </span>
           <span className="mv">
             <button
               type="button"

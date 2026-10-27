@@ -23,6 +23,7 @@ export type ReviewPlan = { items: ReviewItem[]; due: number }
 export type GradeResult = { verdict: 'ok' | 'partial' | 'wrong'; feedback: string; proposed: Grade }
 export type ReviewService = {
   plan(opts?: { conceptIds?: string[]; weakest?: boolean }): Promise<ReviewPlan>
+  prepare(notePath: string): Promise<void>
   grade(req: { conceptId: string; exercise: Exercise; answer: string; confidence: number }): Promise<GradeResult>
   record(r: ReviewLine): Promise<{ memory: Memory; intervals: Record<Grade, string> }>
   memory(): Promise<Record<string, Memory>>
@@ -112,6 +113,12 @@ export function createReviewService(deps: {
   }
 
   return {
+    /** Right after an extraction: the variants of that note's concepts, so the first Ripasso doesn't wait. */
+    async prepare(notePath: string) {
+      const [g, settings, index] = await Promise.all([deps.graph(), deps.settings(), deps.vault()])
+      const concepts = g.concepts.filter((c) => c.birth === notePath)
+      if (concepts.length) await ensureVariants(concepts, new Set(settings.exerciseTypes), index)
+    },
     async plan(opts = {}) {
       const [g, reviews, settings, index] = await Promise.all([deps.graph(), deps.memory.read(), deps.settings(), deps.vault()])
       const t = now()

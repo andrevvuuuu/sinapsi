@@ -1,7 +1,21 @@
 import type { Chain, Concept, GraphData, Ledgers } from '../../shared/graph-types'
 
 /** Pure: the whole graph is rebuilt from the ledgers on every read. */
-export function deriveGraph({ props, chains, extractions }: Ledgers): GraphData {
+export function deriveGraph({ props: rawProps, chains: rawChains, extractions: rawExtractions, moves = [] }: Ledgers): GraphData {
+  // A renamed or moved note: every path follows its moves (in order, transitively).
+  const to = new Map<string, string>()
+  for (const m of [...moves].sort((a, b) => a.at - b.at)) if (m.from !== m.to) to.set(m.from, m.to)
+  const where = (p: string): string => {
+    const seen = new Set<string>()
+    while (to.has(p) && !seen.has(p)) {
+      seen.add(p)
+      p = to.get(p)!
+    }
+    return p
+  }
+  const props = rawProps.map((p) => ({ ...p, notePath: where(p.notePath) }))
+  const chains = rawChains.map((c) => ({ ...c, notePath: where(c.notePath) }))
+  const extractions = rawExtractions.map((e) => ({ ...e, notePath: where(e.notePath) }))
   const byId = new Map<string, Concept>()
   for (const p of props) {
     const c = byId.get(p.id)

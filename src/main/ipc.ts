@@ -32,6 +32,7 @@ import { dataDir } from './store/paths'
 import { loadSettings, saveSettings } from './store/settings'
 import { scanVault } from './vault/scan'
 import { createRewatcher, watchVault } from './vault/watch'
+import { detectMoves } from './graph/moves'
 
 export function registerIpc(): { bridge: Bridge } {
   // Assigned below; the session and note hooks only run after registration.
@@ -59,9 +60,22 @@ export function registerIpc(): { bridge: Bridge } {
   })
   const broadcast = (channel: string, payload: unknown): void => BrowserWindow.getAllWindows().forEach((w) => w.webContents.send(channel, payload))
 
+  const graphDir = join(dataDir(), 'graph')
+  const graphStoreForMoves = graphStore(graphDir)
+  // The previous index, to notice notes renamed or moved in Obsidian (their concepts follow them).
+  let lastIndex: import('../shared/vault-types').VaultIndex | null = null
   const rewatch = createRewatcher(settings.load, watchVault, async () => {
     const idx = await h.vaultIndex()
-    if (!('error' in idx)) broadcast(CH.vaultChanged, idx)
+    if ('error' in idx) return
+    if (lastIndex) {
+      const moves = await detectMoves(lastIndex, idx, (await extractor.graph()).extracted, (p) => readFile(p, 'utf8')).catch(() => [])
+      for (const m of moves) await graphStoreForMoves.append('move', { ...m, at: Date.now() })
+    }
+    lastIndex = idx
+    broadcast(CH.vaultChanged, idx)
+  })
+  void h.vaultIndex().then((idx) => {
+    if (!('error' in idx)) lastIndex = idx
   })
   void rewatch()
 
@@ -191,12 +205,12 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.notesGet, (_e, id) => nh.get(id))
   ipcMain.handle(CH.notesRetry, (_e, id) => nh.retry(id))
 
-  const graphDir = join(dataDir(), 'graph')
-  const store = graphStore(graphDir)
+  const store = graphStoreForMoves
   const vaultOrNull = async (): Promise<import('../shared/vault-types').VaultIndex | null> => {
     const idx = await h.vaultIndex()
     return 'error' in idx ? null : idx
   }
+  let lastRunning: string | undefined
   extractor = createExtractor({
     bridge: process.env.SINAPSI_FAKE_EXTRACT === '1' ? fakeExtractBridge() : bridge,
     store,
@@ -208,10 +222,14 @@ export function registerIpc(): { bridge: Bridge } {
       return () => powerSaveBlocker.stop(id)
     },
     // The graph only changes when a run ends: while one is running, send the status alone.
-    onChange: (status) =>
-      status.running
+    onChange: (status) => {
+      // A note whose extraction just ended: prepare its Ripasso questions in the background.
+      if (lastRunning && status.running !== lastRunning && process.env.SINAPSI_FAKE_EXTRACT !== '1') void review.prepare(lastRunning).catch(() => undefined)
+      lastRunning = status.running
+      return status.running
         ? broadcast(CH.graphChanged, { status })
-        : void extractor.graph().then((graph) => broadcast(CH.graphChanged, { status, graph }), () => broadcast(CH.graphChanged, { status })),
+        : void extractor.graph().then((graph) => broadcast(CH.graphChanged, { status, graph }), () => broadcast(CH.graphChanged, { status }))
+    },
     priorities: async () => {
       const idx = await vaultOrNull()
       if (!idx) return []

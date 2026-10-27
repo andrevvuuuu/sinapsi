@@ -39,7 +39,7 @@ describe('order', () => {
   it('starts shuffled and becomes correct when the steps are put in order', () => {
     const steps = ['Weierstrass', 'Fermat', 'Conclusione', 'Verifica']
     const { last } = mount({ type: 'order', prompt: 'Riordina', steps, answer: 'Così.' })
-    const shown = (): string[] => screen.getAllByRole('listitem').map((li) => li.querySelector('.txt')!.textContent!)
+    const shown = (): string[] => screen.getAllByRole('listitem').map((li) => li.querySelector('.txt')!.textContent!.trim())
     expect(shown()).not.toEqual(steps)
     for (let i = 0; i < steps.length; i++)
       while (shown().indexOf(steps[i]) > i) fireEvent.click(screen.getByRole('button', { name: `Sposta su: ${steps[i]}` }))

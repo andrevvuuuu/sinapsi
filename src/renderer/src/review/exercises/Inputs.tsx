@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { parseItalianNumber } from '../../../../shared/numbers'
 import { MathSelect } from '../../components/MathSelect'
 import { blanks, type Exercise, blankParts } from '../../../../shared/exercise-schema'
 import { RichText } from '../../session/RichText'
@@ -112,7 +113,7 @@ export function Estimate({
           readOnly={locked}
           onChange={(e) => {
             setText(e.target.value)
-            const v = Number(e.target.value.trim().replace(/\s/g, '').replace(',', '.'))
+            const v = parseItalianNumber(e.target.value)
             onChange({
               answer: e.target.value,
               correct: Number.isFinite(v) && Math.abs(v - exercise.value) <= exercise.tolerance,

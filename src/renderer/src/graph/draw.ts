@@ -344,7 +344,6 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       bySubject.set(subj, [...(bySubject.get(subj) ?? []), n])
     }
     // Subject names avoid each other, like the region labels.
-    const placed: { X: number; Y: number; w: number }[] = []
     ctx.font = '400 30px "Instrument Serif",serif'
     const order = [...bySubject]
       .map(([subj, ns]) => ({
@@ -353,18 +352,9 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
         Y: Math.min(...ns.map((n) => sy(n.y!))) - 26
       }))
       .sort((a, b) => a.Y - b.Y)
-    for (const o of order) {
-      const label = model.subjectName(o.subj)
-      const w = ctx.measureText(label).width
-      let tries = 0
-      while (
-        tries++ < 40 &&
-        placed.some((p) => Math.abs(p.X - o.X) < (p.w + w) / 2 + 10 && Math.abs(p.Y - o.Y) < 34)
-      )
-        o.Y -= 10
-      placed.push({ X: o.X, Y: o.Y, w })
-      ctx.fillStyle = s.subjectColor(o.subj)
-      ctx.fillText(label, o.X, o.Y)
+    for (const o of placeLabels(order.map((o) => ({ key: o.subj, X: o.X, Y: o.Y, w: ctx.measureText(model.subjectName(o.subj)).width })))) {
+      ctx.fillStyle = s.subjectColor(o.key)
+      ctx.fillText(model.subjectName(o.key), o.X, o.Y)
     }
     ctx.globalAlpha = 1
   }
@@ -484,4 +474,20 @@ function wrap(ctx: CanvasRenderingContext2D, t: string, x: number, y: number, w:
     } else line = tt
   }
   ctx.fillText(line, x, yy)
+}
+
+/**
+ * Places labels top to bottom so that none overlaps another: each one moves up in 10 px steps,
+ * and a label that finds no room within 40 steps is left out rather than drawn over another.
+ */
+export function placeLabels<T extends { X: number; Y: number; w: number }>(items: T[]): T[] {
+  const placed: T[] = []
+  const clash = (o: T): boolean => placed.some((p) => Math.abs(p.X - o.X) < (p.w + o.w) / 2 + 16 && Math.abs(p.Y - o.Y) < 36)
+  for (const it of [...items].sort((a, b) => a.Y - b.Y)) {
+    const o = { ...it }
+    let tries = 0
+    while (tries++ < 40 && clash(o)) o.Y -= 10
+    if (!clash(o)) placed.push(o)
+  }
+  return placed
 }

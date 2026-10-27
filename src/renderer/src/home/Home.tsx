@@ -58,17 +58,25 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
     void api.ai.status().then(setStatus)
     void api.session?.list().then(setSessions)
     void api.practice?.list().then(setPractices).catch(() => undefined)
-    void api.review?.sessions?.().then(setReviews).catch(() => undefined)
-    void api.review
-      ?.memory()
-      .then((m) => setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length))
-      .catch(() => undefined)
+    // Memory moves while the app stays open: the badge and the session list refresh on focus and every 10 minutes.
+    const refresh = (): void => {
+      void api.review
+        ?.memory()
+        .then((m) => setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length))
+        .catch(() => undefined)
+      void api.review?.sessions?.().then(setReviews).catch(() => undefined)
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    const every = setInterval(refresh, 10 * 60_000)
     const loadNotes = (): void => void api.notes?.list().then(setNotes)
     loadNotes()
     const offNotes = api.notes?.onUpdate(loadNotes)
     const offVault = api.vault.onChange(setIndex)
     const offAi = api.ai.onStatus(setStatus)
     return () => {
+      window.removeEventListener('focus', refresh)
+      clearInterval(every)
       offVault()
       offAi()
       offNotes?.()
