@@ -51,7 +51,8 @@ const api: SinapsiApi = {
     grade: (req) => ipcRenderer.invoke(CH.reviewGrade, req),
     record: (r) => ipcRenderer.invoke(CH.reviewRecord, r),
     memory: () => ipcRenderer.invoke(CH.reviewMemory),
-    intervals: (id) => ipcRenderer.invoke(CH.reviewIntervals, id)
+    intervals: (id) => ipcRenderer.invoke(CH.reviewIntervals, id),
+    sessions: () => ipcRenderer.invoke(CH.reviewSessions)
   },
   notebook: {
     list: () => ipcRenderer.invoke(CH.notebookList),

@@ -274,7 +274,7 @@ function Page({ nota, stored, mode }: { nota: Nota; stored: StoredNote; mode: Mo
                       {nota.recap.formulas.map((f, i) => (
                         <div key={i}>
                           <span>{f.label}</span>
-                          <RichText md={`$${f.tex}$`} className="inline" />
+                          <RichText md={f.tex.includes('$') ? f.tex : `$${f.tex}$`} className="inline" />
                         </div>
                       ))}
                     </div>

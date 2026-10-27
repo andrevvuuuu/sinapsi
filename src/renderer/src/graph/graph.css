@@ -27,11 +27,13 @@
 }
 .graph .gpanel {
   position: absolute;
-  top: 88px;
+  top: 112px;
   left: 16px;
+  transform-origin: 22px -22px;
+  animation: gmenu-in 0.22s var(--ease-out);
   z-index: 5;
   width: 290px;
-  max-height: calc(100% - 200px);
+  max-height: calc(100% - 280px);
   overflow: auto;
   border-radius: 22px;
   padding: 14px;
@@ -354,3 +356,85 @@
 .graph .gcard .chips .mem.la-sai{color:var(--good);border-color:color-mix(in srgb,var(--good) 45%,transparent)}
 .graph .gcard .chips .mem.incerto{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
 .graph .gcard .chips .mem.debole{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
+
+/* The graph menu behind a round button (wireframe 27/10) */
+.graph .gmenu-btn {
+  position: absolute;
+  top: 60px;
+  left: 16px;
+  z-index: 6;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hair);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  backdrop-filter: blur(18px);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: var(--inner), 0 10px 30px -14px rgba(0, 0, 0, 0.5);
+  transition: transform 0.18s var(--ease-out), background-color 0.2s ease, color 0.2s ease;
+}
+.graph .gmenu-btn svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s var(--ease-out);
+}
+.graph .gmenu-btn:hover {
+  transform: scale(1.05);
+}
+.graph .gmenu-btn:active {
+  transform: scale(0.95);
+}
+.graph .gmenu-btn.on {
+  background: var(--ink);
+  color: var(--bg);
+}
+.graph .gmenu-btn.on svg {
+  transform: rotate(90deg);
+}
+.app.l-off .graph .gmenu-btn {
+  left: 70px;
+}
+.app.l-off .graph .gpanel {
+  left: 70px;
+}
+.graph .gpanel.closing {
+  animation: gmenu-out 0.16s ease-in forwards;
+}
+@keyframes gmenu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes gmenu-out {
+  to {
+    opacity: 0;
+    transform: scale(0.94) translateY(-4px);
+  }
+}
+.graph .gstatus-mini {
+  position: absolute;
+  top: 66px;
+  left: 72px;
+  z-index: 5;
+  max-width: 320px;
+}
+.app.l-off .graph .gstatus-mini {
+  left: 126px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .graph .gpanel,
+  .graph .gpanel.closing,
+  .graph .gmenu-btn,
+  .graph .gmenu-btn svg {
+    animation: none;
+    transition: none;
+  }
+}

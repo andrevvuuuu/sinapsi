@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { LeafBlock } from '../../../../shared/nota-schema'
 import { RichText } from '../../session/RichText'
+import { asMath } from '../math'
 
-const plain = (s: string): string => s.replace(/\$/g, '').trim()
+const plain = (s: string): string => s.replace(/\$/g, '').replace(/\\text\{([^}]*)\}/g, '$1').trim()
 
 export function Glossary({ block }: { block: Extract<LeafBlock, { type: 'glossary' }> }): React.JSX.Element {
   const [covered, setCovered] = useState(false)
@@ -35,7 +36,7 @@ export function Glossary({ block }: { block: Extract<LeafBlock, { type: 'glossar
           {block.rows.map((r, i) => (
             <tr key={i}>
               <td>
-                <RichText md={r.symbol} className="inline" />
+                <RichText md={asMath(r.symbol)} className="inline" />
               </td>
               <td>
                 <RichText md={r.read} className="inline" />

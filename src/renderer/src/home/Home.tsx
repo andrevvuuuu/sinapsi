@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { EngineStatus as Status, NoteMeta, PracticeSummary, SessionSummary, VaultResult } from '../../../shared/api'
+import type { EngineStatus as Status, NoteMeta, PracticeSummary, ReviewSession, SessionSummary, VaultResult } from '../../../shared/api'
 import type { Engine, Settings } from '../../../shared/settings-schema'
 import { buildTree } from './build-tree'
 import { Composer } from './Composer'
@@ -35,6 +35,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
   const [toast, setToast] = useState<string | null>(null)
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [practices, setPractices] = useState<PracticeSummary[]>([])
+  const [reviews, setReviews] = useState<ReviewSession[]>([])
   const [notes, setNotes] = useState<NoteMeta[]>([])
   const [due, setDue] = useState(0)
 
@@ -50,6 +51,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
     void api.ai.status().then(setStatus)
     void api.session?.list().then(setSessions)
     void api.practice?.list().then(setPractices).catch(() => undefined)
+    void api.review?.sessions?.().then(setReviews).catch(() => undefined)
     void api.review
       ?.memory()
       .then((m) => setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length))
@@ -85,18 +87,19 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
   return (
     <div className={'app' + (left ? '' : ' l-off') + (right ? '' : ' r-off')}>
       <LeftPanel
-        tree={tree}
         sessions={sessions}
         practices={practices}
-        onOpenPractice={(id) => onOpenPracticeSession?.(id)}
+        reviews={reviews}
         onOpenSession={(id) => onOpenSession?.(id)}
+        onOpenPractice={(id) => onOpenPracticeSession?.(id)}
+        onOpenReview={(ids) => onOpenReview?.('', ids)}
         notes={notes}
+        subjectOf={(path) => (index && 'notes' in index ? (index.notes.find((n) => n.path === path)?.subject ?? null) : null)}
         onOpenNota={(id) => onOpenNota?.(id)}
         settings={settings}
-        onClose={() => setLeft(false)}
-        onOpenNote={(path) => onOpenSource?.(path)}
+        onSettings={setSettings}
         onTheme={(t) => void setTheme(t)}
-        onChooseVault={() => void chooseVault()}
+        onClose={() => setLeft(false)}
       />
       <main className="center">
         <div className="topbar drag" />
@@ -166,7 +169,14 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
           }}
         />
       </main>
-      <NotebookPanel onClose={() => setRight(false)} onOpen={(id) => onOpenNotebook?.(id)} />
+      <NotebookPanel
+        onClose={() => setRight(false)}
+        onOpen={(id) => onOpenNotebook?.(id)}
+        tree={tree}
+        onOpenNote={(path) => onOpenSource?.(path)}
+        vaultPath={settings?.vaultPath}
+        onChooseVault={() => void chooseVault()}
+      />
     </div>
   )
 }

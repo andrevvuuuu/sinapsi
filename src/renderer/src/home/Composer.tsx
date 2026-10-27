@@ -15,16 +15,16 @@ export function Composer({ onSubmit, due = 0 }: { onSubmit: (mode: string, text:
   }
   return (
     <div className="composer">
+      <div className="seg modes-pill" role="group" aria-label="Tipo di sessione">
+        {MODES.map((m) => (
+          <button key={m} type="button" aria-pressed={m === mode} onClick={() => setMode(m)}>
+            {m}
+            {m === 'Ripasso' && due > 0 && <span className="due">{due}</span>}
+          </button>
+        ))}
+      </div>
       <div className="shell">
         <div className="core">
-          <div className="seg" role="group" aria-label="Tipo di sessione">
-            {MODES.map((m) => (
-              <button key={m} type="button" aria-pressed={m === mode} onClick={() => setMode(m)}>
-                {m}
-                {m === 'Ripasso' && due > 0 && <span className="due">{due}</span>}
-              </button>
-            ))}
-          </div>
           <div className="inrow">
             <textarea
               rows={1}

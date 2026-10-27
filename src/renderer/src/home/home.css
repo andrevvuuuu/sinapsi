@@ -35,9 +35,6 @@
 .pf{margin-top:auto;padding:10px 12px;border-top:1px solid var(--hair);position:relative}
 .pf .row{display:flex;align-items:center;gap:8px}
 .pf .vp{flex:1;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.settings-pop{position:absolute;left:12px;right:12px;bottom:64px;padding:14px;border-radius:18px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:12px;z-index:10}
-.settings-pop h3{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
-.settings-pop .path{font:400 12px var(--mono);color:var(--muted);word-break:break-all}
 .btn{min-height:44px;border-radius:999px;border:1px solid var(--hair);background:var(--surface);cursor:pointer;padding:0 16px;font:500 14px var(--sans);box-shadow:var(--inner)}
 .btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
@@ -92,3 +89,59 @@
 .sessions .s{grid-column:2;font-size:12px;color:var(--muted)}
 .sessions .dot.nv-ready{background:var(--good)}.sessions .dot.nv-error{background:var(--bad)}
 .composer .seg .due{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--accent);color:var(--bg);font:600 11px var(--mono)}
+
+/* Wireframe 27/10: the mode slider detached above the field */
+.composer .modes-pill{width:max-content;margin:0 auto 10px;padding:4px;border-radius:999px;background:color-mix(in srgb,var(--surface) 70%,transparent);border:1px solid var(--hair);backdrop-filter:blur(18px);box-shadow:var(--inner),0 16px 40px -24px rgba(0,0,0,.6)}
+.composer .modes-pill button{flex:none;min-height:44px;padding:0 16px}
+.composer .core{padding:8px 10px}
+/* left panel */
+.sess-search{margin:8px 0 2px}
+.sess-search input{width:100%;min-height:44px;border-radius:12px;border:1px solid var(--hair);background:var(--surface);color:var(--ink);padding:0 12px;font:400 13px var(--sans)}
+.sess-find{width:100%;min-height:44px;border-radius:12px;border:1px dashed var(--hair);background:transparent;color:var(--muted);font:500 13px var(--sans);cursor:pointer;text-align:left;padding:0 12px}
+.sess-find:hover{background:var(--faint);color:var(--ink)}
+.app aside.left .psec[aria-label="Sessioni"]{display:flex;flex-direction:column;max-height:42vh}
+.app aside.left .psec[aria-label="Sessioni"] .sessions{overflow:auto;min-height:0}
+.nv-explorer{flex:1;min-height:0}
+.tree summary .cnt{margin-left:auto;font:500 10px var(--mono);color:var(--muted)}
+.nv-leaf{color:var(--ink)!important}
+.nv-leaf .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.nv-leaf .dot.nv-ready{background:var(--good)}.nv-leaf .dot.nv-error{background:var(--bad)}
+/* right panel */
+.imp-wrap{position:relative}
+.imp-menu{position:absolute;right:0;top:50px;z-index:20;min-width:220px;padding:8px;border-radius:16px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--inner),0 24px 50px -24px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:2px;animation:imp-in .18s var(--ease-out);transform-origin:top right}
+.imp-menu .lab{font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:4px 8px}
+.imp-menu button{min-height:44px;border:0;border-radius:10px;background:transparent;text-align:left;padding:0 10px;font:500 13px var(--sans);cursor:pointer}
+.imp-menu button:hover,.imp-menu button:focus-visible{background:var(--faint)}
+.imp-menu .new{color:var(--accent)}
+@keyframes imp-in{from{opacity:0;transform:scale(.95)}}
+.nb-sec{padding:4px 12px 10px;display:flex;flex-direction:column;min-height:0;max-height:38vh}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin:0 6px}
+.sec-head h2,.obs-sec h2{font:600 11px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:10px 0}
+.obs-sec h2{margin:10px 6px}
+.nb-sec .sessions{overflow:auto;min-height:0;margin:0}
+.nb-sec .empty{padding:4px 6px}
+.obs-sec{flex:1;min-height:0}
+.mini{min-height:44px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--ink);font:500 12px var(--sans);cursor:pointer;white-space:nowrap}
+.mini:hover{background:var(--faint)}
+.panel-alert{margin:0 14px 8px;padding:8px 12px;border-radius:12px;background:color-mix(in srgb,var(--bad) 14%,transparent);font-size:13px}
+.app aside.right .pf .row{justify-content:space-between}
+/* settings dialog */
+.overlay{position:fixed;inset:0;z-index:30;-webkit-app-region:no-drag;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
+.settings-dlg{width:min(640px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--inner),0 40px 100px -30px rgba(0,0,0,.7);animation:imp-in .2s var(--ease-out)}
+.sd-head{display:flex;align-items:center;justify-content:space-between;padding:16px 14px 4px 22px}
+.sd-head h2{font:400 30px/1 var(--serif);margin:0}
+.sd-body{overflow:auto;padding:4px 22px 12px;display:flex;flex-direction:column;gap:18px}
+.sd-body h3{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.sd-hint{font-size:13px;color:var(--muted);margin:0 0 8px}
+.sd-engines{display:flex;flex-direction:column;gap:6px}
+.sd-engine{display:grid;grid-template-columns:1fr 110px 190px;gap:8px;align-items:center;font-size:14px}
+.sd-engine select,.sd-engine input,.sd-row input[type="number"]{min-height:44px;border-radius:10px;border:1px solid var(--hair);background:var(--bg);color:var(--ink);padding:0 10px;font:400 13px var(--sans)}
+.sd-engine input{font-family:var(--mono);font-size:12px}
+.sd-row{display:flex;align-items:center;gap:10px;font-size:14px;min-height:44px}
+.sd-row input[type="number"]{width:80px;margin-left:auto}
+.sd-row input[type="checkbox"]{width:18px;height:18px;accent-color:var(--accent)}
+.sd-foot{display:flex;align-items:center;gap:10px;padding:12px 22px 18px;border-top:1px solid var(--hair)}
+.sd-foot .sp{flex:1}
+.sd-error{margin:0;font-size:13px;color:var(--bad)}
+.sd-ok{margin:0;font-size:13px;color:var(--good)}
+.app aside.left .seg[aria-label="Sessioni da mostrare"] button{padding:0 6px;font-size:12px;min-height:44px}

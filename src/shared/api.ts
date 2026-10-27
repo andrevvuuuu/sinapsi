@@ -11,6 +11,7 @@ export type { ReviewItem, ReviewPlan, GradeResult } from '../main/memory/review'
 export type { Notebook, Source, SourceText, ChatTurn, Excerpt } from './notebook-types'
 export type { PracticeState, PracticeSummary, PracticeItem, PracticeProblem } from '../main/practice/events'
 export type { Catalog, Material } from './practice-types'
+export type { ReviewSession } from '../main/memory/history'
 export type GraphPositions = Record<string, [number, number]>
 export type NoteRequest = { sourcePath?: string; sessionId?: string }
 
@@ -49,6 +50,7 @@ export const CH = {
   reviewRecord: 'review:record',
   reviewMemory: 'review:memory',
   reviewIntervals: 'review:intervals',
+  reviewSessions: 'review:sessions',
   notebookList: 'notebook:list',
   notebookCreate: 'notebook:create',
   notebookUpdate: 'notebook:update',
@@ -124,6 +126,8 @@ export interface SinapsiApi {
     record(r: import('./memory-types').ReviewLine): Promise<{ memory: import('./memory-types').Memory; intervals: Record<import('./memory-types').Grade, string> }>
     memory(): Promise<Record<string, import('./memory-types').Memory>>
     intervals(conceptId: string): Promise<Record<import('./memory-types').Grade, string>>
+    /** Past Ripasso sittings, newest first. */
+    sessions(): Promise<import('../main/memory/history').ReviewSession[]>
   }
   notebook: {
     list(): Promise<import('./notebook-types').Notebook[]>

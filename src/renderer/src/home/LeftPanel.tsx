@@ -1,126 +1,169 @@
-import { useState } from 'react'
-import type { NoteMeta, PracticeSummary, SessionSummary } from '../../../shared/api'
+import { useMemo, useRef, useState } from 'react'
+import type { NoteMeta, PracticeSummary, ReviewSession, SessionSummary } from '../../../shared/api'
 import type { Settings } from '../../../shared/settings-schema'
-import type { TreeNode } from './build-tree'
-import { IconGear, IconPanel } from './icons'
-import { NoteTree } from './NoteTree'
+import { IconChevron, IconGear, IconPanel } from './icons'
+import { SettingsDialog } from './SettingsDialog'
 
-const FILTERS = ['Pratica', 'Apprendimento', 'Entrambe'] as const
-const THEMES: [Settings['theme'], string][] = [['lavagna', 'Lavagna'], ['trattato', 'Trattato'], ['system', 'Sistema']]
+const KINDS = ['Tutte', 'Apprendimento', 'Pratica', 'Ripasso'] as const
+type Kind = (typeof KINDS)[number]
+const norm = (s: string): string =>
+  s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
 
 type Props = {
-  tree: TreeNode[]
   sessions: SessionSummary[]
   practices?: PracticeSummary[]
-  onOpenPractice?: (id: string) => void
+  reviews?: ReviewSession[]
   onOpenSession: (id: string) => void
+  onOpenPractice?: (id: string) => void
+  onOpenReview?: (conceptIds: string[]) => void
   notes: NoteMeta[]
+  /** The vault subject (topic folder) of a note's source, for the note vive explorer. */
+  subjectOf: (sourcePath: string) => string | null
   onOpenNota: (id: string) => void
   settings: Settings | null
-  onClose: () => void
-  onOpenNote: (path: string) => void
+  onSettings: (s: Settings) => void
   onTheme: (t: Settings['theme']) => void
-  onChooseVault: () => void
+  onClose: () => void
 }
 
-export function LeftPanel({ tree, sessions, practices = [], onOpenPractice, onOpenSession, notes, onOpenNota, settings, onClose, onOpenNote, onTheme, onChooseVault }: Props): React.JSX.Element {
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('Entrambe')
-  const [open, setOpen] = useState(false)
+export function LeftPanel(p: Props): React.JSX.Element {
+  const [kind, setKind] = useState<Kind>('Tutte')
+  const [searching, setSearching] = useState(false)
+  const [q, setQ] = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const gear = useRef<HTMLButtonElement>(null)
+  const [opened, setOpened] = useState<Record<string, boolean>>({})
+  const day = (t: number): string => new Date(t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
+
+  const rows = useMemo(() => {
+    const all = [
+      ...(kind === 'Tutte' || kind === 'Apprendimento' ? p.sessions.map((x) => ({ key: 's' + x.id, topic: x.topic, at: x.updatedAt, label: 'Apprendimento', open: () => p.onOpenSession(x.id) })) : []),
+      ...(kind === 'Tutte' || kind === 'Pratica'
+        ? (p.practices ?? []).map((x) => ({ key: 'p' + x.id, topic: x.topic, at: x.updatedAt, label: x.mode === 'exam' ? 'Simulazione' : 'Pratica', open: () => p.onOpenPractice?.(x.id) }))
+        : []),
+      ...(kind === 'Tutte' || kind === 'Ripasso' ? (p.reviews ?? []).map((x) => ({ key: x.id, topic: x.topic, at: x.at, label: `Ripasso · ${x.count} domande`, open: () => p.onOpenReview?.(x.conceptIds) })) : [])
+    ]
+    const words = norm(q).split(/\s+/).filter(Boolean)
+    return all.filter((r) => words.every((w) => norm(r.topic).includes(w))).sort((a, b) => b.at - a.at)
+  }, [kind, q, p])
+
+  const folders = useMemo(() => {
+    const m = new Map<string, NoteMeta[]>()
+    for (const n of p.notes) {
+      const s = p.subjectOf(n.sourcePath) ?? 'Altro'
+      m.set(s, [...(m.get(s) ?? []), n])
+    }
+    return [...m].sort(([a], [b]) => (a === 'Altro' ? 1 : b === 'Altro' ? -1 : a.localeCompare(b, 'it')))
+  }, [p])
+
   return (
-    <aside className="left" aria-label="Sessioni e note">
+    <aside className="left" aria-label="Sessioni e note vive">
       <div className="ph drag">
         <span className="logo" style={{ paddingLeft: 64 }}>
           <i aria-hidden="true" />
           Sinapsi
         </span>
-        <button type="button" className="icon-btn nodrag" aria-label="Chiudi il pannello laterale" onClick={onClose}>
+        <button type="button" className="icon-btn nodrag" aria-label="Chiudi il pannello laterale" onClick={p.onClose}>
           <IconPanel />
         </button>
       </div>
-      <div className="psec">
-        <div className="seg" role="group" aria-label="Filtra le sessioni">
-          {FILTERS.map((f) => (
-            <button key={f} type="button" aria-pressed={f === filter} onClick={() => setFilter(f)}>
-              {f}
+      <section className="psec" aria-label="Sessioni">
+        <div className="seg" role="group" aria-label="Sessioni da mostrare">
+          {KINDS.map((k) => (
+            <button key={k} type="button" aria-pressed={k === kind} onClick={() => setKind(k)}>
+              {k}
             </button>
           ))}
         </div>
-        {(() => {
-          const day = (t: number): string => new Date(t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
-          const rows = [
-            ...(filter === 'Pratica' ? [] : sessions.map((x) => ({ id: x.id, topic: x.topic, at: x.updatedAt, kind: 'Apprendimento', open: () => onOpenSession(x.id) }))),
-            ...(filter === 'Apprendimento' ? [] : practices.map((x) => ({ id: x.id, topic: x.topic, at: x.updatedAt, kind: x.mode === 'exam' ? 'Simulazione' : 'Pratica', open: () => onOpenPractice?.(x.id) })))
-          ].sort((a, b) => b.at - a.at)
-          return rows.length === 0 ? (
-            <p className="empty">Nessuna sessione ancora.</p>
+        <div className="sess-search">
+          {searching ? (
+            <input
+              autoFocus
+              aria-label="Cerca tra le sessioni"
+              placeholder="Cerca una sessione già fatta…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setQ('')
+                  setSearching(false)
+                }
+              }}
+            />
           ) : (
-            <ul className="sessions">
-              {rows.slice(0, 8).map((x) => (
-                <li key={x.id}>
-                  <button type="button" onClick={x.open}>
-                    <i className="dot" aria-hidden="true" />
-                    <span className="t">{x.topic}</span>
-                    <span className="s">
-                      {x.kind} · {day(x.at)}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )
-        })()}
-      </div>
-      {notes.length > 0 && (
-        <>
-          <div className="divider" />
-          <div className="psec">
-            <h2>Note vive</h2>
-            <ul className="sessions">
-              {notes.slice(0, 8).map((n) => (
-                <li key={n.id}>
-                  <button type="button" onClick={() => onOpenNota(n.id)}>
-                    <i className={'dot nv-' + n.status} aria-hidden="true" />
-                    <span className="t">{n.title}</span>
-                    <span className="s">
-                      {n.status === 'generating' ? 'in scrittura…' : n.status === 'error' ? 'da riprovare' : new Date(n.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </>
-      )}
-      <div className="divider" />
-      <div className="psec scroll" style={{ flex: 1 }}>
-        <h2>Note</h2>
-        <NoteTree nodes={tree} onOpen={onOpenNote} />
-      </div>
-      <div className="pf">
-        {open && settings && (
-          <div className="settings-pop" role="dialog" aria-label="Impostazioni">
-            <h3>Tema</h3>
-            <div className="seg" role="group" aria-label="Tema">
-              {THEMES.map(([id, label]) => (
-                <button key={id} type="button" aria-pressed={settings.theme === id} onClick={() => onTheme(id)}>
-                  {label}
-                </button>
-              ))}
-            </div>
-            <h3>Vault Obsidian</h3>
-            <span className="path">{settings.vaultPath}</span>
-            <button type="button" className="btn" onClick={onChooseVault}>
-              Cambia cartella
+            <button type="button" className="sess-find" onClick={() => setSearching(true)}>
+              Cerca una sessione
             </button>
+          )}
+        </div>
+        {rows.length === 0 ? (
+          <p className="empty">{q ? 'Nessuna sessione trovata.' : 'Nessuna sessione ancora.'}</p>
+        ) : (
+          <ul className="sessions scroll" aria-label="Sessioni passate">
+            {rows.slice(0, 30).map((x) => (
+              <li key={x.key}>
+                <button type="button" onClick={x.open}>
+                  <i className="dot" aria-hidden="true" />
+                  <span className="t">{x.topic}</span>
+                  <span className="s">
+                    {x.label} · {day(x.at)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <div className="divider" />
+      <section className="psec scroll nv-explorer" aria-label="Note vive">
+        <h2>Note vive</h2>
+        {folders.length === 0 ? (
+          <p className="empty">Le note vive nascono dopo le sessioni di Apprendimento o dalle note di Obsidian.</p>
+        ) : (
+          <div className="tree">
+            {folders.map(([subject, list]) => (
+              <details key={subject} open={opened[subject] ?? folders.length <= 2} onToggle={(e) => setOpened((o) => ({ ...o, [subject]: (e.target as HTMLDetailsElement).open }))}>
+                <summary>
+                  <IconChevron />
+                  {subject}
+                  <small className="cnt">{list.length}</small>
+                </summary>
+                <div className="kids">
+                  {list.map((n) => (
+                    <button key={n.id} type="button" className="leaf nv-leaf" onClick={() => p.onOpenNota(n.id)}>
+                      <i className={'dot nv-' + n.status} aria-hidden="true" />
+                      <span>{n.title}</span>
+                      {n.status !== 'ready' && <small>{n.status === 'generating' ? 'in scrittura' : 'da riprovare'}</small>}
+                    </button>
+                  ))}
+                </div>
+              </details>
+            ))}
           </div>
         )}
+      </section>
+      <div className="pf">
         <div className="row">
-          <button type="button" className="icon-btn" aria-label="Impostazioni" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <button ref={gear} type="button" className="icon-btn" aria-label="Impostazioni" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)}>
             <IconGear />
           </button>
-          <span className="vp">{settings?.vaultPath.split('/').pop()}</span>
+          <span className="vp">Impostazioni</span>
         </div>
       </div>
+      {settingsOpen && p.settings && (
+        <SettingsDialog
+          settings={p.settings}
+          onTheme={p.onTheme}
+          onSaved={p.onSettings}
+          onClose={() => {
+            setSettingsOpen(false)
+            gear.current?.focus()
+          }}
+        />
+      )}
     </aside>
   )
 }

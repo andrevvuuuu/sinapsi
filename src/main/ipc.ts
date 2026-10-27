@@ -19,6 +19,7 @@ import { notebookStore } from './notebook/store'
 import { fakeReviewBridge } from './memory/fake-review'
 import { createReviewService } from './memory/review'
 import { memoryStore } from './memory/store'
+import { reviewSessions } from './memory/history'
 import { variantsStore } from './memory/variants'
 import { fakeExtractBridge } from './graph/fake-extract'
 import { createExtractor, type Extractor } from './graph/jobs'
@@ -258,6 +259,7 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.reviewRecord, (_e, r) => rh.record(r))
   ipcMain.handle(CH.reviewMemory, () => rh.memory())
   ipcMain.handle(CH.reviewIntervals, (_e, id) => rh.intervals(id))
+  ipcMain.handle(CH.reviewSessions, async () => reviewSessions(await memoryStore(memoryDir).read(), new Map((await extractor.graph()).concepts.map((c) => [c.id, c.name]))))
 
   const practiceDir = join(dataDir(), 'practice')
   const practiceBridge = process.env.SINAPSI_FAKE_PRACTICE === '1' ? fakeTutor() : bridge
