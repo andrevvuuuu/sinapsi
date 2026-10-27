@@ -22,3 +22,28 @@ export function watchVault(root: string, excluded: string[], onChange: (paths: s
     void w.close()
   }
 }
+
+/**
+ * Re-creates the vault watcher after a settings change. Two quick changes in a row: only the watcher
+ * for the last one stays alive (the earlier call notices it is stale after its await).
+ */
+export function createRewatcher(
+  load: () => Promise<{ vaultPath: string; excludedFolders: string[] }>,
+  watch: (root: string, excluded: string[], onChange: (paths: string[]) => void) => () => void,
+  onChange: (paths: string[]) => void
+): () => Promise<void> {
+  let stop: (() => void) | undefined
+  let gen = 0
+  return async () => {
+    const mine = ++gen
+    const s = await load()
+    if (mine !== gen) return
+    stop?.()
+    stop = undefined
+    try {
+      stop = watch(s.vaultPath, s.excludedFolders, onChange)
+    } catch {
+      stop = undefined
+    }
+  }
+}

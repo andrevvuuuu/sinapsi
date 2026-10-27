@@ -39,11 +39,18 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
   const [notes, setNotes] = useState<NoteMeta[]>([])
   const [due, setDue] = useState(0)
 
+  const [loadError, setLoadError] = useState<string | null>(null)
   const reload = useCallback(async () => {
-    const [s, idx] = await Promise.all([api.settings.get(), api.vault.index()])
-    setSettings(s)
-    applyTheme(s.theme)
-    setIndex(idx)
+    try {
+      const [s, idx] = await Promise.all([api.settings.get(), api.vault.index()])
+      setSettings(s)
+      applyTheme(s.theme)
+      setIndex(idx)
+      setLoadError(null)
+    } catch (e) {
+      // Without this the home stayed empty with no explanation.
+      setLoadError((e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+    }
   }, [api])
 
   useEffect(() => {
@@ -114,6 +121,17 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
           </button>
         </div>
         <EngineStatus status={status} />
+        {loadError && (
+          <div className="missing">
+            <div role="alert">
+              <h2>Non riesco a caricare i dati dell’app</h2>
+              <p>{`Non riesco a caricare: ${loadError}`}</p>
+              <button type="button" className="btn pri" onClick={() => void reload()}>
+                Riprova
+              </button>
+            </div>
+          </div>
+        )}
         {index && 'error' in index ? (
           <div className="missing">
             <div>

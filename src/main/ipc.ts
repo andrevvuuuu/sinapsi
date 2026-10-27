@@ -31,7 +31,7 @@ import { createSessionRunner } from './session/runner'
 import { dataDir } from './store/paths'
 import { loadSettings, saveSettings } from './store/settings'
 import { scanVault } from './vault/scan'
-import { watchVault } from './vault/watch'
+import { createRewatcher, watchVault } from './vault/watch'
 
 export function registerIpc(): { bridge: Bridge } {
   // Assigned below; the session and note hooks only run after registration.
@@ -59,19 +59,10 @@ export function registerIpc(): { bridge: Bridge } {
   })
   const broadcast = (channel: string, payload: unknown): void => BrowserWindow.getAllWindows().forEach((w) => w.webContents.send(channel, payload))
 
-  let stopWatch: (() => void) | undefined
-  async function rewatch(): Promise<void> {
-    stopWatch?.()
-    const s = await settings.load()
-    try {
-      stopWatch = watchVault(s.vaultPath, s.excludedFolders, async () => {
-        const idx = await h.vaultIndex()
-        if (!('error' in idx)) broadcast(CH.vaultChanged, idx)
-      })
-    } catch {
-      stopWatch = undefined
-    }
-  }
+  const rewatch = createRewatcher(settings.load, watchVault, async () => {
+    const idx = await h.vaultIndex()
+    if (!('error' in idx)) broadcast(CH.vaultChanged, idx)
+  })
   void rewatch()
 
   ipcMain.handle(CH.settingsGet, () => h.settingsGet())

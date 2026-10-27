@@ -8,10 +8,16 @@ export function stripCode(md: string): string {
 export function parseWikilinks(md: string): Omit<VaultLink, 'resolved'>[] {
   const out: Omit<VaultLink, 'resolved'>[] = []
   for (const m of stripCode(md).matchAll(/!?\[\[([^\]\n]+?)\]\]/g)) {
-    const [main, alias] = m[1].split('|')
+    // Inside tables the pipe is escaped: [[Nota\|alias]].
+    const [main, alias] = m[1].split(/\\?\|/)
     const [rawTarget, ...rest] = main.split('#')
     const anchor = rest.join('#').trim()
-    const link: Omit<VaultLink, 'resolved'> = { target: rawTarget.trim().split('/').pop()!.replace(/\.md$/, '') }
+    const parts = rawTarget.trim().split('/')
+    const name = parts.pop()!
+    // Attachments (images, PDFs, audio…) are not notes.
+    if (/\.[a-z0-9]{2,5}$/i.test(name) && !/\.md$/i.test(name)) continue
+    const link: Omit<VaultLink, 'resolved'> = { target: name.replace(/\.md$/, '') }
+    if (parts.length) link.folder = parts.join('/')
     if (anchor.startsWith('^')) link.block = anchor.slice(1)
     else if (anchor) link.heading = anchor
     if (alias?.trim()) link.alias = alias.trim()
