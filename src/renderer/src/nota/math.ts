@@ -1,4 +1,4 @@
-const LATEX = /\\[a-zA-Z]+|[\^_{}]/
+const LATEX = /\\[a-zA-Z]+|[\^_]/
 
 /**
  * A field meant to hold only math (a glossary symbol, a formal statement, a recap formula) as markdown:

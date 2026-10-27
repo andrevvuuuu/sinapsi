@@ -46,7 +46,9 @@ export function NotebookPanel({ onClose, onOpen, tree = [], onOpenNote, vaultPat
       const nb = id ?? (await api.notebook.create('Notebook'))
       const r = await api.notebook.chooseFiles(nb)
       if (r.rejected.length) setError(`Non posso importare: ${r.rejected.join(', ')}`)
-      if (r.added.length || !id) onOpen(nb)
+      // Cancelled with a notebook created just for this import: leave no empty "Notebook" behind.
+      if (!r.added.length && !id) await api.notebook.remove(nb)
+      else if (r.added.length) onOpen(nb)
     } catch (e) {
       setError(clean(e))
     }
@@ -64,7 +66,20 @@ export function NotebookPanel({ onClose, onOpen, tree = [], onOpenNote, vaultPat
             Importa fonti
           </button>
           {menu && (
-            <div className="imp-menu" role="menu" aria-label="In quale notebook?">
+            <div
+              className="imp-menu"
+              role="menu"
+              aria-label="In quale notebook?"
+              onKeyDown={(e) => {
+                const items = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+                const i = items.indexOf(document.activeElement as HTMLElement)
+                if (e.key === 'Escape') setMenu(false)
+                else if (e.key === 'ArrowDown') items[(i + 1) % items.length]?.focus()
+                else if (e.key === 'ArrowUp') items[(i - 1 + items.length) % items.length]?.focus()
+                else return
+                e.preventDefault()
+              }}
+            >
               <span className="lab">In quale notebook?</span>
               {list.map((n) => (
                 <button key={n.id} type="button" role="menuitem" onClick={() => void importInto(n.id)}>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { NoteMeta, PracticeSummary, ReviewSession, SessionSummary } from '../../../shared/api'
 import type { Settings } from '../../../shared/settings-schema'
 import { IconChevron, IconGear, IconPanel } from './icons'
@@ -34,6 +34,8 @@ export function LeftPanel(p: Props): React.JSX.Element {
   const [searching, setSearching] = useState(false)
   const [q, setQ] = useState('')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const gear = useRef<HTMLButtonElement>(null)
+  const [opened, setOpened] = useState<Record<string, boolean>>({})
   const day = (t: number): string => new Date(t).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
 
   const rows = useMemo(() => {
@@ -123,7 +125,7 @@ export function LeftPanel(p: Props): React.JSX.Element {
         ) : (
           <div className="tree">
             {folders.map(([subject, list]) => (
-              <details key={subject} open={folders.length <= 2}>
+              <details key={subject} open={opened[subject] ?? folders.length <= 2} onToggle={(e) => setOpened((o) => ({ ...o, [subject]: (e.target as HTMLDetailsElement).open }))}>
                 <summary>
                   <IconChevron />
                   {subject}
@@ -145,13 +147,23 @@ export function LeftPanel(p: Props): React.JSX.Element {
       </section>
       <div className="pf">
         <div className="row">
-          <button type="button" className="icon-btn" aria-label="Impostazioni" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(true)}>
+          <button ref={gear} type="button" className="icon-btn" aria-label="Impostazioni" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)}>
             <IconGear />
           </button>
           <span className="vp">Impostazioni</span>
         </div>
       </div>
-      {settingsOpen && p.settings && <SettingsDialog settings={p.settings} onTheme={p.onTheme} onSaved={p.onSettings} onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && p.settings && (
+        <SettingsDialog
+          settings={p.settings}
+          onTheme={p.onTheme}
+          onSaved={p.onSettings}
+          onClose={() => {
+            setSettingsOpen(false)
+            gear.current?.focus()
+          }}
+        />
+      )}
     </aside>
   )
 }

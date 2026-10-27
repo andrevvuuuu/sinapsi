@@ -400,7 +400,7 @@ export function GraphView({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape' && !(document.activeElement instanceof HTMLInputElement)) choose(null)
+      if (e.key === 'Escape' && !e.defaultPrevented && !(document.activeElement instanceof HTMLInputElement)) choose(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -444,6 +444,12 @@ export function GraphView({
         aria-expanded={menu === 'open'}
         aria-controls="graph-menu"
         onClick={() => (menu === 'open' ? closeMenu() : setMenu('open'))}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && menu === 'open') {
+            e.preventDefault()
+            closeMenu()
+          }
+        }}
       >
         <svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
           <circle cx="5" cy="5" r="2" />

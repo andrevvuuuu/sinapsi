@@ -79,6 +79,7 @@ describe('settings dialog', () => {
     expect(document.activeElement).toBe(trattato)
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Impostazioni' })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Impostazioni' }))
   })
 })
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { TASKS, type Settings, type Task } from '../../../shared/settings-schema'
+import { DEFAULT_ENGINES, TASKS, type Settings, type Task } from '../../../shared/settings-schema'
 
 const THEMES: [Settings['theme'], string][] = [
   ['lavagna', 'Lavagna'],
@@ -33,13 +33,19 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
   useEffect(() => {
     first.current?.focus()
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') close.current()
+      if (e.key === 'Escape') {
+        // Handled here: the graph must not also treat this Esc as "deselect".
+        e.preventDefault()
+        close.current()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   const save = async (): Promise<void> => {
+    if (!daily.trim()) return setError('Note al giorno: un numero da 0 a 50.')
+    if (!size.trim()) return setError('Domande per Ripasso: un numero da 1 a 20.')
     const d = Number(daily)
     const n = Number(size)
     if (!Number.isInteger(d) || d < 0 || d > 50) return setError('Note al giorno: un numero da 0 a 50.')
@@ -55,7 +61,22 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="settings-dlg" role="dialog" aria-modal="true" aria-labelledby="st-title">
+      <div
+        className="settings-dlg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="st-title"
+        onKeyDown={(e) => {
+          // Tab stays inside the dialog.
+          if (e.key !== 'Tab') return
+          const items = [...e.currentTarget.querySelectorAll<HTMLElement>('button, input, select, textarea')].filter((x) => !x.hasAttribute('disabled'))
+          if (!items.length) return
+          const i = items.indexOf(document.activeElement as HTMLElement)
+          const next = e.shiftKey ? (i <= 0 ? items.length - 1 : i - 1) : i === items.length - 1 ? 0 : i + 1
+          e.preventDefault()
+          items[next].focus()
+        }}
+      >
         <div className="sd-head">
           <h2 id="st-title">Impostazioni</h2>
           <button type="button" className="icon-btn" aria-label="Chiudi le impostazioni" onClick={onClose}>
@@ -85,7 +106,8 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
                     value={engines[t].engine}
                     onChange={(e) => {
                       const engine = e.target.value as 'agy' | 'claude'
-                      setEngines({ ...engines, [t]: { engine, model: engine === 'claude' ? 'sonnet' : 'gemini-3.8-flash-medium' } })
+                      const model = DEFAULT_ENGINES[t].engine === engine ? DEFAULT_ENGINES[t].model : engine === 'claude' ? 'sonnet' : 'gemini-3.8-flash-medium'
+                      setEngines({ ...engines, [t]: { engine, model } })
                       setSaved(false)
                     }}
                   >

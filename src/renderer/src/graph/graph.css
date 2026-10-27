@@ -33,7 +33,7 @@
   animation: gmenu-in 0.22s var(--ease-out);
   z-index: 5;
   width: 290px;
-  max-height: calc(100% - 200px);
+  max-height: calc(100% - 280px);
   overflow: auto;
   border-radius: 22px;
   padding: 14px;
