@@ -8,9 +8,9 @@ export function AnswerCard({ q, a }: { q: Question; a: LearnerAnswer }): React.J
       <div className="card">
         <div className="row">
           <span className="lab">{`Gioco · ${GAME_IT[q.game.type]}`}</span>
-          {g.total > 0 ? <span className={'chip ' + (g.score / g.total >= 0.7 ? 'ok' : 'no')}>{`${g.score}/${g.total}`}</span> : <span className="chip">saltato</span>}
+          {g.total > 0 ? <span className={'chip ' + (g.score / g.total >= 0.7 ? 'ok' : 'no')}>{`${g.score}/${g.total}`}</span> : <span className="chip">{g.detail === 'saltato' ? 'saltato' : 'inviata'}</span>}
         </div>
-        {g.total > 0 && <div className="th">{g.detail}</div>}
+        {g.detail !== 'saltato' && <div className="th">{g.detail}</div>}
       </div>
     )
   }

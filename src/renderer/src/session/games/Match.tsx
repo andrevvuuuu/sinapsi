@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react'
 import type { Game } from '../../../../shared/teacher-protocol'
 import { RichText } from '../RichText'
-import { seededShuffle, type GameProps } from './shared'
+import { clip, matchLayout, type GameProps } from './shared'
 
 type Match = Extract<Game, { type: 'match' }>
 
 /** Coppie: tap an item, then what it goes with. Wrong pairs flash and count as mistakes. */
 export function Match({ id, game, onDone }: GameProps<Match>): React.JSX.Element {
-  const left = useMemo(() => seededShuffle(game.pairs.map((_, i) => i), id + 'l'), [game, id])
-  const right = useMemo(() => seededShuffle(game.pairs.map((_, i) => i), id + 'r'), [game, id])
+  const { left, right } = useMemo(() => matchLayout(game.pairs.length, id), [game, id])
   const [pick, setPick] = useState<number | null>(null)
   const [matched, setMatched] = useState<Set<number>>(new Set())
   const [mistakes, setMistakes] = useState<[number, number][]>([])
@@ -54,7 +53,7 @@ export function Match({ id, game, onDone }: GameProps<Match>): React.JSX.Element
               onDone({
                 score,
                 total: game.pairs.length,
-                detail: mistakes.length ? `${mistakes.length} ${mistakes.length === 1 ? 'errore' : 'errori'}: ${mistakes.map(([l, r]) => `«${game.pairs[l][0]}» con «${game.pairs[r][1]}»`).join('; ')}` : 'tutte giuste al primo colpo'
+                detail: clip(mistakes.length ? `${mistakes.length} ${mistakes.length === 1 ? 'errore' : 'errori'}: ${mistakes.map(([l, r]) => `«${game.pairs[l][0]}» con «${game.pairs[r][1]}»`).join('; ')}` : 'tutte giuste al primo colpo')
               })
             }
           >

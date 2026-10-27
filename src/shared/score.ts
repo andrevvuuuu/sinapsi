@@ -28,13 +28,15 @@ export function sessionScore(items: ChatItem[]): SessionScore {
     }
     if (q.kind !== 'choice' || q.correct === undefined || q.role === 'goal' || q.role === 'plan') continue
     if (a.dontKnow) {
-      hit(false)
+      if (q.role === 'check' || q.role === 'recall') hit(false)
       continue
     }
     if (a.choice === undefined) continue
     const right = a.choice === q.correct
-    if (right) points += 10 + ((a.confidence ?? 0) >= 70 ? 5 : 0)
     if (a.confidence !== undefined) gaps.push(Math.abs(a.confidence - (right ? 100 : 0)))
+    // Probes and predictions are meant to be risked: they count for calibration, not for points or the streak.
+    if (q.role !== 'check' && q.role !== 'recall') continue
+    if (right) points += 10 + ((a.confidence ?? 0) >= 70 ? 5 : 0)
     hit(right)
   }
   const calibration = gaps.length ? Math.round(100 - gaps.reduce((x, y) => x + y, 0) / gaps.length) : null

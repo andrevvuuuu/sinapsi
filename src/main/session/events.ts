@@ -46,6 +46,9 @@ export function reduceSession(events: SessionEvent[]): SessionState {
       case 'learner': {
         const q = e.question ?? s.pendingQuestion
         if (q?.role === 'check' && q.nodeId && e.answer?.choice !== undefined && e.answer.choice === q.correct) correctChecks.add(q.nodeId)
+        // A game played in place of the check counts when it went well.
+        const g = e.answer?.game
+        if (q?.role === 'check' && q.kind === 'game' && q.nodeId && g && g.total > 0 && g.score / g.total >= 0.7) correctChecks.add(q.nodeId)
         s.items.push({ kind: 'learner', text: e.text, answer: e.answer, question: q })
         s.pendingQuestion = undefined
         s.lastLearnerText = e.text

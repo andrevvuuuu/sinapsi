@@ -4,9 +4,9 @@
 .g-dock button{min-height:44px}
 .g-status{margin:4px 0;font:500 12px var(--mono);color:var(--muted)}
 .g-timer{height:4px;border-radius:2px;background:var(--faint);overflow:hidden;margin:6px 0 10px}
-.g-timer i{display:block;height:100%;background:var(--accent);animation:g-time linear forwards}
-.g-timer i.stop{animation-play-state:paused}
-@keyframes g-time{from{width:100%}to{width:0}}
+.g-timer i{display:block;height:100%;background:var(--accent);transition:width 1s linear}
+.g-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.g-secs{font:500 13px var(--mono);color:var(--muted)}
 .g-statement{font-size:19px;margin:6px 0 12px;min-height:56px}
 .g-tf{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .g-tf button{min-height:56px;border-radius:16px;border:1px solid var(--hair);font:500 17px var(--sans);cursor:pointer;background:var(--surface);color:var(--ink);transition:transform .1s var(--ease-out)}
@@ -42,4 +42,4 @@
 .g-forbidden .chip.no{background:color-mix(in srgb,var(--bad) 20%,transparent)}
 .score-pill{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:999px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font:500 13px var(--mono)}
 .summary .score-line{font:500 13px var(--mono);color:var(--muted);margin-top:8px}
-@media (prefers-reduced-motion:reduce){.g-timer i{animation:none;width:100%}.g-end,.g-col button.no,.g-lines button.no{animation:none}}
+@media (prefers-reduced-motion:reduce){.g-timer i{transition:none}.g-end,.g-col button.no,.g-lines button.no{animation:none}}

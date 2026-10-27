@@ -1,19 +1,15 @@
 import { useState } from 'react'
 import type { Game } from '../../../../shared/teacher-protocol'
 import { RichText } from '../RichText'
-import { norm, type GameProps } from './shared'
+import { clip, type GameProps } from './shared'
+import { tabooUsed } from './taboo-words'
 
 type Taboo = Extract<Game, { type: 'taboo' }>
 
 /** Tabù: explain the concept without the forbidden words; the tutor judges the explanation. */
 export function Taboo({ game, onDone }: GameProps<Taboo>): React.JSX.Element {
   const [text, setText] = useState('')
-  const words = norm(text).split(/[^a-z0-9]+/)
-  // A forbidden word counts with any ending: "limite" catches "limiti".
-  const used = game.forbidden.filter((f) => {
-    const stem = norm(f).slice(0, Math.max(4, norm(f).length - 2))
-    return words.some((w) => w.startsWith(stem))
-  })
+  const used = tabooUsed(game.forbidden, text)
   return (
     <div className="g-taboo">
       <p className="g-concept">
@@ -35,7 +31,7 @@ export function Taboo({ game, onDone }: GameProps<Taboo>): React.JSX.Element {
           Hai usato: {used.join(', ')}
         </p>
       )}
-      <button type="button" className="pri" disabled={!text.trim() || used.length > 0} onClick={() => onDone({ score: 1, total: 1, detail: `spiegazione: ${text.trim()}` })}>
+      <button type="button" className="pri" disabled={!text.trim() || used.length > 0} onClick={() => onDone({ score: 0, total: 0, detail: clip(`spiegazione: ${text.trim()}`) })}>
         Invia la spiegazione
       </button>
     </div>

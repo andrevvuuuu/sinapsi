@@ -64,7 +64,9 @@ export const TeacherTurnSchema = TurnShape.superRefine((t, ctx) => {
     const g = q.game
     if (!g) ctx.addIssue({ code: 'custom', message: 'una domanda "game" ha bisogno di "game"' })
     else if (g.type === 'order' && new Set(g.steps).size !== g.steps.length) ctx.addIssue({ code: 'custom', message: 'i passi da riordinare devono essere diversi' })
-    else if (g.type === 'match' && new Set(g.pairs.map((p) => p[0])).size !== g.pairs.length) ctx.addIssue({ code: 'custom', message: 'le coppie devono avere voci diverse' })
+    else if (g.type === 'match' && (new Set(g.pairs.map((p) => p[0])).size !== g.pairs.length || new Set(g.pairs.map((p) => p[1])).size !== g.pairs.length))
+      ctx.addIssue({ code: 'custom', message: 'le coppie devono avere voci e corrispondenti diversi' })
+    else if (g.type === 'taboo' && new Set(g.forbidden).size !== g.forbidden.length) ctx.addIssue({ code: 'custom', message: 'le parole proibite devono essere diverse' })
     else if (g.type === 'spot' && (g.wrong < 0 || g.wrong >= g.lines.length)) ctx.addIssue({ code: 'custom', message: '"wrong" deve indicare una delle righe' })
   }
   if (t.plan) {

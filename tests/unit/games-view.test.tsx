@@ -91,7 +91,7 @@ describe('Tabù', () => {
     expect(screen.getByText(/Hai usato: limite/)).toBeTruthy()
     fireEvent.change(box, { target: { value: 'quanto cambia f per un passo piccolissimo' } })
     fireEvent.click(screen.getByRole('button', { name: 'Invia la spiegazione' }))
-    expect(onAnswer).toHaveBeenCalledWith({ questionId: 'g1', game: { score: 1, total: 1, detail: 'spiegazione: quanto cambia f per un passo piccolissimo' } })
+    expect(onAnswer).toHaveBeenCalledWith({ questionId: 'g1', game: { score: 0, total: 0, detail: 'spiegazione: quanto cambia f per un passo piccolissimo' } })
   })
 })
 

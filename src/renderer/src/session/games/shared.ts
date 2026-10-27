@@ -22,3 +22,24 @@ export const norm = (s: string): string =>
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
+
+/** Coppie layout: the left column shuffled, the right column shuffled so that no row holds its own match. */
+export function matchLayout(n: number, seed: string): { left: number[]; right: number[] } {
+  const idx = [...Array(n).keys()]
+  const left = seededShuffle(idx, seed + 'l')
+  const right = seededShuffle(idx, seed + 'r')
+  for (let pass = 0; pass < n; pass++) {
+    let clash = false
+    for (let i = 0; i < n; i++)
+      if (right[i] === left[i]) {
+        clash = true
+        const j = (i + 1) % n
+        ;[right[i], right[j]] = [right[j], right[i]]
+      }
+    if (!clash) break
+  }
+  return { left, right }
+}
+
+/** Game details travel to the tutor through IPC (max 5000 characters). */
+export const clip = (s: string, max = 4000): string => (s.length > max ? s.slice(0, max - 1) + '…' : s)
