@@ -13,12 +13,13 @@ export function SessionView({ id, onBack, onOpenNota }: { id: string; onBack: ()
   const [s, setS] = useState<SessionState | null>(null)
   const [free, setFree] = useState('')
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const createNota = async (): Promise<void> => {
     setCreating(true)
     try {
       onOpenNota?.(await window.sinapsi.notes.create({ sessionId: id }))
     } catch (e) {
-      console.warn('[nota]', e)
+      setCreateError((e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
     } finally {
       setCreating(false)
     }
@@ -141,6 +142,7 @@ export function SessionView({ id, onBack, onOpenNota }: { id: string; onBack: ()
                     <button type="button" className={s.notePath ? 'ghost' : 'pri'} onClick={onBack}>
                       Torna alla home
                     </button>
+                    {createError && <span role="alert">{createError}</span>}
                   </div>
                 </div>
               )}

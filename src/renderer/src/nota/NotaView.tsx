@@ -12,6 +12,9 @@ const LAYERS: [keyof Layers, string][] = [
   ['fonti', 'Fonti']
 ]
 
+/** The message of an error thrown in main, without Electron's "Error invoking remote method" prefix. */
+export const remoteMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+
 function Elapsed({ since }: { since: number }): React.JSX.Element {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
@@ -27,6 +30,19 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
   const [n, setN] = useState<StoredNote | null>(null)
   const [mode, setMode] = useState<Mode>('leggi')
   const [layers, setLayers] = useState<Layers>({ sessione: true, quiz: true, fonti: true })
+  const [retrying, setRetrying] = useState(false)
+  const [retryError, setRetryError] = useState<string | null>(null)
+  const retry = async (): Promise<void> => {
+    setRetrying(true)
+    setRetryError(null)
+    try {
+      await api.retry(id)
+    } catch (e) {
+      setRetryError(remoteMessage(e))
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -89,9 +105,10 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
           ) : (
             <>
               <p role="alert">{n.error ?? 'Qualcosa è andato storto.'}</p>
-              <button type="button" className="btn pri" onClick={() => void api.retry(id)}>
+              <button type="button" className="btn pri" disabled={retrying} onClick={() => void retry()}>
                 Riprova
               </button>
+              {retryError && <p role="alert">{retryError}</p>}
             </>
           )}
         </div>

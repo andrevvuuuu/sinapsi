@@ -80,6 +80,15 @@ function isBreak(fn: Fn, a: number, b: number, ya: number, yb: number, tol: numb
   return true
 }
 
+const zeroEverywhere = (ys: number[], tol: number): boolean => ys.filter((y) => Number.isFinite(y) && Math.abs(y) <= tol).length > ys.length / 2
+
+/** True when g is (numerically) zero on most of [a, b]: every point satisfies the condition. */
+export function vanishes(g: Fn, [a, b]: [number, number], n = 400): boolean {
+  const ys = Array.from({ length: n + 1 }, (_, i) => g(a + ((b - a) * i) / n))
+  const finite = ys.filter(Number.isFinite).map(Math.abs).sort((p, q) => p - q)
+  return zeroEverywhere(ys, 1e-6 * Math.max(1, finite[Math.floor(finite.length / 2)] ?? 1))
+}
+
 /** Zeros of g on [a, b]: sign changes refined by bisection, plus tangencies (|g| touching 0). Poles are not zeros. */
 export function findRoots(g: Fn, [a, b]: [number, number], n = 400): number[] {
   const xs: number[] = []
@@ -92,6 +101,7 @@ export function findRoots(g: Fn, [a, b]: [number, number], n = 400): number[] {
   const finite = ys.filter(Number.isFinite).map(Math.abs).sort((p, q) => p - q)
   const scale = Math.max(1, finite[Math.floor(finite.length / 2)] ?? 1)
   const tol = 1e-6 * scale
+  if (zeroEverywhere(ys, tol)) return []
   const roots: number[] = []
   const push = (r: number): void => {
     if (Math.abs(g(r)) <= tol && !roots.some((x) => Math.abs(x - r) < (b - a) / n)) roots.push(r)
@@ -115,7 +125,8 @@ export function findRoots(g: Fn, [a, b]: [number, number], n = 400): number[] {
       push((lo + hi) / 2)
     }
   }
-  if (Number.isFinite(ys[n]) && ys[n] === 0) push(xs[n])
+  // The ends: a root there is rarely an exact zero (sin π ≈ 1e-16).
+  for (const i of [0, n]) if (Number.isFinite(ys[i]) && Math.abs(ys[i]) <= tol) push(xs[i])
   // Tangency: a local minimum of |g| that reaches (almost) zero without a sign change.
   for (let i = 1; i < n; i++) {
     const [p, c, q] = [Math.abs(ys[i - 1]), Math.abs(ys[i]), Math.abs(ys[i + 1])]

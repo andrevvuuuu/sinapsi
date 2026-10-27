@@ -97,12 +97,21 @@ export function createNoteGenerator(deps: {
       return n.id
     },
     async retry(id) {
-      const n = await this.get(id)
-      if (n.status !== 'error' || running.has(id)) return
-      const src = await resolveSource({ sourcePath: n.sourcePath, sessionId: n.sessionId })
-      const next: StoredNote = { ...n, status: 'generating', error: undefined, updatedAt: Date.now() }
-      await save(next)
-      void generate(next, src.session)
+      // Reserved before any await, so a second quick click cannot start a second generation.
+      if (running.has(id)) return
+      running.add(id)
+      let started = false
+      try {
+        const n = await store.read(id)
+        if (n.status === 'ready') return
+        const src = await resolveSource({ sourcePath: n.sourcePath, sessionId: n.sessionId })
+        const next: StoredNote = { ...n, status: 'generating', error: undefined, updatedAt: Date.now() }
+        await save(next)
+        started = true
+        void generate(next, src.session)
+      } finally {
+        if (!started) running.delete(id)
+      }
     },
     async list() {
       const all = await Promise.all((await store.all()).map(fixStale))

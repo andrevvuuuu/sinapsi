@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { NoteMeta } from '../../../shared/api'
+import { remoteMessage } from './NotaView'
 import './nota.css'
 
 /** An Obsidian note from the tree: its notes vive, and the way to write a new one. */
@@ -31,7 +32,7 @@ export function NotePicker({ path, onOpenNota, onBack }: { path: string; onOpenN
     try {
       onOpenNota(await api.notes.create({ sourcePath: path }))
     } catch (e) {
-      setError(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(e))
+      setError(remoteMessage(e))
       setBusy(false)
     }
   }

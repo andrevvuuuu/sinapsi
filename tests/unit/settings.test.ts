@@ -64,3 +64,11 @@ describe('settings', () => {
     expect(s.theme).toBe('lavagna')
   })
 })
+
+describe('settings choices that equal an old default', () => {
+  it('keeps a deliberate choice of an old default across a reload', async () => {
+    const s = await loadSettings()
+    await saveSettings({ engines: { ...s.engines, note: { engine: 'agy', model: 'gemini-3.8-flash-high' } } })
+    expect((await loadSettings()).engines.note).toEqual({ engine: 'agy', model: 'gemini-3.8-flash-high' })
+  })
+})

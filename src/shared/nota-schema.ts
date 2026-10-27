@@ -56,6 +56,18 @@ function checkFigure(f: z.infer<typeof FigureBase>, ctx: z.RefinementCtx): void 
       fail(`espressione «${src}»: ${(e as Error).message}`)
     }
   }
+  // Functions calling each other in a cycle would recurse forever when drawn.
+  const calls = (body: string): string[] => fns.filter((n) => new RegExp(`(^|[^A-Za-z0-9_])${n}'?\\s*\\(`).test(body))
+  const state = new Map<string, 'open' | 'done'>()
+  const cyclic = (n: string): boolean => {
+    if (state.get(n) === 'open') return true
+    if (state.get(n) === 'done') return false
+    state.set(n, 'open')
+    const found = calls(f.functions[n]).some(cyclic)
+    state.set(n, 'done')
+    return found
+  }
+  if (fns.some(cyclic)) fail('funzioni che si chiamano a vicenda')
   // A function's body may use x and the params but not call itself.
   for (const [name, body] of Object.entries(f.functions)) {
     try {

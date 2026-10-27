@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { FigElement, Figure } from '../../../../shared/nota-schema'
 import { RichText } from '../../session/RichText'
-import { evalIn, findRoots, fmt, makeScope, samplePath } from './plot'
+import { evalIn, findRoots, fmt, makeScope, samplePath, vanishes } from './plot'
 import './figure.css'
 
 const W = 640
@@ -76,12 +76,13 @@ export function FigureView({ fig, step }: { fig: Figure; step?: number }): React
   const searched = fig.points?.param
   const others = JSON.stringify(Object.fromEntries(fig.params.filter((q) => q.id !== searched).map((q) => [q.id, params[q.id]])))
   const roots = useMemo(() => {
-    if (!fig.points) return []
+    if (!fig.points) return [] as number[]
     const pts = fig.points
     const p = fig.params.find((q) => q.id === pts.param)
-    if (!p) return []
+    if (!p) return [] as number[]
     const base = JSON.parse(others) as Record<string, number>
-    return findRoots((v) => evalIn(fig, pts.expr, makeScope(fig, { ...base, [p.id]: v })), [p.min, p.max])
+    const g = (v: number): number => evalIn(fig, pts.expr, makeScope(fig, { ...base, [p.id]: v }))
+    return vanishes(g, [p.min, p.max]) ? 'all' : findRoots(g, [p.min, p.max])
   }, [fig, others])
 
   const anyGreen = fig.elements.some((el) => visible(el) && isGreen(el))
@@ -214,6 +215,7 @@ export function FigureView({ fig, step }: { fig: Figure; step?: number }): React
           <g clipPath={`url(#clip-${uid})`}>{fig.elements.map((el, i) => (el.kind === 'point' ? null : renderEl(el, i)))}</g>
           {showPts &&
             at &&
+            roots !== 'all' &&
             roots.map((r) => {
               const y = at(r)
               if (!Number.isFinite(y)) return null
@@ -252,7 +254,9 @@ export function FigureView({ fig, step }: { fig: Figure; step?: number }): React
             </button>
             <span data-testid="points" aria-live="polite" className="ptl">
               {showPts &&
-                (roots.length === 0 ? (
+                (roots === 'all' ? (
+                  'Vale in tutti i punti di questo intervallo'
+                ) : roots.length === 0 ? (
                   'Nessun punto in questo intervallo'
                 ) : (
                   roots.map((r) => (

@@ -40,7 +40,7 @@ export function TabSet({ label, tabs }: { label: string; tabs: { label: string; 
           </button>
         ))}
       </div>
-      <div role="tabpanel" id={`${id}-p${sel}`} aria-labelledby={`${id}-t${sel}`} className="nv-panel" tabIndex={0}>
+      <div key={sel} role="tabpanel" id={`${id}-p${sel}`} aria-labelledby={`${id}-t${sel}`} className="nv-panel" tabIndex={0}>
         {tabs[sel]?.content}
       </div>
     </div>
