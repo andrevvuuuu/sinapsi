@@ -1,4 +1,7 @@
-const NOTE_LIMIT = 60_000
+export const NOTE_LIMIT = 60_000
+
+/** The Obsidian note as sent to a model: capped, with a visible marker when cut. */
+export const capNote = (text: string): string => (text.length > NOTE_LIMIT ? text.slice(0, NOTE_LIMIT - 200) + '\n[…nota troncata]' : text)
 
 export const TEACHER_SYSTEM_PROMPT = `Sei il tutor di Sinapsi, un'app per studiare in modo attivo. Insegni ad Andrea, una persona alla volta, un argomento alla volta.
 
@@ -48,7 +51,7 @@ Rispondi SEMPRE con un solo oggetto JSON valido secondo lo schema, e nient'altro
 export function firstMessage(topic: string, note?: { title: string; text: string }): string {
   let msg = `Voglio studiare: ${topic}`
   if (note) {
-    const text = note.text.length > NOTE_LIMIT ? note.text.slice(0, NOTE_LIMIT - 200) + '\n[…nota troncata]' : note.text
+    const text = capNote(note.text)
     msg += `\n\nMateriale di Andrea dalla sua nota Obsidian «${note.title}»:\n\n${text}`
   }
   return msg
