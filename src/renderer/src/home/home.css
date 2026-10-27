@@ -74,6 +74,10 @@
 .rt p{margin:0;color:var(--muted);font-size:14px}
 .btn-imp{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px 0 12px;border-radius:999px;border:1px solid var(--hair);background:var(--surface);cursor:not-allowed;font:500 13px var(--sans);opacity:.6}
 .btn-imp svg{width:15px;height:15px}
+.btn-imp.on{cursor:pointer;opacity:1;color:var(--ink)}
+.btn-imp.on:hover{background:var(--faint)}
+.nb-new{display:flex;gap:8px;padding:0 18px 12px}
+.nb-new input{flex:1;min-width:0;min-height:44px;border-radius:12px;border:1px solid var(--hair);background:var(--surface);color:var(--ink);padding:0 12px;font:400 14px var(--sans)}
 .missing{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:40px;z-index:2;background:var(--bg)}
 .missing h2{font:400 36px/1.1 var(--serif);margin:0 0 10px}
 .missing p{color:var(--muted);margin:0 0 18px}

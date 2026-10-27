@@ -33,6 +33,8 @@ export function createNoteGenerator(deps: {
   vault: () => Promise<VaultIndex | null>
   readNote: (path: string) => Promise<string>
   session: (id: string) => Promise<SessionState | null>
+  /** Excerpts from the notebooks of the note's subject; a failure only leaves them out. */
+  sources?: (notePath: string, title: string, noteText: string) => Promise<import('../../shared/notebook-types').Excerpt[]>
   onUpdate: (m: NoteMeta) => void
 }): NoteGenerator {
   const store = noteStore(deps.dir)
@@ -62,9 +64,10 @@ export function createNoteGenerator(deps: {
     try {
       const text = await deps.readNote(n.sourcePath)
       await mkdir(deps.workDir, { recursive: true })
+      const sources = (await deps.sources?.(n.sourcePath, n.sourceTitle, text).catch(() => [])) ?? []
       const r = await deps.bridge.ask({
         task: 'note',
-        prompt: buildNotePrompt({ noteTitle: n.sourceTitle, noteText: text, session }),
+        prompt: buildNotePrompt({ noteTitle: n.sourceTitle, noteText: text, session, sources }),
         schema: NotaSchema,
         timeoutMs: NOTE_TIMEOUT,
         cwd: deps.workDir

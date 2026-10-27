@@ -20,9 +20,10 @@ type HomeProps = {
   onOpenNota?: (id: string) => void
   onOpenSource?: (path: string) => void
   onOpenReview?: (query: string, conceptIds?: string[]) => void
+  onOpenNotebook?: (id: string) => void
 }
 
-export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenReview }: HomeProps = {}): React.JSX.Element {
+export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenReview, onOpenNotebook }: HomeProps = {}): React.JSX.Element {
   const api = window.sinapsi
   const [index, setIndex] = useState<VaultResult | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -158,7 +159,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
           }}
         />
       </main>
-      <NotebookPanel onClose={() => setRight(false)} />
+      <NotebookPanel onClose={() => setRight(false)} onOpen={(id) => onOpenNotebook?.(id)} />
     </div>
   )
 }

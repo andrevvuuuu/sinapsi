@@ -1,6 +1,7 @@
 import type { SessionState } from '../session/events'
 import { capNote } from '../session/prompt'
 import { NOTA_FORMAT } from '../../shared/nota-schema'
+import type { Excerpt } from '../../shared/notebook-types'
 
 const DIGEST_LIMIT = 8000
 const clip = (t: string, n = 300): string => (t.length > n ? t.slice(0, n - 1) + '…' : t).replace(/\s+/g, ' ').trim()
@@ -33,7 +34,7 @@ export function sessionDigest(s: SessionState): string {
   return out
 }
 
-export function buildNotePrompt(input: { noteTitle: string; noteText: string; session?: SessionState }): string {
+export function buildNotePrompt(input: { noteTitle: string; noteText: string; session?: SessionState; sources?: Excerpt[] }): string {
   const parts = [
     `Sei l'autore delle note vive di Sinapsi per Andrea, studente di Scienze matematiche per l'intelligenza artificiale (si interessa anche di bodybuilding: fisiologia, nutrizione). Una nota viva è una nota completa da cui studiare, interattiva, costruita sulla sua nota Obsidian.`,
     `REGOLE
@@ -50,6 +51,10 @@ export function buildNotePrompt(input: { noteTitle: string; noteText: string; se
     NOTA_FORMAT,
     `NOTA OBSIDIAN «${input.noteTitle}»\n\n${capNote(input.noteText)}`
   ]
+  if (input.sources?.length)
+    parts.push(
+      `FONTI DEL NOTEBOOK (estratti dalle fonti che Andrea ha caricato: usali per completare e precisare, ma la nota Obsidian resta la base; quando usi un estratto cita la fonte tra parentesi, per esempio (Dispensa, p. 12))\n\n${input.sources.map((e) => `(${e.title}, ${e.label}) ${e.text}`).join('\n')}`
+    )
   if (input.session) parts.push(`SESSIONE DI STUDIO (usala per i blocchi "session" e per dare più spazio a ciò che è rimasto incerto)\n\n${sessionDigest(input.session)}`)
   parts.push('Non usare strumenti né file. Rispondi solo con l\'oggetto JSON della nota viva, senza testo prima o dopo.')
   return parts.join('\n\n---\n\n')

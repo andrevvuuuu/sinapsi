@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Home from './home/Home'
 import { NotaView } from './nota/NotaView'
 import { NotePicker } from './nota/NotePicker'
+import { NotebookView } from './notebook/NotebookView'
 import { ReviewView } from './review/ReviewView'
 import { SessionView } from './session/SessionView'
 
@@ -11,6 +12,7 @@ type View =
   | { view: 'nota'; id: string }
   | { view: 'source'; path: string }
   | { view: 'review'; query?: string; conceptIds?: string[] }
+  | { view: 'notebook'; id: string }
 
 export default function App(): React.JSX.Element {
   const [v, setV] = useState<View>({ view: 'home' })
@@ -18,6 +20,7 @@ export default function App(): React.JSX.Element {
   const openNota = (id: string): void => setV({ view: 'nota', id })
   if (v.view === 'session') return <SessionView id={v.id} onBack={home} onOpenNota={openNota} />
   if (v.view === 'nota') return <NotaView key={v.id} id={v.id} onBack={home} />
+  if (v.view === 'notebook') return <NotebookView key={v.id} id={v.id} onBack={home} />
   const study = (topic: string): void =>
     void window.sinapsi.session
       .start(topic)
@@ -40,6 +43,7 @@ export default function App(): React.JSX.Element {
       onOpenSession={(id) => setV({ view: 'session', id })}
       onOpenNota={openNota}
       onOpenSource={(path) => setV({ view: 'source', path })}
+      onOpenNotebook={(id) => setV({ view: 'notebook', id })}
       onOpenReview={(query, conceptIds) =>
         setV({ view: 'review', query: query || undefined, conceptIds })
       }
