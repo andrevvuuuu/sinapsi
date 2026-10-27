@@ -41,4 +41,25 @@ describe('Home', () => {
     render(<Home />)
     expect(await screen.findByText(/serve l'accesso/)).toBeTruthy()
   })
+
+  it('opens an Obsidian note from the tree inside the app', async () => {
+    window.sinapsi = mockApi(idx)
+    const onOpenSource = vi.fn()
+    render(<Home onOpenSource={onOpenSource} />)
+    fireEvent.click(await screen.findByText('Teorema di Rolle'))
+    expect(onOpenSource).toHaveBeenCalledWith('/v/Matematica/Teorema di Rolle.md')
+  })
+
+  it('lists the notes vive and opens one', async () => {
+    const ID = '11111111-1111-4111-8111-111111111111'
+    window.sinapsi = {
+      ...mockApi(idx),
+      notes: { list: vi.fn(async () => [{ id: ID, createdAt: 1, updatedAt: 1, status: 'ready', sourcePath: '/v/x.md', sourceTitle: 'Lagrange', title: 'Teorema di Lagrange' }]), onUpdate: () => () => undefined }
+    } as never
+    const onOpenNota = vi.fn()
+    render(<Home onOpenNota={onOpenNota} />)
+    expect(await screen.findByRole('heading', { name: 'Note vive' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Teorema di Lagrange/ }))
+    expect(onOpenNota).toHaveBeenCalledWith(ID)
+  })
 })

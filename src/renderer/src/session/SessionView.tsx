@@ -8,10 +8,21 @@ import './session.css'
 
 const PHASE: Record<SessionState['phase'], string> = { probe: 'Misura', plan: 'Piano', teach: 'Insegnamento', consolidate: 'Consolidamento', done: 'Conclusa' }
 
-export function SessionView({ id, onBack }: { id: string; onBack: () => void }): React.JSX.Element {
+export function SessionView({ id, onBack, onOpenNota }: { id: string; onBack: () => void; onOpenNota?: (id: string) => void }): React.JSX.Element {
   const api = window.sinapsi.session
   const [s, setS] = useState<SessionState | null>(null)
   const [free, setFree] = useState('')
+  const [creating, setCreating] = useState(false)
+  const createNota = async (): Promise<void> => {
+    setCreating(true)
+    try {
+      onOpenNota?.(await window.sinapsi.notes.create({ sessionId: id }))
+    } catch (e) {
+      console.warn('[nota]', e)
+    } finally {
+      setCreating(false)
+    }
+  }
   const scroller = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -121,8 +132,13 @@ export function SessionView({ id, onBack }: { id: string; onBack: () => void }):
               {s.phase === 'done' && (
                 <div className="shell">
                   <div className="inner act">
-                    <span>Sessione conclusa. La nota viva arriverà nella fase 3.</span>
-                    <button type="button" className="pri" onClick={onBack}>
+                    <span>{s.notePath ? 'Sessione conclusa. Ora posso scrivere la nota viva dalla tua nota e da questa sessione.' : 'Sessione conclusa.'}</span>
+                    {s.notePath && (
+                      <button type="button" className="pri" disabled={creating} onClick={() => void createNota()}>
+                        Crea la nota viva
+                      </button>
+                    )}
+                    <button type="button" className={s.notePath ? 'ghost' : 'pri'} onClick={onBack}>
                       Torna alla home
                     </button>
                   </div>

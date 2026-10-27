@@ -20,7 +20,7 @@ export function NoteTree({ nodes, onOpen }: { nodes: TreeNode[]; onOpen: (path: 
             key={n.path}
             type="button"
             className={'leaf' + (n.note?.available ? '' : ' off')}
-            title={n.note?.available ? 'Apri in Obsidian' : 'Non ancora scaricata da iCloud'}
+            title={n.note?.available ? 'Apri la nota' : 'Non ancora scaricata da iCloud'}
             onClick={() => onOpen(n.path)}
           >
             <span>{n.name}</span>

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile, mkdir } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, writeFile, mkdir } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -51,7 +51,16 @@ function setup(ask: Bridge['ask'] = vi.fn(async () => ({ data: parseNota(raw), f
   })
   return { g, ask, updates }
 }
-const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 20))
+// Waits until no stored note is still being written (reads the files, not a fixed delay).
+const settle = (): Promise<void> =>
+  vi.waitFor(
+    async () => {
+      const names = await readdir(join(dir, 'notes')).catch(() => [] as string[])
+      for (const n of names.filter((x) => x.endsWith('.json')))
+        if (JSON.parse(await readFile(join(dir, 'notes', n), 'utf8')).status === 'generating') throw new Error('ancora in scrittura')
+    },
+    { timeout: 2000, interval: 5 }
+  )
 
 describe('note generator', () => {
   it('creates a note from a vault note in the background', async () => {
