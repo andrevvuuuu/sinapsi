@@ -13,3 +13,15 @@ export const lastError = (s: PracticeState): string | undefined => {
   return e?.kind === 'error' ? e.message : undefined
 }
 export const fmtPoints = (n: number): string => String(n).replace('.', ',')
+
+const TEX: Record<string, string> = { le: '≤', leq: '≤', ge: '≥', geq: '≥', cdot: '·', to: '→', infty: '∞', in: '∈', ne: '≠', neq: '≠', pm: '±', times: '×', lim: 'lim' }
+/** A plain one-line preview of a statement: LaTeX commands become symbols or words, markup goes. */
+export const snippet = (md: string): string => {
+  const t = md
+    .replace(/\\([a-zA-Z]+)/g, (_, c: string) => TEX[c] ?? (/^(left|right|,|;|quad)$/.test(c) ? '' : c))
+    .replace(/[${}]/g, '')
+    .replace(/[*_`#>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return t.length > 48 ? t.slice(0, 47) + '…' : t
+}

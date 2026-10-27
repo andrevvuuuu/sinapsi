@@ -185,7 +185,7 @@ describe('PracticeView — exam', () => {
   const exam = (endsAt: number, extra: Partial<NonNullable<PracticeState['exam']>> = {}): PracticeState => ({ ...base, mode: 'exam', durationMin: 30, exam: { sheet, endsAt, answers: {}, delivered: false, ...extra } })
   it('runs the clock, saves drafts and delivers on confirmation', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    const { a } = api(exam(Date.now() + 30 * 60_000))
+    const { a } = api(exam(Date.now() + 30 * 60_000 + 1_500))
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
     expect(await screen.findByRole('timer')).toBeTruthy()
@@ -222,5 +222,12 @@ describe('PracticeView — exam', () => {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Ritesta gli errori in allenamento' })))
     expect(a.practice.create).toHaveBeenCalledWith({ conceptIds: ['n_r'], sourceIds: [], free: '' })
     expect(onStarted).toHaveBeenCalledWith(ID)
+  })
+})
+
+describe('arc previews', () => {
+  it('turn LaTeX into readable text', async () => {
+    const { snippet } = await import('../../src/renderer/src/practice/exam-format')
+    expect(snippet('Mostra che $|\\sin a - \\sin b| \\le |a-b|$.')).toBe('Mostra che |sin a - sin b| ≤ |a-b|.')
   })
 })

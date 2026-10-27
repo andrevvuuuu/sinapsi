@@ -3,17 +3,13 @@ import type { PracticeProblem, PracticeState } from '../../../main/practice/even
 import { MODE_IT, OUTCOME_IT, type Submission } from '../../../shared/practice-protocol'
 import { RichText } from '../session/RichText'
 import { ExamView } from './ExamView'
+import { snippet } from './exam-format'
 import { PhotoButton } from './PhotoButton'
 import './practice.css'
 
 const PHASE_IT = { warmup: 'Riscaldamento', body: 'Corpo', retest: 'Ritest', done: 'Fine' } as const
 const OUTCOME_CHIP = { solved: ['risolto', 'ok'], solved_hints: ['aiuti', 'mid'], surrendered: ['arreso', 'no'] } as const
 const clean = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
-const snippet = (md: string): string => {
-  const t = md.replace(/\$+/g, '').replace(/[*_`#>]/g, '').replace(/\s+/g, ' ').trim()
-  return t.length > 48 ? t.slice(0, 47) + '…' : t
-}
-
 function ProblemDock({ problem, sessionId, onSend }: { problem: PracticeProblem; sessionId: string; onSend: (s: Submission) => Promise<void> }): React.JSX.Element {
   const [text, setText] = useState('')
   const [line, setLine] = useState<number | undefined>(undefined)
@@ -301,7 +297,7 @@ export function PracticeView({ id, onBack, onStarted }: { id: string; onBack: ()
               {learner && !active && s.paused && (
                 <div className="shell">
                   <form
-                    className="inner composer"
+                    className="inner pr-ask"
                     onSubmit={(e) => {
                       e.preventDefault()
                       if (!question.trim()) return

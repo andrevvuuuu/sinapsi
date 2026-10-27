@@ -40,7 +40,8 @@ export function ExamView({ state, onBack, onStarted }: { state: PracticeState; o
     }
   }, [api, running, state.id])
 
-  const left = exam ? exam.endsAt - now : 0
+  // Never more than the chosen length (the clocks of window and app differ by a few ms).
+  const left = exam ? Math.min(exam.endsAt - now, (state.durationMin ?? 0) * 60_000 || Infinity) : 0
   useEffect(() => {
     if (running && left <= 0) deliver()
     // eslint-disable-next-line react-hooks/exhaustive-deps

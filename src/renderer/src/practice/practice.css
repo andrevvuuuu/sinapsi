@@ -66,9 +66,9 @@
 .pr .lines button>span{font:500 12px var(--mono);color:var(--muted)}
 .pr .lines button[aria-pressed="true"]{border-color:var(--ink);background:var(--faint)}
 .pr .lines .rich p{margin:0}
-.pr .composer{display:flex;gap:8px;align-items:center}
-.pr .composer input{flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;outline:none;min-height:42px;padding:0 4px}
-.pr .composer input::placeholder{color:var(--muted)}
+.pr .pr-ask{display:flex;gap:8px;align-items:center}
+.pr .pr-ask input{flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;outline:none;min-height:42px;padding:0 4px}
+.pr .pr-ask input::placeholder{color:var(--muted)}
 .pr .side{border-left:1px solid var(--hair);background:var(--panel);padding:20px 16px;overflow:auto}
 .pr .arc{display:flex;flex-direction:column;gap:18px;margin-top:12px}
 .pr .arc h3{margin:0 0 6px;font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center}

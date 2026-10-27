@@ -108,3 +108,25 @@ describe('exam', () => {
     expect((await exam.get(id)).exam!.grade!.total).toBe(30)
   })
 })
+
+describe('over-escaped model text', () => {
+  it('turns doubled LaTeX backslashes and literal \\n back into LaTeX and new lines', async () => {
+    const { unescapeOver } = await import('../../src/main/ai/json')
+    expect(unescapeOver('Sia $f_c(x)$.\\n\\n(a) Vale $$\\\\frac{b-a}{b}<\\\\ln\\\\frac{b}{a}$$')).toBe('Sia $f_c(x)$.\n\n(a) Vale $$\\frac{b-a}{b}<\\ln\\frac{b}{a}$$')
+    expect(unescapeOver('$\\nabla f \\neq 0$ e $\\frac12$')).toBe('$\\nabla f \\neq 0$ e $\\frac12$')
+  })
+  it('cleans the sheet and the grade, and the prompts no longer ask to double backslashes', async () => {
+    const { exam, ask } = setup([
+      { title: 'T', problems: [{ id: 'e1', statement: 'Calcola $\\\\lim_{x\\\\to0}$.\\n(b) poi', points: 30, targets: [], modelSolution: 'Vale $\\\\frac12$.' }] },
+      { items: [{ id: 'e1', points: 3, comment: 'Manca $\\\\ln$.' }], note: 'Riprendi.\\n- le basi.' }
+    ])
+    const id = await exam.start(material, 30)
+    await exam.retry(id)
+    expect((await exam.get(id)).exam!.sheet.problems[0].statement).toBe('Calcola $\\lim_{x\\to0}$.\n(b) poi')
+    await exam.deliver(id, { e1: 'x' })
+    const s = await exam.get(id)
+    expect(s.exam!.sheet.problems[0].modelSolution).toBe('Vale $\\frac12$.')
+    expect(s.exam!.grade).toMatchObject({ note: 'Riprendi.\n- le basi.', items: [{ comment: 'Manca $\\ln$.' }] })
+    for (const c of ask.mock.calls) expect((c[0] as unknown as { prompt: string }).prompt).not.toMatch(/raddoppiat/)
+  })
+})

@@ -2,6 +2,7 @@ import { mkdir, readdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
 import type { Bridge } from '../ai/bridge'
+import { unescapeOver } from '../ai/json'
 
 export const PHOTO_MAX = 15 * 1024 * 1024
 const PhotoSchema = z.object({ readable: z.boolean(), text: z.string() })
@@ -30,10 +31,10 @@ export async function transcribePhoto(input: { bridge: Pick<Bridge, 'ask'>; dir:
     cwd: input.dir,
     timeoutMs: 120_000,
     schema: PhotoSchema,
-    prompt: `Nella cartella di lavoro c'è l'immagine «${name}»: la foto di un foglio su cui Andrea ha scritto a mano il suo ragionamento. Aprila con lo strumento Read e trascrivila fedelmente: testo in italiano, matematica in LaTeX con $...$ e $$...$$ (barre rovesciate raddoppiate nel JSON), un a capo per ogni riga del foglio. Non correggere, non completare, non commentare. Le parti illeggibili segnale con [illeggibile]. Se non è un foglio scritto o è del tutto illeggibile, "readable": false.
+    prompt: `Nella cartella di lavoro c'è l'immagine «${name}»: la foto di un foglio su cui Andrea ha scritto a mano il suo ragionamento. Aprila con lo strumento Read e trascrivila fedelmente: testo in italiano, matematica in LaTeX con $...$ e $$...$$, un a capo per ogni riga del foglio. Non correggere, non completare, non commentare. Le parti illeggibili segnale con [illeggibile]. Se non è un foglio scritto o è del tutto illeggibile, "readable": false.
 Rispondi solo con JSON: {"readable":true,"text":"..."}`
   })
   const out = r.data as z.infer<typeof PhotoSchema>
   if (!out.readable || !out.text.trim()) throw new Error('Non riesco a leggere il foglio: rifai la foto più da vicino e con più luce.')
-  return out.text.trim()
+  return unescapeOver(out.text).trim()
 }

@@ -4,6 +4,7 @@ import type { Grade } from '../../shared/memory-types'
 import { ExamGradeReplySchema, ExamSheetSchema, type ExamGrade, type ExamSheet, type Material } from '../../shared/practice-types'
 import type { PracticeState } from './events'
 import { friendly, type PracticeDeps, type PracticeRunner } from './runner'
+import { unescapeOver } from '../ai/json'
 
 const TIMEOUT = 300_000
 
@@ -23,7 +24,7 @@ Regole:
 - Risolvi tu ogni problema PRIMA di scriverlo e verifica che sia corretto e senza scorciatoie: metti la soluzione completa in "modelSolution" (Andrea la vede solo dopo la correzione).
 - "points": il peso di ogni problema; il totale verrà portato a 30.
 - "targets": gli id dei concetti scelti che il problema esercita ([] se il materiale è libero).
-- Testo in italiano, matematica in LaTeX con $...$ e $$...$$ (barre rovesciate raddoppiate nel JSON).
+- Testo in italiano, matematica in LaTeX con $...$ e $$...$$.
 Rispondi solo con JSON: {"title":"...","problems":[{"id":"e1","statement":"...","points":10,"targets":[],"modelSolution":"..."}]}
 
 MATERIALE
@@ -60,7 +61,8 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
     try {
       const context = await deps.material(s.material)
       const r = await deps.bridge.ask({ task: 'teach', prompt: sheetPrompt(context, s.durationMin ?? 60), schema: ExamSheetSchema, timeoutMs: TIMEOUT, cwd: deps.dir })
-      const sheet = r.data as ExamSheet
+      const raw = r.data as ExamSheet
+      const sheet: ExamSheet = { title: unescapeOver(raw.title), problems: raw.problems.map((p) => ({ ...p, statement: unescapeOver(p.statement), modelSolution: unescapeOver(p.modelSolution) })) }
       const points = normalizePoints(sheet.problems.map((p) => p.points))
       runner.inflight.delete(id)
       await runner.append(id, { t: 'exam', sheet: { ...sheet, problems: sheet.problems.map((p, i) => ({ ...p, points: points[i] })) }, endsAt: now() + (s.durationMin ?? 60) * 60_000, at: now() })
@@ -81,7 +83,7 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
       const reply = r.data as Omit<ExamGrade, 'total' | 'lode'>
       const items = sheet.problems.map((p) => {
         const it = reply.items.find((x) => x.id === p.id)
-        return { id: p.id, points: Math.min(p.points, Math.max(0, Math.round((it?.points ?? 0) * 2) / 2)), comment: it?.comment ?? '', ...(it?.miss ? { miss: it.miss } : {}) }
+        return { id: p.id, points: Math.min(p.points, Math.max(0, Math.round((it?.points ?? 0) * 2) / 2)), comment: unescapeOver(it?.comment ?? ''), ...(it?.miss ? { miss: it.miss } : {}) }
       })
       const total = Math.min(30, Math.round(items.reduce((a, b) => a + b.points, 0)))
       const lode = total === 30 && items.every((it, i) => it.points === sheet.problems[i].points)
@@ -91,7 +93,7 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
         for (const conceptId of new Set(p.targets)) await deps.memory.append({ conceptId, at: now(), grade: g, correct: share >= 0.5, via: 'practice' })
       }
       runner.inflight.delete(id)
-      await runner.append(id, { t: 'graded', grade: { items, note: reply.note, total, lode }, at: now() })
+      await runner.append(id, { t: 'graded', grade: { items, note: unescapeOver(reply.note), total, lode }, at: now() })
     } catch (e) {
       runner.inflight.delete(id)
       await runner.append(id, { t: 'error', message: friendly(e), at: now() })
