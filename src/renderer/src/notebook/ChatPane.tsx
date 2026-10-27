@@ -79,6 +79,7 @@ export function ChatPane({ turns, pending, selected, ready, onAsk, onRetry, onCi
                   <p>{t.missing}</p>
                 </div>
               )}
+              {t.coverage && <p className="nb-dropped">{`Ho letto i ${t.coverage.used} passaggi più pertinenti su ${t.coverage.total}: per domande su tutto, seleziona meno fonti.`}</p>}
               {t.dropped > 0 && <p className="nb-dropped">{t.dropped === 1 ? 'Ho tolto 1 frase che non citava le fonti.' : `Ho tolto ${t.dropped} frasi che non citavano le fonti.`}</p>}
             </article>
           )

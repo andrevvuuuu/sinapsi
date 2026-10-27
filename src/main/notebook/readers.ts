@@ -61,10 +61,13 @@ function xmlText(xml: string): string {
   return paras.map((p) => p.trim()).filter(Boolean).join('\n')
 }
 
+/** Only the slide and notes XML of a presentation: embedded videos and images are never inflated. */
+export const isSlidePart = (name: string): boolean => /^ppt\/(slides|notesSlides)\/(_rels\/)?[^/]+\.xml(\.rels)?$/.test(name)
+
 export async function readSlides(file: string): Promise<SourceText> {
   let files: Record<string, Uint8Array>
   try {
-    files = unzipSync(new Uint8Array(await readFile(file)))
+    files = unzipSync(new Uint8Array(await readFile(file)), { filter: (f) => isSlidePart(f.name) })
   } catch {
     throw new Error('Presentazione illeggibile (serve un file .pptx)')
   }

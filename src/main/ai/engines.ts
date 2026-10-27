@@ -11,6 +11,8 @@ export type CallOptions = {
   systemPrompt?: string
   jsonSchema?: object
   timeoutMs?: number
+  /** One-shot calls that must only answer from the prompt (the notebook). */
+  noTools?: boolean
 }
 
 // The tutor only talks: no file, shell or web tools inside a conversation.
@@ -27,7 +29,7 @@ export function buildArgs(engine: Engine, prompt: string, opts: CallOptions = {}
   }
   const session = conv ? (conv.resume ? ['--resume', conv.id] : ['--session-id', conv.id]) : []
   const system = opts.systemPrompt && !conv?.resume ? ['--system-prompt', opts.systemPrompt] : []
-  const lockdown = conv ? ['--tools', '', '--disallowedTools', NO_TOOLS, '--strict-mcp-config', '--setting-sources', ''] : []
+  const lockdown = conv || opts.noTools ? ['--tools', '', '--disallowedTools', NO_TOOLS, '--strict-mcp-config', '--setting-sources', ''] : []
   return { cmd: 'claude', args: ['-p', prompt, '--output-format', 'json', ...m, ...session, ...system, ...schema, ...lockdown] }
 }
 
@@ -68,7 +70,7 @@ function pythonBins(home: string): string[] {
   return [...list(`${home}/Library/Python`, 'bin'), ...list('/Library/Frameworks/Python.framework/Versions', 'bin')]
 }
 
-export const nodeSpawn: SpawnFn = (cmd, args, { timeoutMs, cwd, onOutput }) =>
+export const nodeSpawn: SpawnFn = (cmd, args, { timeoutMs, cwd, onOutput, signal }) =>
   new Promise((resolve, reject) => {
     const home = homedir()
     const env = { ...process.env, PATH: [`${home}/.local/bin`, '/opt/homebrew/bin', '/usr/local/bin', process.env.PATH, ...pythonBins(home)].join(':') }
@@ -111,6 +113,10 @@ export const nodeSpawn: SpawnFn = (cmd, args, { timeoutMs, cwd, onOutput }) =>
     }, timeoutMs)
     // Hard deadline: never wait more than timeout + 3 s, whatever the pipes do.
     const hard = setTimeout(() => finish(null), timeoutMs + 3000)
+    if (signal) {
+      if (signal.aborted) killTree()
+      else signal.addEventListener('abort', killTree, { once: true })
+    }
     child.on('error', (e) => {
       if (done) return
       done = true

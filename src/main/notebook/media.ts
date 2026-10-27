@@ -25,15 +25,16 @@ export function youtubeId(u: string): string | null {
 export const isYoutubeUrl = (u: string): boolean => youtubeId(u) !== null
 
 /** Runs a tool and turns a missing program or a failure into an Italian message. */
-async function tool(run: RunTool, cmd: string, args: string[], timeoutMs: number, onOutput?: (c: string) => void): Promise<string> {
+async function tool(run: RunTool, cmd: string, args: string[], timeoutMs: number, onOutput?: (c: string) => void, signal?: AbortSignal): Promise<string> {
   let r
   try {
-    r = await run(cmd, args, { timeoutMs, onOutput })
+    r = await run(cmd, args, { timeoutMs, onOutput, signal })
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT')
       throw new Error(`Manca ${cmd}: ${cmd === 'yt-dlp' ? 'installalo con «pip install yt-dlp»' : 'installalo con «pip install mlx-whisper»'}`, { cause: e })
     throw e
   }
+  if (signal?.aborted) throw new Error('Interrotta')
   if (r.timedOut) throw new Error(`${cmd} ci ha messo troppo`)
   if (r.code !== 0) {
     const last = (r.stderr || r.stdout).trim().split('\n').filter((l) => /error/i.test(l)).pop()
@@ -47,28 +48,41 @@ const percent = (onProgress: (p: number) => void) => (chunk: string) => {
   if (all.length) onProgress(Math.min(100, Math.floor(Number(all[all.length - 1][1]))))
 }
 
-export async function transcribe(run: RunTool, file: string, outDir: string, onProgress: (p: number) => void): Promise<SourceText> {
-  await tool(run, 'mlx_whisper', ['--model', WHISPER_MODEL, '--output-format', 'json', '--output-dir', outDir, '--output-name', 'trascrizione', '--verbose', 'False', '--', file], TRANSCRIBE_TIMEOUT, percent(onProgress))
+export async function transcribe(run: RunTool, file: string, outDir: string, onProgress: (p: number) => void, signal?: AbortSignal): Promise<SourceText> {
+  await tool(run, 'mlx_whisper', ['--model', WHISPER_MODEL, '--output-format', 'json', '--output-dir', outDir, '--output-name', 'trascrizione', '--verbose', 'False', '--', file], TRANSCRIBE_TIMEOUT, percent(onProgress), signal)
   const t = parseWhisperJson(JSON.parse(await readFile(join(outDir, 'trascrizione.json'), 'utf8')))
   if (!t.segments.length) throw new Error('Non ho sentito parole nella registrazione')
   return t
 }
 
-// Manual Italian, then manual English, then the auto captions in the video's own language.
-const SUB_ORDER = [/\.it\.vtt$/, /\.en\.vtt$/, /-orig\.vtt$/, /\.vtt$/]
+const SUB_ORDER = [/\.it\.vtt$/, /\.en\.vtt$/, /\.it-orig\.vtt$/, /-orig\.vtt$/, /\.vtt$/]
 
-export async function fetchYoutube(run: RunTool, url: string, dir: string, onProgress: (p: number) => void): Promise<{ title: string; text: SourceText }> {
+/**
+ * Subtitles first, in two tries: manual Italian or English, then only the auto captions in the video's own
+ * language ("-orig"), never YouTube's machine translations. If both fail (none, or HTTP 429), the audio is transcribed.
+ */
+export async function fetchYoutube(run: RunTool, url: string, dir: string, onProgress: (p: number) => void, signal?: AbortSignal): Promise<{ title: string; text: SourceText }> {
   if (!isYoutubeUrl(url)) throw new Error('Link YouTube non valido')
-  const out = await tool(run, 'yt-dlp', ['--skip-download', '--no-simulate', '--write-subs', '--write-auto-subs', '--sub-langs', 'it,en,it-orig,en-orig', '--sub-format', 'vtt', '--no-playlist', '--print', 'title', '-o', join(dir, 'sub'), '--', url], YT_TIMEOUT)
-  const title = out.trim().split('\n').filter(Boolean).pop()?.trim() || 'Video YouTube'
-  const files = (await readdir(dir)).filter((f) => f.startsWith('sub.') && f.endsWith('.vtt'))
-  for (const re of SUB_ORDER) {
-    const f = files.find((x) => re.test(x))
-    if (!f) continue
-    const text = parseVtt(await readFile(join(dir, f), 'utf8'))
-    if (text.segments.length) return { title, text }
+  let title = 'Video YouTube'
+  const trySubs = async (flags: string[]): Promise<SourceText | null> => {
+    try {
+      const out = await tool(run, 'yt-dlp', ['--skip-download', '--no-simulate', ...flags, '--sub-format', 'vtt', '--no-playlist', '--print', 'title', '-o', join(dir, 'sub'), '--', url], YT_TIMEOUT, undefined, signal)
+      title = out.trim().split('\n').filter(Boolean).pop()?.trim() || title
+    } catch (e) {
+      if (signal?.aborted || (e instanceof Error && e.message.startsWith('Manca'))) throw e
+    }
+    const files = (await readdir(dir)).filter((f) => f.startsWith('sub.') && f.endsWith('.vtt'))
+    for (const re of SUB_ORDER) {
+      const f = files.find((x) => re.test(x))
+      if (!f) continue
+      const text = parseVtt(await readFile(join(dir, f), 'utf8'))
+      if (text.segments.length) return text
+    }
+    return null
   }
-  await tool(run, 'yt-dlp', ['-f', 'bestaudio', '-x', '--audio-format', 'm4a', '--no-playlist', '-o', join(dir, 'audio.%(ext)s'), '--', url], YT_TIMEOUT, percent((p) => onProgress(Math.floor(p / 5))))
-  const text = await transcribe(run, join(dir, 'audio.m4a'), dir, (p) => onProgress(20 + Math.floor((p * 4) / 5)))
+  const subs = (await trySubs(['--write-subs', '--sub-langs', 'it,en'])) ?? (await trySubs(['--write-auto-subs', '--sub-langs', '.*-orig']))
+  if (subs) return { title, text: subs }
+  await tool(run, 'yt-dlp', ['-f', 'bestaudio', '-x', '--audio-format', 'm4a', '--no-playlist', '-o', join(dir, 'audio.%(ext)s'), '--', url], YT_TIMEOUT, percent((p) => onProgress(Math.floor(p / 5))), signal)
+  const text = await transcribe(run, join(dir, 'audio.m4a'), dir, (p) => onProgress(20 + Math.floor((p * 4) / 5)), signal)
   return { title, text }
 }

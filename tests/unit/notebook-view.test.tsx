@@ -164,3 +164,10 @@ describe('scrolling', () => {
     }
   })
 })
+
+describe('partial reading', () => {
+  it('says how much of long sources an answer read', async () => {
+    mount(nb(), [{ role: 'user', text: 'Riassumi', at: 1, sourceIds: ['s1'] }, { ...answer, coverage: { used: 40, total: 200 } } as ChatTurn])
+    expect(await screen.findByText('Ho letto i 40 passaggi più pertinenti su 200: per domande su tutto, seleziona meno fonti.')).toBeTruthy()
+  })
+})

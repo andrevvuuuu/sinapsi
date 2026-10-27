@@ -33,7 +33,7 @@ export type Claim = z.infer<typeof ClaimSchema>
 
 export const ChatTurnSchema = z.discriminatedUnion('role', [
   z.object({ role: z.literal('user'), text: z.string(), at: z.number(), sourceIds: z.array(z.string()) }),
-  z.object({ role: z.literal('assistant'), at: z.number(), claims: z.array(ClaimSchema), missing: z.string().nullable(), dropped: z.number(), excerpts: z.array(ExcerptSchema) }),
+  z.object({ role: z.literal('assistant'), at: z.number(), claims: z.array(ClaimSchema), missing: z.string().nullable(), dropped: z.number(), excerpts: z.array(ExcerptSchema), coverage: z.object({ used: z.number(), total: z.number() }).optional() }),
   z.object({ role: z.literal('error'), at: z.number(), text: z.string() })
 ])
 export type ChatTurn = z.infer<typeof ChatTurnSchema>

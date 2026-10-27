@@ -11,7 +11,7 @@ import { extractJson } from './json'
 export type SpawnFn = (
   cmd: string,
   args: string[],
-  opts: { timeoutMs: number; cwd?: string; onOutput?: (chunk: string) => void }
+  opts: { timeoutMs: number; cwd?: string; onOutput?: (chunk: string) => void; signal?: AbortSignal }
 ) => Promise<{ stdout: string; stderr: string; code: number | null; timedOut: boolean }>
 
 export type EngineStatus = 'idle' | 'busy' | 'auth' | 'missing' | 'error'
@@ -24,6 +24,7 @@ export interface AskRequest<T> {
   cache?: boolean
   timeoutMs?: number
   cwd?: string
+  noTools?: boolean
 }
 export interface AskResult<T> {
   data: T | string
@@ -158,12 +159,12 @@ export function createBridge(deps: {
       }
       const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT
       const data = await enqueue(engine, async () => {
-        const text = (await callOnce(req.task, engine, req.prompt, timeoutMs, { model, cwd: req.cwd })).text
+        const text = (await callOnce(req.task, engine, req.prompt, timeoutMs, { model, cwd: req.cwd, noTools: req.noTools })).text
         if (!req.schema) return text
         const first = validate(req.schema, text)
         if (first.ok) return first.value
         const retryPrompt = `${req.prompt}\n\nLa risposta precedente non era valida: ${first.error}. Rispondi solo con JSON valido.`
-        const second = validate(req.schema, (await callOnce(req.task, engine, retryPrompt, timeoutMs, { model, cwd: req.cwd })).text)
+        const second = validate(req.schema, (await callOnce(req.task, engine, retryPrompt, timeoutMs, { model, cwd: req.cwd, noTools: req.noTools })).text)
         if (second.ok) return second.value
         throw new AiSchemaError(second.error)
       })

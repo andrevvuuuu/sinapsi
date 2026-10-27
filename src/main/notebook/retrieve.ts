@@ -5,32 +5,27 @@ export type Chunk = { sourceId: string; title: string; label: string; text: stri
 export const FULL_BUDGET = 120_000
 export const PICK_BUDGET = 40_000
 
-/** Pieces a segment of at most max chars, cutting at sentence ends, else at spaces; labels never mix. */
+/**
+ * Pieces a segment of at most max chars. Short segments stay exactly as they are; long ones are cut at real
+ * sentence ends (punctuation followed by a space, so 3.14 and 3.2.1 survive) or at line ends, else at spaces.
+ */
 function pieces(text: string, max: number): string[] {
-  const sentences = text.match(/[^.!?\n]+(?:[.!?]+|\n+|$)/g)?.map((s) => s.trim()).filter(Boolean) ?? []
+  if (text.length <= max) return text.trim() ? [text.trim()] : []
+  const units = text.match(/[\s\S]+?(?:[.!?]+(?=\s|$)|\n|$)/g) ?? []
   const out: string[] = []
   let buf = ''
-  const push = (s: string): void => {
-    if (!buf) buf = s
-    else if (buf.length + 1 + s.length <= max) buf += ' ' + s
-    else {
-      out.push(buf)
-      buf = s
+  const add = (u: string): void => {
+    if (buf && buf.length + u.length > max) {
+      if (buf.trim()) out.push(buf.trim())
+      buf = ''
     }
+    buf += u
   }
-  for (const s of sentences) {
-    if (s.length <= max) {
-      push(s)
-      continue
-    }
-    for (const w of s.split(' ')) {
-      if (buf && buf.length + 1 + w.length > max) {
-        out.push(buf)
-        buf = w
-      } else buf = buf ? `${buf} ${w}` : w
-    }
+  for (const u of units) {
+    if (u.length <= max) add(u)
+    else for (const w of u.split(/(?<=\s)/)) add(w)
   }
-  if (buf) out.push(buf)
+  if (buf.trim()) out.push(buf.trim())
   return out
 }
 

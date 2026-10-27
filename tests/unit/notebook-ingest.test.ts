@@ -94,7 +94,7 @@ describe('ingest', () => {
     const { ing, run } = setup()
     await ing.addYoutube(nb, 'https://youtu.be/nosubsxxxxx')
     await ing.idle()
-    expect(run.mock.calls.map((c) => c[0])).toEqual(['yt-dlp', 'yt-dlp', 'mlx_whisper'])
+    expect(run.mock.calls.map((c) => c[0])).toEqual(['yt-dlp', 'yt-dlp', 'yt-dlp', 'mlx_whisper'])
     expect((await sources())[0]).toMatchObject({ status: 'ready' })
   })
   it('rejects a bad YouTube link before running anything', async () => {

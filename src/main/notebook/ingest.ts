@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { copyFile, mkdir, readFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, rm } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import type { Notebook, Source, SourceKind, SourceText } from '../../shared/notebook-types'
 import { fetchYoutube, isYoutubeUrl, transcribe, type RunTool } from './media'
@@ -35,9 +35,12 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
   const { store } = deps
   const progress = new Map<string, number>()
   const removed = new Set<string>()
+  // Queued or running: a second Riprova must not transcribe the same lecture twice.
+  const pending = new Set<string>()
+  const controllers = new Map<string, AbortController>()
   let chain: Promise<void> = Promise.resolve()
 
-  async function read(s: Source): Promise<{ text: SourceText; title?: string }> {
+  async function read(s: Source, signal: AbortSignal): Promise<{ text: SourceText; title?: string }> {
     const dir = store.filesDir(s.id)
     const file = join(dir, s.origin)
     const onProgress = (p: number): void => {
@@ -55,10 +58,10 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
       case 'vault':
         return { text: readTextDoc(await deps.readVault(s.origin)) }
       case 'audio':
-        return { text: await transcribe(deps.run, file, dir, onProgress) }
+        return { text: await transcribe(deps.run, file, dir, onProgress, signal) }
       case 'youtube': {
         await mkdir(dir, { recursive: true })
-        const r = await fetchYoutube(deps.run, s.origin, dir, onProgress)
+        const r = await fetchYoutube(deps.run, s.origin, dir, onProgress, signal)
         return { text: r.text, title: r.title }
       }
     }
@@ -66,11 +69,13 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
 
   async function job(id: string): Promise<void> {
     const s = await store.source(id)
-    if (!s || removed.has(id)) return
+    if (!s || removed.has(id)) return void pending.delete(id)
+    const ctl = new AbortController()
+    controllers.set(id, ctl)
     await store.setStatus(id, { status: 'processing' })
     deps.onChange()
     try {
-      const r = await read(s)
+      const r = await read(s, ctl.signal)
       if (removed.has(id)) return
       await store.writeText(id, r.text)
       await store.setStatus(id, { status: 'ready', info: describe(s.kind, r.text), title: r.title })
@@ -79,11 +84,16 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
       await store.setStatus(id, { status: 'failed', error: e instanceof Error ? e.message : String(e) })
     } finally {
       progress.delete(id)
+      controllers.delete(id)
+      pending.delete(id)
+      // A killed tool may still have written its output into the removed source's folder.
+      if (removed.has(id)) await rm(store.filesDir(id), { recursive: true, force: true }).catch(() => undefined)
       deps.onChange()
     }
   }
 
   function enqueue(id: string): void {
+    pending.add(id)
     chain = chain.then(() => job(id)).catch((e) => console.warn('[notebook] ingest', e))
   }
 
@@ -118,12 +128,17 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
     },
     addVaultNote: (notebookId: string, path: string, title: string): Promise<string> => add({ id: randomUUID(), notebookId, kind: 'vault', title, origin: path }),
     async retry(id: string): Promise<void> {
+      if (pending.has(id)) return
+      pending.add(id)
+      const s = await store.source(id)
+      if (!s || s.status !== 'failed') return void pending.delete(id)
       await store.setStatus(id, { status: 'queued' })
       deps.onChange()
       enqueue(id)
     },
     async remove(id: string): Promise<void> {
       removed.add(id)
+      controllers.get(id)?.abort()
       await store.removeSource(id)
       deps.onChange()
     },
