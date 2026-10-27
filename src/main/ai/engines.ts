@@ -9,6 +9,7 @@ export type CallOptions = {
   conversation?: { id: string; resume: boolean }
   systemPrompt?: string
   jsonSchema?: object
+  timeoutMs?: number
 }
 
 // The tutor only talks: no file, shell or web tools inside a conversation.
@@ -20,7 +21,8 @@ export function buildArgs(engine: Engine, prompt: string, opts: CallOptions = {}
   const conv = opts.conversation
   if (engine === 'agy') {
     const text = opts.systemPrompt && !conv?.resume ? `${opts.systemPrompt}\n\n${prompt}` : prompt
-    return { cmd: 'agy', args: ['-p', text, '--output-format', 'json', '--print-timeout', '170s', ...m, ...(conv?.resume ? ['--conversation', conv.id] : []), ...schema] }
+    const printTimeout = `${Math.max(30, Math.floor((opts.timeoutMs ?? 180_000) / 1000) - 10)}s`
+    return { cmd: 'agy', args: ['-p', text, '--output-format', 'json', '--print-timeout', printTimeout, '--disable-slash-commands', ...m, ...(conv?.resume ? ['--conversation', conv.id] : []), ...schema] }
   }
   const session = conv ? (conv.resume ? ['--resume', conv.id] : ['--session-id', conv.id]) : []
   const system = opts.systemPrompt && !conv?.resume ? ['--system-prompt', opts.systemPrompt] : []

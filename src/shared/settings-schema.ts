@@ -11,7 +11,7 @@ const GEMINI: EngineChoice = { engine: 'agy', model: 'gemini-3.8-flash-high' }
 const CLAUDE: EngineChoice = { engine: 'claude', model: 'sonnet' }
 export const DEFAULT_ENGINES: Record<Task, EngineChoice> = {
   extract: GEMINI,
-  note: GEMINI,
+  note: { engine: 'agy', model: 'gemini-3.8-flash-medium' },
   variants: GEMINI,
   notebook: GEMINI,
   teach: CLAUDE,

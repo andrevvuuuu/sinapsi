@@ -23,6 +23,7 @@ export interface AskRequest<T> {
   schemaName?: string
   cache?: boolean
   timeoutMs?: number
+  cwd?: string
 }
 export interface AskResult<T> {
   data: T | string
@@ -76,7 +77,7 @@ export function createBridge(deps: {
 
   async function callOnce(task: Task, engine: Engine, prompt: string, timeoutMs: number, opts: CallOptions & { cwd?: string } = {}): Promise<{ text: string; conversationId?: string }> {
     const model = opts.model
-    const { cmd, args } = buildArgs(engine, prompt, opts)
+    const { cmd, args } = buildArgs(engine, prompt, { ...opts, timeoutMs })
     const t0 = now()
     setState(engine, 'busy')
     let res
@@ -157,12 +158,12 @@ export function createBridge(deps: {
       }
       const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT
       const data = await enqueue(engine, async () => {
-        const text = (await callOnce(req.task, engine, req.prompt, timeoutMs, { model })).text
+        const text = (await callOnce(req.task, engine, req.prompt, timeoutMs, { model, cwd: req.cwd })).text
         if (!req.schema) return text
         const first = validate(req.schema, text)
         if (first.ok) return first.value
         const retryPrompt = `${req.prompt}\n\nLa risposta precedente non era valida: ${first.error}. Rispondi solo con JSON valido.`
-        const second = validate(req.schema, (await callOnce(req.task, engine, retryPrompt, timeoutMs, { model })).text)
+        const second = validate(req.schema, (await callOnce(req.task, engine, retryPrompt, timeoutMs, { model, cwd: req.cwd })).text)
         if (second.ok) return second.value
         throw new AiSchemaError(second.error)
       })
