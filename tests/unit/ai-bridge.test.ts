@@ -40,7 +40,7 @@ describe('AI bridge', () => {
     const b = bridge(async (cmd, args) => (calls.push([cmd, ...args]), ok(agyOk('ciao'))))
     const r = await b.ask({ task: 'extract', prompt: 'x' })
     expect(r).toMatchObject({ data: 'ciao', engine: 'agy', fromCache: false })
-    expect(calls[0]).toEqual(['agy', '-p', 'x', '--output-format', 'json', '--print-timeout', '170s', '--disable-slash-commands', '--model', 'gemini-3.8-flash-high'])
+    expect(calls[0]).toEqual(['agy', '-p', 'x', '--output-format', 'json', '--print-timeout', '170s', '--disable-slash-commands', '--model', 'gemini-3.8-flash-medium'])
     const usage = JSON.parse((await readFile(join(dir, 'usage.jsonl'), 'utf8')).trim())
     expect(usage).toMatchObject({ task: 'extract', engine: 'agy', inputTokens: 100, outputTokens: 5, ok: true })
   })

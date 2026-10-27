@@ -1,3 +1,4 @@
+import type { Extractor } from './graph/jobs'
 import type { NoteGenerator } from './notes/generator'
 import { access } from 'node:fs/promises'
 import { z } from 'zod'
@@ -86,5 +87,20 @@ export function makeNoteHandlers(gen: NoteGenerator) {
     list: () => gen.list(),
     get: async (id: unknown) => gen.get(Id.parse(id)),
     retry: async (id: unknown) => gen.retry(Id.parse(id))
+  }
+}
+
+const Positions = z.record(z.string().max(64), z.tuple([z.number().finite(), z.number().finite()])).refine((p) => Object.keys(p).length <= 20_000, 'troppe posizioni')
+
+export function makeGraphHandlers(x: Extractor, positions: { read(): Promise<unknown>; write(p: Record<string, [number, number]>): Promise<void> }) {
+  return {
+    get: () => x.graph(),
+    status: () => x.status(),
+    extract: async (path: unknown) => x.request(z.string().min(1).max(1024).parse(path), 'manual'),
+    positions: async () => {
+      const r = Positions.safeParse(await positions.read().catch(() => ({})))
+      return r.success ? r.data : {}
+    },
+    savePositions: async (p: unknown) => positions.write(Positions.parse(p))
   }
 }
