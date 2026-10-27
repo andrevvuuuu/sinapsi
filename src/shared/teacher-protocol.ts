@@ -15,15 +15,27 @@ const PlanNodeSchema = z.object({ id: z.string().min(1), title: z.string().min(1
 // Edges are [from, to] pairs; plain 2-item arrays keep the JSON Schema simple for the CLI.
 const Edge = z.array(z.string()).min(2).max(2) as unknown as z.ZodType<[string, string]>
 const PlanSchema = z.object({ nodes: z.array(PlanNodeSchema).min(1), edges: z.array(Edge) })
+/** Mini-games: short retrieval or discrimination tasks the tutor can use instead of a plain check. */
+export const GameSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('speed'), items: z.array(z.object({ statement: z.string().min(1), true: z.boolean(), why: z.string() })).min(3).max(10) }),
+  z.object({ type: z.literal('match'), pairs: z.array(z.array(z.string().min(1)).min(2).max(2)).min(2).max(8) }),
+  z.object({ type: z.literal('order'), steps: z.array(z.string().min(1)).min(3).max(8) }),
+  z.object({ type: z.literal('spot'), lines: z.array(z.string().min(1)).min(2).max(10), wrong: z.number().int(), why: z.string() }),
+  z.object({ type: z.literal('taboo'), concept: z.string().min(1), forbidden: z.array(z.string().min(1)).min(2).max(8) })
+])
+export type Game = z.infer<typeof GameSchema>
+export const GAME_IT: Record<Game['type'], string> = { speed: 'Lampo', match: 'Coppie', order: 'Ricomponi', spot: "Trova l'intruso", taboo: 'Tabù' }
+
 const QuestionSchema = z.object({
   id: z.string().min(1),
   role: z.enum(ROLES),
-  kind: z.enum(['choice', 'open']),
+  kind: z.enum(['choice', 'open', 'game']),
   prompt: z.string().min(1),
   options: z.array(z.string()).optional(),
   correct: z.number().int().optional(),
   why: z.array(z.string()).optional(),
-  nodeId: z.string().optional()
+  nodeId: z.string().optional(),
+  game: GameSchema.optional()
 })
 const SummarySchema = z.object({ learned: z.array(z.string()), shaky: z.array(z.string()), misconceptions: z.array(z.string()) })
 
@@ -48,6 +60,13 @@ export const TeacherTurnSchema = TurnShape.superRefine((t, ctx) => {
     }
   }
   if (q?.kind === 'open' && q.options?.length) ctx.addIssue({ code: 'custom', message: 'una domanda aperta non ha opzioni' })
+  if (q?.kind === 'game') {
+    const g = q.game
+    if (!g) ctx.addIssue({ code: 'custom', message: 'una domanda "game" ha bisogno di "game"' })
+    else if (g.type === 'order' && new Set(g.steps).size !== g.steps.length) ctx.addIssue({ code: 'custom', message: 'i passi da riordinare devono essere diversi' })
+    else if (g.type === 'match' && new Set(g.pairs.map((p) => p[0])).size !== g.pairs.length) ctx.addIssue({ code: 'custom', message: 'le coppie devono avere voci diverse' })
+    else if (g.type === 'spot' && (g.wrong < 0 || g.wrong >= g.lines.length)) ctx.addIssue({ code: 'custom', message: '"wrong" deve indicare una delle righe' })
+  }
   if (t.plan) {
     const ids = new Set(t.plan.nodes.map((n) => n.id))
     if (t.plan.edges.some(([a, b]) => !ids.has(a) || !ids.has(b))) ctx.addIssue({ code: 'custom', message: 'un arco del piano punta a un nodo inesistente' })
@@ -73,7 +92,8 @@ export const LearnerAnswerSchema = z.object({
   dontKnow: z.boolean().optional(),
   confidence: z.number().int().min(0).max(100).optional(),
   text: z.string().max(5000).optional(),
-  thoughts: z.string().max(5000).optional()
+  thoughts: z.string().max(5000).optional(),
+  game: z.object({ score: z.number().int().min(0).max(100), total: z.number().int().min(0).max(100), detail: z.string().max(5000) }).optional()
 })
 export type LearnerAnswer = z.infer<typeof LearnerAnswerSchema>
 
@@ -83,6 +103,10 @@ const LETTERS = 'ABCDEF'
 export function formatLearnerReply(q: Question, a: LearnerAnswer): string {
   const parts: string[] = []
   const head = `Risposta alla domanda ${q.id} (${ROLE_IT[q.role]}): `
+  if (q.kind === 'game' && a.game && q.game) {
+    const res = a.game.total ? `${a.game.score}/${a.game.total}${a.game.detail ? ` — ${a.game.detail}` : ''}` : a.game.detail
+    return `${head}gioco «${GAME_IT[q.game.type]}» — ${res}`
+  }
   if (a.dontKnow) parts.push(head + 'Non lo so')
   else if (q.kind === 'choice' && a.choice !== undefined) {
     let s = `${head}${LETTERS[a.choice]} «${q.options?.[a.choice] ?? ''}»`
