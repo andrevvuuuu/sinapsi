@@ -168,7 +168,7 @@ function Page({ nota, stored, mode }: { nota: Nota; stored: StoredNote; mode: Mo
             <ul>{nota.provenance.fromNote.map((x, i) => <li key={i}>{x}</li>)}</ul>
           </div>
           <div>
-            <h3>Aggiunto dall'app</h3>
+            <h3>{"Aggiunto dall'app"}</h3>
             <ul>{nota.provenance.added.map((x, i) => <li key={i}>{x}</li>)}</ul>
           </div>
           <div>

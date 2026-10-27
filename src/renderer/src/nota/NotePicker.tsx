@@ -45,7 +45,7 @@ export function NotePicker({ path, onOpenNota, onBack }: { path: string; onOpenN
       </nav>
       <div className="state picker">
         <h1>{title}</h1>
-        <p>Una nota viva è la tua nota Obsidian trasformata in una pagina da cui studiare: figure da toccare, quiz accanto ai paragrafi, passi da provare da solo. La tua nota resta com'è.</p>
+        <p>{"Una nota viva è la tua nota Obsidian trasformata in una pagina da cui studiare: figure da toccare, quiz accanto ai paragrafi, passi da provare da solo. La tua nota resta com'è."}</p>
         <div className="nv-row" style={{ justifyContent: 'center' }}>
           <button type="button" className="btn pri" disabled={busy} onClick={() => void create()}>
             Crea la nota viva
