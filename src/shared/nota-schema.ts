@@ -219,7 +219,7 @@ type Section = { id: string /* "s1", "s2"… */; num: string /* "§1" */; title:
 type Block =
   | { type: "prose"; md: string; sources?: string[] }            // markdown + LaTeX ($…$, $$…$$)
   | { type: "theorem"; label: string; md: string }                // enunciato, es. label "Teorema 3.8"
-  | { type: "decode"; formal: string; read: string; meaning: string }  // tre schede: notazione formale / come si legge / cosa significa
+  | { type: "decode"; formal: string; read: string; meaning: string }  // tre schede: notazione formale / come si legge / cosa significa; formal in LaTeX tra $…$ o $$…$$
   | { type: "proof"; steps: { kicker?: string; title: string; md: string; tryPrompt?: string }[]; figure?: Figure }
       // dimostrazione a passi (1–12); tryPrompt = domanda "Prima prova tu" per quel passo;
       // figure con stepParams: la figura cambia a ogni passo mentre si scorre
@@ -229,7 +229,7 @@ type Block =
   | { type: "tryit"; prompt: string; solution: string }           // "Prima prova tu" generico
   | { type: "exercise"; level: "svolto" | "completa" | "solo" | "esame"; title: string; steps: string[] }
       // in "completa" scrivi le scelte dentro i passi come {{opzione1|*giusta|opzione3}} (l'asterisco segna quella giusta)
-  | { type: "glossary"; rows: { symbol: string; read: string; meaning: string }[] }  // tabella simboli
+  | { type: "glossary"; rows: { symbol: string; read: string; meaning: string }[] }  // tabella simboli; symbol in LaTeX tra $…$ (es. "$f \\in C^0([a,b])$")
   | { type: "flag"; md: string; correction?: string }              // segnalazione sulla nota: non correggere in silenzio
   | { type: "session"; kind: "previsione" | "parole" | "errore"; md: string }   // SOLO dalla sessione fornita
   | { type: "why"; title: string; md: string }                     // approfondimento richiudibile, es. "Perché proprio Rolle?"
