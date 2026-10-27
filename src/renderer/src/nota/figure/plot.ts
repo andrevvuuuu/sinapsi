@@ -39,8 +39,8 @@ export function evalIn(fig: Figure, src: string, scope: Scope): number {
 }
 
 /**
- * SVG path of y = fn(x). A new subpath starts where the function is undefined or jumps by more
- * than twice the visible height (an asymptote), so poles are never joined by a vertical line.
+ * SVG path of y = fn(x). A new subpath starts where the function is undefined or discontinuous
+ * (a pole or a jump), so the curve is never joined across the break by a vertical line.
  */
 export function samplePath(fn: Fn, [x0, x1]: [number, number], [y0, y1]: [number, number], toPx: (x: number, y: number) => [number, number], n = 400): string {
   const span = y1 - y0
@@ -55,18 +55,29 @@ export function samplePath(fn: Fn, [x0, x1]: [number, number], [y0, y1]: [number
       prev = null
       continue
     }
-    // A pole: the curve leaves the view on one side and comes back on the other, and the midpoint
-    // is not between the two values (a continuous steep curve would pass through it).
-    let jump = false
-    if (prev !== null && ((prev > y1 && y < y0) || (prev < y0 && y > y1))) {
-      const mid = fn(x - (x1 - x0) / n / 2)
-      jump = !(Number.isFinite(mid) && mid >= Math.min(prev, y) && mid <= Math.max(prev, y))
-    }
+    const jump = prev !== null && Math.abs(y - prev) > 0.02 * span && isBreak(fn, x - (x1 - x0) / n, x, prev, y, 0.02 * span, (x1 - x0) * 1e-9)
     const [px, py] = toPx(x, Math.min(hi, Math.max(lo, y)))
     d += `${prev === null || jump ? 'M' : 'L'}${px.toFixed(2)},${py.toFixed(2)}`
     prev = y
   }
   return d
+}
+
+/**
+ * True when fn is discontinuous between a and b: bisect towards the half holding the larger change;
+ * a continuous curve's change shrinks with the interval, a jump or a pole keeps it.
+ */
+function isBreak(fn: Fn, a: number, b: number, ya: number, yb: number, tol: number, minWidth: number): boolean {
+  for (let k = 0; k < 60; k++) {
+    if (Math.abs(yb - ya) <= tol) return false
+    if (b - a <= minWidth) return true
+    const m = (a + b) / 2
+    const ym = fn(m)
+    if (!Number.isFinite(ym)) return true
+    if (Math.abs(ym - ya) >= Math.abs(yb - ym)) [b, yb] = [m, ym]
+    else [a, ya] = [m, ym]
+  }
+  return true
 }
 
 /** Zeros of g on [a, b]: sign changes refined by bisection, plus tangencies (|g| touching 0). Poles are not zeros. */

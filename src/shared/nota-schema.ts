@@ -240,6 +240,9 @@ type Figure = {
   stepParams?: { [param: string]: number }[]          // solo dentro proof: valori dei parametri a ogni passo
 }
 type Color = "accent" | "good" | "warn" | "bad" | "muted" | "ink"
+  // come appaiono: accent = arancione mattone, good = verde (riservalo a ciò che "diventa vero"), warn = ocra,
+  // bad = rosso, muted = grigio, ink = colore del testo. Senza color: curve accent, punti ink, il resto grigio.
+  // Se nella caption nomini un colore, usa SOLO questi nomi italiani. Le etichette (label) siano brevi: "c", "A", "P".
 
 ESPRESSIONI nelle figure: numeri, x, i parametri, + - * / ^ e parentesi; moltiplicazione SEMPRE esplicita (2*x, non 2x);
 funzioni sin cos tan asin acos atan exp ln log sqrt abs sign floor min(a,b) max(a,b); costanti pi, e;

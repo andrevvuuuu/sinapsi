@@ -20,6 +20,14 @@ describe('samplePath', () => {
     expect(Number(d.slice(1).split(',')[0])).toBeGreaterThanOrEqual(0)
     expect(d).not.toMatch(/[ML]-/)
   })
+  it('breaks at a jump inside the view (arctan x + arctan 1/x)', () => {
+    const d = samplePath((x) => Math.atan(x) + Math.atan(1 / x), [-3, 3], [-2.5, 2.5], id, 401)
+    expect(subpaths(d)).toBe(2)
+  })
+  it('breaks a step function but keeps a steep continuous curve whole', () => {
+    expect(subpaths(samplePath((x) => (x < 0.3 ? 0 : 1), [-1, 1], [-1, 2], id))).toBe(2)
+    expect(subpaths(samplePath((x) => Math.atan(200 * x), [-1, 1], [-2, 2], id))).toBe(1)
+  })
   it('returns an empty path when nothing is defined', () => {
     expect(samplePath(() => NaN, [0, 1], [0, 1], id)).toBe('')
   })
