@@ -51,9 +51,9 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
       case 'slides':
         return { text: await readSlides(file) }
       case 'text':
-        return { text: readTextDoc(await readFile(file, 'utf8'), s.title) }
+        return { text: readTextDoc(await readFile(file, 'utf8')) }
       case 'vault':
-        return { text: readTextDoc(await deps.readVault(s.origin), s.title) }
+        return { text: readTextDoc(await deps.readVault(s.origin)) }
       case 'audio':
         return { text: await transcribe(deps.run, file, dir, onProgress) }
       case 'youtube': {

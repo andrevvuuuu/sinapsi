@@ -57,7 +57,7 @@ describe('readSlides', () => {
 
 describe('readTextDoc', () => {
   it('splits markdown at headings and drops the frontmatter', () => {
-    const t = readTextDoc('---\ntags: [x]\n---\nIntro breve.\n\n## Enunciato\nSia f…\n\n### Ipotesi\nContinua.', 'Rolle')
+    const t = readTextDoc('---\ntags: [x]\n---\nIntro breve.\n\n## Enunciato\nSia f…\n\n### Ipotesi\nContinua.')
     expect(t.segments).toEqual([
       { label: 'inizio', text: 'Intro breve.' },
       { label: 'Enunciato', text: '## Enunciato\nSia f…' },
@@ -66,11 +66,11 @@ describe('readTextDoc', () => {
   })
   it('splits plain text without headings into parts', () => {
     const para = 'parola '.repeat(300).trim()
-    const t = readTextDoc([para, para, para].join('\n\n'), 'Appunti')
+    const t = readTextDoc([para, para, para].join('\n\n'))
     expect(t.segments.map((s) => s.label)).toEqual(['parte 1', 'parte 2'])
   })
   it('refuses an empty document', () => {
-    expect(() => readTextDoc('  \n', 'x')).toThrow('vuot')
+    expect(() => readTextDoc('  \n')).toThrow('vuot')
   })
 })
 

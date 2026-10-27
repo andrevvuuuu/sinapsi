@@ -30,7 +30,8 @@ async function tool(run: RunTool, cmd: string, args: string[], timeoutMs: number
   try {
     r = await run(cmd, args, { timeoutMs, onOutput })
   } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === 'ENOENT') throw new Error(`Manca ${cmd}: ${cmd === 'yt-dlp' ? 'installalo con «pip install yt-dlp»' : 'installalo con «pip install mlx-whisper»'}`)
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT')
+      throw new Error(`Manca ${cmd}: ${cmd === 'yt-dlp' ? 'installalo con «pip install yt-dlp»' : 'installalo con «pip install mlx-whisper»'}`, { cause: e })
     throw e
   }
   if (r.timedOut) throw new Error(`${cmd} ci ha messo troppo`)

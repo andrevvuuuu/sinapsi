@@ -87,7 +87,7 @@ export async function readSlides(file: string): Promise<SourceText> {
   return { segments, warnings: [] }
 }
 
-export function readTextDoc(raw: string, _title: string): SourceText {
+export function readTextDoc(raw: string): SourceText {
   const text = raw.replace(/^---\n[\s\S]*?\n---\n?/, '').replace(/\r\n/g, '\n')
   if (!text.trim()) throw new Error('Documento vuoto')
   const lines = text.split('\n')
