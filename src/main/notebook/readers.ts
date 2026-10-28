@@ -44,16 +44,19 @@ export async function readPdf(file: string): Promise<SourceText> {
   // without this a scanned book with a printed header looked like text.
   const key = (l: string): string => l.toLowerCase().replace(/\d+/g, '#').replace(/\s+/g, ' ').trim()
   const seen = new Map<string, number>()
-  for (const p of pages) for (const k of new Set(p.split('\n').map(key).filter(Boolean))) seen.set(k, (seen.get(k) ?? 0) + 1)
+  // Header and footer candidates: the first and last two lines of a page, never a line of bare numbers.
+  const edges = (p: string): string[] => {
+    const ls = p.split('\n')
+    return [...ls.slice(0, 2), ...ls.slice(-2)].map(key).filter((k) => k && !/^[#\W]*$/.test(k))
+  }
+  for (const p of pages) for (const k of new Set(edges(p))) seen.set(k, (seen.get(k) ?? 0) + 1)
   const boiler = new Set(pages.length >= 3 ? [...seen].filter(([, n]) => n >= Math.max(2, Math.ceil(pages.length / 2))).map(([k]) => k) : [])
   pages.forEach((raw, i) => {
-    const text = raw
-      .split('\n')
-      .filter((l) => !boiler.has(key(l)))
-      .join('\n')
-      .trim()
-    if (text.replace(/\s/g, '').length < MIN_PAGE_TEXT) empty++
-    else segments.push({ label: `p. ${i + 1}`, text })
+    // Headers only decide whether a page is a scan; the text keeps every line (numbers, "Dimostrazione."…).
+    const ls = raw.split('\n')
+    const content = ls.filter((l, k) => !((k < 2 || k >= ls.length - 2) && boiler.has(key(l)))).join('')
+    if (content.replace(/\s/g, '').length < MIN_PAGE_TEXT) empty++
+    else segments.push({ label: `p. ${i + 1}`, text: raw })
   })
   if (!segments.length) throw new Error('PDF senza testo (scansione): non lo posso leggere')
   const warnings = empty ? [`${empty} ${empty === 1 ? 'pagina' : 'pagine'} senza testo (scansioni): non le posso leggere`] : []

@@ -25,9 +25,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
         <div className="inner">
           <div className="lab">Il piano</div>
           <div ref={head} tabIndex={-1} className="q-head">
-            <div ref={head} tabIndex={-1} className="q-head">
-          <RichText md={q.prompt} className="q" />
-        </div>
+            <RichText md={q.prompt} className="q" />
           </div>
           <div className="sc-input">
             <textarea aria-label="Chiedi una modifica al piano" placeholder="Vuoi cambiare qualcosa? Scrivilo qui." value={text} onChange={(e) => setText(e.target.value)} rows={1} />

@@ -32,7 +32,7 @@ import { dataDir } from './store/paths'
 import { loadSettings, saveSettings } from './store/settings'
 import { scanVault } from './vault/scan'
 import { createRewatcher, watchVault } from './vault/watch'
-import { detectMoves } from './graph/moves'
+import { detectMoves, detectOfflineMoves } from './graph/moves'
 
 export function registerIpc(): { bridge: Bridge } {
   // Assigned below; the session and note hooks only run after registration.
@@ -74,8 +74,12 @@ export function registerIpc(): { bridge: Bridge } {
     lastIndex = idx
     broadcast(CH.vaultChanged, idx)
   })
-  void h.vaultIndex().then((idx) => {
-    if (!('error' in idx)) lastIndex = idx
+  void h.vaultIndex().then(async (idx) => {
+    if ('error' in idx) return
+    lastIndex = idx
+    // Notes renamed while Sinapsi was closed: their concepts follow them too.
+    const moves = await detectOfflineMoves(idx, (await extractor.graph()).extracted, (p) => readFile(p, 'utf8')).catch(() => [])
+    for (const m of moves) await graphStoreForMoves.append('move', { ...m, at: Date.now() })
   })
   void rewatch()
 

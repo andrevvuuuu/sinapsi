@@ -3,19 +3,15 @@ import type { Chain, Concept, GraphData, Ledgers } from '../../shared/graph-type
 /** Pure: the whole graph is rebuilt from the ledgers on every read. */
 export function deriveGraph({ props: rawProps, chains: rawChains, extractions: rawExtractions, moves = [] }: Ledgers): GraphData {
   // A renamed or moved note: every path follows its moves (in order, transitively).
-  const to = new Map<string, string>()
-  for (const m of [...moves].sort((a, b) => a.at - b.at)) if (m.from !== m.to) to.set(m.from, m.to)
-  const where = (p: string): string => {
-    const seen = new Set<string>()
-    while (to.has(p) && !seen.has(p)) {
-      seen.add(p)
-      p = to.get(p)!
-    }
+  // Each line follows only the moves made after it, in order: a rename and its undo bring it back.
+  const ordered = [...moves].filter((m) => m.from !== m.to).sort((a, b) => a.at - b.at)
+  const where = (p: string, at: number): string => {
+    for (const m of ordered) if (m.at >= at && m.from === p) p = m.to
     return p
   }
-  const props = rawProps.map((p) => ({ ...p, notePath: where(p.notePath) }))
-  const chains = rawChains.map((c) => ({ ...c, notePath: where(c.notePath) }))
-  const extractions = rawExtractions.map((e) => ({ ...e, notePath: where(e.notePath) }))
+  const props = rawProps.map((p) => ({ ...p, notePath: where(p.notePath, p.at) }))
+  const chains = rawChains.map((c) => ({ ...c, notePath: where(c.notePath, c.at) }))
+  const extractions = rawExtractions.map((e) => ({ ...e, notePath: where(e.notePath, e.at) }))
   const byId = new Map<string, Concept>()
   for (const p of props) {
     const c = byId.get(p.id)

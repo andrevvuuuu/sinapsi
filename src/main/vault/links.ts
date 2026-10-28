@@ -5,6 +5,9 @@ export function stripCode(md: string): string {
   return md.replace(/```[\s\S]*?(```|$)/g, '').replace(/`[^`\n]*`/g, '')
 }
 
+/** Extensions of attachments: "Teorema 2.10" is a note, "grafico.png" is not. */
+const ATTACHMENT = /\.(png|jpe?g|gif|svg|webp|bmp|tiff?|heic|avif|pdf|mp3|m4a|wav|ogg|flac|aac|opus|mp4|mov|m4v|webm|mkv|avi|zip|pptx?|docx?|xlsx?|csv|canvas|excalidraw|base)$/i
+
 export function parseWikilinks(md: string): Omit<VaultLink, 'resolved'>[] {
   const out: Omit<VaultLink, 'resolved'>[] = []
   for (const m of stripCode(md).matchAll(/!?\[\[([^\]\n]+?)\]\]/g)) {
@@ -15,7 +18,7 @@ export function parseWikilinks(md: string): Omit<VaultLink, 'resolved'>[] {
     const parts = rawTarget.trim().split('/')
     const name = parts.pop()!
     // Attachments (images, PDFs, audio…) are not notes.
-    if (/\.[a-z0-9]{2,5}$/i.test(name) && !/\.md$/i.test(name)) continue
+    if (ATTACHMENT.test(name)) continue
     const link: Omit<VaultLink, 'resolved'> = { target: name.replace(/\.md$/, '') }
     if (parts.length) link.folder = parts.join('/')
     if (anchor.startsWith('^')) link.block = anchor.slice(1)

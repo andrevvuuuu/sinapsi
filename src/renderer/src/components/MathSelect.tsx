@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { RichText } from '../session/RichText'
 import './math-select.css'
 
@@ -25,6 +25,9 @@ export function MathSelect({
   const [hi, setHi] = useState(0)
   const wrap = useRef<HTMLSpanElement>(null)
   const btn = useRef<HTMLButtonElement>(null)
+  const uid = useId()
+  const listId = `${uid}-list`
+  const optId = (k: number): string => `${uid}-opt-${k}`
   useEffect(() => {
     if (!open) return
     const off = (e: MouseEvent): void => {
@@ -47,6 +50,12 @@ export function MathSelect({
         aria-label={label}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        aria-activedescendant={open ? optId(hi) : undefined}
+        onBlur={(e) => {
+          // Tab or a click elsewhere closes the list.
+          if (!wrap.current?.contains(e.relatedTarget as Node | null)) setOpen(false)
+        }}
         disabled={disabled}
         onClick={() => {
           setHi(value ?? 0)
@@ -63,6 +72,12 @@ export function MathSelect({
           } else if (open && e.key === 'ArrowUp') {
             e.preventDefault()
             setHi((h) => Math.max(0, h - 1))
+          } else if (open && e.key === 'Home') {
+            e.preventDefault()
+            setHi(0)
+          } else if (open && e.key === 'End') {
+            e.preventDefault()
+            setHi(options.length - 1)
           } else if (open && e.key === 'Enter') {
             e.preventDefault()
             pick(hi)
@@ -75,9 +90,9 @@ export function MathSelect({
         {value === null ? '…' : <RichText md={options[value]} className="inline" />}
       </button>
       {open && (
-        <span className="msel-list" role="listbox" aria-label={label}>
+        <span className="msel-list" role="listbox" id={listId} aria-label={label}>
           {options.map((o, k) => (
-            <span key={k} role="option" aria-selected={k === value} className={k === hi ? 'hi' : ''} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(k)}>
+            <span key={k} id={optId(k)} role="option" aria-selected={k === value} className={k === hi ? 'hi' : ''} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(k)}>
               <RichText md={o} className="inline" />
             </span>
           ))}
