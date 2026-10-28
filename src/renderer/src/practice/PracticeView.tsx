@@ -190,7 +190,7 @@ export function PracticeView({ id, onBack, onStarted }: { id: string; onBack: ()
   return (
     <div className="pr">
       <header className="pr-top drag">
-        <button type="button" className="pill nodrag" onClick={onBack}>
+        <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
         <h1>Pratica</h1>

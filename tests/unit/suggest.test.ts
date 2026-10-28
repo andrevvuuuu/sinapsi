@@ -43,7 +43,7 @@ describe('Apprendimento', () => {
   it('a note the next one builds on comes first', () => {
     const notes = [note('Analisi 1 MOC', ['A', 'B', 'C'], { type: 'MOC' }), note('A'), note('B', ['Extra']), note('C'), note('Extra', [], { subject: 'Algebra' })]
     const s = suggest(input(notes, { notes: ready('A') })).learn
-    expect(s[0]).toMatchObject({ label: 'Extra', reason: 'serve per capire «B»' })
+    expect(s[0]).toMatchObject({ label: 'Extra', reason: 'serve per «B»' })
   })
   it('a finished learning session counts as studied', () => {
     const s = suggest(input(course, { sessions: [{ id: 's', topic: 'naturali', phase: 'done', notePath: '/v/Numeri Naturali.md', updatedAt: 1 }] })).learn
@@ -100,7 +100,7 @@ describe('Pratica', () => {
     const memory = { n_0: mem('n_0', 0.65) }
     const s = suggest(input(course, { graph, memory, notes: ready('Numeri Naturali', 'Induzione', 'Numeri Interi'), practiced: new Set(['n_0', 'n_1']) })).practice
     expect(s[0]).toMatchObject({ label: 'Numeri Interi', reason: 'studiata, mai messa in pratica', action: { kind: 'practice', conceptIds: ['n_2'] } })
-    expect(s[1]).toMatchObject({ label: 'Simulazione d’esame · Analisi 1', reason: '3 note studiate', action: { kind: 'practice', conceptIds: ['n_0', 'n_1', 'n_2'], exam: true } })
+    expect(s[1]).toMatchObject({ label: 'Simulazione d’esame · Analisi 1', reason: '3 note studiate', action: { kind: 'practice', conceptIds: ['n_2', 'n_1', 'n_0'], exam: true } })
     expect(s[2]).toMatchObject({ label: 'C0', reason: 'a metà · 65%' })
   })
   it('nothing studied: nothing to practice', () => {

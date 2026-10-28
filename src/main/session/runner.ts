@@ -94,28 +94,43 @@ export function createSessionRunner(deps: {
     }
   }
 
-  const runner: SessionRunner = {
-    async start(topic) {
-      const id = await runner.create(topic)
-      await runner.retry(id)
+  async function createNow(topic: string): Promise<string> {
+    await mkdir(deps.dir, { recursive: true })
+    const id = uuid()
+    const index = await deps.vault().catch(() => null)
+    const note = index ? matchNote(index, topic) : null
+    let noteText: string | undefined
+    if (note) noteText = await deps.readNote(note.path).catch(() => undefined)
+    const gamesOn = (await deps.games?.().catch(() => true)) ?? true
+    // The first turn starts right after: don't flash "Riprova" in between.
+    inflight.add(id)
+    return serial(id, async () => {
+      await append(id, { t: 'created', id, topic, ...(note && noteText ? { noteTitle: note.title, notePath: note.path } : {}), at: Date.now() })
+      await append(id, { t: 'learner', text: firstMessage(topic, note && noteText ? { title: note.title, text: noteText } : undefined) + (gamesOn ? '' : '\n\n(Giochi disattivati: non proporre giochi.)'), at: Date.now() })
       return id
-    },
-    async create(topic) {
-      await mkdir(deps.dir, { recursive: true })
-      const id = uuid()
-      const index = await deps.vault().catch(() => null)
-      const note = index ? matchNote(index, topic) : null
-      let noteText: string | undefined
-      if (note) noteText = await deps.readNote(note.path).catch(() => undefined)
-      const gamesOn = (await deps.games?.().catch(() => true)) ?? true
-      // The first turn starts right after: don't flash "Riprova" in between.
-      inflight.add(id)
-      return serial(id, async () => {
-        await append(id, { t: 'created', id, topic, ...(note && noteText ? { noteTitle: note.title, notePath: note.path } : {}), at: Date.now() })
-        await append(id, { t: 'learner', text: firstMessage(topic, note && noteText ? { title: note.title, text: noteText } : undefined) + (gamesOn ? '' : '\n\n(Giochi disattivati: non proporre giochi.)'), at: Date.now() })
+    })
+  }
+
+  // A double click asks twice at once (or within 2 s): both get the same session, and one first turn.
+  const pending = new Map<string, Promise<string>>()
+  function once(kind: string, topic: string, job: () => Promise<string>): Promise<string> {
+    const key = `${kind}:${topic.trim().toLowerCase()}`
+    const known = pending.get(key)
+    if (known) return known
+    const p = job()
+    pending.set(key, p)
+    void p.catch(() => undefined).finally(() => setTimeout(() => pending.delete(key), 2000))
+    return p
+  }
+
+  const runner: SessionRunner = {
+    start: (topic) =>
+      once('start', topic, async () => {
+        const id = await runner.create(topic)
+        await runner.retry(id)
         return id
-      })
-    },
+      }),
+    create: (topic) => once('create', topic, () => createNow(topic)),
     answer: (id, a) =>
       serial(id, async () => {
         const s = await load(id)

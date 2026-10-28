@@ -71,7 +71,7 @@ export function NotePicker({
   return (
     <div className="nota">
       <nav className="island" aria-label="Controlli">
-        <button type="button" className="back" onClick={onBack}>
+        <button type="button" className="back back-btn" onClick={onBack}>
           ← Home
         </button>
       </nav>

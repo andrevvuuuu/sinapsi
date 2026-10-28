@@ -4,6 +4,7 @@ import type { VaultIndex, VaultNote } from '../../shared/vault-types'
 import type { NoteMeta } from '../notes/store'
 import type { SessionSummary } from '../session/events'
 import { matchNote } from '../session/note-match'
+import { isMoc } from '../../shared/moc'
 
 export type ChipAction =
   | { kind: 'learn'; topic: string }
@@ -26,7 +27,9 @@ export type SuggestInput = {
 const MAX = 3
 const RESUME_DAYS = 30
 const pct = (r: number): string => `${Math.round(r * 100)}%`
-export const isMoc = (n: Pick<VaultNote, 'title' | 'type'>): boolean => /\bMOC$/i.test(n.title) || /moc/i.test(n.type ?? '')
+const EXAM_CONCEPTS = 12
+/** A subject tag as a name: "analisi_1" → "Analisi 1". */
+const tagName = (t: string): string => t.replace(/^#/, '').split('/').pop()!.replace(/[_-]+/g, ' ').replace(/^./, (c) => c.toUpperCase())
 const courseName = (moc: VaultNote): string => moc.title.replace(/\s*MOC$/i, '').trim() || moc.title
 
 /**
@@ -91,7 +94,7 @@ function learn(input: SuggestInput, all: VaultNote[], byPath: Map<string, VaultN
     if (!next) continue
     const step = firstStep(next)
     push(
-      { label: step.note.title, reason: step.for ? `serve per capire «${step.for.title}»` : `prossimo passo in ${courseName(c.moc)}`, action: { kind: 'learn', topic: step.note.title } },
+      { label: step.note.title, reason: step.for ? `serve per «${step.for.title}»` : `prossimo passo in ${courseName(c.moc)}`, action: { kind: 'learn', topic: step.note.title } },
       step.note.path
     )
   }
@@ -110,7 +113,7 @@ function learn(input: SuggestInput, all: VaultNote[], byPath: Map<string, VaultN
     if (!first) continue
     const step = firstStep(first)
     push(
-      { label: step.note.title, reason: step.for ? `serve per capire «${step.for.title}»` : `primo passo di ${courseName(c.moc)}`, action: { kind: 'learn', topic: step.note.title } },
+      { label: step.note.title, reason: step.for ? `serve per «${step.for.title}»` : `primo passo di ${courseName(c.moc)}`, action: { kind: 'learn', topic: step.note.title } },
       step.note.path
     )
   }
@@ -151,14 +154,26 @@ function practice(input: SuggestInput, byPath: Map<string, VaultNote>, studied: 
   const done = [...studied].filter((p) => byPath.has(p) && born.has(p))
   const never = done.find((p) => born.get(p)!.every((id) => !input.practiced.has(id)))
   if (never) out.push({ label: byPath.get(never)!.title, reason: 'studiata, mai messa in pratica', action: { kind: 'practice', conceptIds: born.get(never)! } })
-  // Several studied notes of one subject: time to try it as an exam.
-  const bySubject = new Map<string, string[]>()
+  // Several studied notes of one course (its MOC, else its subject): time to try it as an exam.
+  const courseOf = new Map<string, string>()
+  for (const moc of (input.index?.notes ?? []).filter(isMoc)) for (const l of moc.links) if (l.resolved && l.path && !courseOf.has(l.path)) courseOf.set(l.path, courseName(moc))
+  const byCourse = new Map<string, string[]>()
   for (const p of done) {
-    const s = byPath.get(p)!.subject
-    if (s) bySubject.set(s, [...(bySubject.get(s) ?? []), p])
+    const s = courseOf.get(p) ?? (byPath.get(p)!.subject ? tagName(byPath.get(p)!.subject!) : null)
+    if (s) byCourse.set(s, [...(byCourse.get(s) ?? []), p])
   }
-  const exam = [...bySubject].filter(([, ps]) => ps.length >= 3).sort((a, b) => b[1].length - a[1].length)[0]
-  if (exam) out.push({ label: `Simulazione d’esame · ${exam[0]}`, reason: `${exam[1].length} note studiate`, action: { kind: 'practice', conceptIds: exam[1].flatMap((p) => born.get(p)!), exam: true } })
+  const exam = [...byCourse].filter(([, ps]) => ps.length >= 3).sort((a, b) => b[1].length - a[1].length)[0]
+  if (exam) {
+    // A sitting, not the whole course: never practised first, then the weakest.
+    const R = (id: string): number => input.memory[id]?.R ?? 0.5
+    const ids = exam[1]
+      .flatMap((p) => born.get(p)!)
+      .map((id, i) => ({ id, i, key: (input.practiced.has(id) ? 1 : 0) * 10 + R(id) }))
+      .sort((a, b) => a.key - b.key || a.i - b.i)
+      .slice(0, EXAM_CONCEPTS)
+      .map((x) => x.id)
+    out.push({ label: `Simulazione d’esame · ${exam[0]}`, reason: `${exam[1].length} note studiate`, action: { kind: 'practice', conceptIds: ids, exam: true } })
+  }
   const name = new Map(input.graph.concepts.map((c) => [c.id, c.name]))
   const half = Object.values(input.memory)
     .filter((m) => name.has(m.conceptId) && m.R !== null && m.R >= 0.5 && m.R < 0.8)

@@ -62,7 +62,7 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
 
   const bar = (
     <nav className="island" aria-label="Controlli della nota">
-      <button type="button" className="back" onClick={onBack}>
+      <button type="button" className="back back-btn" onClick={onBack}>
         ← Home
       </button>
       {n?.status === 'ready' && (

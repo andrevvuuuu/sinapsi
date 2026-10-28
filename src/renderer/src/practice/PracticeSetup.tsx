@@ -85,13 +85,17 @@ export function PracticeSetup({
   return (
     <div className="pr">
       <header className="pr-top drag">
-        <button type="button" className="pill nodrag" onClick={onBack}>
+        <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
         <h1>Pratica</h1>
       </header>
       <div className="pr-setup">
-        <p className="pr-lead">Su cosa ti alleni oggi? Ho già scelto i due concetti più urgenti; gli altri suggeriti hanno accanto il motivo.</p>
+        <p className="pr-lead">
+          {initial
+            ? 'Ho preparato il materiale del consiglio che hai scelto: puoi aggiungere o togliere concetti prima di iniziare.'
+            : 'Su cosa ti alleni oggi? Ho già scelto i due concetti più urgenti; gli altri suggeriti hanno accanto il motivo.'}
+        </p>
         {!catalog ? (
           <p className="mt-hint">Carico il materiale…</p>
         ) : (

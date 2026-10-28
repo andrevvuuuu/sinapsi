@@ -230,7 +230,7 @@ export function ReviewView({
 
   const top = (
     <header className="rv-top drag">
-      <button type="button" className="pill nodrag" onClick={onBack}>
+      <button type="button" className="pill nodrag back-btn" onClick={onBack}>
         ← Home
       </button>
       <span className="rv-title">Ripasso</span>
