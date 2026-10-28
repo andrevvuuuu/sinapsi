@@ -3,6 +3,7 @@ import type { Notebook } from '../../../shared/notebook-types'
 import type { TreeNode } from './build-tree'
 import { IconPanel, IconUpload } from './icons'
 import { NoteTree } from './NoteTree'
+import { Splitter } from './Splitter'
 
 const clean = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
@@ -13,10 +14,12 @@ type Props = {
   onOpenNote?: (path: string) => void
   vaultPath?: string
   onChooseVault?: () => void
+  notebooksHeight?: number
+  onNotebooksHeight?: (v: number) => void
 }
 
 /** Right panel: Importa fonti, the notebooks (NotebookLM-like), the Obsidian notes by folder, the vault folder. */
-export function NotebookPanel({ onClose, onOpen, tree = [], onOpenNote, vaultPath, onChooseVault }: Props): React.JSX.Element {
+export function NotebookPanel({ onClose, onOpen, tree = [], onOpenNote, vaultPath, onChooseVault, notebooksHeight, onNotebooksHeight }: Props): React.JSX.Element {
   const api = window.sinapsi
   const [list, setList] = useState<Notebook[]>([])
   const [creating, setCreating] = useState(false)
@@ -98,7 +101,7 @@ export function NotebookPanel({ onClose, onOpen, tree = [], onOpenNote, vaultPat
           {error}
         </p>
       )}
-      <section className="nb-sec" aria-label="Notebook">
+      <section className="nb-sec" aria-label="Notebook" style={notebooksHeight ? { height: notebooksHeight, maxHeight: 'none' } : undefined}>
         <div className="sec-head">
           <h2>Notebook</h2>
           <button type="button" className="mini" aria-expanded={creating} aria-label="Nuovo notebook" onClick={() => setCreating((c) => !c)}>
@@ -151,7 +154,11 @@ export function NotebookPanel({ onClose, onOpen, tree = [], onOpenNote, vaultPat
           </ul>
         )}
       </section>
-      <div className="divider" />
+      {onNotebooksHeight ? (
+        <Splitter orientation="horizontal" label="Altezza dei notebook" value={notebooksHeight ?? 280} min={120} max={900} onChange={onNotebooksHeight} className="sec-split" />
+      ) : (
+        <div className="divider" />
+      )}
       <section className="psec scroll obs-sec" aria-label="Note di Obsidian">
         <h2>Note di Obsidian</h2>
         {tree.length ? <NoteTree nodes={tree} onOpen={(path) => onOpenNote?.(path)} /> : <p className="empty">Nessuna nota letta dal vault.</p>}
