@@ -43,8 +43,8 @@ export function Composer({
         <div className="core">
           {chips.length > 0 && (
             <div className="suggest" role="group" aria-label="Consigliati">
-              {chips.map((c) => (
-                <button key={c.label} type="button" className="sg-chip" aria-label={`${c.label} — ${c.reason}`} title={`${c.label} — ${c.reason}`} onClick={() => onPick?.(c.action)}>
+              {chips.map((c, i) => (
+                <button key={`${i}:${c.label}`} type="button" className="sg-chip" aria-label={`${c.label} — ${c.reason}`} title={`${c.label} — ${c.reason}`} onClick={() => onPick?.(c.action)}>
                   <span className="sg-label">{c.label}</span>
                   <span className="sg-why">{c.reason}</span>
                 </button>

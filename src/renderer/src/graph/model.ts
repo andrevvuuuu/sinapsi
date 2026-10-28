@@ -1,4 +1,5 @@
 import type { Concept, GraphData } from '../../../shared/graph-types'
+import { isMoc } from '../../../shared/moc'
 import type { VaultIndex } from '../../../shared/vault-types'
 
 /**
@@ -49,8 +50,6 @@ const fold = (s: string): string =>
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
-const isMoc = (n: VaultIndex['notes'][number]): boolean =>
-  /\bMOC$/i.test(n.title) || /moc/i.test(n.type ?? '')
 
 /** A stable, readable hue per note (Learn Harness: one colour per birth region). */
 function hueOf(path: string): string {

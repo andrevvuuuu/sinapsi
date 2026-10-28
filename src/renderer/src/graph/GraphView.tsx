@@ -631,43 +631,45 @@ export function GraphView({
           <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
         </section>
       )}
-      <div className="gzoom" role="group" aria-label="Zoom">
-        <button
-          type="button"
-          aria-label="Avvicina"
-          onClick={() =>
-            selRef.current &&
-            zoomRef.current &&
-            selRef.current.transition().duration(300).call(zoomRef.current.scaleBy, 1.5)
-          }
-        >
-          +
-        </button>
-        <button
-          type="button"
-          aria-label="Allontana"
-          onClick={() =>
-            selRef.current &&
-            zoomRef.current &&
-            selRef.current
-              .transition()
-              .duration(300)
-              .call(zoomRef.current.scaleBy, 1 / 1.5)
-          }
-        >
-          −
-        </button>
-        <button
-          type="button"
-          aria-label="Mostra tutto"
-          onClick={() => {
-            setPath(null)
-            fit()
-          }}
-        >
-          ⤢
-        </button>
-      </div>
+      {model && !(livePaths && livePaths.length === 0) && (
+        <div className="gzoom" role="group" aria-label="Zoom">
+          <button
+            type="button"
+            aria-label="Avvicina"
+            onClick={() =>
+              selRef.current &&
+              zoomRef.current &&
+              selRef.current.transition().duration(300).call(zoomRef.current.scaleBy, 1.5)
+            }
+          >
+            +
+          </button>
+          <button
+            type="button"
+            aria-label="Allontana"
+            onClick={() =>
+              selRef.current &&
+              zoomRef.current &&
+              selRef.current
+                .transition()
+                .duration(300)
+                .call(zoomRef.current.scaleBy, 1 / 1.5)
+            }
+          >
+            −
+          </button>
+          <button
+            type="button"
+            aria-label="Mostra tutto"
+            onClick={() => {
+              setPath(null)
+              fit()
+            }}
+          >
+            ⤢
+          </button>
+        </div>
+      )}
       {sel && model && (
         <Card
           sel={sel}

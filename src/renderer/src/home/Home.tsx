@@ -75,6 +75,15 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
     void api.ai.status().then(setStatus)
     void api.session?.list().then(setSessions)
     void api.practice?.list().then(setPractices).catch(() => undefined)
+    // Several refreshes can overlap (mount, focus, a new nota): only the newest answer counts.
+    let asked = 0
+    const loadSuggestions = (): void => {
+      const n = ++asked
+      void api.suggest
+        ?.get()
+        .then((s) => n === asked && setSuggestions(s))
+        .catch(() => undefined)
+    }
     // Memory moves while the app stays open: the badge and the session list refresh on focus and every 10 minutes.
     const refresh = (): void => {
       void api.review
@@ -82,20 +91,21 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
         .then((m) => setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length))
         .catch(() => undefined)
       void api.review?.sessions?.().then(setReviews).catch(() => undefined)
-      void api.suggest?.get().then(setSuggestions).catch(() => undefined)
+      loadSuggestions()
     }
     refresh()
     window.addEventListener('focus', refresh)
     const every = setInterval(refresh, 10 * 60_000)
     const loadNotes = (): void => {
       void api.notes?.list().then(setNotes)
-      void api.suggest?.get().then(setSuggestions).catch(() => undefined)
+      loadSuggestions()
     }
     loadNotes()
     const offNotes = api.notes?.onUpdate(loadNotes)
     const offVault = api.vault.onChange(setIndex)
     const offAi = api.ai.onStatus(setStatus)
     return () => {
+      asked = Number.NaN
       window.removeEventListener('focus', refresh)
       clearInterval(every)
       offVault()

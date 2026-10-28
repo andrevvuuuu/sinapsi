@@ -54,7 +54,7 @@ export function SessionView({ id, onBack, onOpenNota }: { id: string; onBack: ()
   return (
     <div className="sess">
       <header className="top drag">
-        <button type="button" className="pill nodrag" onClick={onBack}>
+        <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
         <h1>{s.topic}</h1>

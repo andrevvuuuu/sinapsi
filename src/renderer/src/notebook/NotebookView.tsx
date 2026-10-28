@@ -142,7 +142,7 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
     return (
       <div className="nb">
         <p className="nb-empty">Notebook non trovato.</p>
-        <button type="button" className="pill" onClick={onBack}>
+        <button type="button" className="pill back-btn" onClick={onBack}>
           ← Home
         </button>
       </div>
@@ -152,7 +152,7 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
   return (
     <div className={'nb' + (viewed || viewer?.excerpt ? ' with-viewer' : '')}>
       <header className="nb-top drag">
-        <button type="button" className="pill nodrag" onClick={onBack}>
+        <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
         <input

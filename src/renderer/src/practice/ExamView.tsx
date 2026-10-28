@@ -59,7 +59,7 @@ export function ExamView({ state, onBack, onStarted }: { state: PracticeState; o
 
   const header = (
     <header className="pr-top drag">
-      <button type="button" className="pill nodrag" onClick={onBack}>
+      <button type="button" className="pill nodrag back-btn" onClick={onBack}>
         ← Home
       </button>
       <h1>Simulazione d’esame</h1>
