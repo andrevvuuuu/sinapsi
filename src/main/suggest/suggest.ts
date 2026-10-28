@@ -3,6 +3,7 @@ import type { Memory } from '../../shared/memory-types'
 import type { VaultIndex, VaultNote } from '../../shared/vault-types'
 import type { NoteMeta } from '../notes/store'
 import type { SessionSummary } from '../session/events'
+import { matchNote } from '../session/note-match'
 
 export type ChipAction =
   | { kind: 'learn'; topic: string }
@@ -48,15 +49,24 @@ function learn(input: SuggestInput, all: VaultNote[], byPath: Map<string, VaultN
     if (path) taken.add(path)
     out.push(c)
   }
-  // Notes it links to (existing, not MOCs): what it builds on.
-  const deps = (n: VaultNote): VaultNote[] => [...new Set(n.links.filter((l) => l.resolved && l.path).map((l) => l.path!))].map((p) => byPath.get(p)).filter((x): x is VaultNote => !!x && !isMoc(x) && x.path !== n.path)
-  const open = (n: VaultNote): boolean => !studied.has(n.path) && !taken.has(n.path)
+  const links = (n: VaultNote): VaultNote[] => [...new Set(n.links.filter((l) => l.resolved && l.path).map((l) => l.path!))].map((p) => byPath.get(p)).filter((x): x is VaultNote => !!x && !isMoc(x) && x.path !== n.path)
+  const courses = all
+    .filter(isMoc)
+    .map((moc) => ({ moc, order: links(moc) }))
+    .filter((c) => c.order.length > 0)
+  // A link to a note that comes later in the same course ("vedi [[Limite]]") points forward, not to a prerequisite.
+  const position = courses.map((c) => new Map(c.order.map((n, i) => [n.path, i])))
+  const forward = (from: VaultNote, to: VaultNote): boolean => position.some((pos) => pos.has(from.path) && pos.has(to.path) && pos.get(to.path)! > pos.get(from.path)!)
+  const deps = (n: VaultNote): VaultNote[] => links(n).filter((d) => !forward(n, d))
+  // Only notes a session will open by their title: present on disk and not shadowed by a namesake.
+  const startable = (n: VaultNote): boolean => n.available && !!input.index && matchNote(input.index, n.title)?.path === n.path
+  const open = (n: VaultNote): boolean => !studied.has(n.path) && !taken.has(n.path) && startable(n)
   // The deepest unstudied note under n, so the first step is one he can take now.
   const firstStep = (n: VaultNote): { note: VaultNote; for?: VaultNote } => {
     const seen = new Set([n.path])
     let cur = n
     let dependent: VaultNote | undefined
-    for (let depth = 0; depth < 4; depth++) {
+    for (let depth = 0; depth < 2; depth++) {
       const next = deps(cur).find((d) => open(d) && !seen.has(d.path))
       if (!next) break
       seen.add(next.path)
@@ -66,18 +76,18 @@ function learn(input: SuggestInput, all: VaultNote[], byPath: Map<string, VaultN
     return { note: cur, for: dependent }
   }
 
-  const resume = input.sessions
+  const unfinished = input.sessions
     .filter((s) => s.phase !== 'done' && input.now - s.updatedAt <= RESUME_DAYS * 86_400_000 && !(s.notePath && studied.has(s.notePath)))
-    .sort((a, b) => b.updatedAt - a.updatedAt)[0]
-  if (resume) push({ label: resume.topic, reason: 'sessione da finire', action: { kind: 'resume', id: resume.id } }, resume.notePath ?? `session:${resume.id}`)
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+  if (unfinished[0]) push({ label: unfinished[0].topic, reason: 'sessione da finire', action: { kind: 'resume', id: unfinished[0].id } }, unfinished[0].notePath ?? `session:${unfinished[0].id}`)
+  // An older unfinished session is still his: no second session on the same note.
+  for (const s of unfinished) if (s.notePath) taken.add(s.notePath)
 
-  const courses = all
-    .filter(isMoc)
-    .map((moc) => ({ moc, order: deps(moc) }))
-    .filter((c) => c.order.length > 0)
   const started = courses.filter((c) => c.order.some((n) => studied.has(n.path))).sort((a, b) => count(b.order, studied) - count(a.order, studied))
   for (const c of started) {
-    const next = c.order.find(open)
+    // After the last studied note; a gap left behind only once the course is done.
+    const last = c.order.reduce((k, n, i) => (studied.has(n.path) ? i : k), -1)
+    const next = c.order.slice(last + 1).find(open) ?? c.order.find(open)
     if (!next) continue
     const step = firstStep(next)
     push(
@@ -89,11 +99,11 @@ function learn(input: SuggestInput, all: VaultNote[], byPath: Map<string, VaultN
   // A note many unstudied notes build on: understanding it unlocks them.
   const unlocks = new Map<string, number>()
   for (const n of all) if (!isMoc(n) && !studied.has(n.path)) for (const d of deps(n)) unlocks.set(d.path, (unlocks.get(d.path) ?? 0) + 1)
-  const bases = [...unlocks]
-    .filter(([p, k]) => k >= 2 && !studied.has(p))
+  const base = [...unlocks]
+    .filter(([p, k]) => k >= 2 && open(byPath.get(p)!))
     .sort((a, b) => b[1] - a[1])
-    .map(([p, k]) => ({ note: byPath.get(p)!, k }))
-  for (const b of bases.slice(0, 1)) push({ label: b.note.title, reason: `base di ${b.k} note`, action: { kind: 'learn', topic: b.note.title } }, b.note.path)
+    .map(([p, k]) => ({ note: byPath.get(p)!, k }))[0]
+  if (base) push({ label: base.note.title, reason: `base di ${base.k} note`, action: { kind: 'learn', topic: base.note.title } }, base.note.path)
 
   for (const c of courses.filter((c) => !started.includes(c))) {
     const first = c.order.find(open)
@@ -155,4 +165,21 @@ function practice(input: SuggestInput, byPath: Map<string, VaultNote>, studied: 
     .sort((a, b) => a.R! - b.R!)[0]
   if (half) out.push({ label: name.get(half.conceptId)!, reason: `a metà · ${pct(half.R!)}`, action: { kind: 'practice', conceptIds: [half.conceptId] } })
   return out.slice(0, MAX)
+}
+
+/** The suggestions for the home; the vault index is the one the watcher keeps, scanned again only when there is none yet. */
+export function createSuggester(deps: {
+  cachedIndex: () => VaultIndex | null
+  scan: () => Promise<VaultIndex | null>
+  notes: () => Promise<SuggestInput['notes']>
+  sessions: () => Promise<SessionSummary[]>
+  practiced: () => Promise<Set<string>>
+  memory: () => Promise<Record<string, Memory>>
+  graph: () => Promise<GraphData>
+  now: () => number
+}): () => Promise<Suggestions> {
+  return async () => {
+    const [index, notes, sessions, practiced, memory, graph] = await Promise.all([deps.cachedIndex() ?? deps.scan(), deps.notes(), deps.sessions(), deps.practiced(), deps.memory(), deps.graph()])
+    return suggest({ index, notes, sessions, practiced, memory, graph, now: deps.now() })
+  }
 }
