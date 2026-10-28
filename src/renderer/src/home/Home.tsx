@@ -43,17 +43,17 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
   // Sizes Andrea dragged, kept across restarts and clamped to the window.
   const [layout, setLayoutState] = useState<Layout>(() => clampLayout(loadLayout(), window.innerWidth || 1440, window.innerHeight || 900))
   const [resizing, setResizing] = useState(false)
-  const setLayout = (patch: Partial<Layout>): void =>
+  const setLayout = (patch: Partial<Layout>, dragging?: 'left' | 'right'): void =>
     setLayoutState((l) => {
-      const next = clampLayout({ ...l, ...patch }, window.innerWidth || 1440, window.innerHeight || 900)
+      const next = clampLayout({ ...l, ...patch }, window.innerWidth || 1440, window.innerHeight || 900, { left, right }, dragging)
       saveLayout(next)
       return next
     })
   useEffect(() => {
-    const onResize = (): void => setLayoutState((l) => clampLayout(l, window.innerWidth, window.innerHeight))
+    const onResize = (): void => setLayoutState((l) => clampLayout(l, window.innerWidth, window.innerHeight, { left, right }))
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [])
+  }, [left, right])
 
   const [loadError, setLoadError] = useState<string | null>(null)
   const reload = useCallback(async () => {
@@ -127,7 +127,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
           value={layout.left}
           min={LIMITS.left[0]}
           max={LIMITS.left[1]}
-          onChange={(v) => setLayout({ left: v })}
+          onChange={(v) => setLayout({ left: v }, 'left')}
           onActive={setResizing}
           className="side-split"
           style={{ left: layout.left - 4 }}
@@ -141,7 +141,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
           min={LIMITS.right[0]}
           max={LIMITS.right[1]}
           invert
-          onChange={(v) => setLayout({ right: v })}
+          onChange={(v) => setLayout({ right: v }, 'right')}
           onActive={setResizing}
           className="side-split"
           style={{ right: layout.right - 4 }}

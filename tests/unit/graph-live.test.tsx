@@ -32,9 +32,9 @@ function mount(livePaths: string[]) {
 }
 
 describe('the graph of the notes vive', () => {
-  it('shows only the concepts born in notes with a nota viva', async () => {
+  it('shows only the concepts of notes with a nota viva, shared ones included', async () => {
     mount(['/v/Lagrange.md'])
-    expect(await screen.findByText('1 concetti da 1 note · 0 catene · 0 in più note')).toBeTruthy()
+    expect(await screen.findByText('2 concetti da 1 note · 1 catene · 0 in più note')).toBeTruthy()
   })
   it('explains how it grows when there is no nota viva yet', async () => {
     mount([])

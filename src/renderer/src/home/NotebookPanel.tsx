@@ -101,7 +101,7 @@ export function NotebookPanel({ onClose, onOpen, tree = [], onOpenNote, vaultPat
           {error}
         </p>
       )}
-      <section className="nb-sec" aria-label="Notebook" style={notebooksHeight ? { height: notebooksHeight, maxHeight: 'none' } : undefined}>
+      <section className="nb-sec" aria-label="Notebook" style={notebooksHeight ? { maxHeight: notebooksHeight } : undefined}>
         <div className="sec-head">
           <h2>Notebook</h2>
           <button type="button" className="mini" aria-expanded={creating} aria-label="Nuovo notebook" onClick={() => setCreating((c) => !c)}>

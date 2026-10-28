@@ -26,6 +26,7 @@ import { createExtractor, type Extractor } from './graph/jobs'
 import { graphStore } from './graph/store'
 import { fakeNoteBridge } from './notes/fake-note'
 import { createNoteGenerator } from './notes/generator'
+import { readySources } from './notes/store'
 import { fakeTeacher } from './session/fake-teacher'
 import { createSessionRunner } from './session/runner'
 import { dataDir } from './store/paths'
@@ -236,7 +237,7 @@ export function registerIpc(): { bridge: Bridge } {
         ? broadcast(CH.graphChanged, { status })
         : void extractor.graph().then((graph) => broadcast(CH.graphChanged, { status, graph }), () => broadcast(CH.graphChanged, { status }))
     },
-    eligible: async () => new Set((await notes.list()).map((m) => m.sourcePath)),
+    eligible: async () => readySources(await notes.list()),
     priorities: async () => {
       const idx = await vaultOrNull()
       if (!idx) return []

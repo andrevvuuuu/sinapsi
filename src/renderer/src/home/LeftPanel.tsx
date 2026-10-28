@@ -73,7 +73,7 @@ export function LeftPanel(p: Props): React.JSX.Element {
           <IconPanel />
         </button>
       </div>
-      <section className="psec" aria-label="Sessioni" style={p.sessionsHeight ? { height: p.sessionsHeight, maxHeight: 'none' } : undefined}>
+      <section className="psec" aria-label="Sessioni" style={p.sessionsHeight ? { maxHeight: p.sessionsHeight } : undefined}>
         <div className="seg" role="group" aria-label="Sessioni da mostrare">
           {KINDS.map((k) => (
             <button key={k} type="button" aria-pressed={k === kind} onClick={() => setKind(k)}>

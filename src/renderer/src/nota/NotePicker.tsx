@@ -97,7 +97,7 @@ export function NotePicker({
           </button>
         </div>
         {error && <p role="alert">{error}</p>}
-        {concepts !== null && (
+        {concepts !== null && mine?.some((m) => m.status === 'ready') && (
           <p className="nv-concepts">
             {concepts === 1 ? '1 concetto nel grafo' : `${concepts} concetti nel grafo`}
             {mine?.some((m) => m.status === "ready") && (
