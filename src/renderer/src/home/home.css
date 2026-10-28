@@ -163,9 +163,9 @@
 
 /* Suggestions: what to do next, each with its reason. */
 .composer .suggest{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px;padding:0 2px}
-.composer .chip{display:flex;flex-direction:column;align-items:flex-start;gap:1px;max-width:min(260px,100%);min-height:44px;padding:6px 12px;border-radius:14px;border:1px solid var(--hair);background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--ink);text-align:left;cursor:pointer;transition:background .15s,border-color .15s}
-.composer .chip:hover{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:color-mix(in srgb,var(--accent) 40%,var(--hair))}
-.composer .chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.composer .chip-label,.composer .chip-why{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.composer .chip-label{font-size:13.5px;font-weight:500}
-.composer .chip-why{font-size:11.5px;color:var(--muted)}
+.composer .sg-chip{font:inherit;font-family:var(--sans);text-transform:none;letter-spacing:normal;display:flex;flex-direction:column;align-items:flex-start;gap:1px;max-width:min(260px,100%);min-height:44px;padding:6px 12px;border-radius:14px;border:1px solid var(--hair);background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--ink);text-align:left;cursor:pointer;transition:background .15s,border-color .15s}
+.composer .sg-chip:hover{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:color-mix(in srgb,var(--accent) 40%,var(--hair))}
+.composer .sg-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.composer .sg-label,.composer .sg-why{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.composer .sg-label{font-size:13.5px;font-weight:500}
+.composer .sg-why{font-size:11.5px;color:var(--muted)}
