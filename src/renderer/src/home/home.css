@@ -130,8 +130,9 @@
 .settings-dlg{width:min(640px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--inner),0 40px 100px -30px rgba(0,0,0,.7);animation:imp-in .2s var(--ease-out)}
 .sd-head{display:flex;align-items:center;justify-content:space-between;padding:16px 14px 4px 22px}
 .sd-head h2{font:400 30px/1 var(--serif);margin:0}
-.sd-body{overflow:auto;padding:4px 22px 12px;display:flex;flex-direction:column;gap:18px}
-.sd-body h3{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.sd-body{overflow:auto;padding:4px 22px 16px;display:flex;flex-direction:column;gap:var(--space-group)}
+.sd-body .seg button{min-height:calc(var(--ctl) - 6px)}
+.sd-body h3{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 var(--space-label)}
 .sd-hint{font-size:13px;color:var(--muted);margin:0 0 8px}
 .sd-engines{display:flex;flex-direction:column;gap:6px}
 .sd-engine{display:grid;grid-template-columns:1fr 110px 190px;gap:8px;align-items:center;font-size:14px}
