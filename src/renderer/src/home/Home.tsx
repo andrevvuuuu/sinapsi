@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { EngineStatus as Status, NoteMeta, PracticeSummary, ReviewSession, SessionSummary, VaultResult } from '../../../shared/api'
+import type { ChipAction, EngineStatus as Status, NoteMeta, PracticeSummary, ReviewSession, SessionSummary, Suggestions, VaultResult } from '../../../shared/api'
 import type { Engine, Settings } from '../../../shared/settings-schema'
 import { buildTree } from './build-tree'
 import { Composer } from './Composer'
@@ -23,7 +23,7 @@ type HomeProps = {
   onOpenSource?: (path: string) => void
   onOpenReview?: (query: string, conceptIds?: string[]) => void
   onOpenNotebook?: (id: string) => void
-  onOpenPractice?: (text: string) => void
+  onOpenPractice?: (text: string, initial?: { conceptIds: string[]; exam?: boolean }) => void
   onOpenPracticeSession?: (id: string) => void
 }
 
@@ -40,6 +40,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
   const [reviews, setReviews] = useState<ReviewSession[]>([])
   const [notes, setNotes] = useState<NoteMeta[]>([])
   const [due, setDue] = useState(0)
+  const [suggestions, setSuggestions] = useState<Suggestions | null>(null)
   // Sizes Andrea dragged, kept across restarts and clamped to the window.
   const [layout, setLayoutState] = useState<Layout>(() => clampLayout(loadLayout(), window.innerWidth || 1440, window.innerHeight || 900))
   const [resizing, setResizing] = useState(false)
@@ -81,11 +82,15 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
         .then((m) => setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length))
         .catch(() => undefined)
       void api.review?.sessions?.().then(setReviews).catch(() => undefined)
+      void api.suggest?.get().then(setSuggestions).catch(() => undefined)
     }
     refresh()
     window.addEventListener('focus', refresh)
     const every = setInterval(refresh, 10 * 60_000)
-    const loadNotes = (): void => void api.notes?.list().then(setNotes)
+    const loadNotes = (): void => {
+      void api.notes?.list().then(setNotes)
+      void api.suggest?.get().then(setSuggestions).catch(() => undefined)
+    }
     loadNotes()
     const offNotes = api.notes?.onUpdate(loadNotes)
     const offVault = api.vault.onChange(setIndex)
@@ -109,6 +114,17 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
   const chooseVault = async (): Promise<void> => {
     await api.settings.chooseVault()
     await reload()
+  }
+  const study = (topic: string): void =>
+    void api.session
+      ?.start(topic)
+      .then((id) => onOpenSession?.(id))
+      .catch((e) => setToast(e instanceof Error ? e.message : String(e)))
+  const pick = (a: ChipAction): void => {
+    if (a.kind === 'learn') return study(a.topic)
+    if (a.kind === 'resume') return onOpenSession?.(a.id)
+    if (a.kind === 'review') return onOpenReview?.('', a.conceptIds)
+    onOpenPractice?.('', { conceptIds: a.conceptIds, ...(a.exam ? { exam: true } : {}) })
   }
   const setTheme = async (theme: Settings['theme']): Promise<void> => {
     setSettings(await api.settings.set({ theme }))
@@ -206,12 +222,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
             livePaths={notes.filter((n) => n.status === 'ready').map((n) => n.sourcePath)}
             onReview={(ids) => onOpenReview?.('', ids)}
             onOpenNote={(path) => onOpenSource?.(path)}
-            onStudy={(title) =>
-              void api.session
-                ?.start(title)
-                .then((id) => onOpenSession?.(id))
-                .catch((e) => setToast(e instanceof Error ? e.message : String(e)))
-            }
+            onStudy={study}
           />
         ) : (
           <div className="placeholder">
@@ -235,6 +246,8 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
         )}
         <Composer
           due={due}
+          suggestions={suggestions}
+          onPick={pick}
           onSubmit={async (mode, text) => {
             if (mode === 'Ripasso') return onOpenReview?.(text)
             if (mode === 'Pratica') return onOpenPractice?.(text)

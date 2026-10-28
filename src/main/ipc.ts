@@ -29,6 +29,7 @@ import { createNoteGenerator } from './notes/generator'
 import { readySources } from './notes/store'
 import { fakeTeacher } from './session/fake-teacher'
 import { createSessionRunner } from './session/runner'
+import { suggest } from './suggest/suggest'
 import { dataDir } from './store/paths'
 import { loadSettings, saveSettings } from './store/settings'
 import { scanVault } from './vault/scan'
@@ -336,6 +337,9 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.practiceExamDeliver, (_e, id, a) => bg(ph.examDeliver(id, a)))
   ipcMain.handle(CH.practicePhoto, (_e, id, bytes) => ph.photo(id, bytes))
   ipcMain.handle(CH.practiceCamera, () => ph.camera())
+  ipcMain.handle(CH.suggestGet, async () =>
+    suggest({ index: await vaultOrNull(), notes: await notes.list(), sessions: await runner.list(), practiced: await practice.practiced(), memory: await review.memory(), graph: await extractor.graph(), now: Date.now() })
+  )
 
   // Background extraction: a few notes a day, only while the Mac is idle.
   const tick = async (): Promise<void> => {

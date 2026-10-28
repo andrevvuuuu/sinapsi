@@ -146,7 +146,7 @@ export function createSessionRunner(deps: {
         return []
       }
       const all = await Promise.all(names.map((n) => load(n.replace(/\.jsonl$/, ''))))
-      return all.filter((s) => s.id).map((s) => ({ id: s.id, topic: s.topic, phase: s.phase, updatedAt: s.updatedAt })).sort((a, b) => b.updatedAt - a.updatedAt)
+      return all.filter((s) => s.id).map((s) => ({ id: s.id, topic: s.topic, phase: s.phase, ...(s.notePath ? { notePath: s.notePath } : {}), updatedAt: s.updatedAt })).sort((a, b) => b.updatedAt - a.updatedAt)
     }
   }
   return runner

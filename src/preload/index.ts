@@ -87,7 +87,8 @@ const api: SinapsiApi = {
     photo: (id, bytes) => ipcRenderer.invoke(CH.practicePhoto, id, bytes),
     camera: () => ipcRenderer.invoke(CH.practiceCamera),
     onUpdate: (cb) => subscribe(CH.practiceUpdated, cb)
-  }
+  },
+  suggest: { get: () => ipcRenderer.invoke(CH.suggestGet) }
 }
 
 contextBridge.exposeInMainWorld('sinapsi', api)
