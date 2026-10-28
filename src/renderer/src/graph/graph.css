@@ -113,7 +113,7 @@
 }
 .graph .gseg button {
   flex: 1;
-  min-height: 40px;
+  min-height: calc(var(--ctl) - 6px);
   border: 0;
   border-radius: 9px;
   background: transparent;
@@ -185,7 +185,8 @@
 .graph .gzoom {
   position: absolute;
   right: 16px;
-  bottom: 150px;
+  /* Above the composer (22 px from the bottom) with 16 px to spare, whatever its height. */
+  bottom: calc(var(--composer-h, 128px) + 38px);
   z-index: 5;
   display: flex;
   flex-direction: column;

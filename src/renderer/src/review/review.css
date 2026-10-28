@@ -21,13 +21,14 @@
   align-items: center;
   gap: 20px;
   padding: 14px 24px 14px 88px;
+  min-height: var(--topbar-h);
   background: color-mix(in srgb, var(--bg) 85%, transparent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--hair);
 }
 .rv-top .pill {
-  min-height: 40px;
+  min-height: var(--ctl);
   padding: 0 14px;
   border-radius: 999px;
   border: 1px solid var(--hair);
@@ -142,7 +143,7 @@
   margin-top: 8px;
 }
 .rv-chips button {
-  min-height: 40px;
+  min-height: var(--ctl-sm);
   padding: 0 14px;
   border-radius: 999px;
   border: 1px solid var(--hair);
@@ -160,7 +161,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-height: 48px;
+  min-height: var(--ctl);
   padding: 0 22px;
   border-radius: 999px;
   border: 0;
@@ -627,4 +628,11 @@
   color: var(--bad);
   font-size: 14px;
   margin: 8px 0 0;
+}
+/* The start of a review stays in view below a long list. */
+.rv-go {
+  position: sticky;
+  bottom: 0;
+  padding: 16px 0 24px;
+  background: var(--bg);
 }

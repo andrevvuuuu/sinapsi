@@ -86,7 +86,9 @@ export function SourceList({ notebook, excluded, onToggle, onView, notes, onMess
         <ul className="nb-list" aria-label="Fonti">
           {notebook.sources.map((s) => (
             <li key={s.id} className={'nb-src ' + s.status}>
-              <input type="checkbox" aria-label={`Usa ${s.title}`} disabled={s.status !== 'ready'} checked={s.status === 'ready' && !excluded.has(s.id)} onChange={() => onToggle(s.id)} />
+              <label className="nb-hit">
+                <input type="checkbox" aria-label={`Usa ${s.title}`} disabled={s.status !== 'ready'} checked={s.status === 'ready' && !excluded.has(s.id)} onChange={() => onToggle(s.id)} />
+              </label>
               <div className="nb-src-main">
                 <button type="button" className="nb-src-title" disabled={s.status !== 'ready'} onClick={() => onView(s.id)}>
                   <span className="nb-kind">{KIND[s.kind]}</span>

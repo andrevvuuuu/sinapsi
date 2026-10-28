@@ -1,6 +1,6 @@
 .sess{display:grid;grid-template-rows:auto 1fr;height:100vh;font-size:17px;line-height:1.65}
 .sess .lab{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.sess .top{display:flex;align-items:center;gap:16px;padding:30px 20px 12px 88px;border-bottom:1px solid var(--hair);min-height:72px}
+.sess .top{display:flex;align-items:center;gap:16px;padding:14px 24px 14px 88px;border-bottom:1px solid var(--hair);min-height:var(--topbar-h)}
 .sess .top h1{font:400 28px/1 var(--serif);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sess .phase{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);white-space:nowrap}
 .sess .sp{flex:1}
@@ -34,7 +34,7 @@
 .summary h3{font:400 22px/1.2 var(--serif);margin:6px 0}
 .summary ul{margin:0 0 8px;padding-left:20px}
 .dockwrap{position:sticky;bottom:0;padding:0 24px 20px;background:linear-gradient(transparent,var(--bg) 40px)}
-.dock{max-width:760px;margin:0 auto}
+.dock{max-width:712px;margin:0 auto}
 .sess .shell{padding:5px;border-radius:24px;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--hair);backdrop-filter:blur(16px)}
 .sess .inner{border-radius:19px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:14px 16px}
 .sess .q{font-size:17px;margin:4px 0 10px}
@@ -82,3 +82,6 @@
 .typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:b 1s infinite}
 .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
 @keyframes b{50%{opacity:.25}}
+
+/* Short windows: the conversation keeps its room. */
+@media (max-height:760px){.sess .inner{padding:12px 14px}.sess .q{margin:2px 0 8px}.sess .act{margin-top:8px}.dockwrap{padding-bottom:12px}}
