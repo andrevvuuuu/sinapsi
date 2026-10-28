@@ -1,3 +1,5 @@
+/* Sizes and spacing (layout only, same for every theme). */
+:root{--ctl:44px;--ctl-sm:36px;--hit-min:28px;--topbar-h:72px;--space-label:8px;--space-group:20px}
 :root{--ease-out:cubic-bezier(.23,1,.32,1);--serif:'Instrument Serif',Georgia,serif;--sans:'Geist',ui-sans-serif,system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace;--hand:'Caveat',cursive}
 [data-theme="lavagna"]{color-scheme:dark;--bg:#0f100d;--panel:#141511;--surface:#1a1b17;--hair:rgba(236,233,223,.09);--faint:rgba(236,233,223,.05);--inner:inset 0 1px 0 rgba(236,233,223,.05);--ink:#ece9df;--muted:#a19e92;--accent:#ef7a42;--good:#8fd1a6;--warn:#e9b95f;--bad:#f08080;--pen:#8fb8ff}
 [data-theme="trattato"]{color-scheme:light;--bg:#f3eee4;--panel:#ede7db;--surface:#fbf8f2;--hair:rgba(36,32,27,.11);--faint:rgba(36,32,27,.05);--inner:inset 0 1px 0 rgba(255,255,255,.8);--ink:#221e19;--muted:#615a4f;--accent:#a83d22;--good:#2f6e48;--warn:#8f6512;--bad:#a8323f;--pen:#2f55a8}

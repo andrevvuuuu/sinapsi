@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChipAction, Suggestions } from '../../../shared/api'
 import { IconSend } from './icons'
 
@@ -27,10 +27,20 @@ export function Composer({
     onSubmit(mode, text.trim())
     setText('')
   }
+  // The graph keeps its zoom controls above the composer: tell the container how tall it is.
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = box.current
+    const host = el?.parentElement
+    if (!el || !host || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => host.style.setProperty('--composer-h', `${el.offsetHeight}px`))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   // What to do next, with the reason; they step aside while he types.
   const chips = text ? [] : (suggestions?.[KEY[mode]] ?? [])
   return (
-    <div className="composer">
+    <div className="composer" ref={box}>
       <div className="seg modes-pill" role="group" aria-label="Tipo di sessione">
         {MODES.map((m) => (
           <button key={m} type="button" aria-pressed={m === mode} onClick={() => setMode(m)}>

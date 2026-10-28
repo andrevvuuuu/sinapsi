@@ -54,7 +54,7 @@
 .placeholder p{color:var(--muted);margin:0 auto;max-width:44ch}
 .placeholder .orb{width:120px;height:120px;margin:0 auto 26px;border-radius:50%;border:1px dashed var(--hair);display:grid;place-items:center}
 .placeholder .orb i{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 14%,transparent)}
-.composer{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:min(620px,calc(100% - 64px));z-index:3}
+.composer{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:min(620px,max(calc(100% - 64px),min(calc(100% - 32px),488px)));z-index:3}
 .composer .shell{padding:5px;border-radius:26px;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--hair);backdrop-filter:blur(18px)}
 .composer .core{border-radius:21px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:10px}
 .composer .seg{width:max-content;margin:0 0 8px}
@@ -72,7 +72,7 @@
 .btn-imp svg{width:15px;height:15px}
 .btn-imp.on{cursor:pointer;opacity:1;color:var(--ink)}
 .btn-imp.on:hover{background:var(--faint)}
-.nb-new{display:flex;gap:8px;padding:0 18px 12px}
+.nb-new{display:flex;gap:8px;padding:12px 6px;flex:none}
 .nb-new input{flex:1;min-width:0;min-height:44px;border-radius:12px;border:1px solid var(--hair);background:var(--surface);color:var(--ink);padding:0 12px;font:400 14px var(--sans)}
 .missing{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:40px;z-index:2;background:var(--bg)}
 .missing h2{font:400 36px/1.1 var(--serif);margin:0 0 10px}
@@ -99,7 +99,7 @@
 .sess-find{width:100%;min-height:44px;border-radius:12px;border:1px dashed var(--hair);background:transparent;color:var(--muted);font:500 13px var(--sans);cursor:pointer;text-align:left;padding:0 12px}
 .sess-find:hover{background:var(--faint);color:var(--ink)}
 .app aside.left .psec[aria-label="Sessioni"]{display:flex;flex-direction:column;max-height:42vh}
-.app aside.left .psec[aria-label="Sessioni"] .sessions{overflow:auto;min-height:0}
+.app aside.left .psec[aria-label="Sessioni"] .sessions{overflow:auto;min-height:0;padding-bottom:12px}
 .nv-explorer{flex:1;min-height:0}
 .tree summary .cnt{margin-left:auto;font:500 10px var(--mono);color:var(--muted)}
 .nv-leaf{color:var(--ink)!important}
@@ -118,9 +118,10 @@
 .sec-head h2,.obs-sec h2{font:600 11px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:10px 0}
 .obs-sec h2{margin:10px 6px}
 .nb-sec .sessions{overflow:auto;min-height:0;margin:0}
-.nb-sec .empty{padding:4px 6px}
+.nb-sec .empty{padding:4px 6px;overflow:auto;min-height:0}
+.nb-sec .sec-head{flex:none}
 .obs-sec{flex:1;min-height:0}
-.mini{min-height:44px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--ink);font:500 12px var(--sans);cursor:pointer;white-space:nowrap}
+.mini{min-height:var(--ctl-sm);padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--ink);font:500 12px var(--sans);cursor:pointer;white-space:nowrap}
 .mini:hover{background:var(--faint)}
 .panel-alert{margin:0 14px 8px;padding:8px 12px;border-radius:12px;background:color-mix(in srgb,var(--bad) 14%,transparent);font-size:13px}
 .app aside.right .pf .row{justify-content:space-between}

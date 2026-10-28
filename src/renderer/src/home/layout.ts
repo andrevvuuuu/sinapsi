@@ -1,7 +1,7 @@
 /** Sizes of the home sections Andrea can drag (px): side panels, sessions list, notebooks list. */
 export type Layout = { left: number; right: number; sessions: number; notebooks: number }
 export const DEFAULT_LAYOUT: Layout = { left: 288, right: 320, sessions: 300, notebooks: 280 }
-export const LIMITS = { left: [220, 480], right: [260, 520], sessions: [120, 900], notebooks: [120, 900] } as const
+export const LIMITS = { left: [272, 480], right: [260, 520], sessions: [120, 900], notebooks: [120, 900] } as const
 const KEY = 'sinapsi.layout.v1'
 const CENTRE_MIN = 360
 
