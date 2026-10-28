@@ -49,3 +49,9 @@ describe('home layout', () => {
     expect(home).toMatch(/\.composer\{[^}]*width:min\(620px,max\(calc\(100% - 64px\),min\(calc\(100% - 32px\),488px\)\)\)/)
   })
 })
+
+describe('graph menu', () => {
+  it('its segmented filter is 44 outside, like the others', () => {
+    expect(graph).toMatch(/\.graph \.gseg button \{\s*flex: 1;\s*min-height: calc\(var\(--ctl\) - 6px\);/)
+  })
+})

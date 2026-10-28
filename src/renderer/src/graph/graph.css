@@ -113,7 +113,7 @@
 }
 .graph .gseg button {
   flex: 1;
-  min-height: 40px;
+  min-height: calc(var(--ctl) - 6px);
   border: 0;
   border-radius: 9px;
   background: transparent;
