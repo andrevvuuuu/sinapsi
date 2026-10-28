@@ -11,8 +11,7 @@
 .ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:34px 10px 10px 18px;min-height:84px}
 .app aside.right .ph{padding-left:12px}
 .logo{display:flex;align-items:center;gap:10px;font:400 26px/1 var(--serif);letter-spacing:-.01em;white-space:nowrap}
-.logo i{width:26px;height:26px;border-radius:8px;background:var(--ink);display:grid;place-items:center}
-.logo i::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.logo .logo-mark{flex:none;color:var(--ink)}
 .psec{padding:6px 12px 12px;min-height:0}
 .psec h2{font:600 11px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:10px 6px 10px}
 .seg{display:flex;padding:3px;border-radius:999px;background:var(--faint);gap:2px}
