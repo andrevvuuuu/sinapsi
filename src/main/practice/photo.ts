@@ -1,9 +1,10 @@
 import { execFile } from 'node:child_process'
-import { mkdir, readdir, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
 import type { Bridge } from '../ai/bridge'
 import { unescapeOver } from '../ai/json'
+import { EngineMissingError } from '../ai/errors'
 
 export const PHOTO_MAX = 15 * 1024 * 1024
 const PhotoSchema = z.object({ readable: z.boolean(), text: z.string() })
@@ -19,14 +20,28 @@ function kindOf(b: Uint8Array): 'png' | 'jpg' | 'heic' | null {
 
 /** Saves the photo of Andrea's sheet beside the session and has Claude transcribe it (text + LaTeX), nothing more. */
 const sipsToJpeg = (from: string, to: string): Promise<void> =>
-  new Promise((resolve, reject) => execFile('/usr/bin/sips', ['-s', 'format', 'jpeg', from, '--out', to], (e) => (e ? reject(new Error('Non riesco a convertire la foto HEIC')) : resolve())))
+  new Promise((resolve, reject) =>
+    execFile('/usr/bin/sips', ['-s', 'format', 'jpeg', from, '--out', to], (e) =>
+      e ? reject(new Error('Non riesco a convertire la foto HEIC')) : resolve()
+    )
+  )
 
-export async function transcribePhoto(input: { bridge: Pick<Bridge, 'ask'>; dir: string; bytes: Uint8Array; convert?: (from: string, to: string) => Promise<void> }): Promise<string> {
+export async function transcribePhoto(input: {
+  bridge: Pick<Bridge, 'ask'>
+  dir: string
+  bytes: Uint8Array
+  convert?: (from: string, to: string) => Promise<void>
+}): Promise<string> {
   if (input.bytes.length > PHOTO_MAX) throw new Error('La foto è troppo grande (massimo 15 MB)')
   const ext = kindOf(input.bytes)
   if (!ext) throw new Error('Il file non è un’immagine (JPG, PNG o HEIC)')
   await mkdir(input.dir, { recursive: true })
-  const n = new Set((await readdir(input.dir)).filter((f) => f.startsWith('foglio-')).map((f) => f.replace(/\.\w+$/, ''))).size + 1
+  // The next number after the highest kept: cleaned-up gaps never make a new photo overwrite an old one.
+  const n =
+    Math.max(
+      0,
+      ...(await readdir(input.dir)).map((f) => Number(/^foglio-(\d+)\./.exec(f)?.[1] ?? 0))
+    ) + 1
   let name = `foglio-${n}.${ext}`
   await writeFile(join(input.dir, name), input.bytes)
   // Claude reads JPEG and PNG, not the iPhone's HEIC.
@@ -34,16 +49,57 @@ export async function transcribePhoto(input: { bridge: Pick<Bridge, 'ask'>; dir:
     await (input.convert ?? sipsToJpeg)(join(input.dir, name), join(input.dir, `foglio-${n}.jpg`))
     name = `foglio-${n}.jpg`
   }
-  const r = await input.bridge.ask({
-    task: 'grade',
-    readOnly: true,
-    cwd: input.dir,
-    timeoutMs: 120_000,
-    schema: PhotoSchema,
-    prompt: `Nella cartella di lavoro c'è l'immagine «${name}»: la foto di un foglio su cui Andrea ha scritto a mano il suo ragionamento. Aprila con lo strumento Read e trascrivila fedelmente: testo in italiano, matematica in LaTeX con $...$ e $$...$$, un a capo per ogni riga del foglio. Non correggere, non completare, non commentare. Le parti illeggibili segnale con [illeggibile]. Se non è un foglio scritto o è del tutto illeggibile, "readable": false.
+  const r = await input.bridge
+    .ask({
+      task: 'grade',
+      // Always Claude: only its CLI runs with the read-only lockdown.
+      engine: { engine: 'claude', model: 'sonnet' },
+      readOnly: true,
+      cwd: input.dir,
+      timeoutMs: 120_000,
+      schema: PhotoSchema,
+      prompt: `Nella cartella di lavoro c'è l'immagine «${name}»: la foto di un foglio su cui Andrea ha scritto a mano il suo ragionamento. Aprila con lo strumento Read e trascrivila fedelmente: testo in italiano, matematica in LaTeX con $...$ e $$...$$, un a capo per ogni riga del foglio. Non correggere, non completare, non commentare. Le parti illeggibili segnale con [illeggibile]. Se non è un foglio scritto o è del tutto illeggibile, "readable": false.
 Rispondi solo con JSON: {"readable":true,"text":"..."}`
-  })
+    })
+    .catch((e: unknown) => {
+      if (e instanceof EngineMissingError)
+        throw new Error(
+          'Per leggere le foto serve Claude Code (il comando claude) installato su questo Mac.',
+          { cause: e }
+        )
+      throw e
+    })
   const out = r.data as z.infer<typeof PhotoSchema>
-  if (!out.readable || !out.text.trim()) throw new Error('Non riesco a leggere il foglio: rifai la foto più da vicino e con più luce.')
+  if (!out.readable || !out.text.trim())
+    throw new Error('Non riesco a leggere il foglio: rifai la foto più da vicino e con più luce.')
   return unescapeOver(out.text).trim()
+}
+
+const MONTH = 30 * 86_400_000
+
+/** Photos of sheets older than 30 days are deleted (each can weigh up to 15 MB). */
+export async function cleanupPhotos(
+  practiceDir: string,
+  now: number,
+  maxAge = MONTH
+): Promise<void> {
+  let sessions: string[]
+  try {
+    sessions = await readdir(practiceDir)
+  } catch {
+    return
+  }
+  for (const s of sessions) {
+    const dir = join(practiceDir, s)
+    let files: string[]
+    try {
+      files = (await readdir(dir)).filter((f) => f.startsWith('foglio-'))
+    } catch {
+      continue
+    }
+    for (const f of files) {
+      const st = await stat(join(dir, f)).catch(() => null)
+      if (st && now - st.mtimeMs > maxAge) await rm(join(dir, f), { force: true })
+    }
+  }
 }

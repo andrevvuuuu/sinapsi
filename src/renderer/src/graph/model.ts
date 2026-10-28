@@ -124,6 +124,7 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
       available: n.available
     }))
 
+  const noteOf = new Map(index.notes.map((x) => [x.path, x]))
   const seen = new Set<string>()
   const wikilinks: [string, string][] = []
   const frontier: { name: string; course: string }[] = []
@@ -134,7 +135,7 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
           frontier.push({ name: l.target, course: n.title })
         continue
       }
-      const t = byTitle.get(l.target.toLowerCase())
+      const t = (l.path && noteOf.get(l.path)) || byTitle.get(l.target.toLowerCase())
       if (!t || t.path === n.path) continue
       const pair = [n.path, t.path].sort() as [string, string]
       const key = pair.join('\n')

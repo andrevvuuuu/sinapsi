@@ -100,6 +100,11 @@ export function SourceList({ notebook, excluded, onToggle, onView, notes, onMess
                 )}
               </div>
               <div className="nb-src-act">
+                {s.kind === 'vault' && s.status === 'ready' && (
+                  <button type="button" aria-label={`Aggiorna ${s.title}`} title="Rileggi la nota da Obsidian" onClick={() => void api.refreshSource(s.id).catch(fail)}>
+                    Aggiorna
+                  </button>
+                )}
                 {s.status === 'failed' && (
                   <button type="button" aria-label={`Riprova ${s.title}`} onClick={() => void api.retrySource(s.id).catch(fail)}>
                     Riprova

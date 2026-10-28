@@ -18,9 +18,9 @@ test('a nota viva written from an Obsidian note, with live figure and quiz', asy
   // figure: the slider moves the readout, "Mostra i punti" finds c = 0
   const slider = win.getByRole('slider', { name: 'Punto c' })
   await slider.fill('0.5')
-  await expect(win.getByText("f'(c)").locator('..')).toContainText('1,00')
+  await expect(win.locator('.readout')).toContainText('1,00')
   await win.getByRole('button', { name: 'Mostra i punti' }).click()
-  await win.getByRole('button', { name: /x ≈ 0,00/ }).click()
+  await win.getByRole('button', { name: /p ≈ 0,00/ }).click()
   await expect(win.getByText('Diventa verde', { exact: false })).toBeVisible()
 
   // quiz

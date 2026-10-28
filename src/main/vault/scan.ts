@@ -89,14 +89,29 @@ export async function scanVault(root: string, excluded: string[], partial: Parti
       return base
     }
   })
-  // Resolve link targets by title, then alias (case-insensitive).
-  const byName = new Map<string, string>()
-  for (const n of notes) byName.set(n.title.toLowerCase(), n.title)
-  for (const n of notes) for (const a of n.aliases) if (!byName.has(a.toLowerCase())) byName.set(a.toLowerCase(), n.title)
+  // Resolve link targets by title, then alias (case-insensitive). Same title in several folders:
+  // the folder written in the link, else the closest folder to the linking note, else the shortest path.
+  const byName = new Map<string, VaultNote[]>()
+  const add = (key: string, n: VaultNote): void => void byName.set(key, [...(byName.get(key) ?? []), n])
+  for (const n of notes) add(n.title.toLowerCase(), n)
+  for (const n of notes) for (const a of n.aliases) if (!byName.has(a.toLowerCase())) add(a.toLowerCase(), n)
+  const shared = (a: string, b: string): number => {
+    const x = a.split('/')
+    const y = b.split('/')
+    let k = 0
+    while (k < x.length && k < y.length && x[k] === y[k] && x[k]) k++
+    return k
+  }
   for (const n of notes)
     n.links = n.links.map((l) => {
-      const hit = byName.get(l.target.toLowerCase())
-      return hit ? { ...l, target: hit, resolved: true } : { ...l, resolved: false }
+      let hits = byName.get(l.target.toLowerCase()) ?? []
+      if (l.folder && hits.length > 1) {
+        const f = l.folder.toLowerCase()
+        const inFolder = hits.filter((h) => h.folder.toLowerCase() === f || h.folder.toLowerCase().endsWith('/' + f))
+        if (inFolder.length) hits = inFolder
+      }
+      const best = [...hits].sort((a, b) => shared(b.folder, n.folder) - shared(a.folder, n.folder) || a.path.length - b.path.length)[0]
+      return best ? { ...l, target: best.title, path: best.path, resolved: true } : { ...l, resolved: false }
     })
   return { root, notes, subjects: subjects.map((s) => ({ id: s.tag, color: s.color })), scannedAt: Date.now() }
 }

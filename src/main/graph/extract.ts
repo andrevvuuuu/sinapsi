@@ -91,10 +91,10 @@ export function pickCandidates(g: GraphData, index: VaultIndex, notePath: string
   // Notes this note cites come first, then the notes that cite it.
   const linked: string[] = []
   for (const l of note?.links ?? []) {
-    const t = byTitle.get(l.target.toLowerCase())
+    const t = (l.path && index.notes.find((x) => x.path === l.path)) || byTitle.get(l.target.toLowerCase())
     if (t && !linked.includes(t.path)) linked.push(t.path)
   }
-  if (note) for (const n of index.notes) if (!linked.includes(n.path) && n.links.some((l) => l.target.toLowerCase() === note.title.toLowerCase())) linked.push(n.path)
+  if (note) for (const n of index.notes) if (!linked.includes(n.path) && n.links.some((l) => (l.path ? l.path === note.path : l.target.toLowerCase() === note.title.toLowerCase()))) linked.push(n.path)
   const subjectOf = new Map(index.notes.map((n) => [n.path, n.subject]))
   const own = g.concepts.filter((c) => c.notes.includes(notePath))
   const rank = (c: Concept): number => Math.min(...c.notes.map((p) => linked.indexOf(p)).filter((i) => i >= 0))

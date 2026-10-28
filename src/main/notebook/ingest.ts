@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { copyFile, mkdir, readFile, rm } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import type { Notebook, Source, SourceKind, SourceText } from '../../shared/notebook-types'
-import { fetchYoutube, isYoutubeUrl, transcribe, type RunTool } from './media'
+import { canonicalYoutube, fetchYoutube, transcribe, type RunTool } from './media'
 import { readPdf, readSlides, readTextDoc } from './readers'
 import type { NotebookStore } from './store'
 
@@ -38,7 +38,10 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
   // Queued or running: a second Riprova must not transcribe the same lecture twice.
   const pending = new Set<string>()
   const controllers = new Map<string, AbortController>()
-  let chain: Promise<void> = Promise.resolve()
+  const stages = new Map<string, 'download' | 'transcribe'>()
+  // Two lanes: a PDF or a note never waits behind an hour of recording.
+  const lanes: Record<'docs' | 'media', Promise<void>> = { docs: Promise.resolve(), media: Promise.resolve() }
+  const laneOf = (kind: SourceKind): 'docs' | 'media' => (kind === 'audio' || kind === 'youtube' ? 'media' : 'docs')
 
   async function read(s: Source, signal: AbortSignal): Promise<{ text: SourceText; title?: string }> {
     const dir = store.filesDir(s.id)
@@ -46,6 +49,10 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
     const onProgress = (p: number): void => {
       if (progress.get(s.id) === p) return
       progress.set(s.id, p)
+      deps.onChange()
+    }
+    const onStage = (st: 'download' | 'transcribe'): void => {
+      stages.set(s.id, st)
       deps.onChange()
     }
     switch (s.kind) {
@@ -58,10 +65,10 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
       case 'vault':
         return { text: readTextDoc(await deps.readVault(s.origin)) }
       case 'audio':
-        return { text: await transcribe(deps.run, file, dir, onProgress, signal) }
+        return { text: await transcribe(deps.run, file, dir, onProgress, signal, onStage) }
       case 'youtube': {
         await mkdir(dir, { recursive: true })
-        const r = await fetchYoutube(deps.run, s.origin, dir, onProgress, signal)
+        const r = await fetchYoutube(deps.run, s.origin, dir, onProgress, signal, onStage)
         return { text: r.text, title: r.title }
       }
     }
@@ -84,6 +91,7 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
       await store.setStatus(id, { status: 'failed', error: e instanceof Error ? e.message : String(e) })
     } finally {
       progress.delete(id)
+      stages.delete(id)
       controllers.delete(id)
       pending.delete(id)
       // A killed tool may still have written its output into the removed source's folder.
@@ -92,15 +100,16 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
     }
   }
 
-  function enqueue(id: string): void {
+  function enqueue(id: string, kind: SourceKind): void {
     pending.add(id)
-    chain = chain.then(() => job(id)).catch((e) => console.warn('[notebook] ingest', e))
+    const lane = laneOf(kind)
+    lanes[lane] = lanes[lane].then(() => job(id)).catch((e) => console.warn('[notebook] ingest', e))
   }
 
   async function add(s: Omit<Source, 'status' | 'addedAt'>): Promise<string> {
     await store.addSource(s)
     deps.onChange()
-    enqueue(s.id)
+    enqueue(s.id, s.kind)
     return s.id
   }
 
@@ -123,8 +132,9 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
       return { added, rejected }
     },
     async addYoutube(notebookId: string, url: string): Promise<string> {
-      if (!isYoutubeUrl(url)) throw new Error('Link YouTube non valido')
-      return add({ id: randomUUID(), notebookId, kind: 'youtube', title: 'Video YouTube', origin: url })
+      const canonical = canonicalYoutube(url)
+      if (!canonical) throw new Error('Link YouTube non valido')
+      return add({ id: randomUUID(), notebookId, kind: 'youtube', title: 'Video YouTube', origin: canonical })
     },
     addVaultNote: (notebookId: string, path: string, title: string): Promise<string> => add({ id: randomUUID(), notebookId, kind: 'vault', title, origin: path }),
     async retry(id: string): Promise<void> {
@@ -134,7 +144,28 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
       if (!s || s.status !== 'failed') return void pending.delete(id)
       await store.setStatus(id, { status: 'queued' })
       deps.onChange()
-      enqueue(id)
+      enqueue(id, s.kind)
+    },
+    /** "Aggiorna": read a vault note again (it may have changed in Obsidian). */
+    async refresh(id: string): Promise<void> {
+      if (pending.has(id)) return
+      pending.add(id)
+      const s = await store.source(id)
+      if (!s || s.kind !== 'vault' || s.status === 'processing') return void pending.delete(id)
+      await store.setStatus(id, { status: 'queued' })
+      deps.onChange()
+      enqueue(id, s.kind)
+    },
+    /** Deleting a notebook stops its work and removes its sources' files. */
+    async removeNotebook(notebookId: string): Promise<void> {
+      const nb = (await store.notebooks()).find((n) => n.id === notebookId)
+      for (const s of nb?.sources ?? []) await this.remove(s.id)
+      await store.remove(notebookId)
+      deps.onChange()
+    },
+    /** Quitting: whisper and yt-dlp must not keep running in the background. */
+    stopAll(): void {
+      for (const c of controllers.values()) c.abort()
     },
     async remove(id: string): Promise<void> {
       removed.add(id)
@@ -147,14 +178,15 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
       for (const nb of await store.notebooks())
         for (const s of nb.sources) if (s.status === 'queued' || s.status === 'processing') await store.setStatus(s.id, { status: 'failed', error: 'Interrotta. Riprova.' })
     },
-    decorate: (nbs: Notebook[]): Notebook[] => nbs.map((n) => ({ ...n, sources: n.sources.map((s) => (progress.has(s.id) ? { ...s, progress: progress.get(s.id) } : s)) })),
+    decorate: (nbs: Notebook[]): Notebook[] =>
+      nbs.map((n) => ({ ...n, sources: n.sources.map((s) => ({ ...s, ...(progress.has(s.id) ? { progress: progress.get(s.id) } : {}), ...(stages.has(s.id) ? { stage: stages.get(s.id) } : {}) })) })),
     /** Resolves when every job queued so far has finished. */
     async idle(): Promise<void> {
-      let seen: Promise<void>
+      let seen: [Promise<void>, Promise<void>]
       do {
-        seen = chain
-        await seen
-      } while (seen !== chain)
+        seen = [lanes.docs, lanes.media]
+        await Promise.all(seen)
+      } while (seen[0] !== lanes.docs || seen[1] !== lanes.media)
     }
   }
 }

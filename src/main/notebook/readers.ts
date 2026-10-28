@@ -28,19 +28,36 @@ export async function readPdf(file: string): Promise<SourceText> {
   const doc = await task.promise
   const segments: Segment[] = []
   let empty = 0
+  const pages: string[] = []
   try {
     for (let p = 1; p <= doc.numPages; p++) {
       const page = await doc.getPage(p)
       const content = await page.getTextContent()
       let text = ''
       for (const it of content.items) if ('str' in it) text += it.str + (it.hasEOL ? '\n' : ' ')
-      text = tidy(text)
-      if (text.replace(/\s/g, '').length < MIN_PAGE_TEXT) empty++
-      else segments.push({ label: `p. ${p}`, text })
+      pages.push(tidy(text))
     }
   } finally {
     await task.destroy()
   }
+  // Running headers and footers (the same line on most pages, page numbers aside) are not content:
+  // without this a scanned book with a printed header looked like text.
+  const key = (l: string): string => l.toLowerCase().replace(/\d+/g, '#').replace(/\s+/g, ' ').trim()
+  const seen = new Map<string, number>()
+  // Header and footer candidates: the first and last two lines of a page, never a line of bare numbers.
+  const edges = (p: string): string[] => {
+    const ls = p.split('\n')
+    return [...ls.slice(0, 2), ...ls.slice(-2)].map(key).filter((k) => k && !/^[#\W]*$/.test(k))
+  }
+  for (const p of pages) for (const k of new Set(edges(p))) seen.set(k, (seen.get(k) ?? 0) + 1)
+  const boiler = new Set(pages.length >= 3 ? [...seen].filter(([, n]) => n >= Math.max(2, Math.ceil(pages.length / 2))).map(([k]) => k) : [])
+  pages.forEach((raw, i) => {
+    // Headers only decide whether a page is a scan; the text keeps every line (numbers, "Dimostrazione."…).
+    const ls = raw.split('\n')
+    const content = ls.filter((l, k) => !((k < 2 || k >= ls.length - 2) && boiler.has(key(l)))).join('')
+    if (content.replace(/\s/g, '').length < MIN_PAGE_TEXT) empty++
+    else segments.push({ label: `p. ${i + 1}`, text: raw })
+  })
   if (!segments.length) throw new Error('PDF senza testo (scansione): non lo posso leggere')
   const warnings = empty ? [`${empty} ${empty === 1 ? 'pagina' : 'pagine'} senza testo (scansioni): non le posso leggere`] : []
   return { segments, warnings }
@@ -91,7 +108,8 @@ export async function readSlides(file: string): Promise<SourceText> {
 }
 
 export function readTextDoc(raw: string): SourceText {
-  const text = raw.replace(/^---\n[\s\S]*?\n---\n?/, '').replace(/\r\n/g, '\n')
+  // Line endings first: a file saved on Windows has \r\n around its frontmatter too.
+  const text = raw.replace(/\r\n/g, '\n').replace(/^---\n[\s\S]*?\n---\n?/, '')
   if (!text.trim()) throw new Error('Documento vuoto')
   const lines = text.split('\n')
   const hasHeadings = lines.some((l) => /^#{1,6}\s+\S/.test(l))

@@ -36,10 +36,11 @@ describe('scanVault', () => {
 
   it('resolves links by title and alias and flags missing notes', async () => {
     const lag = (await scanVault(ROOT, EXCLUDED)).notes.find((n) => n.title === 'Teorema di Lagrange')!
+    const rolle = join(ROOT, 'Matematica', 'Teorema di Rolle.md')
     expect(lag.links).toEqual([
-      { target: 'Teorema di Rolle', block: 'teo-rolle', alias: 'Rolle', resolved: true },
-      { target: 'Teorema di Rolle', heading: '2. Enunciato', resolved: true },
-      { target: 'Teorema di Rolle', resolved: true },
+      { target: 'Teorema di Rolle', block: 'teo-rolle', alias: 'Rolle', resolved: true, path: rolle },
+      { target: 'Teorema di Rolle', heading: '2. Enunciato', resolved: true, path: rolle },
+      { target: 'Teorema di Rolle', resolved: true, path: rolle },
       { target: 'Nota Inesistente', resolved: false }
     ])
   })

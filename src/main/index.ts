@@ -4,6 +4,10 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { APP_NAME } from '../shared/version'
 import { registerIpc } from './ipc'
 import { navigationDecision } from './navigation'
+import { chromiumProfileDir } from './store/paths'
+
+const profile = chromiumProfileDir()
+if (profile) app.setPath('userData', profile)
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({

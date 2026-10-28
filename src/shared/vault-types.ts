@@ -1,4 +1,5 @@
-export type VaultLink = { target: string; heading?: string; block?: string; alias?: string; resolved: boolean }
+/** folder: the folder written in the link ([[Fisica/Intro]]); path: the note it resolved to. */
+export type VaultLink = { target: string; heading?: string; block?: string; alias?: string; folder?: string; path?: string; resolved: boolean }
 
 export type VaultNote = {
   path: string

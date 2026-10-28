@@ -68,16 +68,18 @@ export function createSessionRunner(deps: {
     if (!s.lastLearnerText) return
     inflight.add(id)
     deps.onUpdate({ ...s, awaiting: 'teacher' })
-    // A first turn that failed may already have created the CLI session: each first attempt gets a fresh id.
-    const attempts = s.items.filter((i) => i.kind === 'error').length
-    const conversationId = s.conversationId ?? (s.hasTeacherTurn || attempts === 0 ? id : uuid())
+    // Until the tutor has answered once, every attempt opens a fresh conversation: a quit mid-call may have created one.
+    const conversationId = s.conversationId ?? (s.hasTeacherTurn ? id : uuid())
+    // After an error mid-session the message may already have reached the tutor: say it is the same one.
+    const again = s.hasTeacherTurn && s.items[s.items.length - 1]?.kind === 'error'
+    const prompt = again ? `(Ripeto il mio ultimo messaggio: forse non ti è arrivato.)\n\n${s.lastLearnerText}` : s.lastLearnerText
     try {
       const r = await deps.bridge.converse<TeacherTurn>({
         task: 'teach',
         conversationId,
         resume: s.hasTeacherTurn,
         systemPrompt: TEACHER_SYSTEM_PROMPT,
-        prompt: s.lastLearnerText,
+        prompt,
         schema: TeacherTurnSchema as z.ZodType<TeacherTurn>,
         jsonSchema: teacherJsonSchema(),
         cwd: deps.dir

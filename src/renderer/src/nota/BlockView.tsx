@@ -58,7 +58,7 @@ export function BlockView({ block, mode }: { block: Block; mode: Mode }): React.
           label="Schede"
           tabs={block.tabs.map((t) => ({
             label: t.label,
-            content: t.blocks.map((b, i) => <BlockView key={i} block={b} mode={mode} />)
+            content: t.blocks.length ? t.blocks.map((b, i) => <BlockView key={i} block={b} mode={mode} />) : <p className="nv-empty">Contenuto non disponibile per questa scheda.</p>
           }))}
         />
       )

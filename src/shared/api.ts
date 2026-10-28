@@ -66,6 +66,8 @@ export const CH = {
   notebookAsk: 'notebook:ask',
   notebookOpenFile: 'notebook:open-file',
   notebookUpdated: 'notebook:updated',
+  notebookBusy: 'notebook:busy',
+  notebookRefreshSource: 'notebook:refresh-source',
   practiceCatalog: 'practice:catalog',
   practiceCreate: 'practice:create',
   practiceSubmit: 'practice:submit',
@@ -140,6 +142,10 @@ export interface SinapsiApi {
     addVault(id: string, path: string): Promise<string>
     removeSource(id: string): Promise<void>
     retrySource(id: string): Promise<void>
+    /** Re-reads a vault note added as a source. */
+    refreshSource(id: string): Promise<void>
+    /** A question of this notebook is still waiting for its answer. */
+    busy(id: string): Promise<boolean>
     text(sourceId: string): Promise<import('./notebook-types').SourceText | null>
     chat(id: string): Promise<import('./notebook-types').ChatTurn[]>
     /** Resolves when the answer (or the error) has been written to the chat. */

@@ -29,7 +29,10 @@ export const ExtractionLineSchema = z.object({
 export type PropLine = z.infer<typeof PropLineSchema>
 export type ChainLine = z.infer<typeof ChainLineSchema>
 export type ExtractionLine = z.infer<typeof ExtractionLineSchema>
-export type Ledgers = { props: PropLine[]; chains: ChainLine[]; extractions: ExtractionLine[] }
+export const MoveLineSchema = z.object({ from: z.string(), to: z.string(), at: z.number() })
+export type MoveLine = z.infer<typeof MoveLineSchema>
+/** moves: notes renamed or moved in the vault; their concepts follow them. */
+export type Ledgers = { props: PropLine[]; chains: ChainLine[]; extractions: ExtractionLine[]; moves?: MoveLine[] }
 
 export type Concept = {
   id: string

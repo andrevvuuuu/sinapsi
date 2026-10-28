@@ -104,9 +104,15 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
       setSubjects(idx.subjects.map((s) => s.id))
       setNotes(idx.notes.filter((n) => n.available).map((n) => ({ path: n.path, title: n.title })))
     })
+    const checkBusy = (): void => void api.notebook.busy?.(id).then((b) => setPending(b), () => undefined)
+    void Promise.resolve().then(checkBusy)
     return api.notebook.onUpdate((e) => {
       void load()
-      if (!e.notebookId || e.notebookId === id) void loadChat()
+      // Source progress arrives many times a second: only this notebook's chat events reload the chat.
+      if (e.notebookId === id) {
+        void loadChat()
+        checkBusy()
+      }
     })
   }, [api, id, load, loadChat])
 
@@ -144,7 +150,7 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
   const viewed = viewer && nb.sources.find((s) => s.id === viewer.sourceId)
 
   return (
-    <div className={'nb' + (viewed ? ' with-viewer' : '')}>
+    <div className={'nb' + (viewed || viewer?.excerpt ? ' with-viewer' : '')}>
       <header className="nb-top drag">
         <button type="button" className="pill nodrag" onClick={onBack}>
           ← Home
@@ -173,6 +179,16 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
           </select>
         </label>
         <LinkBox key={nb.link ?? ''} notebook={nb} />
+        <button
+          type="button"
+          className="ghost nodrag"
+          onClick={() => {
+            if (!window.confirm(`Eliminare il notebook «${nb.name}» con tutte le sue fonti? Non si può annullare.`)) return
+            void api.notebook.remove(id).then(onBack, (e) => setMessage(clean(e)))
+          }}
+        >
+          Elimina notebook
+        </button>
       </header>
       {message && (
         <p className="nb-alert floating" role="alert">
@@ -208,6 +224,23 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
           onCite={(e) => setViewer({ sourceId: e.sourceId, excerpt: e })}
         />
         {viewed && <SourceViewer key={viewed.id} source={viewed} excerpt={viewer!.excerpt} onClose={() => setViewer(null)} />}
+        {!viewed && viewer?.excerpt && (
+          <aside className="nb-viewer" role="complementary" aria-label={viewer.excerpt.title}>
+            <header>
+              <div>
+                <span className="lab">Fonte rimossa</span>
+                <h2>{viewer.excerpt.title}</h2>
+              </div>
+              <button type="button" className="x" aria-label="Chiudi la fonte" onClick={() => setViewer(null)}>
+                ×
+              </button>
+            </header>
+            <blockquote className="nb-quote">
+              <span className="lab">{viewer.excerpt.label}</span>
+              <p>{viewer.excerpt.text}</p>
+            </blockquote>
+          </aside>
+        )}
       </div>
     </div>
   )

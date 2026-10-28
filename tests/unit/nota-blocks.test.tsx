@@ -59,10 +59,13 @@ describe('try it yourself', () => {
   })
   it('grades the inline choices of a "completa" exercise', () => {
     render(<BlockView block={{ type: 'exercise', level: 'completa', title: 'ln x ≤ x − 1', steps: ['Punto di contatto: {{0|*1|e}}.'] }} mode="leggi" />)
-    const sel = screen.getByRole('combobox') as HTMLSelectElement
-    fireEvent.change(sel, { target: { value: '0' } })
+    const pick = (k: number): void => {
+      fireEvent.click(screen.getByRole('combobox'))
+      fireEvent.click(screen.getAllByRole('option')[k])
+    }
+    pick(0)
     expect(screen.getByText('Rivedi questo passo')).toBeTruthy()
-    fireEvent.change(sel, { target: { value: '1' } })
+    pick(1)
     expect(screen.getByText('Giusto')).toBeTruthy()
   })
 })

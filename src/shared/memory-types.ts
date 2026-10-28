@@ -16,7 +16,9 @@ export const ReviewLineSchema = z.object({
   type: z.enum(EXERCISE_TYPES).optional(),
   misconception: z.boolean().optional(),
   /** Where the evidence came from: a Ripasso item (default) or a concluded Pratica problem. */
-  via: z.enum(['review', 'practice']).optional()
+  via: z.enum(['review', 'practice']).optional(),
+  /** Where in Pratica it came from ("exam:<id>:<problem>"): grading again never writes it twice. */
+  ref: z.string().max(200).optional()
 })
 export type ReviewLine = z.infer<typeof ReviewLineSchema>
 

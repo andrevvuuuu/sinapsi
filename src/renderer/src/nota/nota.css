@@ -10,9 +10,9 @@
 
 /* island */
 .nota .island{position:sticky;top:12px;z-index:30;display:flex;align-items:center;gap:4px;width:max-content;max-width:calc(100% - 32px);margin:12px auto 0;padding:4px;border-radius:999px;background:color-mix(in srgb,var(--surface) 82%,transparent);border:1px solid var(--hair);box-shadow:var(--inner);backdrop-filter:blur(18px);-webkit-app-region:no-drag;overflow-x:auto}
-.nota .island .back{min-height:40px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:var(--ink);font:500 14px var(--sans);cursor:pointer;white-space:nowrap}
+.nota .island .back{min-height:44px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:var(--ink);font:500 14px var(--sans);cursor:pointer;white-space:nowrap}
 .nota .nv-seg{display:flex;gap:2px}
-.nota .nv-seg button,.nota .layers button{min-height:40px;border:0;background:transparent;color:var(--muted);padding:0 14px;border-radius:999px;cursor:pointer;white-space:nowrap;font:500 14px var(--sans)}
+.nota .nv-seg button,.nota .layers button{min-height:44px;border:0;background:transparent;color:var(--muted);padding:0 14px;border-radius:999px;cursor:pointer;white-space:nowrap;font:500 14px var(--sans)}
 .nota .nv-seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .nota .sep{width:1px;height:22px;background:var(--hair);margin:0 4px;flex:none}
 .nota .layers{display:flex;gap:2px}
@@ -27,7 +27,7 @@
 .nota .toc{position:sticky;top:84px;align-self:start;max-height:calc(100vh - 110px);overflow:auto}
 .nota .toc h2{font:600 11px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
 .nota .toc ol{list-style:none;margin:0;padding:0}
-.nota .toc a{display:flex;align-items:center;gap:10px;min-height:36px;padding:4px 10px;border-radius:10px;font-size:14px;line-height:1.3;color:var(--muted);text-decoration:none}
+.nota .toc a{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 10px;border-radius:10px;font-size:14px;line-height:1.3;color:var(--muted);text-decoration:none}
 .nota .toc a b{font:500 11px var(--mono);min-width:22px;flex:none;opacity:.7}
 .nota .toc a:hover{color:var(--ink)}
 .nota .mtoc{display:none}
@@ -80,9 +80,9 @@
 .nota .nv-kick{font:600 12px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
 .nota .nv-row{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
 .nota .nv-note{font-size:14px;color:var(--good)}
-.nota .nv-chip{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--muted);font:500 14px var(--sans);cursor:pointer}
+.nota .nv-chip{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--muted);font:500 14px var(--sans);cursor:pointer}
 .nota .nv-chip[aria-pressed="true"]{color:var(--ink);border-color:var(--ink)}
-.nota .nv-chip.small{min-height:36px;font:500 13px var(--mono);color:var(--good);border-color:color-mix(in srgb,var(--good) 35%,transparent)}
+.nota .nv-chip.small{min-height:44px;font:500 13px var(--mono);color:var(--good);border-color:color-mix(in srgb,var(--good) 35%,transparent)}
 .nota .btn{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--ink);font:500 15px var(--sans);cursor:pointer}
 .nota .btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 
@@ -92,7 +92,7 @@
 .nota .nv-deco{margin:20px 0;max-width:760px}
 .nota .nv-tabs{margin:14px 0}
 .nota .nv-tablist{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--faint);width:max-content;max-width:100%;overflow-x:auto}
-.nota .nv-tablist button{min-height:40px;padding:0 16px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:500 14px var(--sans);cursor:pointer;white-space:nowrap}
+.nota .nv-tablist button{min-height:44px;padding:0 16px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:500 14px var(--sans);cursor:pointer;white-space:nowrap}
 .nota .nv-tablist button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--hair),var(--inner)}
 .nota .nv-panel{padding:18px 4px 4px}
 
@@ -120,7 +120,7 @@
 .nota .stage{position:sticky;top:70px;align-self:start;display:flex;flex-direction:column;gap:12px;padding:20px 0}
 .nota .nv-proof:not(.with-fig) .stage{grid-row:1;position:static;padding:0 0 8px}
 .nota .chain{display:flex;gap:6px;flex-wrap:wrap;list-style:none;margin:0;padding:0}
-.nota .chain button{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--muted);font:500 12px var(--mono);cursor:pointer}
+.nota .chain button{min-height:44px;padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--muted);font:500 12px var(--mono);cursor:pointer}
 .nota .chain button[aria-current="step"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 
 /* why, try, exercises */
@@ -158,7 +158,7 @@
 .nota th{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--hair)}
 .nota td{padding:12px;border-bottom:1px solid var(--hair);vertical-align:top}
 .nota td:first-child{white-space:nowrap}
-.nota .nv-hide{min-height:36px;padding:0 12px;border-radius:10px;border:1px dashed var(--hair);background:var(--faint);color:var(--muted);cursor:pointer;font:500 13px var(--sans)}
+.nota .nv-hide{min-height:44px;padding:0 12px;border-radius:10px;border:1px dashed var(--hair);background:var(--faint);color:var(--muted);cursor:pointer;font:500 13px var(--sans)}
 
 /* annotations, sources, flags */
 .nota .nv-ann{margin:6px 0 18px;padding:2px 0 2px 18px;border-left:2px solid var(--pen);max-width:52ch}
@@ -236,3 +236,4 @@
 .nota .dot{width:8px;height:8px;border-radius:50%;background:var(--good);flex:none}
 .nota .dot.generating{background:var(--accent)}.nota .dot.error{background:var(--bad)}
 .nota .nv-concepts{display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:15px;margin-top:20px}
+.nv-empty{color:var(--muted);font-size:14px}

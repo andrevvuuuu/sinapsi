@@ -73,7 +73,7 @@ describe('exam', () => {
     const s = await exam.get(id)
     expect(s.exam!.grade).toMatchObject({ total: 24, lode: false })
     expect(s.exam!.sheet.problems[1].modelSolution).toBe('SOL2')
-    expect(await mem.read()).toEqual([
+    expect(await mem.read()).toMatchObject([
       { conceptId: 'n_1', at: t, grade: 3, correct: true, via: 'practice' },
       { conceptId: 'n_2', at: t, grade: 2, correct: true, via: 'practice' }
     ])

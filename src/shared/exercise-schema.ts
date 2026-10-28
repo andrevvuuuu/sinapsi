@@ -11,14 +11,63 @@ const choice = z.array(z.string().trim().min(1)).min(2).max(6)
 const distinct = (xs: string[]): boolean => new Set(xs.map((x) => x.trim().toLowerCase())).size === xs.length
 
 /** Every {{…}} group needs exactly one option marked with *, and there must be at least one group. */
-export const blanks = (text: string): { options: string[]; correct: number }[] =>
-  [...text.matchAll(/\{\{([^{}]+)\}\}/g)].map((m) => {
-    const raw = m[1].split('|').map((s) => s.trim())
-    return { options: raw.map((s) => s.replace(/^\*/, '')), correct: raw.findIndex((s) => s.startsWith('*')) }
-  })
+export type BlankSpan = { start: number; end: number; options: string[]; correct: number; starred: number }
+
+/** Splits on | outside $…$, so |x| inside a formula stays one option. */
+function splitOptions(s: string): string[] {
+  const out: string[] = []
+  let cur = ''
+  let math = false
+  for (const c of s) {
+    if (c === '$') math = !math
+    if (c === '|' && !math) {
+      out.push(cur)
+      cur = ''
+    } else cur += c
+  }
+  out.push(cur)
+  return out.map((x) => x.trim())
+}
+
+/**
+ * The {{a|*b|c}} blanks of a text. Braces inside a choice (\frac{1}{2}) are balanced, so a formula
+ * never ends the blank early; end is the index after the closing "}}".
+ */
+export function blankSpans(text: string): BlankSpan[] {
+  const out: BlankSpan[] = []
+  for (let i = text.indexOf('{{'); i >= 0; i = text.indexOf('{{', i)) {
+    let depth = 0
+    let j = i + 2
+    for (; j < text.length; j++) {
+      const c = text[j]
+      if (c === '{') depth++
+      else if (c === '}') {
+        if (depth > 0) depth--
+        else if (text[j + 1] === '}') break
+      }
+    }
+    if (j >= text.length) break
+    const raw = splitOptions(text.slice(i + 2, j))
+    out.push({ start: i, end: j + 2, options: raw.map((s) => s.replace(/^\*/, '')), correct: raw.findIndex((s) => s.startsWith('*')), starred: raw.filter((s) => s.startsWith('*')).length })
+    i = j + 2
+  }
+  return out
+}
+/** The text around the blanks: one more piece than there are blanks. */
+export function blankParts(text: string): string[] {
+  const parts: string[] = []
+  let last = 0
+  for (const b of blankSpans(text)) {
+    parts.push(text.slice(last, b.start))
+    last = b.end
+  }
+  parts.push(text.slice(last))
+  return parts
+}
+export const blanks = (text: string): { options: string[]; correct: number }[] => blankSpans(text).map(({ options, correct }) => ({ options, correct }))
 const fillOk = (text: string): boolean => {
-  const groups = [...text.matchAll(/\{\{([^{}]+)\}\}/g)].map((m) => m[1].split('|').filter((s) => s.trim().startsWith('*')).length)
-  return groups.length > 0 && groups.every((n) => n === 1)
+  const groups = blankSpans(text)
+  return groups.length > 0 && groups.every((g) => g.starred === 1)
 }
 
 export const ExerciseSchema = z.discriminatedUnion('type', [

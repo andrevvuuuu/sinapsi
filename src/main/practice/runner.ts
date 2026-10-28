@@ -19,7 +19,7 @@ export type PracticeDeps = {
   material: (m: Material) => Promise<string>
   /** A short label for lists: "Rolle, Lagrange · 1 fonte". */
   topic: (m: Material) => Promise<string>
-  memory: Pick<MemoryStore, 'append'>
+  memory: Pick<MemoryStore, 'append' | 'read'>
   onUpdate: (s: PracticeState) => void
   now?: () => number
   uuid?: () => string
@@ -68,7 +68,9 @@ export function createPracticeRunner(deps: PracticeDeps) {
     const p = s.problems.find((x) => x.id === s.active)
     if (!turn.conclude || !p) return
     const grade = gradeFor(turn.conclude.outcome, p.maxRung)
-    for (const conceptId of new Set(p.targets)) await deps.memory.append({ conceptId, at: now(), grade, correct: turn.conclude.outcome !== 'surrendered', via: 'practice' })
+    const ref = `train:${s.id}:${p.id}`
+    const done = new Set((await deps.memory.read()).filter((r) => r.ref === ref).map((r) => r.conceptId))
+    for (const conceptId of new Set(p.targets)) if (!done.has(conceptId)) await deps.memory.append({ conceptId, at: now(), grade, correct: turn.conclude.outcome !== 'surrendered', via: 'practice', ref })
   }
 
   async function tutorTurn(id: string): Promise<void> {

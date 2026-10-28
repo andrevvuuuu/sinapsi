@@ -4,7 +4,7 @@
 .sess .top h1{font:400 28px/1 var(--serif);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sess .phase{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);white-space:nowrap}
 .sess .sp{flex:1}
-.sess .pill{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:13px;color:var(--muted);white-space:nowrap}
+.sess .pill{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--hair);background:transparent;cursor:pointer;font-size:13px;color:var(--muted);white-space:nowrap}
 .sess .pill:hover{color:var(--ink)}
 .notechip{font-size:13px;color:var(--pen);padding:6px 12px;border-radius:999px;border:1px solid color-mix(in srgb,var(--pen) 35%,transparent);white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis}
 .sess .body{display:grid;grid-template-columns:1fr 280px;min-height:0}
@@ -28,7 +28,7 @@
 .sess .card .ans{font-size:15px}
 .sess .card .th{font-size:14px;color:var(--muted);border-left:2px solid var(--hair);padding-left:10px;margin-top:6px;font-style:italic}
 .sess .card details{margin-top:8px;font-size:14px;color:var(--muted)}
-.sess .card summary{cursor:pointer;font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;min-height:32px;display:flex;align-items:center}
+.sess .card summary{cursor:pointer;font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;min-height:44px;display:flex;align-items:center}
 .sess .why{padding:4px 0}.sess .why.good{color:var(--good)}
 .summary{margin-top:14px;padding:16px 18px;border-radius:18px;background:var(--surface);border:1px solid var(--hair)}
 .summary h3{font:400 22px/1.2 var(--serif);margin:6px 0}
@@ -45,7 +45,7 @@
 .opt.idk{border-style:dashed;color:var(--muted);padding-left:14px}
 .conf{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;margin:8px 0 2px}
 .conf output{font:500 13px var(--mono)}
-.sess input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:32px;background:transparent;cursor:pointer;margin:0}
+.sess input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:44px;background:transparent;cursor:pointer;margin:0}
 .sess input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:5px;background:var(--faint)}
 .sess input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7.5px;border-radius:50%;background:var(--warn);border:3px solid var(--surface)}
 .think{border:1px solid var(--hair);border-radius:14px;padding:6px 12px;margin-top:6px}

@@ -31,6 +31,7 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
   const [mode, setMode] = useState<Mode>('leggi')
   const [layers, setLayers] = useState<Layers>({ sessione: true, quiz: true, fonti: true })
   const [retrying, setRetrying] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [retryError, setRetryError] = useState<string | null>(null)
   const retry = async (): Promise<void> => {
     setRetrying(true)
@@ -46,7 +47,11 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
 
   useEffect(() => {
     let alive = true
-    const load = (): void => void api.get(id).then((x) => alive && setN(x))
+    const load = (): void =>
+      void api.get(id).then(
+        (x) => alive && (setN(x), setLoadError(false)),
+        () => alive && setLoadError(true)
+      )
     load()
     const off = api.onUpdate((m) => m.id === id && load())
     return () => {
@@ -85,6 +90,16 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
     </nav>
   )
 
+  if (!n && loadError)
+    return (
+      <div className="nota">
+        {bar}
+        <div className="nv-gen" role="alert">
+          <h1>Questa nota non si riesce ad aprire</h1>
+          <p>Il file della nota viva è danneggiato. Puoi crearne una nuova dalla nota Obsidian: aprila dalla home e scegli «Crea la nota viva».</p>
+        </div>
+      </div>
+    )
   if (!n) return <div className="nota">{bar}</div>
   if (n.status !== 'ready' || !n.nota)
     return (

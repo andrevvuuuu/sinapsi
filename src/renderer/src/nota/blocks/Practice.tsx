@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { blankSpans } from '../../../../shared/exercise-schema'
+import { MathSelect } from '../../components/MathSelect'
 import type { LeafBlock } from '../../../../shared/nota-schema'
 import { RichText } from '../../session/RichText'
 import type { Mode } from '../context'
@@ -80,12 +82,10 @@ type Part = { text: string } | { options: string[]; correct: number }
 function parseChoices(md: string): Part[] {
   const parts: Part[] = []
   let last = 0
-  for (const m of md.matchAll(/\{\{([^{}]+)\}\}/g)) {
-    if (m.index! > last) parts.push({ text: md.slice(last, m.index) })
-    const raw = m[1].split('|').map((s) => s.trim())
-    const correct = raw.findIndex((s) => s.startsWith('*'))
-    parts.push({ options: raw.map((s) => s.replace(/^\*/, '')), correct: Math.max(0, correct) })
-    last = m.index! + m[0].length
+  for (const b of blankSpans(md)) {
+    if (b.start > last) parts.push({ text: md.slice(last, b.start) })
+    parts.push({ options: b.options, correct: Math.max(0, b.correct) })
+    last = b.end
   }
   if (last < md.length) parts.push({ text: md.slice(last) })
   return parts
@@ -101,16 +101,7 @@ function ChoiceStep({ md }: { md: string }): React.JSX.Element {
           <RichText key={i} md={p.text} className="inline" />
         ) : (
           <span key={i} className="sel">
-            <select aria-label="Scegli" value={picked[i] ?? ''} onChange={(e) => setPicked({ ...picked, [i]: Number(e.target.value) })}>
-              <option value="" disabled>
-                …
-              </option>
-              {p.options.map((o, k) => (
-                <option key={k} value={k}>
-                  {o.replace(/\$/g, '')}
-                </option>
-              ))}
-            </select>
+            <MathSelect label="Scegli" options={p.options} value={picked[i] ?? null} onChange={(k) => setPicked({ ...picked, [i]: k })} />
             {picked[i] !== undefined && <span className={'v ' + (picked[i] === p.correct ? 'ok' : 'no')}>{picked[i] === p.correct ? 'Giusto' : 'Rivedi questo passo'}</span>}
           </span>
         )

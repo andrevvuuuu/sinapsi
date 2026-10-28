@@ -39,11 +39,18 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
   const [notes, setNotes] = useState<NoteMeta[]>([])
   const [due, setDue] = useState(0)
 
+  const [loadError, setLoadError] = useState<string | null>(null)
   const reload = useCallback(async () => {
-    const [s, idx] = await Promise.all([api.settings.get(), api.vault.index()])
-    setSettings(s)
-    applyTheme(s.theme)
-    setIndex(idx)
+    try {
+      const [s, idx] = await Promise.all([api.settings.get(), api.vault.index()])
+      setSettings(s)
+      applyTheme(s.theme)
+      setIndex(idx)
+      setLoadError(null)
+    } catch (e) {
+      // Without this the home stayed empty with no explanation.
+      setLoadError((e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+    }
   }, [api])
 
   useEffect(() => {
@@ -51,17 +58,25 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
     void api.ai.status().then(setStatus)
     void api.session?.list().then(setSessions)
     void api.practice?.list().then(setPractices).catch(() => undefined)
-    void api.review?.sessions?.().then(setReviews).catch(() => undefined)
-    void api.review
-      ?.memory()
-      .then((m) => setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length))
-      .catch(() => undefined)
+    // Memory moves while the app stays open: the badge and the session list refresh on focus and every 10 minutes.
+    const refresh = (): void => {
+      void api.review
+        ?.memory()
+        .then((m) => setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length))
+        .catch(() => undefined)
+      void api.review?.sessions?.().then(setReviews).catch(() => undefined)
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    const every = setInterval(refresh, 10 * 60_000)
     const loadNotes = (): void => void api.notes?.list().then(setNotes)
     loadNotes()
     const offNotes = api.notes?.onUpdate(loadNotes)
     const offVault = api.vault.onChange(setIndex)
     const offAi = api.ai.onStatus(setStatus)
     return () => {
+      window.removeEventListener('focus', refresh)
+      clearInterval(every)
       offVault()
       offAi()
       offNotes?.()
@@ -114,6 +129,17 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
           </button>
         </div>
         <EngineStatus status={status} />
+        {loadError && (
+          <div className="missing">
+            <div role="alert">
+              <h2>Non riesco a caricare i dati dell’app</h2>
+              <p>{`Non riesco a caricare: ${loadError}`}</p>
+              <button type="button" className="btn pri" onClick={() => void reload()}>
+                Riprova
+              </button>
+            </div>
+          </div>
+        )}
         {index && 'error' in index ? (
           <div className="missing">
             <div>

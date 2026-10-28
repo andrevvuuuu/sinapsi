@@ -83,9 +83,50 @@ export function extractJson(text: string): unknown {
   if (starts.length) {
     const start = Math.min(...starts)
     const end = Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'))
-    if (end > start) return parseLoose(t.slice(start, end + 1))
+    if (end > start)
+      try {
+        return parseLoose(t.slice(start, end + 1))
+      } catch {
+        /* prose with braces around the JSON: look at each balanced block */
+      }
   }
+  // Every balanced {…} or […] (strings respected) that parses; the largest is the answer.
+  let best: { value: unknown; size: number } | null = null
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] !== '{' && t[i] !== '[') continue
+    const end = balancedEnd(t, i)
+    if (end < 0) continue
+    try {
+      const value = parseLoose(t.slice(i, end + 1))
+      if (!best || end + 1 - i > best.size) best = { value, size: end + 1 - i }
+      i = end
+    } catch {
+      /* not JSON: keep looking inside */
+    }
+  }
+  if (best) return best.value
   throw new SyntaxError('nessun JSON nella risposta')
+}
+
+/** Index of the bracket closing the one at `start`, skipping brackets inside JSON strings; -1 if none. */
+function balancedEnd(t: string, start: number): number {
+  let depth = 0
+  let inString = false
+  for (let i = start; i < t.length; i++) {
+    const c = t[i]
+    if (inString) {
+      if (c === '\\') i++
+      else if (c === '"') inString = false
+      continue
+    }
+    if (c === '"') inString = true
+    else if (c === '{' || c === '[') depth++
+    else if (c === '}' || c === ']') {
+      depth--
+      if (depth === 0) return i
+    }
+  }
+  return -1
 }
 
 /**
