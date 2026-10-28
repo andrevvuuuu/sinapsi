@@ -358,9 +358,11 @@ export function ReviewView({
                     ))}
                   </div>
                 </div>
-                <button type="button" className="pri" onClick={next}>
-                  Inizia ripasso
-                </button>
+                <div className="rv-go">
+                  <button type="button" className="pri" onClick={next}>
+                    Inizia ripasso
+                  </button>
+                </div>
               </>
             )}
           </section>
