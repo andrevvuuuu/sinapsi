@@ -2,18 +2,16 @@ import { _electron as electron, expect, test } from '@playwright/test'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { makeNotaViva } from './helpers'
 
 test('a review of freshly extracted concepts updates their memory in the graph', async () => {
   const app = await electron.launch({
     args: ['.'],
-    env: { ...process.env, SINAPSI_FAKE_EXTRACT: '1', SINAPSI_FAKE_REVIEW: '1', SINAPSI_VAULT: resolve('tests/fixtures/vault'), SINAPSI_DATA: mkdtempSync(join(tmpdir(), 'sinapsi-e2e-')) }
+    env: { ...process.env, SINAPSI_FAKE_EXTRACT: '1', SINAPSI_FAKE_NOTE: '1', SINAPSI_FAKE_REVIEW: '1', SINAPSI_VAULT: resolve('tests/fixtures/vault'), SINAPSI_DATA: mkdtempSync(join(tmpdir(), 'sinapsi-e2e-')) }
   })
   const win = await app.firstWindow()
   // extract Rolle's concepts by opening the note
-  await win.getByText('Matematica', { exact: true }).click()
-  await win.getByRole('button', { name: 'Teorema di Rolle' }).click()
-  await expect(win.getByText('3 concetti nel grafo')).toBeVisible()
-  await win.getByRole('button', { name: '← Home' }).click()
+  await makeNotaViva(win, 'Teorema di Rolle')
 
   // composer → Ripasso, no text
   await win.getByRole('group', { name: 'Tipo di sessione' }).getByRole('button', { name: /^Ripasso/ }).click()

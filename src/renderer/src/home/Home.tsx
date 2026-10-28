@@ -7,6 +7,8 @@ import { EngineStatus } from './EngineStatus'
 import { IconPanel } from './icons'
 import { LeftPanel } from './LeftPanel'
 import { NotebookPanel } from './NotebookPanel'
+import { clampLayout, LIMITS, loadLayout, saveLayout, type Layout } from './layout'
+import { Splitter } from './Splitter'
 import { GraphView } from '../graph/GraphView'
 import './home.css'
 
@@ -38,6 +40,20 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
   const [reviews, setReviews] = useState<ReviewSession[]>([])
   const [notes, setNotes] = useState<NoteMeta[]>([])
   const [due, setDue] = useState(0)
+  // Sizes Andrea dragged, kept across restarts and clamped to the window.
+  const [layout, setLayoutState] = useState<Layout>(() => clampLayout(loadLayout(), window.innerWidth || 1440, window.innerHeight || 900))
+  const [resizing, setResizing] = useState(false)
+  const setLayout = (patch: Partial<Layout>, dragging?: 'left' | 'right'): void =>
+    setLayoutState((l) => {
+      const next = clampLayout({ ...l, ...patch }, window.innerWidth || 1440, window.innerHeight || 900, { left, right }, dragging)
+      saveLayout(next)
+      return next
+    })
+  useEffect(() => {
+    const onResize = (): void => setLayoutState((l) => clampLayout(l, window.innerWidth, window.innerHeight, { left, right }))
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [left, right])
 
   const [loadError, setLoadError] = useState<string | null>(null)
   const reload = useCallback(async () => {
@@ -100,7 +116,37 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
   }
 
   return (
-    <div className={'app' + (left ? '' : ' l-off') + (right ? '' : ' r-off')}>
+    <div
+      className={'app' + (left ? '' : ' l-off') + (right ? '' : ' r-off') + (resizing ? ' resizing' : '')}
+      style={{ '--lw': left ? `${layout.left}px` : '0px', '--rw': right ? `${layout.right}px` : '0px' } as React.CSSProperties}
+    >
+      {left && (
+        <Splitter
+          orientation="vertical"
+          label="Larghezza del pannello sinistro"
+          value={layout.left}
+          min={LIMITS.left[0]}
+          max={LIMITS.left[1]}
+          onChange={(v) => setLayout({ left: v }, 'left')}
+          onActive={setResizing}
+          className="side-split"
+          style={{ left: layout.left - 4 }}
+        />
+      )}
+      {right && (
+        <Splitter
+          orientation="vertical"
+          label="Larghezza del pannello destro"
+          value={layout.right}
+          min={LIMITS.right[0]}
+          max={LIMITS.right[1]}
+          invert
+          onChange={(v) => setLayout({ right: v }, 'right')}
+          onActive={setResizing}
+          className="side-split"
+          style={{ right: layout.right - 4 }}
+        />
+      )}
       <LeftPanel
         sessions={sessions}
         practices={practices}
@@ -115,6 +161,8 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
         onSettings={setSettings}
         onTheme={(t) => void setTheme(t)}
         onClose={() => setLeft(false)}
+        sessionsHeight={layout.sessions}
+        onSessionsHeight={(v) => setLayout({ sessions: v })}
       />
       <main className="center">
         <div className="topbar drag" />
@@ -155,6 +203,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
         ) : index && 'notes' in index && index.notes.length > 0 && api.graph ? (
           <GraphView
             index={index}
+            livePaths={notes.filter((n) => n.status === 'ready').map((n) => n.sourcePath)}
             onReview={(ids) => onOpenReview?.('', ids)}
             onOpenNote={(path) => onOpenSource?.(path)}
             onStudy={(title) =>
@@ -202,6 +251,8 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
         onOpenNote={(path) => onOpenSource?.(path)}
         vaultPath={settings?.vaultPath}
         onChooseVault={() => void chooseVault()}
+        notebooksHeight={layout.notebooks}
+        onNotebooksHeight={(v) => setLayout({ notebooks: v })}
       />
     </div>
   )

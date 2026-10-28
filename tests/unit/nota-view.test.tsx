@@ -78,12 +78,17 @@ describe('NotePicker', () => {
     render(<NotePicker path={PATH} onOpenNota={onOpenNota} onBack={vi.fn()} />)
     return { notes, onOpenNota, app, graph }
   }
-  it('extracts the concepts of the note it opens, and on request again', async () => {
-    const { graph } = mountPicker([])
+  it('does not extract on opening: only a note with a nota viva goes in the graph, and can be re-extracted', async () => {
+    const { graph } = mountPicker([meta])
     expect(await screen.findByText('1 concetto nel grafo')).toBeTruthy()
-    expect(graph.extract).toHaveBeenCalledWith(PATH, 'study')
+    expect(graph.extract).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Estrai di nuovo i concetti' }))
     expect(graph.extract).toHaveBeenLastCalledWith(PATH)
+  })
+  it('without a nota viva it offers no extraction', async () => {
+    mountPicker([])
+    await screen.findByRole('button', { name: 'Crea la nota viva' })
+    expect(screen.queryByRole('button', { name: 'Estrai di nuovo i concetti' })).toBeNull()
   })
   it('creates a nota viva from the Obsidian note and opens it', async () => {
     const { notes, onOpenNota } = mountPicker([])

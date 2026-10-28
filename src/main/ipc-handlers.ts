@@ -117,7 +117,14 @@ export function makeGraphHandlers(x: Extractor, positions: { read(): Promise<unk
       const r = Positions.safeParse(await positions.read().catch(() => ({})))
       return r.success ? r.data : {}
     },
-    savePositions: async (p: unknown) => positions.write(Positions.parse(p))
+    // Merged with what is stored: concepts hidden from the graph keep their place for when they come back.
+    savePositions: async (p: unknown) => {
+      const next = Positions.parse(p)
+      const old = Positions.safeParse(await positions.read().catch(() => ({})))
+      const merged = { ...(old.success ? old.data : {}), ...next }
+      const keys = Object.keys(merged)
+      await positions.write(keys.length > 20_000 ? Object.fromEntries(keys.slice(-20_000).map((k) => [k, merged[k]])) : merged)
+    }
   }
 }
 

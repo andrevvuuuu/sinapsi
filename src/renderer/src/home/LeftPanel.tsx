@@ -3,6 +3,7 @@ import type { NoteMeta, PracticeSummary, ReviewSession, SessionSummary } from '.
 import type { Settings } from '../../../shared/settings-schema'
 import { IconChevron, IconGear, IconPanel } from './icons'
 import { SettingsDialog } from './SettingsDialog'
+import { Splitter } from './Splitter'
 
 const KINDS = ['Tutte', 'Apprendimento', 'Pratica', 'Ripasso'] as const
 type Kind = (typeof KINDS)[number]
@@ -27,6 +28,8 @@ type Props = {
   onSettings: (s: Settings) => void
   onTheme: (t: Settings['theme']) => void
   onClose: () => void
+  sessionsHeight?: number
+  onSessionsHeight?: (v: number) => void
 }
 
 export function LeftPanel(p: Props): React.JSX.Element {
@@ -70,7 +73,7 @@ export function LeftPanel(p: Props): React.JSX.Element {
           <IconPanel />
         </button>
       </div>
-      <section className="psec" aria-label="Sessioni">
+      <section className="psec" aria-label="Sessioni" style={p.sessionsHeight ? { maxHeight: p.sessionsHeight } : undefined}>
         <div className="seg" role="group" aria-label="Sessioni da mostrare">
           {KINDS.map((k) => (
             <button key={k} type="button" aria-pressed={k === kind} onClick={() => setKind(k)}>
@@ -117,7 +120,11 @@ export function LeftPanel(p: Props): React.JSX.Element {
           </ul>
         )}
       </section>
-      <div className="divider" />
+      {p.onSessionsHeight ? (
+        <Splitter orientation="horizontal" label="Altezza delle sessioni" value={p.sessionsHeight ?? 300} min={120} max={900} onChange={p.onSessionsHeight} className="sec-split" />
+      ) : (
+        <div className="divider" />
+      )}
       <section className="psec scroll nv-explorer" aria-label="Note vive">
         <h2>Note vive</h2>
         {folders.length === 0 ? (

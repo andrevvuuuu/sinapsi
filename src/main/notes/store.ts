@@ -54,3 +54,6 @@ export function noteStore(dir: string): NoteStore {
     }
   }
 }
+
+/** Notes whose nota viva is ready: the only ones the graph shows and background extraction touches. */
+export const readySources = (list: Pick<NoteMeta, 'sourcePath' | 'status'>[]): Set<string> => new Set(list.filter((m) => m.status === 'ready').map((m) => m.sourcePath))
