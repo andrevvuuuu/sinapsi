@@ -7,16 +7,17 @@ import { LogoMark } from '../../src/renderer/src/home/LogoMark'
 afterEach(cleanup)
 
 describe('the logo', () => {
-  it('is the broken S: two nodes, and the spark in the accent colour of the theme', () => {
+  it('is the pen-stroke S: two crescents, and the spark in the accent colour of the theme', () => {
     const { container } = render(<LogoMark />)
     const svg = container.querySelector('svg')!
     expect(svg.getAttribute('aria-hidden')).toBe('true')
-    expect(svg.querySelectorAll('path')).toHaveLength(2)
+    expect(svg.querySelectorAll('path.bowl')).toHaveLength(2)
     expect(svg.querySelector('.spark')!.getAttribute('fill')).toBe('var(--accent)')
   })
   it('is the same drawing as the app icon', () => {
     const icon = readFileSync('build/icon.svg', 'utf8')
     const { container } = render(<LogoMark />)
     for (const p of container.querySelectorAll('path')) expect(icon).toContain(p.getAttribute('d')!)
+    expect(container.querySelectorAll('path')).toHaveLength(3)
   })
 })
