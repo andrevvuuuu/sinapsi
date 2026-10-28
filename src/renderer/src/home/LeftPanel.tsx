@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { LogoMark } from './LogoMark'
 import type { NoteMeta, PracticeSummary, ReviewSession, SessionSummary } from '../../../shared/api'
 import type { Settings } from '../../../shared/settings-schema'
 import { IconChevron, IconGear, IconPanel } from './icons'
@@ -66,7 +67,7 @@ export function LeftPanel(p: Props): React.JSX.Element {
     <aside className="left" aria-label="Sessioni e note vive">
       <div className="ph drag">
         <span className="logo" style={{ paddingLeft: 64 }}>
-          <i aria-hidden="true" />
+          <LogoMark />
           Sinapsi
         </span>
         <button type="button" className="icon-btn nodrag" aria-label="Chiudi il pannello laterale" onClick={p.onClose}>

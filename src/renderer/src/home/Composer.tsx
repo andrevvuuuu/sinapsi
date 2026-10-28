@@ -1,9 +1,21 @@
 import { useState } from 'react'
+import type { ChipAction, Suggestions } from '../../../shared/api'
 import { IconSend } from './icons'
 
 const MODES = ['Apprendimento', 'Pratica', 'Ripasso'] as const
+const KEY = { Apprendimento: 'learn', Pratica: 'practice', Ripasso: 'review' } as const
 
-export function Composer({ onSubmit, due = 0 }: { onSubmit: (mode: string, text: string) => unknown; due?: number }): React.JSX.Element {
+export function Composer({
+  onSubmit,
+  due = 0,
+  suggestions,
+  onPick
+}: {
+  onSubmit: (mode: string, text: string) => unknown
+  due?: number
+  suggestions?: Suggestions | null
+  onPick?: (a: ChipAction) => unknown
+}): React.JSX.Element {
   const [mode, setMode] = useState<(typeof MODES)[number]>('Apprendimento')
   const [text, setText] = useState('')
   // Ripasso works with no text: it reviews what is fading.
@@ -15,6 +27,8 @@ export function Composer({ onSubmit, due = 0 }: { onSubmit: (mode: string, text:
     onSubmit(mode, text.trim())
     setText('')
   }
+  // What to do next, with the reason; they step aside while he types.
+  const chips = text ? [] : (suggestions?.[KEY[mode]] ?? [])
   return (
     <div className="composer">
       <div className="seg modes-pill" role="group" aria-label="Tipo di sessione">
@@ -27,6 +41,16 @@ export function Composer({ onSubmit, due = 0 }: { onSubmit: (mode: string, text:
       </div>
       <div className="shell">
         <div className="core">
+          {chips.length > 0 && (
+            <div className="suggest" role="group" aria-label="Consigliati">
+              {chips.map((c) => (
+                <button key={c.label} type="button" className="chip" aria-label={`${c.label} — ${c.reason}`} title={`${c.label} — ${c.reason}`} onClick={() => onPick?.(c.action)}>
+                  <span className="chip-label">{c.label}</span>
+                  <span className="chip-why">{c.reason}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="inrow">
             <textarea
               rows={1}

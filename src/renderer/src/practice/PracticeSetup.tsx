@@ -7,7 +7,18 @@ import './practice.css'
 
 const clean = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
-export function PracticeSetup({ initialText = '', onBack, onStarted }: { initialText?: string; onBack: () => void; onStarted: (id: string) => void }): React.JSX.Element {
+export function PracticeSetup({
+  initialText = '',
+  initial,
+  onBack,
+  onStarted
+}: {
+  initialText?: string
+  /** From a suggestion chip: these concepts, maybe as an exam. */
+  initial?: { conceptIds: string[]; exam?: boolean }
+  onBack: () => void
+  onStarted: (id: string) => void
+}): React.JSX.Element {
   const api = window.sinapsi.practice
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [concepts, setConcepts] = useState<Set<string>>(new Set())
@@ -15,7 +26,7 @@ export function PracticeSetup({ initialText = '', onBack, onStarted }: { initial
   const [free, setFree] = useState('')
   const [toast, setToast] = useState('')
   const [dialog, setDialog] = useState(false)
-  const [mode, setMode] = useState<'train' | 'exam'>('train')
+  const [mode, setMode] = useState<'train' | 'exam'>(initial?.exam ? 'exam' : 'train')
   const [preset, setPreset] = useState<'30' | '60' | '90' | 'custom'>('60')
   const [custom, setCustom] = useState(45)
   const [busy, setBusy] = useState(false)
@@ -40,7 +51,7 @@ export function PracticeSetup({ initialText = '', onBack, onStarted }: { initial
     void api.catalog().then((cat) => {
       if (!live) return
       setCatalog(cat)
-      let picked = new Set(cat.suggested.slice(0, 2).map((x) => x.id))
+      let picked = new Set(initial ? initial.conceptIds : cat.suggested.slice(0, 2).map((x) => x.id))
       const text = initialText.trim()
       if (text) {
         picked = applyText(cat, text, picked)

@@ -12,6 +12,7 @@ export type { Notebook, Source, SourceText, ChatTurn, Excerpt } from './notebook
 export type { PracticeState, PracticeSummary, PracticeItem, PracticeProblem } from '../main/practice/events'
 export type { Catalog, Material } from './practice-types'
 export type { ReviewSession } from '../main/memory/history'
+export type { Chip, ChipAction, Suggestions } from '../main/suggest/suggest'
 export type GraphPositions = Record<string, [number, number]>
 export type NoteRequest = { sourcePath?: string; sessionId?: string }
 
@@ -79,7 +80,8 @@ export const CH = {
   practiceExamDeliver: 'practice:exam-deliver',
   practicePhoto: 'practice:photo',
   practiceCamera: 'practice:camera',
-  practiceUpdated: 'practice:updated'
+  practiceUpdated: 'practice:updated',
+  suggestGet: 'suggest:get'
 } as const
 
 export interface SinapsiApi {
@@ -172,4 +174,6 @@ export interface SinapsiApi {
     camera(): Promise<boolean>
     onUpdate(cb: (s: import('../main/practice/events').PracticeState) => void): () => void
   }
+  /** What to study, review or practise next, each with its reason (no AI). */
+  suggest: { get(): Promise<import('../main/suggest/suggest').Suggestions> }
 }

@@ -31,7 +31,7 @@ export type SessionState = {
   updatedAt: number
 }
 
-export type SessionSummary = { id: string; topic: string; phase: TeacherTurn['phase']; updatedAt: number }
+export type SessionSummary = { id: string; topic: string; phase: TeacherTurn['phase']; notePath?: string; updatedAt: number }
 
 /** Pure: the whole session state is derived from its event log. */
 export function reduceSession(events: SessionEvent[]): SessionState {
