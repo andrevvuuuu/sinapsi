@@ -31,16 +31,26 @@ function GroupBox({ ids, chosen, label, onSet }: { ids: string[]; chosen: Set<st
   useEffect(() => {
     if (ref.current) ref.current.indeterminate = n > 0 && n < ids.length
   }, [n, ids.length])
+  // The box is 18 px; the span around it is the 28 px target. A click on the span selects instead of folding the group.
   return (
-    <input
-      ref={ref}
-      type="checkbox"
-      className="mt-cb"
-      aria-label={`Seleziona tutto ${label}`}
-      checked={n > 0 && n === ids.length}
-      onClick={(e) => e.stopPropagation()}
-      onChange={(e) => onSet(ids, e.target.checked)}
-    />
+    <span
+      className="mt-hit"
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        ref.current?.click()
+      }}
+    >
+      <input
+        ref={ref}
+        type="checkbox"
+        className="mt-cb"
+        aria-label={`Seleziona tutto ${label}`}
+        checked={n > 0 && n === ids.length}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => onSet(ids, e.target.checked)}
+      />
+    </span>
   )
 }
 
