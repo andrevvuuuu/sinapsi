@@ -203,6 +203,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
         ) : index && 'notes' in index && index.notes.length > 0 && api.graph ? (
           <GraphView
             index={index}
+            livePaths={notes.filter((n) => n.status === 'ready').map((n) => n.sourcePath)}
             onReview={(ids) => onOpenReview?.('', ids)}
             onOpenNote={(path) => onOpenSource?.(path)}
             onStudy={(title) =>

@@ -438,3 +438,6 @@
     transition: none;
   }
 }
+
+.graph .glive-empty{position:absolute;inset:0;display:grid;place-items:center;padding:0 60px 180px;text-align:center;pointer-events:none;z-index:2}
+.graph .glive-empty p{max-width:44ch;color:var(--muted);font:400 26px/1.25 var(--serif);margin:0}

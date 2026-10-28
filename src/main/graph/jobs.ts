@@ -43,6 +43,8 @@ export function createExtractor(deps: {
   onChange: (s: ExtractorStatus) => void
   /** Subject ids being studied (sessions, notes vive): their notes are extracted first. */
   priorities?: () => Promise<string[]>
+  /** Notes background extraction may touch (the ones with a nota viva); all when absent. */
+  eligible?: () => Promise<Set<string>>
   /** Holds off system sleep during a call (background runs start right when the Mac goes idle). */
   keepAwake?: () => () => void
 }): Extractor {
@@ -141,7 +143,8 @@ export function createExtractor(deps: {
       const rank = (n: VaultIndex['notes'][number]): number => (n.subject && subjects.has(n.subject) ? 0 : linkedFromExtracted.has(n.title.toLowerCase()) ? 1 : 2)
       // Never extracted, or edited in Obsidian after the last extraction.
       const stale = (n: VaultIndex['notes'][number]): boolean => !extractedPaths.has(n.path) || n.mtime > g.extracted[n.path].at
-      const candidates = index.notes.filter((n) => n.available && stale(n) && !failedToday.has(n.path)).sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title, 'it'))
+      const allowed = deps.eligible ? await deps.eligible() : null
+      const candidates = index.notes.filter((n) => n.available && stale(n) && !failedToday.has(n.path) && (!allowed || allowed.has(n.path))).sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title, 'it'))
       const next = candidates[0]
       if (!next) return null
       await enqueue(next.path, 'background', index)

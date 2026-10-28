@@ -70,6 +70,7 @@ describe('Home', () => {
     window.sinapsi = {
       ...mockApi(idx),
       session: { list: vi.fn(async () => []), start },
+      notes: { list: vi.fn(async () => [{ id: 'nv', createdAt: 1, updatedAt: 1, status: 'ready', sourcePath: '/v/Matematica/Teorema di Rolle.md', sourceTitle: 'Teorema di Rolle', title: 'Teorema di Rolle' }]), onUpdate: () => () => undefined },
       graph: { get: vi.fn(async () => ({ concepts: [], chains: [], extracted: {} })), status: vi.fn(async () => ({ queued: [] })), onChange: () => () => undefined, positions: vi.fn(async () => ({})), savePositions: vi.fn(), extract: vi.fn() }
     } as never
     const onOpenSource = vi.fn()

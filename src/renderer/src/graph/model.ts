@@ -249,3 +249,16 @@ export function lensCounts(
     fragile: fragileBases(model, memory).size
   }
 }
+
+/**
+ * The graph of the notes vive only: concepts born in a note that has a nota viva, the chains among them,
+ * and the vault reduced to those notes (no other Obsidian note, no frontier).
+ */
+export function liveOnly(g: GraphData, index: VaultIndex, paths: string[]): { graph: GraphData; index: VaultIndex } {
+  const live = new Set(paths)
+  const concepts = g.concepts.filter((c) => live.has(c.birth)).map((c) => ({ ...c, notes: c.notes.filter((n) => live.has(n)) }))
+  const ids = new Set(concepts.map((c) => c.id))
+  const chains = g.chains.filter((ch) => ids.has(ch.conclusion) && ch.premises.every((p) => ids.has(p))).map((ch) => ({ ...ch, notes: ch.notes.filter((n) => live.has(n)) }))
+  const extracted = Object.fromEntries(Object.entries(g.extracted).filter(([p]) => live.has(p)))
+  return { graph: { concepts, chains, extracted }, index: { ...index, notes: index.notes.filter((n) => live.has(n.path)) } }
+}

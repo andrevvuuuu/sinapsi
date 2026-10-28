@@ -110,8 +110,6 @@ export function registerIpc(): { bridge: Bridge } {
     games: async () => (await settings.load()).gamesInSessions,
     onUpdate: (s) => {
       broadcast(CH.sessionUpdated, s)
-      // Studying a note is the moment to (re)extract its concepts.
-      if (s.phase === 'done' && s.notePath) void extractor.request(s.notePath, 'study').catch(() => undefined)
     }
   })
   const sh = makeSessionHandlers(runner)
@@ -238,6 +236,7 @@ export function registerIpc(): { bridge: Bridge } {
         ? broadcast(CH.graphChanged, { status })
         : void extractor.graph().then((graph) => broadcast(CH.graphChanged, { status, graph }), () => broadcast(CH.graphChanged, { status }))
     },
+    eligible: async () => new Set((await notes.list()).map((m) => m.sourcePath)),
     priorities: async () => {
       const idx = await vaultOrNull()
       if (!idx) return []
