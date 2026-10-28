@@ -631,7 +631,7 @@ export function GraphView({
           <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
         </section>
       )}
-      {!(livePaths && livePaths.length === 0) && (
+      {model && !(livePaths && livePaths.length === 0) && (
         <div className="gzoom" role="group" aria-label="Zoom">
           <button
             type="button"

@@ -119,7 +119,11 @@ export function createSessionRunner(deps: {
     if (known) return known
     const p = job()
     pending.set(key, p)
-    void p.catch(() => undefined).finally(() => setTimeout(() => pending.delete(key), 2000))
+    // A failure is forgotten at once, so a retry really tries again.
+    p.then(
+      () => void setTimeout(() => pending.delete(key), 2000).unref?.(),
+      () => pending.delete(key)
+    )
     return p
   }
 

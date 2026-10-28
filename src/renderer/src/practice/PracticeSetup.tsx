@@ -94,7 +94,9 @@ export function PracticeSetup({
         <p className="pr-lead">
           {initial
             ? 'Ho preparato il materiale del consiglio che hai scelto: puoi aggiungere o togliere concetti prima di iniziare.'
-            : 'Su cosa ti alleni oggi? Ho già scelto i due concetti più urgenti; gli altri suggeriti hanno accanto il motivo.'}
+            : initialText.trim()
+              ? 'Ho scelto il materiale a partire da quello che hai scritto: puoi aggiungere o togliere concetti prima di iniziare.'
+              : 'Su cosa ti alleni oggi? Ho già scelto i due concetti più urgenti; gli altri suggeriti hanno accanto il motivo.'}
         </p>
         {!catalog ? (
           <p className="mt-hint">Carico il materiale…</p>

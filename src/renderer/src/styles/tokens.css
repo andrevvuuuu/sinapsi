@@ -10,5 +10,6 @@ button{font:inherit;color:inherit}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 /* "← Home": the same size and weight in every view (repeated class: it wins over the views' own .pill rules). */
-button.back-btn.back-btn.back-btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--hair);background:color-mix(in srgb,var(--surface) 82%,transparent);color:var(--ink);font:500 14px/1 var(--sans);white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s}
+button.back-btn.back-btn.back-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--hair);background:color-mix(in srgb,var(--surface) 82%,transparent);color:var(--ink);font:500 14px/1 var(--sans);white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s}
 button.back-btn.back-btn.back-btn:hover{background:var(--surface);border-color:color-mix(in srgb,var(--ink) 22%,transparent)}
+.island button.back-btn.back-btn.back-btn{border-color:transparent;background:transparent}

@@ -156,7 +156,11 @@ function practice(input: SuggestInput, byPath: Map<string, VaultNote>, studied: 
   if (never) out.push({ label: byPath.get(never)!.title, reason: 'studiata, mai messa in pratica', action: { kind: 'practice', conceptIds: born.get(never)! } })
   // Several studied notes of one course (its MOC, else its subject): time to try it as an exam.
   const courseOf = new Map<string, string>()
-  for (const moc of (input.index?.notes ?? []).filter(isMoc)) for (const l of moc.links) if (l.resolved && l.path && !courseOf.has(l.path)) courseOf.set(l.path, courseName(moc))
+  // A hub MOC (one listing other MOCs) is not a course: the MOCs it lists name their notes.
+  const mocs = (input.index?.notes ?? []).filter(isMoc)
+  const mocPaths = new Set(mocs.map((m) => m.path))
+  const courses = [...mocs.filter((m) => !m.links.some((l) => l.path && mocPaths.has(l.path))), ...mocs.filter((m) => m.links.some((l) => l.path && mocPaths.has(l.path)))]
+  for (const moc of courses) for (const l of moc.links) if (l.resolved && l.path && !courseOf.has(l.path)) courseOf.set(l.path, courseName(moc))
   const byCourse = new Map<string, string[]>()
   for (const p of done) {
     const s = courseOf.get(p) ?? (byPath.get(p)!.subject ? tagName(byPath.get(p)!.subject!) : null)

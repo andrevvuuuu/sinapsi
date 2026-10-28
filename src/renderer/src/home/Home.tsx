@@ -105,6 +105,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
     const offVault = api.vault.onChange(setIndex)
     const offAi = api.ai.onStatus(setStatus)
     return () => {
+      asked = Number.NaN
       window.removeEventListener('focus', refresh)
       clearInterval(every)
       offVault()
