@@ -28,7 +28,9 @@ export function memoryOf(reviews: ReviewLine[], now: number): Map<string, Memory
       reps: card.reps,
       lapses: card.lapses,
       lastAt: last.at,
-      misconception: last.correct === false && (last.confidence ?? 0) >= 70
+      misconception: last.correct === false && (last.confidence ?? 0) >= 70,
+      stability: card.stability,
+      lastGrade: last.grade
     })
   }
   return out

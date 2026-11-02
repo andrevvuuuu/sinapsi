@@ -18,6 +18,7 @@ import { ACCEPTED_EXTENSIONS, createIngestor } from './notebook/ingest'
 import { notebookStore } from './notebook/store'
 import { fakeReviewBridge } from './memory/fake-review'
 import { createReviewService } from './memory/review'
+import { memoryOf } from './memory/fsrs'
 import { memoryStore } from './memory/store'
 import { reviewSessions } from './memory/history'
 import { variantsStore } from './memory/variants'
@@ -30,6 +31,7 @@ import { readySources } from './notes/store'
 import { createLinkedSync } from './vault/linked'
 import { fakeTeacher } from './session/fake-teacher'
 import { createSessionRunner } from './session/runner'
+import { memoryBrief } from './session/memory-brief'
 import { createSuggester } from './suggest/suggest'
 import { dataDir } from './store/paths'
 import { loadSettings, saveSettings } from './store/settings'
@@ -113,6 +115,7 @@ export function registerIpc(): { bridge: Bridge } {
     },
     readNote: (path) => readFile(path, 'utf8'),
     games: async () => (await settings.load()).gamesInSessions,
+    memory: async (notePath) => memoryBrief(await extractor.graph(), memoryOf(await memoryStore(join(dataDir(), 'memory')).read(), Date.now()), notePath),
     onUpdate: (s) => {
       broadcast(CH.sessionUpdated, s)
     }
