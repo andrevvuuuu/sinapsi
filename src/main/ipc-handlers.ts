@@ -218,6 +218,7 @@ export function makeNotebookHandlers(d: {
 
 const MaterialInput = MaterialSchema.strict().refine((m) => m.conceptIds.length + m.sourceIds.length > 0 || m.free.trim().length > 0, 'Scegli almeno un concetto, una fonte o scrivi un argomento')
 const Duration = z.number().int().min(5).max(300).refine((n) => n % 5 === 0, 'la durata va a passi di 5 minuti')
+const Points = z.number().min(0).max(30).refine((n) => Number.isInteger(n * 2), 'i punti vanno a mezzi punti')
 const Answers = z.record(z.string().max(64), z.string().max(20_000)).refine((a) => Object.keys(a).length <= 50, 'troppe risposte')
 
 /** "Rolle, Lagrange, Fermat e altri 2 · 1 fonte": the label of a practice session in lists. */
@@ -234,7 +235,7 @@ export function practiceTopic(m: Material, names: Map<string, string>): string {
 
 export function makePracticeHandlers(d: {
   runner: Pick<PracticeRunner, 'create' | 'submit' | 'retry' | 'list'>
-  exam: Pick<ExamService, 'start' | 'retry' | 'save' | 'deliver' | 'get'>
+  exam: Pick<ExamService, 'start' | 'retry' | 'save' | 'deliver' | 'get' | 'hand' | 'selfGrade' | 'calibration'>
   catalog: () => Promise<Catalog>
   photo: (id: string, bytes: Uint8Array) => Promise<string>
   camera: () => Promise<boolean>
@@ -249,9 +250,12 @@ export function makePracticeHandlers(d: {
       return (await d.exam.get(pid)).mode === 'exam' ? d.exam.retry(pid) : d.runner.retry(pid)
     },
     list: () => d.runner.list(),
-    examStart: async (m: unknown, minutes: unknown) => d.exam.start(MaterialInput.parse(m) as Material, Duration.parse(minutes)),
+    examStart: async (m: unknown, minutes: unknown, paper?: unknown) => d.exam.start(MaterialInput.parse(m) as Material, Duration.parse(minutes), z.boolean().optional().parse(paper) ?? false),
     examSave: async (id: unknown, a: unknown) => d.exam.save(Id.parse(id), Answers.parse(a)),
     examDeliver: async (id: unknown, a: unknown) => d.exam.deliver(Id.parse(id), Answers.parse(a)),
+    examHand: async (id: unknown) => d.exam.hand(Id.parse(id)),
+    examSelf: async (id: unknown, problemId: unknown, points: unknown) => d.exam.selfGrade(Id.parse(id), z.string().min(1).max(64).parse(problemId), Points.parse(points)),
+    calibration: () => d.exam.calibration(),
     photo: async (id: unknown, bytes: unknown) => {
       if (!(bytes instanceof Uint8Array)) throw new Error('foto non valida')
       return d.photo(Id.parse(id), bytes)

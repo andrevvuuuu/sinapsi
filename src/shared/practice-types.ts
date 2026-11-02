@@ -23,7 +23,9 @@ export const ExamGradeReplySchema = z.object({
   items: z.array(z.object({ id: z.string(), points: z.number().min(0), comment: z.string(), miss: z.enum(MISSES).optional() })),
   note: z.string()
 })
-export type ExamGrade = z.infer<typeof ExamGradeReplySchema> & { total: number; lode: boolean }
+type ExamGradeReply = z.infer<typeof ExamGradeReplySchema>
+/** In a paper exam each item also keeps the points Andrea gave before the correction. */
+export type ExamGrade = { items: (ExamGradeReply['items'][number] & { self?: number })[]; note: string; total: number; lode: boolean }
 
 export type CatalogConcept = { id: string; name: string; R: number | null; due: boolean; practiced: boolean }
 export type Catalog = {

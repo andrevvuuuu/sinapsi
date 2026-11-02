@@ -339,13 +339,16 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.practiceRetry, (_e, id) => bg(ph.retry(id)))
   ipcMain.handle(CH.practiceGet, (_e, id) => ph.get(id))
   ipcMain.handle(CH.practiceList, () => ph.list())
-  ipcMain.handle(CH.practiceExamStart, async (_e, m, minutes) => {
-    const id = await ph.examStart(m, minutes)
+  ipcMain.handle(CH.practiceExamStart, async (_e, m, minutes, paper) => {
+    const id = await ph.examStart(m, minutes, paper)
     bg(ph.retry(id))
     return id
   })
   ipcMain.handle(CH.practiceExamSave, (_e, id, a) => ph.examSave(id, a))
   ipcMain.handle(CH.practiceExamDeliver, (_e, id, a) => bg(ph.examDeliver(id, a)))
+  ipcMain.handle(CH.practiceExamHand, (_e, id) => ph.examHand(id))
+  ipcMain.handle(CH.practiceExamSelf, (_e, id, pid, points) => ph.examSelf(id, pid, points))
+  ipcMain.handle(CH.practiceCalibration, () => ph.calibration())
   ipcMain.handle(CH.practicePhoto, (_e, id, bytes) => ph.photo(id, bytes))
   ipcMain.handle(CH.practiceCamera, () => ph.camera())
   const suggestions = createSuggester({

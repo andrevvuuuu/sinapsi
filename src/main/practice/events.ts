@@ -2,13 +2,17 @@ import type { PracticeTurn, Problem, Submission } from '../../shared/practice-pr
 import type { ExamGrade, ExamSheet, Material, PublicExamProblem } from '../../shared/practice-types'
 
 export type PracticeEvent =
-  | { t: 'created'; id: string; mode: 'train' | 'exam'; material: Material; topic: string; durationMin?: number; at: number }
+  | { t: 'created'; id: string; mode: 'train' | 'exam'; material: Material; topic: string; durationMin?: number; paper?: boolean; at: number }
   | { t: 'learner'; submission: Submission; text: string; at: number }
   | { t: 'tutor'; turn: PracticeTurn; conversationId?: string; at: number }
   | { t: 'error'; message: string; at: number }
   | { t: 'exam'; sheet: ExamSheet; endsAt: number; at: number }
   | { t: 'answers'; answers: Record<string, string>; final: boolean; at: number }
   | { t: 'graded'; grade: ExamGrade; at: number }
+  /** Paper exam: the time is over (or Andrea handed in), the sheet is put down and the solutions shown. */
+  | { t: 'handed'; at: number }
+  /** Paper exam: the points Andrea gives one problem, before writing out the answer and before the correction. */
+  | { t: 'self'; id: string; points: number; at: number }
 
 type PublicProblem = Omit<Problem, 'modelSolution'>
 export type PracticeItem =
@@ -35,6 +39,8 @@ export type PracticeState = {
   material: Material
   topic: string
   durationMin?: number
+  /** An exam written on paper, with the machine off: the answers are typed or photographed afterwards. */
+  paper?: boolean
   phase: PracticeTurn['phase']
   items: PracticeItem[]
   problems: PracticeProblem[]
@@ -46,7 +52,16 @@ export type PracticeState = {
   conversationId?: string
   hasTutorTurn: boolean
   lastLearnerText?: string
-  exam?: { sheet: { title: string; problems: PublicExamProblem[] }; endsAt: number; answers: Record<string, string>; delivered: boolean; grade?: ExamGrade }
+  exam?: {
+    sheet: { title: string; problems: PublicExamProblem[] }
+    endsAt: number
+    answers: Record<string, string>
+    /** Sent to the grader. In a paper exam this comes after "handed" and the self-grades. */
+    delivered: boolean
+    handed?: boolean
+    self?: Record<string, number>
+    grade?: ExamGrade
+  }
   createdAt: number
   updatedAt: number
 }
@@ -69,6 +84,7 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
     switch (e.t) {
       case 'created':
         Object.assign(s, { id: e.id, mode: e.mode, material: e.material, topic: e.topic, durationMin: e.durationMin, createdAt: e.at })
+        if (e.paper) s.paper = true
         // An exam starts by generating its sheet.
         if (e.mode === 'exam') s.awaiting = 'tutor'
         break
@@ -129,6 +145,19 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
           s.awaiting = 'tutor'
         }
         break
+      case 'handed':
+        if (!s.exam || !sheet || s.exam.handed) break
+        s.exam.handed = true
+        s.exam.self = {}
+        s.exam.sheet.problems = sheet.problems
+        break
+      case 'self': {
+        const p = sheet?.problems.find((x) => x.id === e.id)
+        // The first self-grade counts: it must come before the answer is seen again and before the correction.
+        if (!s.exam?.self || !p || s.exam.delivered || e.id in s.exam.self) break
+        s.exam.self[e.id] = Math.min(p.points, Math.max(0, Math.round(e.points * 2) / 2))
+        break
+      }
       case 'graded':
         if (!s.exam || !sheet) break
         s.exam.grade = e.grade

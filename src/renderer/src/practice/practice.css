@@ -11,6 +11,8 @@
 .pr-body{flex:1;min-height:0;display:grid;grid-template-columns:1fr 280px}
 .pr-scroll{overflow:auto;min-height:0;display:flex;flex-direction:column}
 .pr-col{width:100%;max-width:760px;margin:0 auto;padding:28px 24px 30px;flex:1}
+/* The exam views put the column straight under .pr: it scrolls by itself. */
+.pr>.pr-col{overflow:auto;min-height:0;max-width:none;padding-left:max(24px,calc((100% - 712px) / 2));padding-right:max(24px,calc((100% - 712px) / 2))}
 .pr-setup{overflow:auto;padding:28px 24px 40px}
 .pr-setup>*{max-width:760px;margin-left:auto;margin-right:auto}
 .pr-lead{margin:0 auto 16px}
@@ -124,6 +126,20 @@
 .pr-ex{margin-top:16px}
 .pr-grade{text-align:center;padding:24px 0 12px}
 .pr-mark{font:400 72px/1 var(--serif);margin:6px 0 10px;color:var(--accent)}
+/* paper exam */
+.pr-paper .pr-ex .rich{font-size:18px}
+.pr .pr-self input{width:84px;min-height:var(--ctl-sm);border-radius:10px;border:1px solid var(--hair);background:var(--bg);color:var(--ink);font:500 15px var(--mono);padding:0 10px;text-align:right}
+.pr .pr-self input:focus{outline:none;border-color:var(--accent)}
+.pr .pr-self.given{margin:0;display:flex;align-items:baseline;gap:10px}
+.pr .pr-self.given b{font:500 15px var(--mono)}
+.pr .pr-chips{display:inline-flex;gap:6px}
+.pr-calib-totals{font:400 22px/1.3 var(--serif);margin:6px 0 2px}
+.pr-calib-totals b{font-weight:400;color:var(--accent)}
+.pr-calib-list{list-style:none;margin:6px 0 8px;padding:0;display:flex;flex-direction:column;gap:4px}
+.pr-calib-list li{display:grid;grid-template-columns:64px 1fr auto auto;gap:12px;align-items:center;padding:6px 10px;border-radius:10px;background:var(--faint);font-size:13.5px}
+.pr-calib-list li[aria-current="true"]{outline:1px solid var(--accent)}
+.pr-calib-list li>span:nth-child(3){font:500 12px var(--mono)}
+.pr-calib-topic{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* dialogs */
 .pr-overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
 .pr .mt-dlg{display:grid;grid-template-rows:auto auto 1fr auto;width:min(1040px,100%);height:min(720px,calc(100vh - 48px));border-radius:24px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--inner),0 40px 100px -30px rgba(0,0,0,.7);overflow:hidden}

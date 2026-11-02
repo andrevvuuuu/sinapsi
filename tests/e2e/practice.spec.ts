@@ -60,3 +60,51 @@ test('an exam: a timed sheet, answers, delivery, a grade in thirtieths', async (
   await win.screenshot({ path: 'test-results/practice-grade.png' })
   await app.close()
 })
+
+test('an exam on paper: sheet and clock, pens down, self-grade before the correction, calibration over time', async () => {
+  const app = await launch()
+  const win = await app.firstWindow()
+  win.on('pageerror', (e) => console.log('PAGEERROR', e.message))
+  for (const [round, selfs] of [[1, ['12', '16']], [2, ['10', '9,5']]] as const) {
+    await win.getByRole('group', { name: 'Tipo di sessione' }).getByRole('button', { name: 'Pratica', exact: true }).click()
+    await win.getByLabel('Cosa vuoi studiare?').fill('limiti notevoli')
+    await win.getByRole('button', { name: 'Inizia' }).click()
+    await win.getByRole('radio', { name: /Simulazione d'esame/ }).click()
+    await win.getByRole('button', { name: '30 min' }).click()
+    await win.getByRole('button', { name: 'Carta e penna' }).click()
+    await win.getByRole('button', { name: 'Inizia simulazione su carta · 30 min' }).click()
+    await expect(win.getByRole('timer')).toBeVisible()
+    await expect(win.getByText('Enuncia e dimostra il teorema di Rolle.')).toBeVisible()
+    await expect(win.getByLabel('Risposta all’esercizio 1')).toHaveCount(0)
+    if (round === 1) await win.screenshot({ path: 'test-results/paper-sheet.png' })
+    win.once('dialog', (d) => void d.accept())
+    await win.getByRole('button', { name: 'Ho finito: consegno' }).click()
+    await expect(win.getByRole('heading', { name: 'Penne giù' })).toBeVisible()
+    await expect(win.getByText('Weierstrass e Fermat.')).toBeVisible()
+    await expect(win.getByRole('timer')).toHaveCount(0)
+    await expect(win.getByRole('button', { name: 'Correggi' })).toBeDisabled()
+    for (const [i, v] of selfs.entries()) {
+      await win.getByLabel(`Il tuo voto all’esercizio ${i + 1}`).fill(v)
+      await win.getByRole('region', { name: `Esercizio ${i + 1}` }).getByRole('button', { name: 'Conferma il mio voto' }).click()
+      await expect(win.getByLabel(`Risposta all’esercizio ${i + 1}`)).toBeVisible()
+    }
+    await win.getByLabel('Risposta all’esercizio 1').fill('Vale $1$.')
+    await win.getByLabel('Risposta all’esercizio 2').fill('Per Weierstrass ha max e min.')
+    if (round === 1) await win.screenshot({ path: 'test-results/paper-self.png' })
+    win.once('dialog', (d) => void d.accept())
+    await win.getByRole('button', { name: 'Correggi' }).click()
+    await expect(win.getByRole('region', { name: 'Voto' }).getByText('21/30')).toBeVisible()
+    const panel = win.getByRole('region', { name: 'Calibrazione' })
+    await expect(panel).toBeVisible()
+    if (round === 1) {
+      await expect(panel.getByText('28/30')).toBeVisible()
+      await expect(panel.getByText('Ti sei sopravvalutato di 3,5 punti in media a esercizio.')).toBeVisible()
+      await win.screenshot({ path: 'test-results/paper-grade.png' })
+      await win.getByRole('button', { name: '← Home' }).click()
+    } else {
+      await expect(panel.getByText('Su 2 simulazioni a carta', { exact: false })).toBeVisible()
+      await win.screenshot({ path: 'test-results/paper-history.png', fullPage: true })
+    }
+  }
+  await app.close()
+})
