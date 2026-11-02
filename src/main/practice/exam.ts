@@ -6,6 +6,7 @@ import type { PracticeState } from './events'
 import { friendly, type PracticeDeps, type PracticeRunner } from './runner'
 import { unescapeOver } from '../ai/json'
 import { GRADING_RIGOR } from '../ai/rigor'
+import type { CalibrationExam } from '../../shared/calibration'
 
 const TIMEOUT = 300_000
 
@@ -44,7 +45,9 @@ MATERIALE
 ${context}`
 }
 
-function gradePrompt(sheet: ExamSheet, answers: Record<string, string>): string {
+const PAPER = `- La prova è stata scritta a mano, a macchina spenta, e trascritta dopo (a volte letta da una foto): non penalizzare refusi evidenti della trascrizione, ma le parti [illeggibile] non valgono punti.`
+
+function gradePrompt(sheet: ExamSheet, answers: Record<string, string>, paper: boolean): string {
   const parts = sheet.problems.map(
     (p, i) => `## Esercizio ${i + 1} (id ${p.id}, ${p.points} punti)\n${p.statement}\n\nSOLUZIONE DI RIFERIMENTO\n${p.modelSolution}\n\nRISPOSTA DI ANDREA\n${answers[p.id]?.trim() || '(nessuna risposta)'}`
   )
@@ -52,13 +55,16 @@ function gradePrompt(sheet: ExamSheet, answers: Record<string, string>): string 
 - Per ogni esercizio dai i punti (da 0 al massimo indicato, anche mezzi punti; credito parziale per i passaggi corretti) e un commento breve e onesto che localizza il primo errore o la parte mancante. Una soluzione diversa da quella di riferimento ma corretta vale quanto quella.
 - "miss" se c'è un errore: "cue" (non gli è venuta l'idea), "discrimination" (ha usato lo strumento sbagliato), "execution" (idea giusta, eseguita male), "careless", "structural" (una convinzione sbagliata).
 - "note": due o tre frasi sull'insieme: cosa riprendere.
-${GRADING_RIGOR}
+${paper ? PAPER + '\n' : ''}${GRADING_RIGOR}
 Rispondi solo con JSON: {"items":[{"id":"e1","points":0,"comment":"...","miss":"execution"}],"note":"..."}
 
 ${parts.join('\n\n---\n\n')}`
 }
 
-/** The exam simulation: generate a sheet, keep drafts, deliver once, grade in thirtieths. */
+/**
+ * The exam simulation: generate a sheet, keep drafts, deliver once, grade in thirtieths.
+ * On paper: the sheet and the clock only; then the solutions, a self-grade per problem, the answers typed or photographed, the grade.
+ */
 export function createExamService(deps: PracticeDeps & { runner: PracticeRunner }) {
   const { runner } = deps
   const now = deps.now ?? Date.now
@@ -97,14 +103,15 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
     runner.inflight.add(id)
     deps.onUpdate({ ...s, awaiting: 'tutor' })
     try {
-      const r = await deps.bridge.ask({ task: 'teach', prompt: gradePrompt(sheet, s.exam.answers), schema: ExamGradeReplySchema, timeoutMs: TIMEOUT, cwd: deps.dir })
+      const r = await deps.bridge.ask({ task: 'teach', prompt: gradePrompt(sheet, s.exam.answers, !!s.paper), schema: ExamGradeReplySchema, timeoutMs: TIMEOUT, cwd: deps.dir })
       const reply = r.data as Omit<ExamGrade, 'total' | 'lode'>
       // The grader sometimes renames the ids ("1", "Esercizio 1"): fall back to the order, else refuse.
       const byId = sheet.problems.every((p) => reply.items.some((x) => x.id === p.id))
       if (!byId && reply.items.length !== sheet.problems.length) throw new Error('la correzione non corrisponde agli esercizi del compito')
       const items = sheet.problems.map((p, i) => {
         const it = byId ? reply.items.find((x) => x.id === p.id) : reply.items[i]
-        return { id: p.id, points: Math.min(p.points, Math.max(0, Math.round((it?.points ?? 0) * 2) / 2)), comment: unescapeOver(it?.comment ?? ''), ...(it?.miss ? { miss: it.miss } : {}) }
+        const self = s.exam?.self?.[p.id]
+        return { id: p.id, points: Math.min(p.points, Math.max(0, Math.round((it?.points ?? 0) * 2) / 2)), comment: unescapeOver(it?.comment ?? ''), ...(it?.miss ? { miss: it.miss } : {}), ...(self !== undefined ? { self } : {}) }
       })
       const total = Math.min(30, Math.round(items.reduce((a, b) => a + b.points, 0)))
       const lode = total === 30 && items.every((it, i) => it.points === sheet.problems[i].points)
@@ -128,17 +135,19 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
     runner.serial(id, async () => {
       const s = await runner.load(id)
       if (!s.exam || s.exam.delivered) return
+      // On paper the grader comes only after every problem has its self-grade.
+      if (s.paper && (!s.exam.self || s.exam.sheet.problems.some((p) => !(p.id in s.exam!.self!)))) return
       await runner.append(id, { t: 'answers', answers, final: true, at: now() })
       await grade(id)
     })
 
   return {
-    async start(material: Material, durationMin: number): Promise<string> {
+    async start(material: Material, durationMin: number, paper = false): Promise<string> {
       await mkdir(deps.dir, { recursive: true })
       const id = uuid()
       const topic = await deps.topic(material)
       runner.inflight.add(id)
-      await runner.serial(id, () => runner.append(id, { t: 'created', id, mode: 'exam', material, topic, durationMin, at: now() }))
+      await runner.serial(id, () => runner.append(id, { t: 'created', id, mode: 'exam', material, topic, durationMin, ...(paper ? { paper } : {}), at: now() }))
       return id
     },
     retry: (id: string): Promise<void> =>
@@ -151,7 +160,7 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
     save: (id: string, answers: Record<string, string>): Promise<void> =>
       runner.serial(id, async () => {
         const s = await runner.load(id)
-        if (!s.exam || s.exam.delivered) return
+        if (!s.exam || s.exam.delivered || (s.paper && !s.exam.handed)) return
         // Only what changed since the last save: a three-hour exam no longer rewrites every answer each time.
         const prev = s.exam.answers
         const diff = Object.fromEntries([...new Set([...Object.keys(prev), ...Object.keys(answers)])].filter((k) => (answers[k] ?? '') !== (prev[k] ?? '')).map((k) => [k, answers[k] ?? '']))
@@ -159,9 +168,43 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
         await runner.append(id, { t: 'answers', answers: diff, final: false, at: now() })
       }),
     deliver,
+    /** Paper exam: pens down. */
+    hand: (id: string): Promise<void> =>
+      runner.serial(id, async () => {
+        const s = await runner.load(id)
+        if (s.paper && s.exam && !s.exam.handed) await runner.append(id, { t: 'handed', at: now() })
+      }),
+    selfGrade: (id: string, problemId: string, points: number): Promise<void> =>
+      runner.serial(id, async () => {
+        const s = await runner.load(id)
+        if (!s.exam?.self || s.exam.delivered || problemId in s.exam.self || !s.exam.sheet.problems.some((p) => p.id === problemId)) return
+        await runner.append(id, { t: 'self', id: problemId, points, at: now() })
+      }),
+    /** Every graded paper exam, oldest first: the self-grades against the grader's. */
+    async calibration(): Promise<CalibrationExam[]> {
+      const out: CalibrationExam[] = []
+      for (const x of await runner.list()) {
+        if (x.mode !== 'exam' || !x.done) continue
+        const s = await runner.load(x.id)
+        if (!s.paper || !s.exam?.grade) continue
+        const items = s.exam.grade.items.flatMap((it, i) => (it.self === undefined ? [] : [{ id: it.id, max: s.exam!.sheet.problems[i]?.points ?? 0, self: it.self, ai: it.points }]))
+        if (items.length) out.push({ id: s.id, topic: s.topic, at: s.updatedAt, items })
+      }
+      return out.sort((a, b) => a.at - b.at)
+    },
     /** Time keeps running while the app is closed: an exam past its end is delivered with the saved drafts. */
     async get(id: string): Promise<PracticeState> {
       const s = await runner.load(id)
+      // On paper the end of the time only puts the pens down: the grading waits for the self-grades.
+      if (s.paper) {
+        if (s.exam && !s.exam.handed && now() > s.exam.endsAt) {
+          await runner.serial(id, async () => {
+            if (!(await runner.load(id)).exam?.handed) await runner.append(id, { t: 'handed', at: now() })
+          })
+          return runner.load(id)
+        }
+        return s
+      }
       if (s.exam && !s.exam.delivered && now() > s.exam.endsAt) {
         await runner.serial(id, async () => {
           const again = await runner.load(id)

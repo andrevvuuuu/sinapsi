@@ -78,6 +78,9 @@ export const CH = {
   practiceExamStart: 'practice:exam-start',
   practiceExamSave: 'practice:exam-save',
   practiceExamDeliver: 'practice:exam-deliver',
+  practiceExamHand: 'practice:exam-hand',
+  practiceExamSelf: 'practice:exam-self',
+  practiceCalibration: 'practice:calibration',
   practicePhoto: 'practice:photo',
   practiceCamera: 'practice:camera',
   practiceUpdated: 'practice:updated',
@@ -165,9 +168,15 @@ export interface SinapsiApi {
     retry(id: string): Promise<void>
     get(id: string): Promise<import('../main/practice/events').PracticeState>
     list(): Promise<import('../main/practice/events').PracticeSummary[]>
-    examStart(material: import('./practice-types').Material, minutes: number): Promise<string>
+    /** paper: the sheet and the clock only, answers typed or photographed afterwards. */
+    examStart(material: import('./practice-types').Material, minutes: number, paper?: boolean): Promise<string>
     examSave(id: string, answers: Record<string, string>): Promise<void>
     examDeliver(id: string, answers: Record<string, string>): Promise<void>
+    /** Paper exam: pens down, the solutions are shown. */
+    examHand(id: string): Promise<void>
+    /** Paper exam: the points given to one problem before the correction (once). */
+    examSelf(id: string, problemId: string, points: number): Promise<void>
+    calibration(): Promise<import('./calibration').CalibrationExam[]>
     /** Transcription of the photo of a sheet (text + LaTeX). */
     photo(id: string, bytes: Uint8Array): Promise<string>
     /** Asks macOS for the camera (Continuity Camera shows the iPhone among the cameras). */

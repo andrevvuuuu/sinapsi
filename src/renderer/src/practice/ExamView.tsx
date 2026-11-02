@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { PracticeState } from '../../../main/practice/events'
 import { RichText } from '../session/RichText'
 import { PhotoButton } from './PhotoButton'
+import { CalibrationPanel, PaperReview } from './PaperExam'
 import { filled, fmtClock, fmtPoints, lastError } from './exam-format'
 
 const SAVE_EVERY = 10_000
@@ -18,7 +19,10 @@ export function ExamView({ state, onBack, onStarted }: { state: PracticeState; o
     latest.current = answers
   }, [answers])
   const MAX = 20_000
-  const running = !!exam && !exam.delivered
+  const paper = !!state.paper
+  // On paper the clock runs until the pens are down; the answers are written after that.
+  const running = !!exam && !exam.delivered && !(paper && exam.handed)
+  const writing = !!exam && !exam.delivered && (!paper || !!exam.handed)
 
   const [alert, setAlert] = useState<string | null>(null)
   const deliver = (): void => {
@@ -31,9 +35,21 @@ export function ExamView({ state, onBack, onStarted }: { state: PracticeState; o
     })
   }
 
+  const handed = useRef(false)
+  const hand = (): void => {
+    if (handed.current) return
+    handed.current = true
+    api.examHand(state.id).catch(() => (handed.current = false))
+  }
+
   useEffect(() => {
     if (!running) return
     const tick = setInterval(() => setNow(Date.now()), 500)
+    return () => clearInterval(tick)
+  }, [running])
+
+  useEffect(() => {
+    if (!writing) return
     const flush = (): void => {
       const json = JSON.stringify(filled(latest.current))
       if (json === saved.current || delivered.current) return
@@ -42,18 +58,20 @@ export function ExamView({ state, onBack, onStarted }: { state: PracticeState; o
     const save = setInterval(flush, SAVE_EVERY)
     window.addEventListener('beforeunload', flush)
     return () => {
-      clearInterval(tick)
       clearInterval(save)
       window.removeEventListener('beforeunload', flush)
       // Leaving the exam (← Home) keeps what was typed since the last save.
       flush()
     }
-  }, [api, running, state.id])
+  }, [api, writing, state.id])
 
   // Never more than the chosen length (the clocks of window and app differ by a few ms).
   const left = exam ? Math.min(exam.endsAt - now, (state.durationMin ?? 0) * 60_000 || Infinity) : 0
   useEffect(() => {
-    if (running && left <= 0) deliver()
+    if (running && left <= 0) {
+      if (paper) hand()
+      else deliver()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, left <= 0])
 
@@ -62,7 +80,7 @@ export function ExamView({ state, onBack, onStarted }: { state: PracticeState; o
       <button type="button" className="pill nodrag back-btn" onClick={onBack}>
         ← Home
       </button>
-      <h1>Simulazione d’esame</h1>
+      <h1>{paper ? 'Simulazione su carta' : 'Simulazione d’esame'}</h1>
       <span className="lab">{state.topic}</span>
       <span className="sp" />
       {running && (
@@ -106,6 +124,7 @@ export function ExamView({ state, onBack, onStarted }: { state: PracticeState; o
             <p className="pr-mark">{g.lode ? '30 e lode' : `${g.total}/30`}</p>
             <p>{g.note}</p>
           </section>
+          {paper && <CalibrationPanel state={state} />}
           {exam.sheet.problems.map((p, i) => {
             const it = g.items.find((x) => x.id === p.id)
             const pts = it?.points ?? 0
@@ -113,7 +132,10 @@ export function ExamView({ state, onBack, onStarted }: { state: PracticeState; o
               <article key={p.id} className="card" aria-label={`Esercizio ${i + 1}`}>
                 <div className="pr-cardhead">
                   <span className="lab">Esercizio {i + 1}</span>
-                  <span className={'chip ' + (pts >= p.points ? 'ok' : pts >= p.points / 2 ? 'mid' : 'no')}>{`${fmtPoints(pts)} / ${fmtPoints(p.points)}`}</span>
+                  <span className="pr-chips">
+                    {it?.self !== undefined && <span className="chip">{`tu ${fmtPoints(it.self)}`}</span>}
+                    <span className={'chip ' + (pts >= p.points ? 'ok' : pts >= p.points / 2 ? 'mid' : 'no')}>{`${fmtPoints(pts)} / ${fmtPoints(p.points)}`}</span>
+                  </span>
                 </div>
                 <RichText md={p.statement} />
                 {it?.comment && <p className="verdict">{it.comment}</p>}
@@ -169,6 +191,48 @@ export function ExamView({ state, onBack, onStarted }: { state: PracticeState; o
               Consegnato. Correggo il compito…
             </p>
           )}
+        </div>
+      </div>
+    )
+
+  if (paper && exam.handed)
+    return (
+      <div className="pr">
+        {header}
+        <div className="pr-col">
+          <PaperReview state={state} answers={answers} setAnswers={setAnswers} onDeliver={deliver} alert={alert} />
+        </div>
+      </div>
+    )
+
+  if (paper)
+    return (
+      <div className="pr">
+        {header}
+        <div className="pr-col pr-paper">
+          <h2 className="pr-sheet-title">{exam.sheet.title}</h2>
+          <p className="mt-hint">A macchina spenta: scrivi tutto su carta, senza appunti né aiuti. Allo scadere, o quando consegni, vedrai le soluzioni e ti darai un voto prima della correzione.</p>
+          {exam.sheet.problems.map((p, i) => (
+            <section key={p.id} className="card pr-ex" aria-label={`Esercizio ${i + 1}`}>
+              <div className="pr-cardhead">
+                <span className="lab">Esercizio {i + 1}</span>
+                <span className="lab">{fmtPoints(p.points)} punti</span>
+              </div>
+              <RichText md={p.statement} />
+            </section>
+          ))}
+          <div className="row">
+            <span className="sp" />
+            <button
+              type="button"
+              className="pri exam"
+              onClick={() => {
+                if (window.confirm('Consegnare? Il tempo si ferma e vedrai le soluzioni.')) hand()
+              }}
+            >
+              Ho finito: consegno
+            </button>
+          </div>
         </div>
       </div>
     )

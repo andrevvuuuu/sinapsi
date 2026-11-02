@@ -80,6 +80,6 @@ describe('Pratica opened from a chip', () => {
     render(<PracticeSetup initial={{ conceptIds: ['n_a'], exam: true }} onBack={vi.fn()} onStarted={vi.fn()} />)
     await screen.findByText('Alfa')
     await act(async () => fireEvent.click(screen.getByRole('button', { name: /^Inizia/ })))
-    expect(examStart).toHaveBeenCalledWith({ conceptIds: ['n_a'], sourceIds: [], free: '' }, 60)
+    expect(examStart).toHaveBeenCalledWith({ conceptIds: ['n_a'], sourceIds: [], free: '' }, 60, false)
   })
 })

@@ -4,7 +4,7 @@ import { makePracticeHandlers, practiceTopic } from '../../src/main/ipc-handlers
 const ID = '11111111-1111-4111-8111-111111111111'
 function setup() {
   const runner = { create: vi.fn(async () => ID), submit: vi.fn(async () => undefined), retry: vi.fn(async () => undefined), get: vi.fn(async () => ({ mode: 'train' })), list: vi.fn(async () => []) }
-  const exam = { start: vi.fn(async () => ID), retry: vi.fn(async () => undefined), save: vi.fn(async () => undefined), deliver: vi.fn(async () => undefined), get: vi.fn(async () => ({ mode: 'exam' })) }
+  const exam = { start: vi.fn(async () => ID), retry: vi.fn(async () => undefined), save: vi.fn(async () => undefined), deliver: vi.fn(async () => undefined), get: vi.fn(async () => ({ mode: 'exam' })), hand: vi.fn(async () => undefined), selfGrade: vi.fn(async () => undefined), calibration: vi.fn(async () => []) }
   const photo = vi.fn(async () => 'testo')
   const h = makePracticeHandlers({ runner, exam, catalog: async () => ({ subjects: [], sources: [], suggested: [] }), photo, camera: async () => true })
   return { h, runner, exam, photo }
@@ -28,10 +28,18 @@ describe('practice handlers', () => {
     await expect(h.examStart(material, 301)).rejects.toThrow()
     await expect(h.examStart(material, 47)).rejects.toThrow()
     await h.examStart(material, 45)
-    expect(exam.start).toHaveBeenCalledWith(material, 45)
+    expect(exam.start).toHaveBeenCalledWith(material, 45, false)
+    await h.examStart(material, 45, true)
+    expect(exam.start).toHaveBeenLastCalledWith(material, 45, true)
+    await expect(h.examStart(material, 45, 'sì')).rejects.toThrow()
     await expect(h.examSave(ID, { e1: 'x'.repeat(20_001) })).rejects.toThrow()
     await h.examDeliver(ID, { e1: 'r' })
     expect(exam.deliver).toHaveBeenCalledWith(ID, { e1: 'r' })
+    await expect(h.examSelf(ID, 'e1', 2.3)).rejects.toThrow()
+    await expect(h.examSelf(ID, 'e1', -1)).rejects.toThrow()
+    await expect(h.examSelf(ID, '', 2)).rejects.toThrow()
+    await h.examSelf(ID, 'e1', 7.5)
+    expect(exam.selfGrade).toHaveBeenCalledWith(ID, 'e1', 7.5)
   })
   it('routes get and retry by mode, and passes photo bytes', async () => {
     const { h, runner, exam, photo } = setup()

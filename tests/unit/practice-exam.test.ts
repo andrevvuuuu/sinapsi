@@ -130,3 +130,79 @@ describe('over-escaped model text', () => {
     for (const c of ask.mock.calls) expect((c[0] as unknown as { prompt: string }).prompt).not.toMatch(/raddoppiat/)
   })
 })
+
+describe('paper exam', () => {
+  const grading = { items: [{ id: 'e1', points: 10, comment: 'Manca un caso.' }, { id: 'e2', points: 15, comment: 'Giusto.' }], note: 'Bene.' }
+
+  it('shows only the sheet and the clock, then the solutions once handed in', async () => {
+    const { exam } = setup([sheet])
+    const id = await exam.start(material, 60, true)
+    await exam.retry(id)
+    let s = await exam.get(id)
+    expect(s.paper).toBe(true)
+    expect(JSON.stringify(s)).not.toMatch(/SOL1/)
+    await exam.save(id, { e1: 'scritto al computer' })
+    expect((await exam.get(id)).exam!.answers).toEqual({})
+    await exam.hand(id)
+    s = await exam.get(id)
+    expect(s.exam).toMatchObject({ handed: true, delivered: false, self: {} })
+    expect(s.exam!.sheet.problems[0].modelSolution).toBe('SOL1')
+  })
+  it('the end of the time puts the pens down but never grades by itself', async () => {
+    const { exam, ask } = setup([sheet])
+    const id = await exam.start(material, 30, true)
+    await exam.retry(id)
+    t += 31 * 60_000
+    const s = await exam.get(id)
+    expect(s.exam).toMatchObject({ handed: true, delivered: false })
+    expect(ask).toHaveBeenCalledTimes(1)
+  })
+  it('grades only after a self-grade on every problem, and keeps both grades', async () => {
+    const { exam, ask } = setup([sheet, grading])
+    const id = await exam.start(material, 60, true)
+    await exam.retry(id)
+    await exam.selfGrade(id, 'e1', 12)
+    expect((await exam.get(id)).exam!.self).toBeUndefined()
+    await exam.hand(id)
+    await exam.selfGrade(id, 'e1', 12.3)
+    await exam.selfGrade(id, 'e1', 3)
+    await exam.selfGrade(id, 'e9', 3)
+    expect((await exam.get(id)).exam!.self).toEqual({ e1: 12.5 })
+    await exam.save(id, { e1: 'trascritto dal foglio' })
+    await exam.deliver(id, { e1: 'trascritto dal foglio' })
+    expect((await exam.get(id)).exam!.delivered).toBe(false)
+    await exam.selfGrade(id, 'e2', 40)
+    await exam.deliver(id, { e1: 'trascritto dal foglio', e2: 'r2' })
+    const prompt = (ask.mock.calls[1][0] as unknown as { prompt: string }).prompt
+    expect(prompt).toContain('a macchina spenta')
+    expect(prompt).toContain('Rigore nella correzione')
+    expect(prompt).not.toContain('12.5')
+    const s = await exam.get(id)
+    expect(s.exam!.grade).toMatchObject({ total: 25, items: [{ id: 'e1', points: 10, self: 12.5 }, { id: 'e2', points: 15, self: 15 }] })
+    await exam.selfGrade(id, 'e2', 0)
+    expect((await exam.get(id)).exam!.grade!.items[1].self).toBe(15)
+  })
+  it('the calibration history lists the graded paper exams, oldest first', async () => {
+    const { exam } = setup([sheet, grading, sheet, grading, sheet])
+    const first = await exam.start(material, 60, true)
+    await exam.retry(first)
+    await exam.hand(first)
+    await exam.selfGrade(first, 'e1', 15)
+    await exam.selfGrade(first, 'e2', 15)
+    await exam.deliver(first, { e1: 'a', e2: 'b' })
+    t += 86_400_000
+    const second = await exam.start(material, 60, true)
+    await exam.retry(second)
+    await exam.hand(second)
+    await exam.selfGrade(second, 'e1', 8)
+    await exam.selfGrade(second, 'e2', 15)
+    await exam.deliver(second, { e1: 'a', e2: 'b' })
+    // An exam on the computer and an ungraded paper one stay out.
+    const typed = await exam.start(material, 60)
+    await exam.retry(typed)
+    expect(await exam.calibration()).toEqual([
+      { id: first, topic: 'Analisi', at: 1_000_000, items: [{ id: 'e1', max: 15, self: 15, ai: 10 }, { id: 'e2', max: 15, self: 15, ai: 15 }] },
+      { id: second, topic: 'Analisi', at: 1_000_000 + 86_400_000, items: [{ id: 'e1', max: 15, self: 8, ai: 10 }, { id: 'e2', max: 15, self: 15, ai: 15 }] }
+    ])
+  })
+})

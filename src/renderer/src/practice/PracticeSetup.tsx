@@ -29,6 +29,7 @@ export function PracticeSetup({
   const [mode, setMode] = useState<'train' | 'exam'>(initial?.exam ? 'exam' : 'train')
   const [preset, setPreset] = useState<'30' | '60' | '90' | 'custom'>('60')
   const [custom, setCustom] = useState(45)
+  const [paper, setPaper] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const go = useRef<HTMLButtonElement>(null)
@@ -75,7 +76,7 @@ export function PracticeSetup({
     setError(null)
     const material = { conceptIds: [...concepts], sourceIds: [...sources], free: free.trim() }
     try {
-      onStarted(mode === 'exam' ? await api.examStart(material, minutes) : await api.create(material))
+      onStarted(mode === 'exam' ? await api.examStart(material, minutes, paper) : await api.create(material))
     } catch (e) {
       setError(clean(e))
       setBusy(false)
@@ -208,9 +209,19 @@ export function PracticeSetup({
                       </button>
                     </div>
                   )}
+                  <span className="lab">Dove</span>
+                  <div className="dur" role="group" aria-label="Dove scrivi">
+                    <button type="button" aria-pressed={!paper} onClick={() => setPaper(false)}>
+                      Al computer
+                    </button>
+                    <button type="button" aria-pressed={paper} onClick={() => setPaper(true)}>
+                      Carta e penna
+                    </button>
+                  </div>
                   <div className="rules">
                     <span>✕ niente indizi</span>
                     <span>✕ niente correzione durante</span>
+                    {paper && <span>✎ alla fine ti dai tu il voto, prima della correzione</span>}
                   </div>
                 </div>
               )}
@@ -240,7 +251,7 @@ export function PracticeSetup({
                   }}
                 />
                 <button ref={go} type="button" className={'pri' + (mode === 'exam' ? ' exam' : '')} disabled={!has || busy} onClick={() => void start()}>
-                  {mode === 'exam' ? `Inizia simulazione · ${minutes} min` : 'Inizia allenamento'}
+                  {mode === 'exam' ? `Inizia simulazione${paper ? ' su carta' : ''} · ${minutes} min` : 'Inizia allenamento'}
                 </button>
               </div>
             </div>
