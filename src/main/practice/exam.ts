@@ -5,6 +5,7 @@ import { ExamGradeReplySchema, ExamSheetSchema, type ExamGrade, type ExamSheet, 
 import type { PracticeState } from './events'
 import { friendly, type PracticeDeps, type PracticeRunner } from './runner'
 import { unescapeOver } from '../ai/json'
+import { GRADING_RIGOR } from '../ai/rigor'
 
 const TIMEOUT = 300_000
 
@@ -51,6 +52,7 @@ function gradePrompt(sheet: ExamSheet, answers: Record<string, string>): string 
 - Per ogni esercizio dai i punti (da 0 al massimo indicato, anche mezzi punti; credito parziale per i passaggi corretti) e un commento breve e onesto che localizza il primo errore o la parte mancante. Una soluzione diversa da quella di riferimento ma corretta vale quanto quella.
 - "miss" se c'è un errore: "cue" (non gli è venuta l'idea), "discrimination" (ha usato lo strumento sbagliato), "execution" (idea giusta, eseguita male), "careless", "structural" (una convinzione sbagliata).
 - "note": due o tre frasi sull'insieme: cosa riprendere.
+${GRADING_RIGOR}
 Rispondi solo con JSON: {"items":[{"id":"e1","points":0,"comment":"...","miss":"execution"}],"note":"..."}
 
 ${parts.join('\n\n---\n\n')}`
