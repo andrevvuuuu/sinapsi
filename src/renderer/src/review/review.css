@@ -269,8 +269,8 @@
   background: var(--faint);
 }
 .rv-dialog li.claude {
-  border: 1px solid var(--hair);
-  border-left: 3px solid var(--warn);
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--hair));
+  background: color-mix(in srgb, var(--warn) 6%, transparent);
 }
 .rv-dialog .lab {
   display: block;
