@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const EXERCISE_TYPES = ['open', 'mc', 'truefalse', 'order', 'fill', 'match', 'counterexample', 'estimate', 'spoterror', 'graph'] as const
+export const EXERCISE_TYPES = ['open', 'mc', 'truefalse', 'order', 'fill', 'match', 'counterexample', 'estimate', 'spoterror', 'graph', 'explain'] as const
 export type ExerciseType = (typeof EXERCISE_TYPES)[number]
 export type Grade = 1 | 2 | 3 | 4
 

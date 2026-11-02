@@ -1,4 +1,5 @@
 import type { ReviewService } from './memory/review'
+import { MAX_QUESTIONS } from './memory/explain'
 import { ExerciseSchema } from '../shared/exercise-schema'
 import { EXERCISE_TYPES, ReviewLineSchema } from '../shared/memory-types'
 import type { Extractor } from './graph/jobs'
@@ -131,10 +132,23 @@ export function makeGraphHandlers(x: Extractor, positions: { read(): Promise<unk
 const PlanOpts = z.object({ conceptIds: z.array(z.string().min(1).max(64)).max(200).optional(), weakest: z.boolean().optional() }).strict()
 const GradeReq = z.object({ conceptId: z.string().min(1).max(64), exercise: ExerciseSchema, answer: z.string().max(10_000), confidence: z.number().min(0).max(100) })
 
-export function makeReviewHandlers(svc: ReviewService) {
+const ExplainReq = z.object({
+  conceptId: z.string().min(1).max(64),
+  exercise: ExerciseSchema,
+  turns: z.array(z.object({ by: z.enum(['andrea', 'claude']), text: z.string().trim().min(1).max(10_000) }).strict()).min(1).max(2 * MAX_QUESTIONS + 1),
+  confidence: z.number().min(0).max(100)
+})
+
+export function makeReviewHandlers(svc: ReviewService, d: { voice: (bytes: Uint8Array) => Promise<string>; microphone: () => Promise<boolean> }) {
   return {
     plan: async (opts: unknown) => svc.plan(PlanOpts.parse(opts ?? {})),
     grade: async (req: unknown) => svc.grade(GradeReq.parse(req)),
+    explain: async (req: unknown) => svc.explain(ExplainReq.parse(req)),
+    voice: async (bytes: unknown) => {
+      if (!(bytes instanceof Uint8Array)) throw new Error('registrazione non valida')
+      return d.voice(bytes)
+    },
+    microphone: () => d.microphone(),
     record: async (r: unknown) => svc.record(ReviewLineSchema.parse(r)),
     memory: () => svc.memory(),
     intervals: async (id: unknown) => svc.intervals(z.string().min(1).max(64).parse(id))

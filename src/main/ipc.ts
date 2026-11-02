@@ -22,6 +22,7 @@ import { memoryOf } from './memory/fsrs'
 import { memoryStore } from './memory/store'
 import { reviewSessions } from './memory/history'
 import { variantsStore } from './memory/variants'
+import { transcribeVoice } from './memory/voice'
 import { fakeExtractBridge } from './graph/fake-extract'
 import { createExtractor, type Extractor } from './graph/jobs'
 import { graphStore } from './graph/store'
@@ -286,9 +287,15 @@ export function registerIpc(): { bridge: Bridge } {
     settings: async () => settings.load(),
     workDir: join(dataDir(), 'ai-work')
   })
-  const rh = makeReviewHandlers(review)
+  const rh = makeReviewHandlers(review, {
+    voice: (bytes) => transcribeVoice({ run: process.env.SINAPSI_FAKE_MEDIA === '1' ? fakeMedia() : nodeSpawn, dir: join(dataDir(), 'ai-work'), bytes }),
+    microphone: async () => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true)
+  })
   ipcMain.handle(CH.reviewPlan, (_e, opts) => rh.plan(opts))
   ipcMain.handle(CH.reviewGrade, (_e, req) => rh.grade(req))
+  ipcMain.handle(CH.reviewExplain, (_e, req) => rh.explain(req))
+  ipcMain.handle(CH.reviewVoice, (_e, bytes) => rh.voice(bytes))
+  ipcMain.handle(CH.reviewMicrophone, () => rh.microphone())
   ipcMain.handle(CH.reviewRecord, (_e, r) => rh.record(r))
   ipcMain.handle(CH.reviewMemory, () => rh.memory())
   ipcMain.handle(CH.reviewIntervals, (_e, id) => rh.intervals(id))

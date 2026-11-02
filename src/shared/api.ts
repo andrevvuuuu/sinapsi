@@ -7,7 +7,8 @@ import type { NoteMeta, StoredNote } from '../main/notes/store'
 export type { SessionState, SessionSummary, NoteMeta, StoredNote }
 export type { GraphData, ExtractorStatus } from './graph-types'
 export type { Memory, ReviewLine, Grade } from './memory-types'
-export type { ReviewItem, ReviewPlan, GradeResult } from '../main/memory/review'
+export type { ReviewItem, ReviewPlan, GradeResult, ExplainResult } from '../main/memory/review'
+export type { ExplainTurn } from '../main/memory/explain'
 export type { Notebook, Source, SourceText, ChatTurn, Excerpt } from './notebook-types'
 export type { PracticeState, PracticeSummary, PracticeItem, PracticeProblem } from '../main/practice/events'
 export type { Catalog, Material } from './practice-types'
@@ -48,6 +49,9 @@ export const CH = {
   graphSavePositions: 'graph:save-positions',
   reviewPlan: 'review:plan',
   reviewGrade: 'review:grade',
+  reviewExplain: 'review:explain',
+  reviewVoice: 'review:voice',
+  reviewMicrophone: 'review:microphone',
   reviewRecord: 'review:record',
   reviewMemory: 'review:memory',
   reviewIntervals: 'review:intervals',
@@ -130,6 +134,12 @@ export interface SinapsiApi {
   review: {
     plan(opts?: { conceptIds?: string[]; weakest?: boolean }): Promise<import('../main/memory/review').ReviewPlan>
     grade(req: { conceptId: string; exercise: import('./exercise-schema').Exercise; answer: string; confidence: number }): Promise<import('../main/memory/review').GradeResult>
+    /** "Spiegalo tu": the whole dialogue so far, Andrea's last turn included. */
+    explain(req: { conceptId: string; exercise: import('./exercise-schema').Exercise; turns: import('../main/memory/explain').ExplainTurn[]; confidence: number }): Promise<import('../main/memory/review').ExplainResult>
+    /** A spoken answer as text (mlx_whisper). */
+    voice(bytes: Uint8Array): Promise<string>
+    /** Asks macOS for the microphone. */
+    microphone(): Promise<boolean>
     record(r: import('./memory-types').ReviewLine): Promise<{ memory: import('./memory-types').Memory; intervals: Record<import('./memory-types').Grade, string> }>
     memory(): Promise<Record<string, import('./memory-types').Memory>>
     intervals(conceptId: string): Promise<Record<import('./memory-types').Grade, string>>

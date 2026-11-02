@@ -10,7 +10,8 @@ export const TYPE_LABEL: Record<ExerciseType, string> = {
   counterexample: 'Scegli il controesempio',
   estimate: 'Stima',
   spoterror: "Trova l'errore",
-  graph: 'Sul grafico'
+  graph: 'Sul grafico',
+  explain: 'Spiegalo tu'
 }
 export const MODE: Record<ExerciseType, string> = {
   open: 'Richiamo',
@@ -22,5 +23,6 @@ export const MODE: Record<ExerciseType, string> = {
   counterexample: 'Distinzione',
   estimate: 'Composizione',
   spoterror: 'Composizione',
-  graph: 'Sul grafico'
+  graph: 'Sul grafico',
+  explain: 'Elaborazione'
 }
