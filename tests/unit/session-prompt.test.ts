@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { matchNote } from '../../src/main/session/note-match'
-import { firstMessage, TEACHER_SYSTEM_PROMPT } from '../../src/main/session/prompt'
+import { capNote, firstMessage, TEACHER_SYSTEM_PROMPT, VERIFY_MARK } from '../../src/main/session/prompt'
 import type { VaultIndex, VaultNote } from '../../src/shared/vault-types'
 
 const n = (title: string, aliases: string[] = [], available = true): VaultNote => ({
@@ -39,5 +39,17 @@ describe('teacher prompt', () => {
   })
   it('works without a note', () => {
     expect(firstMessage('Glicolisi')).toContain('Glicolisi')
+  })
+})
+
+describe('capNote', () => {
+  it('leaves a note without flagged errors as it is', () => {
+    expect(capNote('# Rolle\ntesto')).toBe('# Rolle\ntesto')
+  })
+  it('warns the model when the correctness check flagged errors', () => {
+    const text = `---\nVerifica: errori\n---\n\n${VERIFY_MARK}\n> [!warning] Verifica di correttezza: 1 errore\n%% verifica-fine %%\n\n# Rolle`
+    const out = capNote(text)
+    expect(out.startsWith('[Questa nota contiene un callout «Verifica di correttezza»')).toBe(true)
+    expect(out.endsWith(text)).toBe(true)
   })
 })

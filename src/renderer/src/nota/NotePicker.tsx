@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { NoteMeta } from '../../../shared/api'
+import type { VaultNote } from '../../../shared/vault-types'
 import { remoteMessage } from './NotaView'
 import './nota.css'
 
@@ -19,6 +20,7 @@ export function NotePicker({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [concepts, setConcepts] = useState<number | null>(null)
+  const [verifica, setVerifica] = useState<VaultNote['verifica']>(undefined)
 
   // Only notes with a nota viva are extracted (the graph shows the notes vive): opening a note just counts.
   useEffect(() => {
@@ -45,7 +47,10 @@ export function NotePicker({
     let alive = true
     void api.vault.index().then((idx) => {
       const n = 'notes' in idx ? idx.notes.find((x) => x.path === path) : undefined
-      if (alive && n) setTitle(n.title)
+      if (alive && n) {
+        setTitle(n.title)
+        setVerifica(n.verifica)
+      }
     })
     const load = (): void =>
       void api.notes.list().then((l) => alive && setMine(l.filter((m) => m.sourcePath === path)))
@@ -82,6 +87,14 @@ export function NotePicker({
             "Una nota viva è la tua nota Obsidian trasformata in una pagina da cui studiare: figure da toccare, quiz accanto ai paragrafi, passi da provare da solo. La tua nota resta com'è."
           }
         </p>
+        {(verifica === 'errori' || verifica === 'dubbi') && (
+          <div className="nv-flag" role="note">
+            <b>{verifica === 'errori' ? 'Errori segnalati' : 'Dubbi segnalati'}</b>
+            {verifica === 'errori'
+              ? 'La verifica di correttezza ha trovato errori in questa nota. Il tutor e la nota viva useranno le correzioni, ma conviene sistemare la nota in Obsidian: le segnalazioni sono in cima.'
+              : 'La verifica di correttezza ha qualche dubbio su questa nota. Il tutor ne terrà conto; le segnalazioni sono in cima alla nota in Obsidian.'}
+          </div>
+        )}
         <div className="nv-row" style={{ justifyContent: 'center' }}>
           <button type="button" className="btn pri" disabled={busy} onClick={() => void create()}>
             Crea la nota viva

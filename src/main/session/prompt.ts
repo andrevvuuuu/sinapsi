@@ -1,7 +1,12 @@
 export const NOTE_LIMIT = 60_000
 
-/** The Obsidian note as sent to a model: capped, with a visible marker when cut. */
-export const capNote = (text: string): string => (text.length > NOTE_LIMIT ? text.slice(0, NOTE_LIMIT - 200) + '\n[…nota troncata]' : text)
+/** Written by the vault's correctness check (correctness_check.py) around its callout of flagged errors. */
+export const VERIFY_MARK = '%% verifica-inizio %%'
+const VERIFY_NOTICE = `[Questa nota contiene un callout «Verifica di correttezza»: un revisore ha segnalato errori o dubbi probabili. Nelle parti segnalate vale la correzione, non il testo della nota: non insegnarle, non estrarle e non usarle nelle domande nella versione sbagliata. Se ne parli, di' che la nota lì è imprecisa.]\n\n`
+
+/** The Obsidian note as sent to a model: capped, with a visible marker when cut, and a warning when it has flagged errors. */
+export const capNote = (text: string): string =>
+  (text.includes(VERIFY_MARK) ? VERIFY_NOTICE : '') + (text.length > NOTE_LIMIT ? text.slice(0, NOTE_LIMIT - 200) + '\n[…nota troncata]' : text)
 
 export const TEACHER_SYSTEM_PROMPT = `Sei il tutor di Sinapsi, un'app per studiare in modo attivo. Insegni ad Andrea, una persona alla volta, un argomento alla volta.
 

@@ -31,6 +31,8 @@
 .tree .leaf span{overflow:hidden;text-overflow:ellipsis}
 .tree .leaf.off{opacity:.5}
 .tree .leaf small{margin-left:auto;font:500 10px var(--mono)}
+.tree .leaf small.verifica{color:var(--warn)}
+.tree .leaf small.verifica.errori{font-weight:700}
 .pf{margin-top:auto;padding:10px 12px;border-top:1px solid var(--hair);position:relative}
 .pf .row{display:flex;align-items:center;gap:8px}
 .pf .vp{flex:1;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
