@@ -7,6 +7,7 @@ function setup() {
   const gen: NoteGenerator = {
     create: vi.fn(async () => ID),
     retry: vi.fn(async () => undefined),
+    refresh: vi.fn(async () => 0),
     list: vi.fn(async () => []),
     get: vi.fn(async () => ({}) as never)
   }

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
 import type { Bridge } from '../ai/bridge'
 import { AiTimeoutError, AuthRequiredError, EngineMissingError } from '../ai/errors'
@@ -12,12 +12,15 @@ export type { NoteMeta, StoredNote }
 export type NoteGenerator = {
   create(req: { sourcePath?: string; sessionId?: string }): Promise<string>
   retry(id: string): Promise<void>
+  /** Rewrites the ready notes vive of a note edited in Obsidian; returns how many it rewrote. */
+  refresh(sourcePath: string): Promise<number>
   list(): Promise<NoteMeta[]>
   get(id: string): Promise<StoredNote>
 }
 
 export const NOTE_TIMEOUT = 480_000
 const INTERRUPTED = 'Generazione interrotta. Riprova.'
+const hash = (t: string): string => createHash('sha256').update(t).digest('hex')
 
 function friendly(e: unknown): string {
   if (e instanceof AuthRequiredError) return `${e.engine === 'claude' ? 'Claude' : 'Gemini'} chiede di rifare l'accesso: apri il Terminale e scrivi ${e.engine}, poi premi Riprova.`
@@ -59,21 +62,24 @@ export function createNoteGenerator(deps: {
     return { path: note.path, title: note.title, session }
   }
 
+  async function write(n: StoredNote, text: string, session?: SessionState): Promise<StoredNote> {
+    await mkdir(deps.workDir, { recursive: true })
+    const sources = (await deps.sources?.(n.sourcePath, n.sourceTitle, text).catch(() => [])) ?? []
+    const r = await deps.bridge.ask({
+      task: 'note',
+      prompt: buildNotePrompt({ noteTitle: n.sourceTitle, noteText: text, session, sources }),
+      schema: NotaSchema,
+      timeoutMs: NOTE_TIMEOUT,
+      cwd: deps.workDir
+    })
+    const { nota, dropped } = r.data as { nota: StoredNote['nota']; dropped: number }
+    return { ...n, status: 'ready', error: undefined, nota, dropped, engine: r.engine, sourceHash: hash(text), updatedAt: Date.now() }
+  }
+
   async function generate(n: StoredNote, session?: SessionState): Promise<void> {
     running.add(n.id)
     try {
-      const text = await deps.readNote(n.sourcePath)
-      await mkdir(deps.workDir, { recursive: true })
-      const sources = (await deps.sources?.(n.sourcePath, n.sourceTitle, text).catch(() => [])) ?? []
-      const r = await deps.bridge.ask({
-        task: 'note',
-        prompt: buildNotePrompt({ noteTitle: n.sourceTitle, noteText: text, session, sources }),
-        schema: NotaSchema,
-        timeoutMs: NOTE_TIMEOUT,
-        cwd: deps.workDir
-      })
-      const { nota, dropped } = r.data as { nota: StoredNote['nota']; dropped: number }
-      await save({ ...n, status: 'ready', error: undefined, nota, dropped, engine: r.engine, updatedAt: Date.now() })
+      await save(await write(n, await deps.readNote(n.sourcePath), session))
     } catch (e) {
       console.warn('[notes] generazione fallita', e)
       await save({ ...n, status: 'error', error: friendly(e), updatedAt: Date.now() })
@@ -115,6 +121,31 @@ export function createNoteGenerator(deps: {
       } finally {
         if (!started) running.delete(id)
       }
+    },
+    async refresh(sourcePath) {
+      let text: string
+      try {
+        text = await deps.readNote(sourcePath)
+      } catch {
+        return 0
+      }
+      const h = hash(text)
+      let done = 0
+      for (const n of await store.all()) {
+        if (n.sourcePath !== sourcePath || n.status !== 'ready' || n.sourceHash === h || running.has(n.id)) continue
+        running.add(n.id)
+        try {
+          const session = n.sessionId ? ((await deps.session(n.sessionId)) ?? undefined) : undefined
+          // The old note stays readable while the new one is written, and stays if writing fails.
+          await save(await write(n, text, session))
+          done++
+        } catch (e) {
+          console.warn('[notes] aggiornamento fallito', sourcePath, e)
+        } finally {
+          running.delete(n.id)
+        }
+      }
+      return done
     },
     async list() {
       const all = await Promise.all((await store.all()).map(fixStale))

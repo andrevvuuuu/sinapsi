@@ -27,6 +27,7 @@ import { graphStore } from './graph/store'
 import { fakeNoteBridge } from './notes/fake-note'
 import { createNoteGenerator } from './notes/generator'
 import { readySources } from './notes/store'
+import { createLinkedSync } from './vault/linked'
 import { fakeTeacher } from './session/fake-teacher'
 import { createSessionRunner } from './session/runner'
 import { createSuggester } from './suggest/suggest'
@@ -66,7 +67,8 @@ export function registerIpc(): { bridge: Bridge } {
   const graphStoreForMoves = graphStore(graphDir)
   // The previous index, to notice notes renamed or moved in Obsidian (their concepts follow them).
   let lastIndex: import('../shared/vault-types').VaultIndex | null = null
-  const rewatch = createRewatcher(settings.load, watchVault, async () => {
+  let linkedSync: ReturnType<typeof createLinkedSync> | undefined
+  const rewatch = createRewatcher(settings.load, watchVault, async (paths) => {
     const idx = await h.vaultIndex()
     if ('error' in idx) return
     if (lastIndex) {
@@ -75,6 +77,7 @@ export function registerIpc(): { bridge: Bridge } {
     }
     lastIndex = idx
     broadcast(CH.vaultChanged, idx)
+    linkedSync?.changed(paths)
   })
   void h.vaultIndex().then(async (idx) => {
     if ('error' in idx) return
@@ -246,6 +249,14 @@ export function registerIpc(): { bridge: Bridge } {
       return [...new Set(idx.notes.filter((n) => paths.has(n.path) && n.subject).map((n) => n.subject as string))]
     }
   })
+  linkedSync = createLinkedSync({
+    vault: vaultOrNull,
+    readNote: (path) => readFile(path, 'utf8'),
+    studied: async () => readySources(await notes.list()),
+    refreshNote: (path) => notes.refresh(path),
+    reextract: (path) => extractor.request(path, 'linked')
+  })
+  app.on('before-quit', () => linkedSync?.stop())
   const positionsFile = join(graphDir, 'positions.json')
   const gh = makeGraphHandlers(extractor, {
     read: async () => JSON.parse(await readFile(positionsFile, 'utf8')),
