@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { StoredNote } from '../../../shared/api'
+import type { GraphData, Memory, StoredNote } from '../../../shared/api'
 import type { Nota } from '../../../shared/nota-schema'
 import { RichText } from '../session/RichText'
 import { BlockView, NotaContext } from './BlockView'
-import type { Layers, Mode } from './context'
+import { FadeContext, type Layers, type Mode } from './context'
+import { fadeOf, sectionConcepts, type Fade } from './fading'
 import './nota.css'
 
 const LAYERS: [keyof Layers, string][] = [
@@ -59,6 +60,21 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
       off()
     }
   }, [api, id])
+
+  // What he remembers of the note's concepts: proofs fade from the end as they consolidate (fading.ts).
+  const [known, setKnown] = useState<{ graph: GraphData; memory: Record<string, Memory> } | null>(null)
+  useEffect(() => {
+    let alive = true
+    const { graph, review } = window.sinapsi
+    if (!graph?.get || !review?.memory) return
+    void Promise.all([graph.get(), review.memory()]).then(
+      ([g, memory]) => alive && setKnown({ graph: g, memory }),
+      () => undefined
+    )
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const bar = (
     <nav className="island" aria-label="Controlli della nota">
@@ -134,13 +150,13 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
     <NotaContext.Provider value={{ layers }}>
       <div className="nota">
         {bar}
-        <Page nota={n.nota} stored={n} mode={mode} />
+        <Page nota={n.nota} stored={n} mode={mode} fade={known ? (section) => fadeOf(sectionConcepts(known.graph, n.sourcePath, section), known.memory) : undefined} />
       </div>
     </NotaContext.Provider>
   )
 }
 
-function Page({ nota, stored, mode }: { nota: Nota; stored: StoredNote; mode: Mode }): React.JSX.Element {
+function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mode: Mode; fade?: (section: { num: string; title: string }) => Fade }): React.JSX.Element {
   const counts = nota.sections.flatMap((s) => s.blocks).reduce<Record<string, number>>((acc, b) => ((acc[b.type] = (acc[b.type] ?? 0) + 1), acc), {})
   const toc = nota.sections.map((s) => (
     <li key={s.id}>
@@ -251,11 +267,13 @@ function Page({ nota, stored, mode }: { nota: Nota; stored: StoredNote; mode: Mo
                   {s.title} {s.titleEm && <em>{s.titleEm}</em>}
                 </h2>
               </header>
-              <div className="blocks">
-                {s.blocks.map((b, i) => (
-                  <BlockView key={i} block={b} mode={mode} />
-                ))}
-              </div>
+              <FadeContext.Provider value={fade ? fade(s) : null}>
+                <div className="blocks">
+                  {s.blocks.map((b, i) => (
+                    <BlockView key={i} block={b} mode={mode} />
+                  ))}
+                </div>
+              </FadeContext.Provider>
             </section>
           ))}
           <section className="sec" id="nv-fine" aria-labelledby="nv-fine-h">

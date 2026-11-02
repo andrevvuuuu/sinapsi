@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { blankSpans } from '../../../../shared/exercise-schema'
 import { MathSelect } from '../../components/MathSelect'
 import type { LeafBlock } from '../../../../shared/nota-schema'
 import { RichText } from '../../session/RichText'
-import type { Mode } from '../context'
+import { FadeContext, type Mode } from '../context'
 
 /** "Prima prova tu": the answer stays covered until he has written his own attempt. */
 export function TryCover({ prompt, children, label = 'Ho provato, mostra' }: { prompt?: string; children: React.ReactNode; label?: string }): React.JSX.Element {
@@ -34,7 +34,11 @@ export function TryCover({ prompt, children, label = 'Ho provato, mostra' }: { p
   )
 }
 
-export function TryIt({ block, mode }: { block: Extract<LeafBlock, { type: 'tryit' }>; mode: Mode }): React.JSX.Element {
+/** "Prova da solo" turns itself on where he has already reviewed the section's concepts. */
+const useMode = (mode: Mode): Mode => ((useContext(FadeContext)?.stage ?? 0) > 0 ? 'prova' : mode)
+
+export function TryIt({ block, mode: chosen }: { block: Extract<LeafBlock, { type: 'tryit' }>; mode: Mode }): React.JSX.Element {
+  const mode = useMode(chosen)
   if (mode === 'prova')
     return (
       <TryCover prompt={block.prompt}>
@@ -52,7 +56,8 @@ export function TryIt({ block, mode }: { block: Extract<LeafBlock, { type: 'tryi
 
 const LEVEL: Record<Extract<LeafBlock, { type: 'exercise' }>['level'], string> = { svolto: 'Svolto', completa: 'Da completare', solo: 'Da solo', esame: 'Esame' }
 
-export function Exercise({ block, mode }: { block: Extract<LeafBlock, { type: 'exercise' }>; mode: Mode }): React.JSX.Element {
+export function Exercise({ block, mode: chosen }: { block: Extract<LeafBlock, { type: 'exercise' }>; mode: Mode }): React.JSX.Element {
+  const mode = useMode(chosen)
   const steps = (
     <ol>
       {block.steps.map((s, i) => (

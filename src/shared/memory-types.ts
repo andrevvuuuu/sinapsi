@@ -34,6 +34,10 @@ export type Memory = {
   lastAt: number | null
   /** The last answer was wrong and given with confidence ≥ 70. */
   misconception: boolean
+  /** FSRS stability in days: how long until R falls to 90%. */
+  stability?: number
+  /** The grade of the last review. */
+  lastGrade?: Grade
 }
 
 export const stateOf = (R: number | null): MemoryState => (R === null ? 'mai visto' : R >= 0.85 ? 'la sai' : R >= 0.6 ? 'incerto' : 'debole')
