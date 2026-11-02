@@ -4,7 +4,9 @@ import { FigureSchema } from './nota-schema'
 
 /**
  * Review exercises: each tests one concept from a different angle (richiamo, distinzione,
- * composizione). Everything but `open` is graded in the app; `open` is graded by Claude.
+ * composizione). Everything but `open` and `explain` is graded in the app; those two are graded by Claude.
+ * `explain` (Spiegalo tu): Andrea explains a concept or rebuilds a proof with the book closed; `answer` holds
+ * the key steps in the note's order.
  */
 const base = { prompt: z.string().trim().min(1), answer: z.string().trim().min(1) }
 const choice = z.array(z.string().trim().min(1)).min(2).max(6)
@@ -72,6 +74,7 @@ const fillOk = (text: string): boolean => {
 
 export const ExerciseSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('open'), ...base }),
+  z.object({ type: z.literal('explain'), ...base }),
   z.object({ type: z.literal('mc'), ...base, options: choice, correct: z.number().int() }).refine((e) => e.correct >= 0 && e.correct < e.options.length, 'correct fuori intervallo'),
   z.object({ type: z.literal('truefalse'), ...base, statement: z.string().trim().min(1), value: z.boolean() }),
   z.object({ type: z.literal('order'), ...base, steps: z.array(z.string().trim().min(1)).min(3).max(8) }).refine((e) => distinct(e.steps), 'passi ripetuti'),

@@ -40,9 +40,9 @@ describe('review settings', () => {
   it('defaults to twelve concepts and every exercise type, and keeps at least one type', () => {
     const s = settingsSchema('/x').parse({})
     expect(s.reviewSessionSize).toBe(12)
-    expect(s.exerciseTypes).toHaveLength(10)
-    expect(settingsSchema('/x').parse({ exerciseTypes: [] }).exerciseTypes).toHaveLength(10)
-    expect(settingsSchema('/x').parse({ exerciseTypes: ['mc', 'boh'] }).exerciseTypes).toHaveLength(10)
+    expect(s.exerciseTypes).toHaveLength(11)
+    expect(settingsSchema('/x').parse({ exerciseTypes: [] }).exerciseTypes).toHaveLength(11)
+    expect(settingsSchema('/x').parse({ exerciseTypes: ['mc', 'boh'] }).exerciseTypes).toHaveLength(11)
     expect(settingsSchema('/x').parse({ exerciseTypes: ['mc'] }).exerciseTypes).toEqual(['mc'])
   })
 })

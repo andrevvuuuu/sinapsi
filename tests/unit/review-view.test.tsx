@@ -17,6 +17,7 @@ const mc: ReviewItem = {
   exercise: { type: 'mc', prompt: 'Quale ipotesi serve?', options: ['La continuità', 'La monotonia'], correct: 0, answer: 'La continuità su $[a,b]$.' }
 }
 const open: ReviewItem = { ...mc, conceptId: 'n_r', name: 'Teorema di Rolle', R: null, variantId: 'v_2', exercise: { type: 'open', prompt: 'Che cosa garantisce Rolle?', answer: 'Un punto a derivata nulla.' } }
+const proof: ReviewItem = { ...mc, conceptId: 'n_p', name: 'Teorema di Rolle', variantId: 'v_3', exercise: { type: 'explain', prompt: 'A libro chiuso: ricostruisci la dimostrazione di Rolle.', answer: 'Weierstrass, poi Fermat.' } }
 const intervals = { 1: '10 min', 2: '1 giorno', 3: '4 giorni', 4: '11 giorni' }
 
 function mount(items: ReviewItem[], due = items.length) {
@@ -25,6 +26,12 @@ function mount(items: ReviewItem[], due = items.length) {
     review: {
       plan: vi.fn(async () => ({ items, due })),
       grade: vi.fn(async () => ({ verdict: 'partial', feedback: 'Manca il perché.', proposed: 2 })),
+      explain: vi
+        .fn()
+        .mockResolvedValueOnce({ kind: 'question', question: 'Perché il massimo è interno?' })
+        .mockResolvedValueOnce({ kind: 'verdict', verdict: 'partial', feedback: 'Manca il caso costante.', proposed: 2 }),
+      voice: vi.fn(async () => 'detto a voce'),
+      microphone: vi.fn(async () => true),
       record: vi.fn(async (r: { conceptId: string; grade: number }) => ({ memory: { conceptId: r.conceptId, R: r.grade > 1 ? 0.95 : 0.3, state: 'la sai' }, intervals })),
       intervals: vi.fn(async () => intervals),
       memory: vi.fn(async () => ({}))
@@ -52,7 +59,7 @@ describe('ReviewView', () => {
     const { api } = mount([mc])
     await screen.findByRole('heading', { name: /sbiadendo/ })
     const chips = within(screen.getByRole('group', { name: 'Esercizi' })).getAllByRole('button')
-    expect(chips).toHaveLength(10)
+    expect(chips).toHaveLength(11)
     fireEvent.click(screen.getByRole('button', { name: 'Riordina i passi' }))
     expect(api.settings.set).toHaveBeenLastCalledWith({ exerciseTypes: expect.not.arrayContaining(['order']) })
     for (const c of chips) if (c.getAttribute('aria-pressed') === 'true') fireEvent.click(c)
@@ -95,6 +102,35 @@ describe('ReviewView', () => {
     expect(await screen.findByText('Manca il perché.')).toBeTruthy()
     expect(api.review.grade).toHaveBeenCalledWith(expect.objectContaining({ conceptId: 'n_r', answer: 'una tangente orizzontale', confidence: 50 }))
     expect(screen.getByText('Un punto a derivata nulla.')).toBeTruthy()
+  })
+  it('Spiegalo tu: the picky student asks the missing step, then gives the verdict that is recorded', async () => {
+    const { api } = mount([proof])
+    await start()
+    expect(screen.getByText(/compagno pignolo/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('La tua spiegazione, a libro chiuso'), { target: { value: 'Per Weierstrass ha massimo e minimo.' } })
+    fireEvent.change(screen.getByLabelText('Quanto sei sicuro?'), { target: { value: '70' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Verifica' }))
+    expect(await screen.findByText('Perché il massimo è interno?')).toBeTruthy()
+    expect(screen.queryByLabelText('Quanto sei sicuro?')).toBeNull()
+    const answer = screen.getByLabelText('La tua risposta') as HTMLTextAreaElement
+    expect(answer.value).toBe('')
+    fireEvent.change(answer, { target: { value: 'Se fosse sul bordo f sarebbe costante.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Rispondi' }))
+    expect(await screen.findByText('Manca il caso costante.')).toBeTruthy()
+    expect(api.review.explain).toHaveBeenLastCalledWith({
+      conceptId: 'n_p',
+      exercise: proof.exercise,
+      confidence: 70,
+      turns: [
+        { by: 'andrea', text: 'Per Weierstrass ha massimo e minimo.' },
+        { by: 'claude', text: 'Perché il massimo è interno?' },
+        { by: 'andrea', text: 'Se fosse sul bordo f sarebbe costante.' }
+      ]
+    })
+    expect(screen.getByText('Weierstrass, poi Fermat.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Vedi riepilogo' }))
+    await screen.findByRole('heading', { name: /nitido/ })
+    expect(api.review.record).toHaveBeenCalledWith(expect.objectContaining({ conceptId: 'n_p', grade: 2, correct: false, type: 'explain', variantId: 'v_3' }))
   })
   it('"Non lo so" reveals the answer and proposes Di nuovo', async () => {
     mount([mc])

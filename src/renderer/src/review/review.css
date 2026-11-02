@@ -246,6 +246,61 @@
 .rv-q .rich p {
   margin: 0;
 }
+/* Spiegalo tu: the hint, the dialogue with the picky student, the microphone. */
+.rv-hint {
+  margin: -8px 0 18px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.rv-dialog {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rv-dialog li {
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 15px;
+}
+.rv-dialog li.andrea {
+  background: var(--faint);
+}
+.rv-dialog li.claude {
+  border: 1px solid var(--hair);
+  border-left: 3px solid var(--warn);
+}
+.rv-dialog .lab {
+  display: block;
+  margin-bottom: 2px;
+}
+.rv-dialog .rich p {
+  margin: 0;
+}
+.rv-explain-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.rv .rv-mic {
+  min-height: 36px;
+  font-variant-numeric: tabular-nums;
+}
+.rv .rv-mic.on {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.rv .rv-mic:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.rv-explain textarea {
+  min-height: 140px;
+}
 .rv textarea,
 .rv input:not([type='range']),
 .rv select {

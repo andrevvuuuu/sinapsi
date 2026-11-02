@@ -49,6 +49,9 @@ const api: SinapsiApi = {
   review: {
     plan: (opts) => ipcRenderer.invoke(CH.reviewPlan, opts),
     grade: (req) => ipcRenderer.invoke(CH.reviewGrade, req),
+    explain: (req) => ipcRenderer.invoke(CH.reviewExplain, req),
+    voice: (bytes) => ipcRenderer.invoke(CH.reviewVoice, bytes),
+    microphone: () => ipcRenderer.invoke(CH.reviewMicrophone),
     record: (r) => ipcRenderer.invoke(CH.reviewRecord, r),
     memory: () => ipcRenderer.invoke(CH.reviewMemory),
     intervals: (id) => ipcRenderer.invoke(CH.reviewIntervals, id),

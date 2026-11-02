@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ExplainTurn } from '../../../main/memory/explain'
 import type { ReviewItem } from '../../../main/memory/review'
 import { proposeGrade, type ExerciseType, type Grade } from '../../../shared/memory-types'
 import { EXERCISE_TYPES } from '../../../shared/memory-types'
@@ -57,6 +58,8 @@ export function ReviewView({
   const [state, setState] = useState<ExerciseState>({ answer: '', correct: null, ready: false })
   const [confidence, setConfidence] = useState(50)
   const [verdict, setVerdict] = useState<Verdict | null>(null)
+  // "Spiegalo tu": the dialogue with the picky student, Andrea's turns and its questions.
+  const [turns, setTurns] = useState<ExplainTurn[]>([])
   const [checking, setChecking] = useState(false)
   const [grade, setGrade] = useState<Grade>(3)
   const [intervals, setIntervals] = useState<Record<Grade, string> | null>(null)
@@ -131,6 +134,7 @@ export function ReviewView({
     setState({ answer: '', correct: null, ready: false })
     setConfidence(50)
     setVerdict(null)
+    setTurns([])
     setIntervals(null)
   }
 
@@ -139,7 +143,33 @@ export function ReviewView({
     setChecking(true)
     try {
       let v: Verdict
-      if (dontKnow)
+      if (item.exercise.type === 'explain' && (!dontKnow || turns.length)) {
+        // Past the first turn "Non lo so" is an answer to the question, and the picky student concludes.
+        const said: ExplainTurn[] = [
+          ...turns,
+          { by: 'andrea', text: dontKnow ? 'Non lo so.' : state.answer.trim() }
+        ]
+        const g = await api.review.explain({
+          conceptId: item.conceptId,
+          exercise: item.exercise,
+          turns: said,
+          confidence
+        })
+        if (g.kind === 'question') {
+          setTurns([...said, { by: 'claude', text: g.question }])
+          setState({ answer: '', correct: null, ready: false })
+          return
+        }
+        setTurns(said)
+        const wrongSure = g.verdict === 'wrong' && confidence >= 70
+        v = {
+          kind: wrongSure ? 'mis' : g.verdict,
+          feedback: g.feedback,
+          proposed: g.proposed,
+          correct: g.verdict === 'ok',
+          dontKnow: false
+        }
+      } else if (dontKnow)
         v = {
           kind: 'idk',
           feedback: 'Lo segno come vuoto, non come errore: torna presto, con un aiuto in più.',
@@ -473,36 +503,57 @@ export function ReviewView({
           <div id="rv-q" className="rv-q" ref={questionRef} tabIndex={-1}>
             <RichText md={item.exercise.prompt} />
           </div>
+          {item.exercise.type === 'explain' && (
+            <p className="rv-hint">
+              Spiegalo come a un compagno pignolo, a voce o per iscritto: ti fermerà al primo
+              passaggio che non torna, con al massimo un paio di domande.
+            </p>
+          )}
+          {turns.length > 0 && (
+            <ol className="rv-dialog" aria-label="Dialogo">
+              {turns.map((t, k) => (
+                <li key={k} className={t.by}>
+                  <span className="lab">{t.by === 'andrea' ? 'Tu' : 'Studente pignolo'}</span>
+                  <RichText md={t.text} />
+                </li>
+              ))}
+            </ol>
+          )}
           <div
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && state.ready && !verdict)
                 void check()
             }}
           >
-            <ExerciseView
-              key={`${item.conceptId}-${i}`}
-              exercise={item.exercise}
-              locked={!!verdict}
-              onChange={setState}
-            />
+            {!(verdict && item.exercise.type === 'explain') && (
+              <ExerciseView
+                key={`${item.conceptId}-${i}-${turns.length}`}
+                exercise={item.exercise}
+                locked={!!verdict}
+                followUp={turns.length > 0}
+                onChange={setState}
+              />
+            )}
           </div>
           {!verdict && (
             <>
-              <div className="rv-conf">
-                <label className="lab" htmlFor="rv-cf">
-                  Quanto sei sicuro?
-                </label>
-                <input
-                  id="rv-cf"
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={10}
-                  value={confidence}
-                  onChange={(e) => setConfidence(Number(e.target.value))}
-                />
-                <output htmlFor="rv-cf">{confidence}%</output>
-              </div>
+              {turns.length === 0 && (
+                <div className="rv-conf">
+                  <label className="lab" htmlFor="rv-cf">
+                    Quanto sei sicuro?
+                  </label>
+                  <input
+                    id="rv-cf"
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={10}
+                    value={confidence}
+                    onChange={(e) => setConfidence(Number(e.target.value))}
+                  />
+                  <output htmlFor="rv-cf">{confidence}%</output>
+                </div>
+              )}
               <div className="rv-acts">
                 <button
                   type="button"
@@ -510,7 +561,7 @@ export function ReviewView({
                   disabled={checking}
                   onClick={() => void check(true)}
                 >
-                  Non lo so
+                  {turns.length ? 'Non saprei' : 'Non lo so'}
                 </button>
                 <button
                   type="button"
@@ -518,7 +569,7 @@ export function ReviewView({
                   disabled={!state.ready || checking}
                   onClick={() => void check()}
                 >
-                  {checking ? 'Correggo…' : 'Verifica'}
+                  {checking ? 'Correggo…' : turns.length ? 'Rispondi' : 'Verifica'}
                 </button>
               </div>
             </>

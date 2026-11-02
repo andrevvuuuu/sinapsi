@@ -1,5 +1,6 @@
 import type { Exercise } from '../../../shared/exercise-schema'
 import { Choice, TrueFalse } from './exercises/Choice'
+import { Explain } from './exercises/Explain'
 import { GraphExercise } from './exercises/GraphExercise'
 import { Estimate, Fill, Match, Open } from './exercises/Inputs'
 import type { ExerciseState } from './exercises/shared'
@@ -11,10 +12,13 @@ export type { ExerciseState }
 export function ExerciseView({
   exercise,
   locked,
+  followUp = false,
   onChange
 }: {
   exercise: Exercise
   locked: boolean
+  /** "Spiegalo tu" only: answering a question of the picky student. */
+  followUp?: boolean
   onChange: (s: ExerciseState) => void
 }): React.JSX.Element {
   switch (exercise.type) {
@@ -37,5 +41,7 @@ export function ExerciseView({
       return <GraphExercise exercise={exercise} onChange={onChange} />
     case 'open':
       return <Open locked={locked} onChange={onChange} />
+    case 'explain':
+      return <Explain locked={locked} followUp={followUp} onChange={onChange} />
   }
 }

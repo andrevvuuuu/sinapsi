@@ -66,7 +66,9 @@ export async function transcribe(
   onProgress: (p: number) => void,
   signal?: AbortSignal,
   onStage?: (s: 'download' | 'transcribe') => void,
-  modelDir = MODEL_DIR
+  modelDir = MODEL_DIR,
+  /** Set for short recordings, where whisper's language detection is unreliable. */
+  language?: string
 ): Promise<SourceText> {
   // The first run downloads the model (about 1.6 GB): say so instead of "Trascrivo… 100%".
   let stage: 'download' | 'transcribe' = existsSync(modelDir) ? 'transcribe' : 'download'
@@ -75,7 +77,7 @@ export async function transcribe(
   await tool(
     run,
     'mlx_whisper',
-    ['--model', WHISPER_MODEL, '--output-format', 'json', '--output-dir', outDir, '--output-name', 'trascrizione', '--verbose', 'False', '--', file],
+    ['--model', WHISPER_MODEL, '--output-format', 'json', '--output-dir', outDir, '--output-name', 'trascrizione', '--verbose', 'False', ...(language ? ['--language', language] : []), '--', file],
     TRANSCRIBE_TIMEOUT,
     (chunk) => {
       if (stage === 'download' && /frames/.test(chunk)) {
