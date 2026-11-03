@@ -1,5 +1,6 @@
 import { mkdtemp, readdir, readFile, writeFile, mkdir } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -143,6 +144,27 @@ describe('note generator', () => {
     expect(again.sourceHash).not.toBe(first.sourceHash)
     expect((ask.mock.calls.at(-1) as unknown as [{ prompt: string }])[0].prompt).toContain('testo corretto')
     expect(await g.refresh('/vault/Matematica/Teorema di Rolle.md')).toBe(0)
+  })
+  it('does not rewrite a nota viva when only the frontmatter of its note changed', async () => {
+    let text = '---\nDisciplina: Matematica\n---\n## 1. Enunciato\ntesto'
+    const { g, ask } = setup(undefined, async () => text)
+    await g.create({ sourcePath: '/vault/Matematica/Teorema di Rolle.md' })
+    await settle()
+    text = '---\nDisciplina: Matematica\nLezioni:\n  - 2026-10-26\n---\n## 1. Enunciato\ntesto'
+    expect(await g.refresh('/vault/Matematica/Teorema di Rolle.md')).toBe(0)
+    expect(ask).toHaveBeenCalledTimes(1)
+  })
+  it('accepts the full-text hash saved by older versions, so existing notes vive are not all rewritten', async () => {
+    const text = '---\nDisciplina: Matematica\n---\n## 1. Enunciato\ntesto'
+    const { g, ask } = setup(undefined, async () => text)
+    const id = await g.create({ sourcePath: '/vault/Matematica/Teorema di Rolle.md' })
+    await settle()
+    const file = join(dir, 'notes', `${id}.json`)
+    const stored = JSON.parse(await readFile(file, 'utf8'))
+    stored.sourceHash = createHash('sha256').update(text).digest('hex')
+    await writeFile(file, JSON.stringify(stored))
+    expect(await g.refresh('/vault/Matematica/Teorema di Rolle.md')).toBe(0)
+    expect(ask).toHaveBeenCalledTimes(1)
   })
   it('lists newest first, titled by the nota', async () => {
     const { g } = setup()

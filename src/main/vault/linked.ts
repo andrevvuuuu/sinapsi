@@ -1,11 +1,11 @@
-import { createHash } from 'node:crypto'
+import { bodyHash } from './body-hash'
 import type { VaultIndex, VaultNote } from '../../shared/vault-types'
 
 /** Antigravity writes a note several times in a row (draft, post-processing, verification): wait until it stays still. */
 export const SETTLE_MS = 120_000
 
 const isMoc = (n: VaultNote): boolean => n.type?.toUpperCase() === 'MOC'
-const hash = (t: string): string => createHash('sha256').update(t).digest('hex')
+const hash = bodyHash
 
 /**
  * The notes linked to the edited ones, both ways ([[...]] from it and to it), the edited ones left out.

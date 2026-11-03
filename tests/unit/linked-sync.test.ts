@@ -102,6 +102,16 @@ describe('linked sync', () => {
       vi.useRealTimers()
     }
   })
+  it('changing only the frontmatter does not count as an edit', async () => {
+    const texts: Record<string, string> = { '/v/Archimede.md': '---\nA: 1\n---\nTesto' }
+    const { sync, refreshNote } = setup(texts)
+    sync.changed(['/v/Archimede.md'])
+    await sync.flush()
+    texts['/v/Archimede.md'] = '---\nA: 1\nLezioni:\n  - 2026-10-26\n---\nTesto'
+    sync.changed(['/v/Archimede.md'])
+    await sync.flush()
+    expect(refreshNote).toHaveBeenCalledTimes(1)
+  })
   it('skips deleted notes', async () => {
     const { sync, refreshNote, reextract } = setup({})
     sync.changed(['/v/Archimede.md'])

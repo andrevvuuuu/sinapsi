@@ -5,6 +5,7 @@ import { AiTimeoutError, AuthRequiredError, EngineMissingError } from '../ai/err
 import type { SessionState } from '../session/events'
 import { NotaSchema } from '../../shared/nota-schema'
 import type { VaultIndex } from '../../shared/vault-types'
+import { bodyHash } from '../vault/body-hash'
 import { buildNotePrompt } from './prompt'
 import { noteStore, toMeta, type NoteMeta, type StoredNote } from './store'
 
@@ -20,7 +21,7 @@ export type NoteGenerator = {
 
 export const NOTE_TIMEOUT = 480_000
 const INTERRUPTED = 'Generazione interrotta. Riprova.'
-const hash = (t: string): string => createHash('sha256').update(t).digest('hex')
+const hash = bodyHash
 
 function friendly(e: unknown): string {
   if (e instanceof AuthRequiredError) return `${e.engine === 'claude' ? 'Claude' : 'Gemini'} chiede di rifare l'accesso: apri il Terminale e scrivi ${e.engine}, poi premi Riprova.`
@@ -130,9 +131,11 @@ export function createNoteGenerator(deps: {
         return 0
       }
       const h = hash(text)
+      // Saved before the hash ignored the frontmatter: same note, no rewrite.
+      const legacy = createHash('sha256').update(text).digest('hex')
       let done = 0
       for (const n of await store.all()) {
-        if (n.sourcePath !== sourcePath || n.status !== 'ready' || n.sourceHash === h || running.has(n.id)) continue
+        if (n.sourcePath !== sourcePath || n.status !== 'ready' || n.sourceHash === h || n.sourceHash === legacy || running.has(n.id)) continue
         running.add(n.id)
         try {
           const session = n.sessionId ? ((await deps.session(n.sessionId)) ?? undefined) : undefined
