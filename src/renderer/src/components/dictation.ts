@@ -36,11 +36,15 @@ export function insertAtCursor(
 
 // Only one field records at a time; Option+Space acts on the focused field's dictation.
 let recording: { stop: () => void } | null = null
-const fields = new Set<{ target: React.RefObject<Field | null>; toggle: () => void }>()
+const fields = new Set<{
+  target: React.RefObject<Field | null>
+  enabled: () => boolean
+  toggle: () => void
+}>()
 function onKey(e: KeyboardEvent): void {
   if (!e.altKey || e.metaKey || e.ctrlKey || e.shiftKey || e.code !== 'Space' || e.repeat) return
   for (const f of fields)
-    if (f.target.current && f.target.current === document.activeElement) {
+    if (f.target.current && f.target.current === document.activeElement && f.enabled()) {
       e.preventDefault()
       f.toggle()
       return
@@ -56,8 +60,10 @@ export function useDictation(opts: {
   value: string
   onChange: (v: string) => void
   maxSeconds?: number
+  /** False while the field cannot be edited (locked, disabled): the button and ⌥ Space do nothing. */
+  enabled?: boolean
 }): Dictation {
-  const { target, value, maxSeconds = DICTATION_LONG } = opts
+  const { target, value, maxSeconds = DICTATION_LONG, enabled = true } = opts
   const [state, setState] = useState<Dictation['state']>('idle')
   const [seconds, setSeconds] = useState(0)
   const [stage, setStage] = useState<DictationStage | null>(null)
@@ -65,11 +71,14 @@ export function useDictation(opts: {
   const recorder = useRef<MediaRecorder | null>(null)
   const alive = useRef(true)
   const starting = useRef(false)
-  const latest = useRef({ value, onChange: opts.onChange })
+  const latest = useRef({ value, onChange: opts.onChange, enabled })
+  const stageOff = useRef<(() => void) | null>(null)
   const caret = useRef<number | null>(null)
   const [me] = useState(() => ({ stop: () => recorder.current?.stop() }))
 
   async function start(): Promise<void> {
+    const field = target.current
+    if (field && (field.readOnly || field.disabled)) return
     setError(null)
     const md = navigator.mediaDevices
     if (!md?.getUserMedia || typeof MediaRecorder === 'undefined')
@@ -102,6 +111,7 @@ export function useDictation(opts: {
       setState('transcribing')
       setStage(null)
       const off = window.sinapsi.voice.onStage((s) => alive.current && setStage(s))
+      stageOff.current = off
       void new Blob(chunks, { type: r.mimeType })
         .arrayBuffer()
         .then((b) => window.sinapsi.voice.transcribe(new Uint8Array(b)))
@@ -131,6 +141,7 @@ export function useDictation(opts: {
         )
         .finally(() => {
           off()
+          if (stageOff.current === off) stageOff.current = null
           if (alive.current) setStage(null)
         })
     }
@@ -144,20 +155,24 @@ export function useDictation(opts: {
 
   const toggle = (): void => {
     if (recorder.current) return recorder.current.stop()
-    if (state !== 'idle' || starting.current) return
+    if (!enabled || state !== 'idle' || starting.current) return
     starting.current = true
     void start().finally(() => (starting.current = false))
   }
   const toggleRef = useRef(toggle)
   // The latest props and toggle, for the recorder callbacks and the shortcut.
   useLayoutEffect(() => {
-    latest.current = { value, onChange: opts.onChange }
+    latest.current = { value, onChange: opts.onChange, enabled }
     toggleRef.current = toggle
   })
 
   useEffect(() => {
     alive.current = true
-    const entry = { target, toggle: () => toggleRef.current() }
+    const entry = {
+      target,
+      enabled: () => latest.current.enabled,
+      toggle: () => toggleRef.current()
+    }
     if (fields.size === 0) window.addEventListener('keydown', onKey, true)
     fields.add(entry)
     return () => {
@@ -165,6 +180,8 @@ export function useDictation(opts: {
       fields.delete(entry)
       if (fields.size === 0) window.removeEventListener('keydown', onKey, true)
       if (recording === me) recording = null
+      stageOff.current?.()
+      stageOff.current = null
       const r = recorder.current
       if (r && r.state !== 'inactive') r.stop()
     }

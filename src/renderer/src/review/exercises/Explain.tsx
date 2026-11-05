@@ -27,7 +27,12 @@ export function Explain({
     setText(t)
     onChange({ answer: t, correct: null, ready: !busyRef.current && t.trim() !== '' })
   }
-  const dictation = useDictation({ target: field, value: text, onChange: update })
+  const dictation = useDictation({
+    target: field,
+    value: text,
+    onChange: update,
+    enabled: !locked
+  })
   const busy = dictation.state !== 'idle'
   const onChangeRef = useRef(onChange)
   useLayoutEffect(() => {

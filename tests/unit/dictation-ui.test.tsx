@@ -67,13 +67,17 @@ function Field({
   initial = '',
   maxSeconds,
   onSubmit = vi.fn(),
-  onValue
+  onValue,
+  enabled,
+  locked = false
 }: {
   label: string
   initial?: string
   maxSeconds?: number
   onSubmit?: () => void
   onValue?: (v: string) => void
+  enabled?: boolean
+  locked?: boolean
 }): React.JSX.Element {
   const [value, setValue] = useState(initial)
   const ref = useRef<HTMLInputElement>(null)
@@ -81,7 +85,7 @@ function Field({
     onValue?.(v)
     setValue(v)
   }
-  const d = useDictation({ target: ref, value, onChange: set, maxSeconds })
+  const d = useDictation({ target: ref, value, onChange: set, maxSeconds, enabled })
   return (
     <form
       aria-label={label}
@@ -95,7 +99,7 @@ function Field({
           aria-label={label}
           ref={ref}
           value={value}
-          readOnly={d.state !== 'idle'}
+          readOnly={locked || d.state !== 'idle'}
           onChange={(e) => set(e.target.value)}
         />
         <MicButton dictation={d} size="sm" />
@@ -201,6 +205,59 @@ describe('useDictation and MicButton', () => {
     errors.mockRestore()
   })
 
+  it('leaving while recording stops the microphone and transcribes nothing', async () => {
+    const voice = mockVoice()
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { unmount } = render(<Field label="Argomento" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Detta' }))
+    await flush()
+    expect(screen.getByRole('button', { name: 'Ferma la dettatura' })).toBeTruthy()
+    unmount()
+    await flush()
+    expect(FakeRecorder.all[0].stop).toHaveBeenCalled()
+    expect(trackStop).toHaveBeenCalled()
+    expect(voice.transcribe).not.toHaveBeenCalled()
+    expect(errors).not.toHaveBeenCalled()
+    errors.mockRestore()
+  })
+
+  it('releases the stage subscription when leaving during a transcription', async () => {
+    const off = vi.fn()
+    const voice = mockVoice({ transcribe: () => new Promise<string>(() => undefined) })
+    voice.onStage.mockImplementation((() => off) as never)
+    const { unmount } = render(<Field label="Argomento" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Detta' }))
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: 'Ferma la dettatura' }))
+    await flush()
+    expect(voice.onStage).toHaveBeenCalled()
+    unmount()
+    expect(off).toHaveBeenCalledTimes(1)
+  })
+
+  it('does nothing while disabled, by click or by Option+Space', async () => {
+    const voice = mockVoice()
+    render(<Field label="Argomento" enabled={false} />)
+    const input = screen.getByLabelText('Argomento', { selector: 'input' })
+    fireEvent.click(screen.getByRole('button', { name: 'Detta' }))
+    input.focus()
+    const down = fireEvent.keyDown(input, { key: '\u00a0', code: 'Space', altKey: true })
+    await flush()
+    expect(down).toBe(true)
+    expect(voice.microphone).not.toHaveBeenCalled()
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Detta' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('never starts on a read-only field', async () => {
+    const voice = mockVoice()
+    render(<Field label="Argomento" locked />)
+    fireEvent.click(screen.getByRole('button', { name: 'Detta' }))
+    await flush()
+    expect(voice.microphone).not.toHaveBeenCalled()
+    expect(FakeRecorder.all).toHaveLength(0)
+  })
+
   it('explains a denied microphone', async () => {
     mockVoice({ microphone: async () => false })
     render(<Field label="Argomento" />)
@@ -292,6 +349,19 @@ describe('Explain', () => {
       correct: null,
       ready: true
     })
+  })
+  it('Option+Space does not dictate into a locked answer', async () => {
+    const voice = mockVoice()
+    const onChange = vi.fn()
+    render(<Explain locked followUp={false} onChange={onChange} />)
+    const area = screen.getByLabelText('La tua spiegazione, a libro chiuso')
+    area.focus()
+    fireEvent.keyDown(area, { key: '\u00a0', code: 'Space', altKey: true })
+    await flush()
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled()
+    expect(voice.microphone).not.toHaveBeenCalled()
+    expect(FakeRecorder.all).toHaveLength(0)
+    expect(onChange).not.toHaveBeenCalled()
   })
   it('has no microphone once locked', () => {
     mockVoice()
