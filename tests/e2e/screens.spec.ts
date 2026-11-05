@@ -171,6 +171,23 @@ test('session: Misura, then with the plan', async () => {
   await win.getByRole('button', { name: 'Invia risposta' }).click()
   await expect(win.getByRole('button', { name: /^A:/ })).toBeVisible()
   await win.waitForTimeout(600) // the smooth scroll to the question
+  // At 1280×820 the whole Misura question fits the dock at rest: nothing scrolls inside it, and «Il tuo ragionamento»
+  // sits whole inside the dock (its bottom border and corners visible).
+  const fit = await win.evaluate(() => {
+    const scroller = document.querySelector<HTMLElement>('.dock .dock-scroll')
+    const dock = document.querySelector('.dock')!.getBoundingClientRect()
+    const think = document.querySelector('.dock .think')!.getBoundingClientRect()
+    return {
+      size: [window.innerWidth, window.innerHeight],
+      overflow: scroller ? scroller.scrollHeight - scroller.clientHeight : 0,
+      thinkInside: think.top >= dock.top && think.bottom <= dock.bottom,
+      thinkVisible: scroller ? think.bottom <= scroller.getBoundingClientRect().bottom + 0.5 : true
+    }
+  })
+  expect(fit.size).toEqual([1280, 820])
+  expect(fit.overflow, 'Misura dock: no overflow at rest').toBeLessThanOrEqual(0)
+  expect(fit.thinkInside, 'Misura dock: «Il tuo ragionamento» inside the dock').toBe(true)
+  expect(fit.thinkVisible, 'Misura dock: «Il tuo ragionamento» not clipped by the scroll area').toBe(true)
   await screen(win, 'sessione-misura')
 
   await win.getByRole('button', { name: /^A:/ }).click()

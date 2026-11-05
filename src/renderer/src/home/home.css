@@ -17,7 +17,7 @@
 .logo .logo-mark{flex:none;color:var(--ink)}
 .psec{padding:var(--s-2) var(--s-3) var(--s-3);min-height:0}
 /* Section titles of the side panels and the settings: one caption style (11 px, semibold, uppercase), the same distance to what they head. */
-.psec h2,.sec-head h2,.obs-sec h2,.sd-body h3{font:var(--fw-semibold) var(--fs-caption)/1.3 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.psec h2,.sec-head h2,.obs-sec h2,.sd-body h3{font:var(--fw-semibold) var(--fs-caption)/1.3 var(--sans);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted)}
 .psec h2{margin:var(--s-3) var(--s-2)}
 .seg{display:flex;padding:3px;border-radius:var(--r-pill);background:var(--faint);gap:2px}
 .seg button{flex:1;min-width:var(--ctl);min-height:38px;border:0;background:transparent;color:var(--muted);border-radius:var(--r-pill);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;padding:0 var(--s-3);white-space:nowrap;transition:background-color .2s var(--ease-out),color .2s var(--ease-out)}
@@ -110,7 +110,7 @@
 .missing p{color:var(--muted);margin:0 0 var(--s-5)}
 .missing code{font:400 var(--fs-footnote) var(--mono)}
 .toast{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);padding:var(--s-3) var(--s-5);border-radius:var(--r-pill);background:var(--surface);border:1px solid var(--hair);font-size:var(--fs-body);z-index:6;box-shadow:0 20px 40px -20px rgba(0,0,0,.5)}
-.app aside.left .seg button{flex:1 1 auto;padding:0 var(--s-2);font-size:var(--fs-footnote)}
+.app aside.left .seg button{flex:1 1 auto;padding:0 var(--s-2)}
 .sessions{list-style:none;margin:var(--s-3) 0 0;padding:0;display:flex;flex-direction:column;gap:2px}
 .sessions button{width:100%;text-align:left;display:grid;grid-template-columns:auto 1fr;gap:2px var(--s-3);align-items:center;padding:var(--s-2) var(--s-3);min-height:var(--ctl);border-radius:var(--r-md);border:0;background:transparent;cursor:pointer;transition:var(--btn-transition)}
 .sessions button:hover{background:var(--btn-secondary-bg-hover)}
@@ -144,7 +144,7 @@
 .imp-wrap{position:relative}
 .imp-menu{position:absolute;right:0;top:50px;z-index:20;min-width:220px;padding:var(--s-2);border-radius:var(--r-lg);display:flex;flex-direction:column;gap:2px;animation:imp-in .18s var(--ease-out);transform-origin:top right}
 /* Concentric: 10 px rows inside an 18 px menu with 8 px padding. */
-.imp-menu .lab{font:var(--font-caption);letter-spacing:var(--track-caption);text-transform:uppercase;color:var(--muted);padding:var(--s-1) var(--s-2)}
+.imp-menu .lab{font:var(--font-caption);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted);padding:var(--s-1) var(--s-2)}
 .imp-menu button{min-height:var(--ctl);border:0;border-radius:10px;background:transparent;text-align:left;padding:0 var(--s-3);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;transition:var(--btn-transition)}
 .imp-menu button:hover,.imp-menu button:focus-visible{background:color-mix(in srgb,var(--glass-ink) 8%,transparent)}
 .imp-menu button:active{background:color-mix(in srgb,var(--glass-ink) 14%,transparent)}
@@ -192,8 +192,8 @@
 .sd-foot .sp{flex:1}
 .sd-error{margin:0;font-size:var(--fs-footnote);color:var(--bad)}
 .sd-ok{margin:0;font-size:var(--fs-footnote);color:var(--good)}
-/* Four filters in the 288 px panel: tight sides, 44 px at least each way. */
-.app aside.left .seg[aria-label="Sessioni da mostrare"] button{padding:0 var(--s-1);font-size:var(--fs-footnote);min-height:var(--ctl);min-width:var(--ctl)}
+/* Four filters in the 263 px track: a documented exception at 12 px (under the 13 px footnote step), so each label keeps air inside its lens and between its neighbours; still 44 px at least each way. */
+.app aside.left .seg[aria-label="Sessioni da mostrare"] button{padding:0 6px;font-size:12px;min-height:var(--ctl);min-width:var(--ctl)}
 
 .composer-hint{margin:var(--s-2) var(--s-3) 2px;font-size:var(--fs-footnote);color:var(--bad)}
 .q-head:focus{outline:none}
@@ -213,12 +213,12 @@
 
 /* Suggestions: what to do next, each with its reason. */
 .composer .suggest{display:flex;gap:var(--s-2);flex-wrap:nowrap;margin:0 0 var(--s-2);padding:0 2px;min-width:0}
-.composer .sg-chip{font:inherit;font-family:var(--sans);text-transform:none;letter-spacing:normal;display:flex;flex-direction:column;align-items:flex-start;gap:1px;flex:0 1 auto;min-width:0;max-width:260px;min-height:var(--ctl);padding:6px var(--s-3);border-radius:var(--r-md);border:1px solid var(--hair);background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--ink);text-align:left;cursor:pointer;transition:var(--btn-transition)}
-.composer .sg-chip:hover{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:color-mix(in srgb,var(--accent) 40%,var(--hair))}
+.composer .sg-chip{font:inherit;font-family:var(--sans);text-transform:none;letter-spacing:normal;display:flex;flex-direction:column;align-items:flex-start;gap:1px;flex:0 1 auto;min-width:0;max-width:260px;min-height:var(--ctl);padding:6px var(--s-3);border-radius:var(--r-md);border:1px solid var(--ctl-edge);background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--ink);text-align:left;cursor:pointer;transition:var(--btn-transition)}
+.composer .sg-chip:hover{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:color-mix(in srgb,var(--accent) 60%,var(--ctl-edge))}
 .composer .sg-chip:active{background:color-mix(in srgb,var(--accent) 20%,transparent)}
 .composer .sg-chip:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-md)}
 /* The title takes up to two lines before the ellipsis; the reason stays on one. */
 .composer .sg-label{max-width:100%;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;text-wrap:pretty;font-size:var(--fs-footnote);line-height:1.3;font-weight:var(--fw-medium)}
 .composer .sg-why{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-footnote);color:var(--muted)}
-/* The dialog's close glyph at the size of the panel icons (18 px), not the body text's. */
+/* The dialog's close glyph: a 24 px light ×, which draws about as large as the panel's 18 px icons; the body text size would leave it tiny. */
 .sd-head .icon-btn{font:300 24px/1 var(--sans)}

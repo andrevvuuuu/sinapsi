@@ -2,8 +2,9 @@
 /* A top bar with its bottom hairline: how far the content scrolling under it starts. */
 :root{--topbar-full:calc(var(--topbar-h) + 1px)}
 :root{--ctl:44px;--ctl-sm:36px;--hit-min:28px;--topbar-h:72px;--space-label:8px;--space-group:20px}
-/* Type scale: six steps, fixed line heights and weights. Caption is the mono uppercase label (the only text under 13 px, never under 11). */
-:root{--fs-caption:11px;--fs-footnote:13px;--fs-body:15px;--fs-callout:17px;--fs-title:22px;--fs-display:28px;--fw-regular:400;--fw-medium:500;--fw-semibold:600;--track-caption:.06em}
+/* Type scale: six steps, fixed line heights and weights. Caption is the mono uppercase label (the only text under 13 px, never under 11).
+   Caption tracking, two steps: --track-label (.12em) for a label that stands alone and heads something (section titles, field labels, the session phase, «Perché»); --track-caption (.06em) for a caption inside a row of other content (chips, counts, plan stages). */
+:root{--fs-caption:11px;--fs-footnote:13px;--fs-body:15px;--fs-callout:17px;--fs-title:22px;--fs-display:28px;--fw-regular:400;--fw-medium:500;--fw-semibold:600;--track-caption:.06em;--track-label:.12em}
 :root{--font-caption:500 11px/1.3 var(--mono);--font-footnote:400 13px/1.4 var(--sans);--font-body:400 15px/1.5 var(--sans);--font-callout:400 17px/1.45 var(--sans);--font-title:400 22px/1.2 var(--serif);--font-display:400 28px/1.1 var(--serif)}
 /* Spacing in multiples of 4. */
 :root{--s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:20px;--s-6:24px;--s-7:28px;--s-8:32px}
