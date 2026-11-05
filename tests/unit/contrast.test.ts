@@ -84,6 +84,13 @@ describe.each<Theme>(['lavagna', 'trattato'])('contrast in %s', (theme) => {
     expect(worst).toBeGreaterThanOrEqual(4.5)
   })
 
+  // Accent and pen labels on a glass bar (session phase, score, «Dalla tua nota»): AA over the tint whatever scrolls
+  // under it, the same worst case as --glass-ink-2 — the tint over --bg, --surface and the most contrasting app colour (--ink).
+  it.each(['--glass-accent', '--glass-pen'])('%s stays AA on glass, worst case', (name) => {
+    const worst = Math.min(...['--bg', '--surface', '--ink'].map((g) => ratio(c(name), over(c('--glass-tint'), c(g)))))
+    expect(worst).toBeGreaterThanOrEqual(4.5)
+  })
+
   it.each(GROUNDS)('control edges (--ctl-edge, disabled outline, focus ring) on %s', (g) => {
     expect(ratio(c('--ctl-edge'), c(g)), '--ctl-edge').toBeGreaterThanOrEqual(3)
     expect(ratio(c('--btn-disabled-border'), c(g)), '--btn-disabled-border').toBeGreaterThanOrEqual(3)

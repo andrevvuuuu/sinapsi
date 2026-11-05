@@ -27,8 +27,6 @@ const DENSE = ['.nota .island button', '.graph .gzoom button', '.mic.mic-sm', '.
  * occurs fails the test too, so the list never goes stale.
  */
 const KNOWN: Record<string, string[]> = {
-  // 8c: the plan's stage labels.
-  'sessione-piano': ['text «già tuo» 10px (div > small)', 'text «adesso» 10px (div > small)', 'text «obiettivo» 10px (div > small)'],
   // 8f: the notebook's source bar, source rows and starter questions.
   notebook: [
     'button «File…» 56×36 (div.nb-add > button)',

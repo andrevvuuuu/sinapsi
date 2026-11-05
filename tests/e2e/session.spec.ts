@@ -28,6 +28,15 @@ test('a full learning session with the scripted tutor', async () => {
   await win.getByRole('button', { name: 'Invia risposta' }).click()
   // check behind the invite
   await win.getByLabel('Pensieri mentre leggi').fill('come una velocità media')
+  // The small microphone sits inside its one-line field, not over the box's padding.
+  const fit = await win.evaluate(() => {
+    const field = document.querySelector('#rtt')!.getBoundingClientRect()
+    const mic = document.querySelector('.rt .mic')!.getBoundingClientRect()
+    return { top: mic.top - field.top, bottom: field.bottom - mic.bottom }
+  })
+  expect(fit.top, 'mic top inside the field').toBeGreaterThanOrEqual(-0.5)
+  expect(fit.bottom, 'mic bottom inside the field').toBeGreaterThanOrEqual(-0.5)
+  await win.locator('.rt').screenshot({ path: 'test-results/session-thoughts.png' })
   await win.getByRole('button', { name: 'Verifica la tua comprensione' }).click()
   await win.getByRole('button', { name: /^A:/ }).click()
   await win.getByRole('button', { name: 'Invia risposta' }).click()
