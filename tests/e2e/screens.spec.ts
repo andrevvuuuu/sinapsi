@@ -200,15 +200,41 @@ test('session: Misura, then with the plan', async () => {
   await app.close()
 })
 
-test('review', async () => {
+test('review: setup, exercise, verdict, summary', async () => {
   const { app, win } = await launch()
   await makeNotaViva(win, 'Teorema di Rolle')
   await win.getByRole('group', { name: 'Tipo di sessione' }).getByRole('button', { name: /^Ripasso/ }).click()
   await win.getByRole('button', { name: 'Inizia' }).click()
+  // Setup: the concepts to review and the exercise-type selector.
   await expect(win.getByRole('heading', { name: /concetti da fissare/ })).toBeVisible()
+  await expect(win.getByRole('group', { name: 'Esercizi' })).toBeVisible()
+  await screen(win, 'ripasso-setup')
+
+  // An exercise ready to answer: nothing picked yet, «Verifica» disabled.
   await win.getByRole('button', { name: 'Inizia ripasso' }).click()
   await expect(win.getByRole('button', { name: /La continuità/ })).toBeVisible()
-  await screen(win, 'ripasso')
+  await expect(win.getByRole('button', { name: 'Verifica' })).toBeDisabled()
+  await win.waitForTimeout(500) // the card's entrance
+  await screen(win, 'ripasso-esercizio')
+
+  // The verdict with the grade buttons.
+  await win.getByRole('button', { name: /La continuità/ }).click()
+  await win.getByRole('button', { name: 'Verifica' }).click()
+  await expect(win.getByRole('group', { name: 'Quanto ti è costato ricordarlo?' })).toBeVisible()
+  await screen(win, 'ripasso-verdetto')
+
+  // The summary: «Di nuovo» on the first item, so its callout and «Rifai subito gli errori» show too.
+  await win.getByRole('button', { name: /Di nuovo/ }).click()
+  for (let k = 0; k < 3; k++) {
+    if (k > 0) {
+      await win.getByRole('button', { name: /La continuità/ }).click()
+      await win.getByRole('button', { name: 'Verifica' }).click()
+    }
+    await win.getByRole('button', { name: k === 2 ? 'Vedi riepilogo' : 'Prossima' }).click()
+  }
+  await expect(win.getByRole('heading', { name: /nitido/ })).toBeVisible()
+  await expect(win.getByRole('button', { name: 'Rifai subito gli errori' })).toBeVisible()
+  await screen(win, 'ripasso-riepilogo')
   await app.close()
 })
 
