@@ -9,6 +9,7 @@ import { VOICE_MAX } from '../../src/main/memory/voice'
 import {
   createDictation,
   interpreterOf,
+  CAP_MS,
   STALL_MS,
   type Dictation,
   type ServerProcess
@@ -234,6 +235,54 @@ describe('dictation', () => {
     proc!.say({ id, text: 'dieci minuti di spiegazione' })
     expect(await result).toBe('dieci minuti di spiegazione')
     expect(spawn).toHaveBeenCalledTimes(1)
+    d.dispose()
+  })
+
+  it('kills a transcription that runs past the hard cap even with heartbeats, then starts afresh', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const procs: FakeProcess[] = []
+    const { spawn } = fakeServer((req, p) => {
+      procs.push(p)
+      if (procs.length > 1) p.say({ id: req.id, text: 'ripartito' })
+    })
+    const d = base(spawn)
+    const caught = d.transcribe(webm).catch((e: Error) => e)
+    await sent(() => procs.length === 1)
+    procs[0].say({ stage: 'transcribe' })
+    for (let t = 15_000; t < CAP_MS; t += 15_000) {
+      await vi.advanceTimersByTimeAsync(15_000)
+      procs[0].say({ stage: 'transcribe' })
+    }
+    expect(procs[0].kill).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(procs[0].kill).toHaveBeenCalled()
+    expect((await caught).message).toBe('La trascrizione non risponde: riprova')
+    expect(await d.transcribe(webm)).toBe('ripartito')
+    expect(spawn).toHaveBeenCalledTimes(2)
+    d.dispose()
+  })
+
+  it('lets a download with heartbeats run past the hard cap', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    let proc: FakeProcess | undefined
+    let id = ''
+    const { spawn } = fakeServer((req, p) => {
+      proc = p
+      id = req.id
+    })
+    const d = base(spawn)
+    const result = d.transcribe(webm)
+    await sent(() => proc !== undefined)
+    proc!.say({ stage: 'download' })
+    for (let t = 0; t < 2 * CAP_MS; t += 15_000) {
+      await vi.advanceTimersByTimeAsync(15_000)
+      proc!.say({ stage: 'download' })
+    }
+    proc!.say({ stage: 'load' })
+    proc!.say({ stage: 'transcribe' })
+    proc!.say({ id, text: 'dopo il download' })
+    expect(await result).toBe('dopo il download')
+    expect(proc!.kill).not.toHaveBeenCalled()
     d.dispose()
   })
 

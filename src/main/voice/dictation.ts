@@ -37,11 +37,16 @@ type Server = {
   pending: Map<string, Pending>
   closed: boolean
   stall: ReturnType<typeof setTimeout> | null
+  /** The running request's stage, to tell a new stage from a heartbeat, and its hard deadline. */
+  stage: Stage | null
+  cap: ReturnType<typeof setTimeout> | null
 }
 
 const IDLE_MS = 10 * 60_000
 /** Longest silence from the server while a recording waits; every stage line or answer restarts it. */
 export const STALL_MS = 120_000
+/** Longest a request may stay in load or transcribe, heartbeats or not (a 10-minute recording takes about 30 s). */
+export const CAP_MS = 10 * 60_000
 const STALLED = 'La trascrizione non risponde: riprova'
 const STAGES = new Set<string>(['download', 'load', 'transcribe'])
 
@@ -67,6 +72,7 @@ export function createDictation(opts: {
     s.closed = true
     if (server === s) server = null
     if (s.stall) clearTimeout(s.stall)
+    if (s.cap) clearTimeout(s.cap)
     for (const p of s.pending.values()) p.reject(new Error(reason))
     s.pending.clear()
     s.proc.kill()
@@ -78,8 +84,27 @@ export function createDictation(opts: {
     s.stall = s.pending.size && !s.closed ? setTimeout(() => stop(s, STALLED), STALL_MS) : null
   }
 
+  /**
+   * The heartbeat keeps a native hang (Metal, a stuck read) looking alive, so load and transcribe also have a
+   * deadline from the moment they start. A download only has the silence rule: 1.6 GB can take long.
+   */
+  const enter = (s: Server, stage: Stage | null): void => {
+    if (stage === s.stage) return
+    s.stage = stage
+    if (s.cap) clearTimeout(s.cap)
+    s.cap =
+      stage === 'load' || stage === 'transcribe' ? setTimeout(() => stop(s, STALLED), CAP_MS) : null
+  }
+
   const start = (python: string): Server => {
-    const s: Server = { proc: opts.spawn(python), pending: new Map(), closed: false, stall: null }
+    const s: Server = {
+      proc: opts.spawn(python),
+      pending: new Map(),
+      closed: false,
+      stall: null,
+      stage: null,
+      cap: null
+    }
     let buf = ''
     s.proc.stdout.on('data', (chunk) => {
       buf += String(chunk)
@@ -102,6 +127,7 @@ export function createDictation(opts: {
     }
     if (typeof msg.stage === 'string' && STAGES.has(msg.stage)) {
       watch(s)
+      enter(s, msg.stage as Stage)
       // The server works in order: the stage belongs to the oldest request still waiting.
       s.pending
         .values()
@@ -113,6 +139,7 @@ export function createDictation(opts: {
     if (!p) return
     s.pending.delete(msg.id as string)
     watch(s)
+    enter(s, null)
     if (msg.kind === 'ModuleNotFoundError' || msg.kind === 'ImportError')
       p.reject(new Error(MISSING_WHISPER))
     else if (typeof msg.error === 'string')
