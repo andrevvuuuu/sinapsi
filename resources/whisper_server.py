@@ -1,7 +1,7 @@
 """Sinapsi's dictation server: keeps mlx_whisper's model in memory between dictations.
 
 Reads one JSON request per line on stdin: {"id": str, "path": str, "language": "it"}.
-Answers one JSON line on stdout: {"id", "text"} or {"id", "error"}; before the first
+Answers one JSON line on stdout: {"id", "text"} or {"id", "error", "kind"} (kind: the exception's class); before the first
 transcription it announces {"stage": "download" | "load"}, before each one {"stage": "transcribe"}.
 Ends when stdin closes.
 """
@@ -48,7 +48,7 @@ def main():
             text = " ".join(s.get("text", "") for s in result.get("segments", [])) or result.get("text", "")
             send({"id": req_id, "text": " ".join(text.split())})
         except Exception as e:  # noqa: BLE001 - every failure becomes an answer, the server keeps running
-            send({"id": req_id, "error": str(e) or type(e).__name__})
+            send({"id": req_id, "error": str(e) or type(e).__name__, "kind": type(e).__name__})
 
 
 if __name__ == "__main__":

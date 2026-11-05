@@ -5,7 +5,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
 import { toolPath } from '../ai/engines'
 import { extOf, VOICE_MAX } from '../memory/voice'
-import { TRANSCRIBE_TIMEOUT } from '../notebook/media'
+import { MISSING_WHISPER } from '../notebook/media'
 
 export type Stage = 'download' | 'load' | 'transcribe'
 
@@ -13,7 +13,8 @@ export type Stage = 'download' | 'load' | 'transcribe'
 export interface ServerProcess {
   stdin: { write(line: string): unknown }
   stdout: { on(event: 'data', cb: (chunk: Buffer | string) => void): unknown }
-  on(event: 'exit', cb: (code: number | null) => void): unknown
+  /** After exit and after stdout is drained, so a last answer written before exiting is not lost. */
+  on(event: 'close', cb: (code: number | null) => void): unknown
   on(event: 'error', cb: (err: Error) => void): unknown
   kill(): unknown
 }
@@ -30,11 +31,18 @@ type Pending = {
   resolve: (text: string) => void
   reject: (e: Error) => void
   onStage?: (s: Stage) => void
-  timer: ReturnType<typeof setTimeout>
 }
-type Server = { proc: ServerProcess; pending: Map<string, Pending>; closed: boolean }
+type Server = {
+  proc: ServerProcess
+  pending: Map<string, Pending>
+  closed: boolean
+  stall: ReturnType<typeof setTimeout> | null
+}
 
 const IDLE_MS = 10 * 60_000
+/** Longest silence from the server while a recording waits; every stage line or answer restarts it. */
+export const STALL_MS = 120_000
+const STALLED = 'La trascrizione non risponde: riprova'
 const STAGES = new Set<string>(['download', 'load', 'transcribe'])
 
 /**
@@ -58,16 +66,20 @@ export function createDictation(opts: {
     if (!s || s.closed) return
     s.closed = true
     if (server === s) server = null
-    for (const p of s.pending.values()) {
-      clearTimeout(p.timer)
-      p.reject(new Error(reason))
-    }
+    if (s.stall) clearTimeout(s.stall)
+    for (const p of s.pending.values()) p.reject(new Error(reason))
     s.pending.clear()
     s.proc.kill()
   }
 
+  /** A hung server (stalled download, Metal hang) is killed instead of keeping every recording waiting. */
+  const watch = (s: Server): void => {
+    if (s.stall) clearTimeout(s.stall)
+    s.stall = s.pending.size && !s.closed ? setTimeout(() => stop(s, STALLED), STALL_MS) : null
+  }
+
   const start = (python: string): Server => {
-    const s: Server = { proc: opts.spawn(python), pending: new Map(), closed: false }
+    const s: Server = { proc: opts.spawn(python), pending: new Map(), closed: false, stall: null }
     let buf = ''
     s.proc.stdout.on('data', (chunk) => {
       buf += String(chunk)
@@ -76,19 +88,20 @@ export function createDictation(opts: {
       for (const line of lines) onLine(s, line)
     })
     const died = (): void => stop(s, 'Trascrizione interrotta: mlx_whisper si è chiuso')
-    s.proc.on('exit', died)
+    s.proc.on('close', died)
     s.proc.on('error', died)
     return s
   }
 
   const onLine = (s: Server, line: string): void => {
-    let msg: { id?: unknown; text?: unknown; error?: unknown; stage?: unknown }
+    let msg: { id?: unknown; text?: unknown; error?: unknown; kind?: unknown; stage?: unknown }
     try {
       msg = JSON.parse(line)
     } catch {
       return
     }
     if (typeof msg.stage === 'string' && STAGES.has(msg.stage)) {
+      watch(s)
       // The server works in order: the stage belongs to the oldest request still waiting.
       s.pending
         .values()
@@ -99,8 +112,10 @@ export function createDictation(opts: {
     const p = typeof msg.id === 'string' ? s.pending.get(msg.id) : undefined
     if (!p) return
     s.pending.delete(msg.id as string)
-    clearTimeout(p.timer)
-    if (typeof msg.error === 'string')
+    watch(s)
+    if (msg.kind === 'ModuleNotFoundError' || msg.kind === 'ImportError')
+      p.reject(new Error(MISSING_WHISPER))
+    else if (typeof msg.error === 'string')
       p.reject(new Error(`mlx_whisper non è riuscito: ${msg.error.slice(0, 200)}`))
     else {
       const text = String(msg.text ?? '')
@@ -124,13 +139,11 @@ export function createDictation(opts: {
 
   const ask = (s: Server, file: string, onStage?: (st: Stage) => void): Promise<string> =>
     new Promise((resolve, reject) => {
+      if (s.closed) return reject(new Error('Trascrizione interrotta: mlx_whisper si è chiuso'))
       const id = randomBytes(6).toString('hex')
-      const timer = setTimeout(() => {
-        s.pending.delete(id)
-        reject(new Error('mlx_whisper ci ha messo troppo'))
-        stop(s, 'Trascrizione interrotta')
-      }, TRANSCRIBE_TIMEOUT)
-      s.pending.set(id, { resolve, reject, onStage, timer })
+      s.pending.set(id, { resolve, reject, onStage })
+      // A new request after a quiet spell gets the full window; one queued behind work keeps the running one's.
+      if (s.pending.size === 1) watch(s)
       s.proc.stdin.write(JSON.stringify({ id, path: file, language: 'it' }) + '\n')
     })
 

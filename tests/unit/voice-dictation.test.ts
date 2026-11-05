@@ -9,6 +9,7 @@ import { VOICE_MAX } from '../../src/main/memory/voice'
 import {
   createDictation,
   interpreterOf,
+  STALL_MS,
   type Dictation,
   type ServerProcess
 } from '../../src/main/voice/dictation'
@@ -46,7 +47,7 @@ class FakeProcess extends EventEmitter implements ServerProcess {
   requests: Request[] = []
   seen: boolean[] = []
   kill = vi.fn(() => {
-    this.emit('exit', null)
+    this.emit('close', null)
     return true
   })
   stdin = {
@@ -67,6 +68,11 @@ class FakeProcess extends EventEmitter implements ServerProcess {
   say(msg: object): void {
     this.stdout.emit('data', Buffer.from(JSON.stringify(msg) + '\n'))
   }
+}
+
+/** Waits, on real I/O, until the recording has reached the fake server. */
+async function sent(ok: () => boolean): Promise<void> {
+  while (!ok()) await new Promise((r) => setImmediate(r))
 }
 
 const base = (
@@ -120,7 +126,7 @@ describe('dictation', () => {
     const { spawn } = fakeServer((req, p) => {
       if (first) {
         first = false
-        p.emit('exit', 1)
+        p.emit('close', 1)
       } else p.say({ id: req.id, text: 'di nuovo' })
     })
     const d = base(spawn)
@@ -141,6 +147,70 @@ describe('dictation', () => {
     const { spawn } = fakeServer((req, p) => p.say({ id: req.id, text: '  ' }))
     const d = base(spawn)
     await expect(d.transcribe(webm)).rejects.toThrow('Non ho sentito parole nella registrazione')
+    d.dispose()
+  })
+
+  it('keeps an answer written just before the process closes', async () => {
+    const { spawn } = fakeServer((req, p) => {
+      p.say({ id: req.id, text: 'ultima' })
+      p.emit('close', 0)
+    })
+    const d = base(spawn)
+    expect(await d.transcribe(webm)).toBe('ultima')
+    d.dispose()
+  })
+
+  it('says mlx_whisper is missing when the server cannot import it', async () => {
+    const { spawn } = fakeServer((req, p) =>
+      p.say({ id: req.id, error: "No module named 'mlx'", kind: 'ModuleNotFoundError' })
+    )
+    const d = base(spawn)
+    await expect(d.transcribe(webm)).rejects.toThrow(
+      'Manca mlx_whisper: installalo con «pip install mlx-whisper»'
+    )
+    d.dispose()
+  })
+
+  it('kills a server that stops answering and starts a new one for the next recording', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    let calls = 0
+    const { spawn, procs } = fakeServer((req, p) => {
+      if (++calls > 1) p.say({ id: req.id, text: 'ripartito' })
+    })
+    const d = base(spawn)
+    const caught = d.transcribe(webm).catch((e: Error) => e)
+    await sent(() => procs[0]?.requests.length === 1)
+    await vi.advanceTimersByTimeAsync(STALL_MS - 1)
+    expect(procs[0].kill).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect((await caught).message).toBe('La trascrizione non risponde: riprova')
+    expect(procs[0].kill).toHaveBeenCalled()
+    expect(await d.transcribe(webm)).toBe('ripartito')
+    expect(spawn).toHaveBeenCalledTimes(2)
+    d.dispose()
+  })
+
+  it('gives a server more time each time it announces a stage', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    let proc: FakeProcess | undefined
+    let id = ''
+    const { spawn } = fakeServer((req, p) => {
+      proc = p
+      id = req.id
+    })
+    const d = base(spawn)
+    const stages: string[] = []
+    const result = d.transcribe(webm, (s) => stages.push(s))
+    await sent(() => proc !== undefined)
+    await vi.advanceTimersByTimeAsync(STALL_MS - 1000)
+    proc!.say({ stage: 'download' })
+    await vi.advanceTimersByTimeAsync(STALL_MS - 1000)
+    proc!.say({ stage: 'transcribe' })
+    await vi.advanceTimersByTimeAsync(STALL_MS - 1000)
+    expect(proc!.kill).not.toHaveBeenCalled()
+    proc!.say({ id, text: 'scaricato' })
+    expect(await result).toBe('scaricato')
+    expect(stages).toEqual(['download', 'transcribe'])
     d.dispose()
   })
 
