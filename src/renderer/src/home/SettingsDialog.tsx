@@ -63,7 +63,7 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
-        className="settings-dlg glass glass-thick glass-text"
+        className="settings-dlg glass glass-shell"
         role="dialog"
         aria-modal="true"
         aria-labelledby="st-title"
@@ -78,96 +78,98 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
           items[next].focus()
         }}
       >
-        <div className="sd-head">
-          <h2 id="st-title">Impostazioni</h2>
-          <button type="button" className="icon-btn" aria-label="Chiudi le impostazioni" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <div className="sd-body">
-          <section>
-            <h3>Tema</h3>
-            <div className="seg" role="group" aria-label="Tema">
-              {THEMES.map(([id, label], i) => (
-                <button key={id} ref={i === 0 ? first : undefined} type="button" aria-pressed={settings.theme === id} onClick={() => onTheme(id)}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </section>
-          <section>
-            <h3>Motori AI</h3>
-            <p className="sd-hint">Gemini (Antigravity) e Claude (Claude Code) con i tuoi abbonamenti. Il modello si può lasciare com’è.</p>
-            <div className="sd-engines">
-              {TASKS.map((t) => (
-                <div key={t} className="sd-engine">
-                  <span>{TASK_IT[t]}</span>
-                  <select
-                    aria-label={`Motore · ${TASK_IT[t]}`}
-                    value={engines[t].engine}
-                    onChange={(e) => {
-                      const engine = e.target.value as 'agy' | 'claude'
-                      const model = DEFAULT_ENGINES[t].engine === engine ? DEFAULT_ENGINES[t].model : engine === 'claude' ? 'sonnet' : 'gemini-3.8-flash-medium'
-                      setEngines({ ...engines, [t]: { engine, model } })
-                      setSaved(false)
-                    }}
-                  >
-                    <option value="agy">Gemini</option>
-                    <option value="claude">Claude</option>
-                  </select>
-                  <input
-                    aria-label={`Modello · ${TASK_IT[t]}`}
-                    value={engines[t].model ?? ''}
-                    onChange={(e) => {
-                      setEngines({ ...engines, [t]: { ...engines[t], model: e.target.value || undefined } })
-                      setSaved(false)
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
-          <section>
-            <h3>Estrazione in background</h3>
-            <label className="sd-row">
-              <input type="checkbox" checked={bg} onChange={(e) => (setBg(e.target.checked), setSaved(false))} />
-              Estrai i concetti delle note quando il Mac è inattivo
-            </label>
-            <label className="sd-row">
-              Note al giorno
-              <input type="number" min={0} max={50} value={daily} onChange={(e) => (setDaily(e.target.value), setSaved(false))} />
-            </label>
-          </section>
-          <section>
-            <h3>Apprendimento</h3>
-            <label className="sd-row">
-              <input type="checkbox" checked={games} onChange={(e) => (setGames(e.target.checked), setSaved(false))} />
-              Giochi nelle sessioni (Lampo, Coppie, Ricomponi, Trova l’intruso, Tabù)
-            </label>
-          </section>
-          <section>
-            <h3>Ripasso</h3>
-            <label className="sd-row">
-              Domande per Ripasso
-              <input type="number" min={1} max={20} value={size} onChange={(e) => (setSize(e.target.value), setSaved(false))} />
-            </label>
-          </section>
-        </div>
-        <div className="sd-foot">
-          {error && (
-            <p className="sd-error" role="alert">
-              {error}
-            </p>
-          )}
-          {saved && !error && (
-            <p className="sd-ok" role="status">
-              Salvate.
-            </p>
-          )}
-          <span className="sp" />
-          <button type="button" className="btn pri" onClick={() => void save()}>
-            Salva
-          </button>
+        <div className="sd-core dlg-core">
+          <div className="sd-head">
+            <h2 id="st-title">Impostazioni</h2>
+            <button type="button" className="icon-btn" aria-label="Chiudi le impostazioni" onClick={onClose}>
+              ×
+            </button>
+          </div>
+          <div className="sd-body">
+            <section>
+              <h3>Tema</h3>
+              <div className="seg" role="group" aria-label="Tema">
+                {THEMES.map(([id, label], i) => (
+                  <button key={id} ref={i === 0 ? first : undefined} type="button" aria-pressed={settings.theme === id} onClick={() => onTheme(id)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section>
+              <h3>Motori AI</h3>
+              <p className="sd-hint">Gemini (Antigravity) e Claude (Claude Code) con i tuoi abbonamenti. Il modello si può lasciare com’è.</p>
+              <div className="sd-engines">
+                {TASKS.map((t) => (
+                  <div key={t} className="sd-engine">
+                    <span>{TASK_IT[t]}</span>
+                    <select
+                      aria-label={`Motore · ${TASK_IT[t]}`}
+                      value={engines[t].engine}
+                      onChange={(e) => {
+                        const engine = e.target.value as 'agy' | 'claude'
+                        const model = DEFAULT_ENGINES[t].engine === engine ? DEFAULT_ENGINES[t].model : engine === 'claude' ? 'sonnet' : 'gemini-3.8-flash-medium'
+                        setEngines({ ...engines, [t]: { engine, model } })
+                        setSaved(false)
+                      }}
+                    >
+                      <option value="agy">Gemini</option>
+                      <option value="claude">Claude</option>
+                    </select>
+                    <input
+                      aria-label={`Modello · ${TASK_IT[t]}`}
+                      value={engines[t].model ?? ''}
+                      onChange={(e) => {
+                        setEngines({ ...engines, [t]: { ...engines[t], model: e.target.value || undefined } })
+                        setSaved(false)
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section>
+              <h3>Estrazione in background</h3>
+              <label className="sd-row">
+                <input type="checkbox" checked={bg} onChange={(e) => (setBg(e.target.checked), setSaved(false))} />
+                Estrai i concetti delle note quando il Mac è inattivo
+              </label>
+              <label className="sd-row">
+                Note al giorno
+                <input type="number" min={0} max={50} value={daily} onChange={(e) => (setDaily(e.target.value), setSaved(false))} />
+              </label>
+            </section>
+            <section>
+              <h3>Apprendimento</h3>
+              <label className="sd-row">
+                <input type="checkbox" checked={games} onChange={(e) => (setGames(e.target.checked), setSaved(false))} />
+                Giochi nelle sessioni (Lampo, Coppie, Ricomponi, Trova l’intruso, Tabù)
+              </label>
+            </section>
+            <section>
+              <h3>Ripasso</h3>
+              <label className="sd-row">
+                Domande per Ripasso
+                <input type="number" min={1} max={20} value={size} onChange={(e) => (setSize(e.target.value), setSaved(false))} />
+              </label>
+            </section>
+          </div>
+          <div className="sd-foot">
+            {error && (
+              <p className="sd-error" role="alert">
+                {error}
+              </p>
+            )}
+            {saved && !error && (
+              <p className="sd-ok" role="status">
+                Salvate.
+              </p>
+            )}
+            <span className="sp" />
+            <button type="button" className="btn pri" onClick={() => void save()}>
+              Salva
+            </button>
+          </div>
         </div>
       </div>
     </div>

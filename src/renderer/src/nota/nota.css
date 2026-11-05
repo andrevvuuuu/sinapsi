@@ -1,6 +1,6 @@
 /* Nota viva: adapted from docs/prototipi/nota-v7.html, scoped under .nota and using the app tokens. */
-/* The page fades into a band under the island while it scrolls (.scroll-edge-under). */
-.nota{--scroll-edge-top:var(--topbar-h);--scroll-edge-z:29;--shell:color-mix(in srgb,var(--ink) 3.5%,transparent);--shadow:0 40px 80px -48px rgba(0,0,0,.55);position:fixed;inset:0;overflow:auto;background:var(--bg);color:var(--ink);font:400 18px/1.7 var(--sans);scroll-padding-top:90px}
+/* The page fades into a band under the island while it scrolls (.scroll-edge-under): down to the island's bottom edge (12 px + 54 px), where the hero starts at rest. */
+.nota{--scroll-edge-top:66px;--scroll-edge-z:29;--shell:color-mix(in srgb,var(--ink) 3.5%,transparent);--shadow:0 40px 80px -48px rgba(0,0,0,.55);position:fixed;inset:0;overflow:auto;background:var(--bg);color:var(--ink);font:400 18px/1.7 var(--sans);scroll-padding-top:90px}
 [data-theme="trattato"] .nota{--shadow:0 40px 80px -50px rgba(80,60,30,.35)}
 .nota .katex{font-size:1.06em}
 .nota .katex-display{margin:18px 0;overflow-x:auto;overflow-y:hidden;padding:4px 0}

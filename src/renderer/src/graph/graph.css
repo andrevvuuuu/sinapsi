@@ -33,9 +33,15 @@
   z-index: 5;
   width: 290px;
   max-height: calc(100% - 280px);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
   border-radius: 22px;
-  padding: 15px;
+}
+/* The menu's text sits on the solid core inside the glass ring (15 px to the content, as before). */
+.graph .gpanel-core {
+  overflow: auto;
+  border-radius: 16px;
+  padding: 9px;
 }
 .graph .gpanel h2 {
   font: 400 28px/1 var(--serif);

@@ -519,7 +519,7 @@ export function GraphView({
         <section
           ref={panelRef}
           id="graph-menu"
-          className={'gpanel glass glass-thick glass-text' + (menu === 'closing' ? ' closing' : '')}
+          className={'gpanel glass glass-shell' + (menu === 'closing' ? ' closing' : '')}
           aria-label="Controlli del grafo"
           onKeyDown={(e) => {
             if (e.key === 'Escape' && !e.defaultPrevented) {
@@ -528,122 +528,129 @@ export function GraphView({
             }
           }}
         >
-          <h2>Il tuo grafo</h2>
-          <p className="meta">
-            {model
-              ? `${model.concepts.length} concetti da ${model.regions.length} note · ${new Set(model.arrows.map((a) => a.chain)).size} catene · ${multi} in più note`
-              : 'Carico il grafo…'}
-          </p>
-          <div className="gsearch">
-            <div className="mic-field">
-              <input
-                ref={searchField}
-                readOnly={searchMic.state !== 'idle'}
-                role="combobox"
-                aria-label="Cerca nel grafo"
-                aria-expanded={hits.length > 0}
-                aria-controls="graph-results"
-                aria-activedescendant={hi >= 0 ? `gr-${hi}` : undefined}
-                placeholder="Cerca un concetto o una nota"
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  setHi(-1)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'ArrowDown') setHi(Math.min(hits.length - 1, hi + 1))
-                  else if (e.key === 'ArrowUp') setHi(Math.max(0, hi - 1))
-                  else if (e.key === 'Enter' && hits.length) go(hits[Math.max(0, hi)])
-                  else if (e.key === 'Escape' && query) setQuery('')
-                  else return
-                  e.preventDefault()
-                }}
-              />
-              <MicButton dictation={searchMic} size="sm" />
-            </div>
-            <DictationError dictation={searchMic} />
-            {hits.length > 0 && (
-              <ul role="listbox" id="graph-results" className="gresults">
-                {hits.map((h, i) => (
-                  <li
-                    key={`${h.kind}:${h.id}`}
-                    id={`gr-${i}`}
-                    role="option"
-                    aria-selected={i === hi}
-                    onClick={() => go(h)}
-                  >
-                    <span>{h.label}</span>
-                    <small>{h.kind === 'concept' ? 'concetto' : 'nota'}</small>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div className="gsec">
-            <h3>Evidenzia</h3>
-            <div className="gseg glens" role="group" aria-label="Evidenzia">
-              {(
-                [
-                  ['all', 'Tutto'],
-                  ['due', `Da ripassare (${counts.due})`],
-                  ['never', `Mai visti (${counts.never})`],
-                  ['fragile', `Basi fragili (${counts.fragile})`]
-                ] as [Lens, string][]
-              ).map(([l, label]) => (
-                <button key={l} type="button" aria-pressed={lens === l} onClick={() => setLens(l)}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <button
-            type="button"
-            className="gmore"
-            aria-expanded={options}
-            onClick={() => setOptions(!options)}
-          >
-            Disposizione e strati
-            <span aria-hidden="true">{options ? '−' : '+'}</span>
-          </button>
-          {options && (
-            <>
-              <div className="gsec">
-                <h3>Disposizione</h3>
-                <div className="gseg" role="group" aria-label="Disposizione">
-                  {MODES.map(([m, label]) => (
-                    <button
-                      key={m}
-                      type="button"
-                      aria-pressed={mode === m}
-                      onClick={() => changeMode(m)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <p className="hint">{MODES.find((m) => m[0] === mode)![2]}</p>
+          <div className="gpanel-core dlg-core">
+            <h2>Il tuo grafo</h2>
+            <p className="meta">
+              {model
+                ? `${model.concepts.length} concetti da ${model.regions.length} note · ${new Set(model.arrows.map((a) => a.chain)).size} catene · ${multi} in più note`
+                : 'Carico il grafo…'}
+            </p>
+            <div className="gsearch">
+              <div className="mic-field">
+                <input
+                  ref={searchField}
+                  readOnly={searchMic.state !== 'idle'}
+                  role="combobox"
+                  aria-label="Cerca nel grafo"
+                  aria-expanded={hits.length > 0}
+                  aria-controls="graph-results"
+                  aria-activedescendant={hi >= 0 ? `gr-${hi}` : undefined}
+                  placeholder="Cerca un concetto o una nota"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value)
+                    setHi(-1)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown') setHi(Math.min(hits.length - 1, hi + 1))
+                    else if (e.key === 'ArrowUp') setHi(Math.max(0, hi - 1))
+                    else if (e.key === 'Enter' && hits.length) go(hits[Math.max(0, hi)])
+                    else if (e.key === 'Escape' && query) setQuery('')
+                    else return
+                    e.preventDefault()
+                  }}
+                />
+                <MicButton dictation={searchMic} size="sm" />
               </div>
-              <div className="gsec gtoggles">
+              <DictationError dictation={searchMic} />
+              {hits.length > 0 && (
+                <ul role="listbox" id="graph-results" className="gresults">
+                  {hits.map((h, i) => (
+                    <li
+                      key={`${h.kind}:${h.id}`}
+                      id={`gr-${i}`}
+                      role="option"
+                      aria-selected={i === hi}
+                      onClick={() => go(h)}
+                    >
+                      <span>{h.label}</span>
+                      <small>{h.kind === 'concept' ? 'concetto' : 'nota'}</small>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="gsec">
+              <h3>Evidenzia</h3>
+              <div className="gseg glens" role="group" aria-label="Evidenzia">
                 {(
                   [
-                    ['regions', 'Regioni'],
-                    ['wikilinks', 'Link di Obsidian'],
-                    ['frontier', `Frontiera${model ? ` (${model.frontier.length})` : ''}`]
-                  ] as const
-                ).map(([key, label]) => (
+                    ['all', 'Tutto'],
+                    ['due', `Da ripassare (${counts.due})`],
+                    ['never', `Mai visti (${counts.never})`],
+                    ['fragile', `Basi fragili (${counts.fragile})`]
+                  ] as [Lens, string][]
+                ).map(([l, label]) => (
                   <button
-                    key={key}
+                    key={l}
                     type="button"
-                    aria-pressed={show[key]}
-                    onClick={() => setShow({ ...show, [key]: !show[key] })}
+                    aria-pressed={lens === l}
+                    onClick={() => setLens(l)}
                   >
                     {label}
                   </button>
                 ))}
               </div>
-            </>
-          )}
-          <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
+            </div>
+            <button
+              type="button"
+              className="gmore"
+              aria-expanded={options}
+              onClick={() => setOptions(!options)}
+            >
+              Disposizione e strati
+              <span aria-hidden="true">{options ? '−' : '+'}</span>
+            </button>
+            {options && (
+              <>
+                <div className="gsec">
+                  <h3>Disposizione</h3>
+                  <div className="gseg" role="group" aria-label="Disposizione">
+                    {MODES.map(([m, label]) => (
+                      <button
+                        key={m}
+                        type="button"
+                        aria-pressed={mode === m}
+                        onClick={() => changeMode(m)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="hint">{MODES.find((m) => m[0] === mode)![2]}</p>
+                </div>
+                <div className="gsec gtoggles">
+                  {(
+                    [
+                      ['regions', 'Regioni'],
+                      ['wikilinks', 'Link di Obsidian'],
+                      ['frontier', `Frontiera${model ? ` (${model.frontier.length})` : ''}`]
+                    ] as const
+                  ).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={show[key]}
+                      onClick={() => setShow({ ...show, [key]: !show[key] })}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
+          </div>
         </section>
       )}
       {model && !(livePaths && livePaths.length === 0) && (

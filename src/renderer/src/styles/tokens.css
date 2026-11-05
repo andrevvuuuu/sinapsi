@@ -32,8 +32,9 @@ button.back-btn.back-btn.back-btn:hover{background:var(--surface);border-color:c
 :root:not([data-glass="on"]) .glass{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}
 /* A full-width bar: the material without the slab's rim and drop shadow; its own hairline closes it. */
 .glass.glass-bar{box-shadow:none}
-/* Large, text-heavy glass (dialogs, the graph menu): more opaque, as Apple's larger glass surfaces are. */
-.glass.glass-thick{--glass-tint:color-mix(in srgb,var(--surface) 90%,transparent)}
+/* Dialogs and the graph menu: a glass outer shell (6 px ring) around a solid core that holds the text, like the session's .shell/.inner. */
+.glass-shell{padding:6px}
+.dlg-core{flex:1;min-height:0;border-radius:18px;background:var(--surface);box-shadow:var(--inner)}
 /* Text on glass: secondary labels use --glass-ink-2, never --muted (not AA over bright content). */
 .glass-text{--muted:var(--glass-ink-2)}
 @media (prefers-reduced-motion:reduce){.glass{transition:none}}

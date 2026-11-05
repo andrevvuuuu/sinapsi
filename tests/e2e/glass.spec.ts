@@ -66,6 +66,16 @@ test('Liquid Glass on the controls, solid surfaces under the text, content scrol
   await win.evaluate(() => (document.documentElement.dataset.glass = 'on'))
   await shoot(win, 'home')
 
+  // Settings dialog: a glass outer shell, the form on a solid core.
+  await win.getByRole('button', { name: 'Impostazioni', exact: true }).click()
+  await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toBeVisible()
+  await win.waitForTimeout(300) // the dialog's entrance
+  await expectGlass(win, ['.settings-dlg'])
+  await expectSolid(win, ['.settings-dlg .sd-core'])
+  await shoot(win, 'settings')
+  await win.keyboard.press('Escape')
+  await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toHaveCount(0)
+
   // Nota viva: the island is glass.
   await win.getByText('Matematica', { exact: true }).click()
   await win.getByRole('button', { name: 'Teorema di Rolle' }).click()

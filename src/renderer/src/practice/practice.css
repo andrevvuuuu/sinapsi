@@ -147,7 +147,8 @@
 .pr-calib-topic{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* dialogs */
 .pr-overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
-.pr .mt-dlg{display:grid;grid-template-rows:auto auto 1fr auto;width:min(1040px,100%);height:min(720px,calc(100vh - 48px));border-radius:24px;box-shadow:inset 0 1px 0 var(--glass-spec),inset 0 0 0 1px var(--glass-rim),0 40px 100px -30px rgba(0,0,0,.7);overflow:hidden}
+.pr .mt-dlg{--glass-shadow:0 40px 100px -30px rgba(0,0,0,.7);display:flex;flex-direction:column;width:min(1040px,100%);height:min(720px,calc(100vh - 48px));border-radius:24px}
+.pr .mt-core{display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden}
 .pr .mt-dh{display:flex;align-items:center;gap:12px;padding:16px 18px 8px}
 .pr .mt-dh h2{font:400 30px/1 var(--serif);margin:0}
 .pr .mt-x{width:var(--ctl);height:var(--ctl);border-radius:12px;border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:20px}
@@ -190,7 +191,8 @@
 .pr .mt-file .pp{margin-left:auto;font:500 12px var(--mono);color:var(--muted)}
 .pr .mt-file:has(.mt-cb:checked){border-color:var(--ink);background:var(--faint)}
 .pr .mt-df{display:flex;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid var(--hair)}
-.pr-photo{width:min(720px,100%);max-height:calc(100vh - 48px);overflow:auto;border-radius:24px;box-shadow:inset 0 1px 0 var(--glass-spec),inset 0 0 0 1px var(--glass-rim),0 40px 100px -30px rgba(0,0,0,.7)}
+.pr-photo{--glass-shadow:0 40px 100px -30px rgba(0,0,0,.7);width:min(720px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px}
+.pr-photo-core{overflow:auto}
 .pr-photo-body{padding:4px 18px 18px;display:flex;flex-direction:column;gap:10px}
 .pr-photo select{min-height:40px;border-radius:12px;border:1px solid var(--hair);background:var(--bg);color:var(--ink);padding:0 12px}
 .pr-video{width:100%;border-radius:14px;background:#000;aspect-ratio:4/3;object-fit:cover}
