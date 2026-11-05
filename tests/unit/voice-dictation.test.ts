@@ -214,6 +214,29 @@ describe('dictation', () => {
     d.dispose()
   })
 
+  it('lets a long recording run while the server sends heartbeats', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    let proc: FakeProcess | undefined
+    let id = ''
+    const { spawn } = fakeServer((req, p) => {
+      proc = p
+      id = req.id
+    })
+    const d = base(spawn)
+    const result = d.transcribe(webm)
+    await sent(() => proc !== undefined)
+    proc!.say({ stage: 'transcribe' })
+    for (let t = 0; t < 5 * 60_000; t += 15_000) {
+      await vi.advanceTimersByTimeAsync(15_000)
+      proc!.say({ stage: 'transcribe' })
+    }
+    expect(proc!.kill).not.toHaveBeenCalled()
+    proc!.say({ id, text: 'dieci minuti di spiegazione' })
+    expect(await result).toBe('dieci minuti di spiegazione')
+    expect(spawn).toHaveBeenCalledTimes(1)
+    d.dispose()
+  })
+
   it('closes the process after idleMs of inactivity', async () => {
     vi.useFakeTimers()
     const { spawn, procs } = fakeServer()
