@@ -19,6 +19,8 @@ export function SegLens(): React.JSX.Element {
         lens.style.opacity = '0'
         return
       }
+      // A track that mounts hidden has no layout yet: wait for the first visible placement.
+      if (!b.offsetWidth && !b.offsetHeight) return
       // The first placement jumps: the lens slides only from one option to another.
       if (!placed) lens.style.transition = 'none'
       lens.style.opacity = ''

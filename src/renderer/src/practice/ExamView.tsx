@@ -3,10 +3,13 @@ import type { PracticeState } from '../../../main/practice/events'
 import { RichText } from '../session/RichText'
 import { PhotoButton } from './PhotoButton'
 import { AnswerBox, CalibrationPanel, PaperReview } from './PaperExam'
+import { stopRecording } from '../components/dictation'
 import { useDictating } from './use-dictating'
 import { filled, fmtClock, fmtPoints, lastError } from './exam-format'
 
 const SAVE_EVERY = 10_000
+/** When time is up during a dictation: how long the delivery waits for the transcription to land. */
+export const TIME_UP_WAIT = 5_000
 
 export function ExamView({
   state,
@@ -82,13 +85,17 @@ export function ExamView({
 
   // Never more than the chosen length (the clocks of window and app differ by a few ms).
   const left = exam ? Math.min(exam.endsAt - now, (state.durationMin ?? 0) * 60_000 || Infinity) : 0
+  // Time up: on paper the pens go down; on screen a dictation in progress stops first, and the delivery waits
+  // (at most TIME_UP_WAIT) for its words to land in the answer.
   useEffect(() => {
-    if (running && left <= 0) {
-      if (paper) hand()
-      else deliver()
-    }
+    if (!running || left > 0) return
+    if (paper) return hand()
+    stopRecording()
+    if (!dictating.any) return deliver()
+    const t = setTimeout(deliver, TIME_UP_WAIT)
+    return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, left <= 0])
+  }, [running, left <= 0, dictating.any])
 
   const header = (
     <header className="pr-top drag glass glass-bar glass-text">

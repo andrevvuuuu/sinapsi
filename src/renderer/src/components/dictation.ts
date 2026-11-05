@@ -41,6 +41,10 @@ const fields = new Set<{
   enabled: () => boolean
   toggle: () => void
 }>()
+/** Stops the recording in progress, if any: what was said is transcribed and lands in its field as usual. */
+export function stopRecording(): void {
+  recording?.stop()
+}
 function onKey(e: KeyboardEvent): void {
   if (!e.altKey || e.metaKey || e.ctrlKey || e.shiftKey || e.code !== 'Space' || e.repeat) return
   for (const f of fields)
