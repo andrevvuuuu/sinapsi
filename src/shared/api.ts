@@ -91,7 +91,9 @@ export const CH = {
   practicePhoto: 'practice:photo',
   practiceCamera: 'practice:camera',
   practiceUpdated: 'practice:updated',
-  suggestGet: 'suggest:get'
+  suggestGet: 'suggest:get',
+  uiTransparency: 'ui:transparency',
+  uiTransparencyChanged: 'ui:transparency-changed'
 } as const
 
 export interface SinapsiApi {
@@ -207,4 +209,10 @@ export interface SinapsiApi {
   }
   /** What to study, review or practise next, each with its reason (no AI). */
   suggest: { get(): Promise<import('../main/suggest/suggest').Suggestions> }
+  /** macOS appearance settings the Liquid Glass material follows. */
+  ui: {
+    /** True when «Riduci trasparenza» is on: the glass becomes a solid surface. */
+    reducedTransparency(): Promise<boolean>
+    onReducedTransparency(cb: (reduced: boolean) => void): () => void
+  }
 }

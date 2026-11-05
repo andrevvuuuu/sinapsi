@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, powerMonitor, powerSaveBlocker, shell, systemPreferences } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, powerMonitor, powerSaveBlocker, shell, systemPreferences } from 'electron'
 import { join } from 'node:path'
 import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
@@ -390,6 +390,16 @@ export function registerIpc(): { bridge: Bridge } {
     now: Date.now
   })
   ipcMain.handle(CH.suggestGet, () => suggestions())
+
+  // «Riduci trasparenza»: the renderer turns the Liquid Glass into a solid surface. 'updated' fires
+  // for every appearance change (dark mode, contrast…), so only a change of this setting is sent.
+  let reducedTransparency = nativeTheme.prefersReducedTransparency
+  ipcMain.handle(CH.uiTransparency, () => nativeTheme.prefersReducedTransparency)
+  nativeTheme.on('updated', () => {
+    if (nativeTheme.prefersReducedTransparency === reducedTransparency) return
+    reducedTransparency = nativeTheme.prefersReducedTransparency
+    broadcast(CH.uiTransparencyChanged, reducedTransparency)
+  })
 
   // Background extraction: a few notes a day, only while the Mac is idle.
   const tick = async (): Promise<void> => {

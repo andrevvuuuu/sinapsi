@@ -99,7 +99,11 @@ const api: SinapsiApi = {
     camera: () => ipcRenderer.invoke(CH.practiceCamera),
     onUpdate: (cb) => subscribe(CH.practiceUpdated, cb)
   },
-  suggest: { get: () => ipcRenderer.invoke(CH.suggestGet) }
+  suggest: { get: () => ipcRenderer.invoke(CH.suggestGet) },
+  ui: {
+    reducedTransparency: () => ipcRenderer.invoke(CH.uiTransparency),
+    onReducedTransparency: (cb) => subscribe(CH.uiTransparencyChanged, cb)
+  }
 }
 
 contextBridge.exposeInMainWorld('sinapsi', api)

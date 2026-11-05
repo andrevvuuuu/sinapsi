@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { GlassFilter } from './components/GlassFilter'
 import Home from './home/Home'
 import { NotaView } from './nota/NotaView'
 import { NotePicker } from './nota/NotePicker'
@@ -18,7 +19,17 @@ type View =
   | { view: 'practice-setup'; text?: string; initial?: { conceptIds: string[]; exam?: boolean } }
   | { view: 'practice'; id: string }
 
+/** The material's filter and «Riduci trasparenza» live outside the views, which replace each other. */
 export default function App(): React.JSX.Element {
+  return (
+    <>
+      <GlassFilter />
+      <Views />
+    </>
+  )
+}
+
+function Views(): React.JSX.Element {
   const [v, setV] = useState<View>({ view: 'home' })
   const home = (): void => setV({ view: 'home' })
   const openNota = (id: string): void => setV({ view: 'nota', id })
