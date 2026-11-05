@@ -84,6 +84,8 @@ Stessa disposizione: selettore Apprendimento/Pratica/Ripasso sopra, suggerimenti
 *(Scelta di Claude, coerente con le HIG Apple: il vetro è per lo strato di navigazione e dei controlli che galleggia sopra i contenuti, non per i contenuti.)*
 
 **Dove va**: barre in alto delle viste, tasto «← Home», selettore delle modalità, riquadro del composer della Home, riquadro di risposta della sessione (il suo guscio esterno, `.shell`), barre degli strumenti e controlli fluttuanti del grafo e della nota viva, menu e popover, dialoghi (guscio esterno).
+**Selettori a segmenti** (richiesta di Andrea, 5/11): anche tutti i selettori a segmenti (Apprendimento/Pratica/Ripasso, Tutte/Apprendimento/Pratica/Ripasso nel pannello sinistro, Evidenzia nel grafo, i selettori delle impostazioni, del ripasso e della pratica) sono in Liquid Glass: la traccia è vetro e l'opzione scelta è una «lente» di vetro che scivola fino all'opzione cliccata, come nei controlli Apple. Dove la traccia è già vetro, la lente è una variante luminosa senza un secondo `backdrop-filter`. Con `prefers-reduced-motion` la lente cambia posto senza scivolare. *(Scelta di Claude, coerente con Apple:)* anche il pallino dei cursori (per esempio Fiducia) diventa una piccola lente di vetro.
+
 **Dove non va**: testo delle domande, opzioni di risposta, note, messaggi del tutor, schede del ripasso. Queste superfici restano piene (l'interno `.inner`/`.core` resta solido), perché il vetro sotto il testo ne riduce la leggibilità.
 
 **Fedeltà** (decisione di Andrea, 5/11): deve essere **il classico Liquid Glass di Apple**, fatto bene anche dove oggi, su sfondo uniforme, si nota poco: si vedrà di più quando l'app sarà più piena. Non si aggiungono sfondi o decorazioni solo per far risaltare il vetro.
