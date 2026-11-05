@@ -36,13 +36,21 @@ async function expectSolid(win: Page, selectors: string[]): Promise<void> {
   }
 }
 
+/** The theme in the settings too: the Home applies the stored theme again whenever it reloads them. */
+async function setTheme(win: Page, theme: string): Promise<void> {
+  await win.evaluate(async (t) => {
+    await window.sinapsi.settings.set({ theme: t as 'lavagna' | 'trattato' })
+    document.documentElement.dataset.theme = t
+  }, theme)
+}
+
 async function shoot(win: Page, name: string): Promise<void> {
   for (const theme of ['lavagna', 'trattato']) {
-    await win.evaluate((t) => (document.documentElement.dataset.theme = t), theme)
+    await setTheme(win, theme)
     await win.waitForTimeout(250)
     await win.screenshot({ path: `test-results/glass-${name}-${theme}.png` })
   }
-  await win.evaluate(() => (document.documentElement.dataset.theme = 'lavagna'))
+  await setTheme(win, 'lavagna')
 }
 
 test('Liquid Glass on the controls, solid surfaces under the text, content scrolling under the bar', async () => {

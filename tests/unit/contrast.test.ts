@@ -90,6 +90,14 @@ describe.each<Theme>(['lavagna', 'trattato'])('contrast in %s', (theme) => {
     expect(ratio(c('--btn-focus'), c(g)), '--btn-focus').toBeGreaterThanOrEqual(3)
   })
 
+  // --hair is a deliberate decorative separator (WCAG 1.4.11 asks 3:1 only of what identifies a control: that is
+  // --ctl-edge). Pinned between the 8a values, so it never fades back, and 3:1, so it never turns into an outline.
+  it.each(GROUNDS)('the separator (--hair) stays quiet but visible on %s', (g) => {
+    const alpha = { lavagna: 0.14, trattato: 0.16 }[theme]
+    expect(c('--hair')[3]).toBeGreaterThanOrEqual(alpha)
+    expect(ratio(c('--hair'), c(g))).toBeLessThan(3)
+  })
+
   it.each(GROUNDS)('a disabled button stays readable on %s', (g) => {
     expect(ratio(c('--btn-disabled-ink'), c(g))).toBeGreaterThanOrEqual(4.5)
   })

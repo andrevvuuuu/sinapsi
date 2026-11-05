@@ -16,8 +16,9 @@ const THEMES = ['lavagna', 'trattato'] as const
  * - `.nota .island button`: the nota viva island bar, the floating glass bar of the note.
  * - `.graph .gzoom button`: the graph's zoom controls, floating on the canvas.
  * - `.mic.mic-sm`: the in-field microphone of size sm, inside short fields.
+ * - `.graph .gpanel button`: the graph menu panel (lens selector, «Disposizione e strati»), graph controls too.
  */
-const DENSE = ['.nota .island button', '.graph .gzoom button', '.mic.mic-sm']
+const DENSE = ['.nota .island button', '.graph .gzoom button', '.mic.mic-sm', '.graph .gpanel button']
 
 /**
  * Known failures that later areas of Task 8 fix (8b Home/left panel/settings, 8c session and games, 8d review,
@@ -48,13 +49,7 @@ const KNOWN: Record<string, string[]> = {
     ...HOME_PANEL,
     // 8b: the left panel's notes vive, once one exists.
     'button «Teorema di Rolle» 228×34 (div.kids > button.leaf.nv-leaf)',
-    'text «1» 10px (summary > small.cnt)',
-    // 8f: the graph menu panel (lens selector and «Disposizione e strati»), not the zoom bar.
-    'button «Tutto» 116×40 (div.gseg.glens.seg-track.glass.glass-text > button)',
-    'button «Da ripassare (0)» 116×40 (div.gseg.glens.seg-track.glass.glass-text > button)',
-    'button «Mai visti (3)» 116×40 (div.gseg.glens.seg-track.glass.glass-text > button)',
-    'button «Basi fragili (0)» 116×40 (div.gseg.glens.seg-track.glass.glass-text > button)',
-    'button «Disposizione e strati+» 240×40 (div.gpanel-core.dlg-core > button.gmore)'
+    'text «1» 10px (summary > small.cnt)'
   ],
   // 8c: the plan's stage labels.
   'sessione-piano': ['text «già tuo» 10px (div > small)', 'text «adesso» 10px (div > small)', 'text «obiettivo» 10px (div > small)'],
