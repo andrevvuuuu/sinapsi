@@ -62,6 +62,10 @@
 .pr .inner.has-scroll{display:flex;flex-direction:column;overflow:hidden}
 .pr .inner.has-scroll>*{flex:none}
 .pr .inner.has-scroll>.dock-scroll{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;margin:-4px -6px;padding:4px 6px}
+/* A short scroll edge fade only on the side where content is hidden (data-more-*, useScrollEdges). */
+.pr .dock-scroll.scroll-edge{--scroll-edge-top:0px;--scroll-edge-bottom:0px}
+.pr .dock-scroll[data-more-above]{--scroll-edge-top:18px}
+.pr .dock-scroll[data-more-below]{--scroll-edge-bottom:18px}
 .pr .shell{padding:6px;border-radius:24px}
 /* The material box in the setup sits in the page, not over it: it keeps its frosted frame, no glass. */
 .pr .shell:not(.glass){padding:5px;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--hair);backdrop-filter:blur(16px)}

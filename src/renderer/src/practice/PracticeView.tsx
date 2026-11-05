@@ -4,6 +4,7 @@ import { MODE_IT, OUTCOME_IT, type Submission } from '../../../shared/practice-p
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { useDockHeight } from '../components/useDockHeight'
+import { useScrollEdges } from '../components/useScrollEdges'
 import { RichText } from '../session/RichText'
 import { ExamView } from './ExamView'
 import { snippet } from './exam-format'
@@ -38,6 +39,8 @@ function ProblemDock({
   const area = useRef<HTMLTextAreaElement>(null)
   const dictation = useDictation({ target: area, value: text, onChange: setText })
   const dictating = dictation.state !== 'idle'
+  const middle = useRef<HTMLDivElement>(null)
+  useScrollEdges(middle)
   // One request at a time: a double click must not cost a second hint.
   const once = async (sub: Submission): Promise<boolean> => {
     if (sending.current) return false
@@ -76,7 +79,7 @@ function ProblemDock({
         <div className="st">
           <RichText md={problem.statement} />
         </div>
-        <div className="dock-scroll">
+        <div className="dock-scroll scroll-edge" ref={middle}>
           {problem.lines && (
             <div className="lines" role="group" aria-label="Righe della dimostrazione">
               {problem.lines.map((l, i) => (

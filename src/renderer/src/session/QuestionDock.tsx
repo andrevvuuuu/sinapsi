@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ROLE_IT, type LearnerAnswer, type Question } from '../../../shared/teacher-protocol'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
+import { useScrollEdges } from '../components/useScrollEdges'
 import { RichText } from './RichText'
 import { GameDock } from './games/GameDock'
 
@@ -36,6 +37,8 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
   const planBusy = planMic.state !== 'idle'
   const thoughtsBusy = thoughtsMic.state !== 'idle'
   const answerBusy = answerMic.state !== 'idle'
+  const middle = useRef<HTMLDivElement>(null)
+  useScrollEdges(middle)
 
   if (q.kind === 'game') return <GameDock question={q} onAnswer={onAnswer} />
 
@@ -158,7 +161,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
         <div ref={head} tabIndex={-1} className="q-head">
           <RichText md={q.prompt} className="q" />
         </div>
-        <div className="dock-scroll">
+        <div className="dock-scroll scroll-edge" ref={middle}>
           {isChoice && (
             <>
               <div className="opts" role="group" aria-label="Opzioni">

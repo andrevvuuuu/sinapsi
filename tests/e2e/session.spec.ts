@@ -85,7 +85,24 @@ test('long measure question in a 720px-high window', async () => {
   const tutor = win.locator('.sess .msg').filter({ hasText: 'Buon Ordinamento' }).last()
   const barBottom = (await win.locator('.sess .top').boundingBox())!.y + (await win.locator('.sess .top').boundingBox())!.height
   expect((await tutor.boundingBox())!.y).toBeGreaterThanOrEqual(barBottom - 1)
+  // The options area inside the dock says there is more below, and only there.
+  const middle = win.locator('.dock .dock-scroll')
+  await expect(middle).toHaveAttribute('data-more-below', '')
+  await expect(middle).not.toHaveAttribute('data-more-above', '')
   await win.screenshot({ path: 'test-results/session-measure-long.png' })
+  // The keyboard reaches a hidden option: focus scrolls it into view inside the dock.
+  await win.getByRole('button', { name: /^D:/ }).focus()
+  await win.keyboard.press('Tab')
+  const idk = win.getByRole('button', { name: 'Non lo so' })
+  await expect(idk).toBeFocused()
+  const [area, idkBox] = [(await middle.boundingBox())!, (await idk.boundingBox())!]
+  expect(idkBox.y).toBeGreaterThanOrEqual(area.y)
+  expect(idkBox.y + idkBox.height).toBeLessThanOrEqual(area.y + area.height)
+  await middle.evaluate((el) => el.scrollTo({ top: el.scrollHeight }))
+  await expect(middle).not.toHaveAttribute('data-more-below', '')
+  await expect(middle).toHaveAttribute('data-more-above', '')
+  await middle.evaluate((el) => el.scrollTo({ top: 0 }))
+  await expect(middle).toHaveAttribute('data-more-below', '')
   // Scrolled to the end, the last tutor message ends above the dock.
   await win.evaluate(() => {
     const el = document.querySelector('.sess .scroll')!

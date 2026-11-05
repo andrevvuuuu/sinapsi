@@ -54,6 +54,10 @@
 .inner.has-scroll .q-head{max-height:30vh;overflow:auto}
 /* The options, confidence and reasoning scroll between the fixed question and send row; the padding keeps their focus rings unclipped. */
 .inner.has-scroll>.dock-scroll{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;margin:-4px -6px;padding:4px 6px}
+/* A short scroll edge fade says there is more, only on the side where content is hidden (data-more-*, useScrollEdges). */
+.dock-scroll.scroll-edge{--scroll-edge-top:0px;--scroll-edge-bottom:0px}
+.dock-scroll[data-more-above]{--scroll-edge-top:18px}
+.dock-scroll[data-more-below]{--scroll-edge-bottom:18px}
 .sess .shell{padding:6px;border-radius:24px}
 .sess .inner{border-radius:19px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:14px 16px}
 .sess .q{font-size:17px;margin:4px 0 10px}

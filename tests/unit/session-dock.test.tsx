@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { QuestionDock } from '../../src/renderer/src/session/QuestionDock'
 import { SessionView } from '../../src/renderer/src/session/SessionView'
 import type { SessionState } from '../../src/shared/api'
 import type { Question } from '../../src/shared/teacher-protocol'
@@ -64,5 +65,23 @@ describe('the question dock and the conversation above it', () => {
     expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' }))
     const target = scrollIntoView.mock.contexts[scrollIntoView.mock.contexts.length - 1]
     expect(target).toBe(msg)
+  })
+
+  it('marks the options area where more of it is hidden, so the fade shows only there', () => {
+    const { container } = render(<QuestionDock question={question} onAnswer={vi.fn()} onSay={vi.fn()} />)
+    const area = container.querySelector('.dock-scroll') as HTMLElement
+    const metrics = { scrollTop: 0, scrollHeight: 600, clientHeight: 300 }
+    for (const k of Object.keys(metrics) as (keyof typeof metrics)[])
+      Object.defineProperty(area, k, { configurable: true, get: () => metrics[k] })
+    const at = (top: number): [boolean, boolean] => {
+      metrics.scrollTop = top
+      fireEvent.scroll(area)
+      return [area.hasAttribute('data-more-above'), area.hasAttribute('data-more-below')]
+    }
+    expect(at(0)).toEqual([false, true])
+    expect(at(150)).toEqual([true, true])
+    expect(at(300)).toEqual([true, false])
+    metrics.scrollHeight = 300
+    expect(at(0)).toEqual([false, false])
   })
 })
