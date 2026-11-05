@@ -15,12 +15,13 @@
   min-width: 0;
 }
 .mic-field > :is(textarea, input) {
+  display: block;
   width: 100%;
 }
-/* One-line textareas that may grow: the microphone stays at the foot, inside the box. */
+/* One-line textareas: the microphone is centred on the field itself. */
 .mic-field.mic-row > .mic {
-  top: auto;
-  bottom: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 .mic {
   position: absolute;
@@ -38,7 +39,10 @@
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
 }
 .mic-field > input ~ .mic {
   top: 50%;

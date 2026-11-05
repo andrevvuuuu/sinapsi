@@ -228,7 +228,6 @@ export function NotebookView({
           />
           <MicButton dictation={nameMic} size="sm" />
         </div>
-        <DictationError dictation={nameMic} />
         <label className="nb-subject nodrag">
           <span className="lab">Materia</span>
           <select
@@ -265,6 +264,7 @@ export function NotebookView({
           Elimina notebook
         </button>
       </header>
+      <DictationError dictation={nameMic} />
       {message && (
         <p className="nb-alert floating" role="alert">
           {message}

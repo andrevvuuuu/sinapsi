@@ -136,6 +136,9 @@ export function LeftPanel(p: Props): React.JSX.Element {
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
+                    // While dictating, Escape only stops the recording: the field stays.
+                    if (searchMic.state !== 'idle')
+                      return searchMic.state === 'recording' ? searchMic.toggle() : undefined
                     setQ('')
                     setSearching(false)
                   }

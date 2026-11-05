@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import type { Game } from '../../../../shared/teacher-protocol'
 import { useDictation } from '../../components/dictation'
 import { DictationError, MicButton } from '../../components/MicButton'
@@ -12,6 +12,7 @@ type Taboo = Extract<Game, { type: 'taboo' }>
 export function Taboo({ game, onDone }: GameProps<Taboo>): React.JSX.Element {
   const [text, setText] = useState('')
   const used = tabooUsed(game.forbidden, text)
+  const uid = useId()
   const field = useRef<HTMLTextAreaElement>(null)
   const dictation = useDictation({ target: field, value: text, onChange: setText })
   const busy = dictation.state !== 'idle'
@@ -27,10 +28,11 @@ export function Taboo({ game, onDone }: GameProps<Taboo>): React.JSX.Element {
           </span>
         ))}
       </div>
-      <label className="g-why">
-        La tua spiegazione
-        <span className="mic-field">
+      <div className="g-why">
+        <label htmlFor={`${uid}-text`}>La tua spiegazione</label>
+        <div className="mic-field">
           <textarea
+            id={`${uid}-text`}
             ref={field}
             readOnly={busy}
             rows={3}
@@ -38,8 +40,8 @@ export function Taboo({ game, onDone }: GameProps<Taboo>): React.JSX.Element {
             onChange={(e) => setText(e.target.value)}
           />
           <MicButton dictation={dictation} />
-        </span>
-      </label>
+        </div>
+      </div>
       <DictationError dictation={dictation} />
       {used.length > 0 && (
         <p className="g-fb no" role="alert">

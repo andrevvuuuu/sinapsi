@@ -3,6 +3,10 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Composer } from '../../src/renderer/src/home/Composer'
 import { LeftPanel } from '../../src/renderer/src/home/LeftPanel'
+import { Spot } from '../../src/renderer/src/session/games/Spot'
+import { Taboo } from '../../src/renderer/src/session/games/Taboo'
+import { NotebookView } from '../../src/renderer/src/notebook/NotebookView'
+import { SourceList } from '../../src/renderer/src/notebook/SourceList'
 import { ChatPane } from '../../src/renderer/src/notebook/ChatPane'
 import { Estimate, Open } from '../../src/renderer/src/review/exercises/Inputs'
 import { Explain } from '../../src/renderer/src/review/exercises/Explain'
@@ -174,6 +178,75 @@ describe('dictation in every free-text field', () => {
     )
     expect(screen.getByLabelText('Il tuo valore')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Detta' })).toBeNull()
+  })
+
+  it('the link fields (YouTube, NotebookLM) have no mic', async () => {
+    const NB = '11111111-1111-4111-8111-111111111111'
+    const notebook = {
+      id: NB,
+      name: 'Analisi 1',
+      subject: null,
+      link: null,
+      createdAt: 1,
+      sources: []
+    }
+    window.sinapsi = {
+      ...window.sinapsi,
+      notebook: {
+        list: vi.fn(async () => [notebook]),
+        chat: vi.fn(async () => []),
+        onUpdate: vi.fn(() => () => undefined),
+        busy: vi.fn(async () => false)
+      },
+      vault: { index: vi.fn(async () => ({ subjects: [], notes: [] })) }
+    } as never
+    render(
+      <SourceList
+        notebook={notebook as never}
+        excluded={new Set()}
+        onToggle={vi.fn()}
+        onView={vi.fn()}
+        notes={[]}
+        onMessage={vi.fn()}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'YouTube' }))
+    expect(screen.getByLabelText('Link del video')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Detta' })).toBeNull()
+    cleanup()
+
+    render(<NotebookView id={NB} onBack={vi.fn()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Collega NotebookLM' }))
+    expect(screen.getByLabelText('Link del notebook su NotebookLM')).toBeTruthy()
+    // The only mic on the page is the one of the notebook name.
+    const mics = screen.getAllByRole('button', { name: 'Detta' })
+    expect(mics).toHaveLength(2)
+    for (const m of mics)
+      expect(
+        m
+          .closest('.mic-field')
+          ?.querySelector(
+            'input[aria-label="Nome del notebook"], textarea[aria-label="Chiedi alle tue fonti"]'
+          )
+      ).toBeTruthy()
+  })
+
+  it('the games name their textarea without the mic in the name', () => {
+    render(
+      <Spot
+        game={{ type: 'spot', lines: ['a', 'b'], wrong: 1, why: 'x' } as never}
+        onDone={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('textbox', { name: 'Perché è sbagliata?' })).toBeTruthy()
+    cleanup()
+    render(
+      <Taboo
+        game={{ type: 'taboo', concept: 'limite', forbidden: ['x'] } as never}
+        onDone={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('textbox', { name: 'La tua spiegazione' })).toBeTruthy()
   })
 
   it('short fields stop at two minutes, long ones at ten', async () => {

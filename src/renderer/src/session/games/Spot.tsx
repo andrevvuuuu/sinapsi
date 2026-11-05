@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import type { Game } from '../../../../shared/teacher-protocol'
 import { useDictation } from '../../components/dictation'
 import { DictationError, MicButton } from '../../components/MicButton'
@@ -12,6 +12,7 @@ export function Spot({ game, onDone }: GameProps<Spot>): React.JSX.Element {
   const [pick, setPick] = useState<number | null>(null)
   const [why, setWhy] = useState('')
   const [checked, setChecked] = useState(false)
+  const uid = useId()
   const field = useRef<HTMLTextAreaElement>(null)
   const dictation = useDictation({ target: field, value: why, onChange: setWhy, enabled: !checked })
   const busy = dictation.state !== 'idle'
@@ -35,10 +36,11 @@ export function Spot({ game, onDone }: GameProps<Spot>): React.JSX.Element {
       </div>
       {!checked && (
         <>
-          <label className="g-why">
-            Perché è sbagliata?
-            <span className="mic-field">
+          <div className="g-why">
+            <label htmlFor={`${uid}-why`}>Perché è sbagliata?</label>
+            <div className="mic-field">
               <textarea
+                id={`${uid}-why`}
                 ref={field}
                 readOnly={busy}
                 rows={2}
@@ -46,8 +48,8 @@ export function Spot({ game, onDone }: GameProps<Spot>): React.JSX.Element {
                 onChange={(e) => setWhy(e.target.value)}
               />
               <MicButton dictation={dictation} />
-            </span>
-          </label>
+            </div>
+          </div>
           <DictationError dictation={dictation} />
         </>
       )}

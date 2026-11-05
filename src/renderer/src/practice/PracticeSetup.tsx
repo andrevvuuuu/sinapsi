@@ -313,7 +313,8 @@ export function PracticeSetup({
                     }}
                     onKeyDown={(e) => {
                       // Enter looks for concepts; Shift+Enter keeps the lines of a pasted problem.
-                      if (e.key !== 'Enter' || e.shiftKey || !free.trim() || !catalog) return
+                      if (e.key !== 'Enter' || e.shiftKey || dictating || !free.trim() || !catalog)
+                        return
                       e.preventDefault()
                       const raw = free.trim()
                       const hits = matchConcepts(catalog, raw)

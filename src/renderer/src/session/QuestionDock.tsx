@@ -58,7 +58,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
                 onChange={(e) => setText(e.target.value)}
                 rows={1}
               />
-              <MicButton dictation={planMic} />
+              <MicButton dictation={planMic} size="sm" />
             </div>
           </div>
           <DictationError dictation={planMic} />
