@@ -28,9 +28,9 @@
 .scroll{overflow:auto;scrollbar-width:thin;scrollbar-color:var(--hair) transparent}
 .empty{font-size:var(--fs-footnote);color:var(--muted);padding:var(--s-3) var(--s-2)}
 .divider{height:1px;background:var(--hair);margin:var(--s-1) var(--s-5)}
-/* Tree rows: 44 px like the session rows above them, folder and note alike. */
+/* Tree rows: dense macOS sidebar rows (36 px, above --hit-min), folder and note alike. */
 .tree{font-size:var(--fs-body);padding:0 var(--s-1)}
-.tree details>summary{list-style:none;display:flex;align-items:center;gap:var(--s-2);min-height:var(--ctl);padding:0 var(--s-2);border-radius:var(--r-sm);cursor:pointer}
+.tree details>summary{list-style:none;display:flex;align-items:center;gap:var(--s-2);min-height:var(--ctl-sm);padding:0 var(--s-2);border-radius:var(--r-sm);cursor:pointer}
 .tree details>summary:focus-visible{outline-offset:-2px;border-radius:var(--r-sm)}
 .tree details>summary::-webkit-details-marker{display:none}
 .tree summary svg{width:12px;height:12px;color:var(--muted);transition:transform .2s var(--ease-out)}
@@ -38,7 +38,7 @@
 .tree summary:hover,.tree .leaf:hover{background:var(--btn-secondary-bg-hover)}
 .tree summary:active,.tree .leaf:active{background:var(--btn-secondary-bg-pressed)}
 .tree .kids{padding-left:var(--s-3);border-left:1px solid var(--hair);margin-left:14px}
-.tree .leaf{display:flex;align-items:center;gap:var(--s-2);width:100%;min-height:var(--ctl);padding:0 var(--s-2);border:0;border-radius:var(--r-sm);background:transparent;color:var(--muted);font:inherit;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:var(--btn-transition)}
+.tree .leaf{display:flex;align-items:center;gap:var(--s-2);width:100%;min-height:var(--ctl-sm);padding:0 var(--s-2);border:0;border-radius:var(--r-sm);background:transparent;color:var(--muted);font:inherit;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:var(--btn-transition)}
 .tree .leaf:focus-visible{outline-offset:-2px;border-radius:var(--r-sm)}
 .tree .leaf span{overflow:hidden;text-overflow:ellipsis}
 /* A note the vault cannot read now: the tertiary colour, still AA (opacity would drop it below). */

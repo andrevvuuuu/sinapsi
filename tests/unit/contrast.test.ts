@@ -84,10 +84,16 @@ describe.each<Theme>(['lavagna', 'trattato'])('contrast in %s', (theme) => {
     expect(worst).toBeGreaterThanOrEqual(4.5)
   })
 
-  // Accent and pen labels on a glass bar (session phase, score, «Dalla tua nota»): AA over the tint whatever scrolls
-  // under it, the same worst case as --glass-ink-2 — the tint over --bg, --surface and the most contrasting app colour (--ink).
-  it.each(['--glass-accent', '--glass-pen'])('%s stays AA on glass, worst case', (name) => {
-    const worst = Math.min(...['--bg', '--surface', '--ink'].map((g) => ratio(c(name), over(c('--glass-tint'), c(g)))))
+  // Accent and pen labels on the glass session bar (phase, score, «Dalla tua nota»): AA over the tint whatever scrolls
+  // under it. Mask-aware worst case: the conversation under the bar is masked by the scroll edge (it fades in across the
+  // bar's height), so at the labels it is at most 65 % visible. Grounds: the tint over --bg, over --surface, and over
+  // the most contrasting app colour (--ink) at 65 % on --bg.
+  const MASKED = 0.65
+  it.each(['--glass-accent', '--glass-pen'])('%s stays AA on the glass bar, mask-aware worst case', (name) => {
+    const [ink, bg] = [c('--ink'), c('--bg')]
+    const content: RGBA = [ink[0], ink[1], ink[2], MASKED]
+    const grounds = [bg, c('--surface'), over(content, bg)]
+    const worst = Math.min(...grounds.map((g) => ratio(c(name), over(c('--glass-tint'), g))))
     expect(worst).toBeGreaterThanOrEqual(4.5)
   })
 

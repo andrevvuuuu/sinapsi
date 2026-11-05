@@ -17,8 +17,9 @@ const THEMES = ['lavagna', 'trattato'] as const
  * - `.graph .gzoom button`: the graph's zoom controls, floating on the canvas.
  * - `.mic.mic-sm`: the in-field microphone of size sm, inside short fields.
  * - `.graph .gpanel button`: the graph menu panel (lens selector, «Disposizione e strati»), graph controls too.
+ * - `.tree .leaf`: the note rows of the Home's side panels (vault tree, notes vive), dense macOS sidebar rows (36 px).
  */
-const DENSE = ['.nota .island button', '.graph .gzoom button', '.mic.mic-sm', '.graph .gpanel button']
+const DENSE = ['.nota .island button', '.graph .gzoom button', '.mic.mic-sm', '.graph .gpanel button', '.tree .leaf']
 
 /**
  * Known failures that later areas of Task 8 fix (8b Home/left panel/settings, 8c session and games, 8d review,
