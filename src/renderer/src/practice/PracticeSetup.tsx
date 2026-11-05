@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { matchConcepts } from '../../../shared/practice-match'
 import type { Catalog } from '../../../shared/practice-types'
+import { useDictation } from '../components/dictation'
+import { DictationError, MicButton } from '../components/MicButton'
 import { MaterialDialog } from './MaterialDialog'
 import { clampMinutes, summary } from './summary'
 import './practice.css'
 
-const clean = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+const clean = (e: unknown): string =>
+  (e instanceof Error ? e.message : String(e)).replace(
+    /^Error invoking remote method '[^']+': (Error: )?/,
+    ''
+  )
 
 export function PracticeSetup({
   initialText = '',
@@ -33,6 +39,9 @@ export function PracticeSetup({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const go = useRef<HTMLButtonElement>(null)
+  const freeField = useRef<HTMLTextAreaElement>(null)
+  const dictation = useDictation({ target: freeField, value: free, onChange: setFree })
+  const dictating = dictation.state !== 'idle'
   const minutes = preset === 'custom' ? custom : Number(preset)
 
   const applyText = (cat: Catalog, raw: string, picked: Set<string>): Set<string> => {
@@ -52,7 +61,9 @@ export function PracticeSetup({
     void api.catalog().then((cat) => {
       if (!live) return
       setCatalog(cat)
-      let picked = new Set(initial ? initial.conceptIds : cat.suggested.slice(0, 2).map((x) => x.id))
+      let picked = new Set(
+        initial ? initial.conceptIds : cat.suggested.slice(0, 2).map((x) => x.id)
+      )
       const text = initialText.trim()
       if (text) {
         picked = applyText(cat, text, picked)
@@ -67,16 +78,22 @@ export function PracticeSetup({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api])
 
-  const names = new Map(catalog?.subjects.flatMap((s) => s.notes.flatMap((n) => n.concepts.map((c) => [c.id, c.name] as const))) ?? [])
+  const names = new Map(
+    catalog?.subjects.flatMap((s) =>
+      s.notes.flatMap((n) => n.concepts.map((c) => [c.id, c.name] as const))
+    ) ?? []
+  )
   const sourceTitle = new Map(catalog?.sources.map((s) => [s.id, s] as const) ?? [])
   const has = concepts.size + sources.size > 0 || free.trim().length > 0
   const start = async (): Promise<void> => {
-    if (!has || busy) return
+    if (!has || busy || dictating) return
     setBusy(true)
     setError(null)
     const material = { conceptIds: [...concepts], sourceIds: [...sources], free: free.trim() }
     try {
-      onStarted(mode === 'exam' ? await api.examStart(material, minutes, paper) : await api.create(material))
+      onStarted(
+        mode === 'exam' ? await api.examStart(material, minutes, paper) : await api.create(material)
+      )
     } catch (e) {
       setError(clean(e))
       setBusy(false)
@@ -120,7 +137,11 @@ export function PracticeSetup({
                   {[...concepts].map((id) => (
                     <span key={id} className="mt-chip on">
                       {names.get(id) ?? id}
-                      <button type="button" aria-label={`Togli ${names.get(id) ?? id}`} onClick={() => setConcepts((p) => new Set([...p].filter((x) => x !== id)))}>
+                      <button
+                        type="button"
+                        aria-label={`Togli ${names.get(id) ?? id}`}
+                        onClick={() => setConcepts((p) => new Set([...p].filter((x) => x !== id)))}
+                      >
                         ×
                       </button>
                     </span>
@@ -129,12 +150,20 @@ export function PracticeSetup({
                     <span key={id} className="mt-chip on">
                       <span className="mt-tag">{sourceTitle.get(id)?.kind}</span>
                       {sourceTitle.get(id)?.title}
-                      <button type="button" aria-label={`Togli ${sourceTitle.get(id)?.title}`} onClick={() => setSources((p) => new Set([...p].filter((x) => x !== id)))}>
+                      <button
+                        type="button"
+                        aria-label={`Togli ${sourceTitle.get(id)?.title}`}
+                        onClick={() => setSources((p) => new Set([...p].filter((x) => x !== id)))}
+                      >
                         ×
                       </button>
                     </span>
                   ))}
-                  {concepts.size + sources.size === 0 && <span className="mt-hint">Niente ancora: tocca un suggerito o scrivi un argomento.</span>}
+                  {concepts.size + sources.size === 0 && (
+                    <span className="mt-hint">
+                      Niente ancora: tocca un suggerito o scrivi un argomento.
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="mt-group" role="group" aria-label="Suggeriti per oggi">
@@ -143,13 +172,25 @@ export function PracticeSetup({
                   {catalog.suggested
                     .filter((x) => !concepts.has(x.id))
                     .map((x) => (
-                      <button key={x.id} type="button" className="mt-chip" onClick={() => setConcepts((p) => new Set([...p, x.id]))}>
+                      <button
+                        key={x.id}
+                        type="button"
+                        className="mt-chip"
+                        onClick={() => setConcepts((p) => new Set([...p, x.id]))}
+                      >
                         {x.name}
                         <small>{x.why}</small>
                       </button>
                     ))}
-                  {catalog.suggested.length > 0 && catalog.suggested.every((x) => concepts.has(x.id)) && <span className="mt-hint">Hai già preso tutti i suggeriti.</span>}
-                  {catalog.suggested.length === 0 && <span className="mt-hint">Nessun suggerimento: il grafo è ancora vuoto o tutto è fresco.</span>}
+                  {catalog.suggested.length > 0 &&
+                    catalog.suggested.every((x) => concepts.has(x.id)) && (
+                      <span className="mt-hint">Hai già preso tutti i suggeriti.</span>
+                    )}
+                  {catalog.suggested.length === 0 && (
+                    <span className="mt-hint">
+                      Nessun suggerimento: il grafo è ancora vuoto o tutto è fresco.
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="mt-toast" role="status">
@@ -189,22 +230,49 @@ export function PracticeSetup({
                   <span className="lab">Durata</span>
                   <div className="dur" role="group" aria-label="Durata">
                     {(['30', '60', '90'] as const).map((d) => (
-                      <button key={d} type="button" aria-pressed={preset === d} onClick={() => setPreset(d)}>
+                      <button
+                        key={d}
+                        type="button"
+                        aria-pressed={preset === d}
+                        onClick={() => setPreset(d)}
+                      >
                         {d} min
                       </button>
                     ))}
-                    <button type="button" aria-pressed={preset === 'custom'} onClick={() => setPreset('custom')}>
+                    <button
+                      type="button"
+                      aria-pressed={preset === 'custom'}
+                      onClick={() => setPreset('custom')}
+                    >
                       Altro…
                     </button>
                   </div>
                   {preset === 'custom' && (
                     <div className="custom">
-                      <button type="button" aria-label="Meno 5 minuti" onClick={() => setCustom((m) => clampMinutes(m - 5))}>
+                      <button
+                        type="button"
+                        aria-label="Meno 5 minuti"
+                        onClick={() => setCustom((m) => clampMinutes(m - 5))}
+                      >
                         −
                       </button>
-                      <input type="number" inputMode="numeric" min={5} max={300} step={5} aria-label="Durata in minuti" value={custom} onChange={(e) => setCustom(Number(e.target.value))} onBlur={() => setCustom((m) => clampMinutes(m))} />
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={5}
+                        max={300}
+                        step={5}
+                        aria-label="Durata in minuti"
+                        value={custom}
+                        onChange={(e) => setCustom(Number(e.target.value))}
+                        onBlur={() => setCustom((m) => clampMinutes(m))}
+                      />
                       <span>min</span>
-                      <button type="button" aria-label="Più 5 minuti" onClick={() => setCustom((m) => clampMinutes(m + 5))}>
+                      <button
+                        type="button"
+                        aria-label="Più 5 minuti"
+                        onClick={() => setCustom((m) => clampMinutes(m + 5))}
+                      >
                         +
                       </button>
                     </div>
@@ -231,29 +299,43 @@ export function PracticeSetup({
                 </p>
               )}
               <div className="startrow">
-                <textarea
-                  rows={free.includes('\n') ? 4 : 1}
-                  aria-label="Argomento libero"
-                  placeholder="Scrivi un argomento (es. «autovalori») o incolla un esercizio d'esame"
-                  value={free}
-                  onChange={(e) => {
-                    setFree(e.target.value)
-                    setToast('')
-                  }}
-                  onKeyDown={(e) => {
-                    // Enter looks for concepts; Shift+Enter keeps the lines of a pasted problem.
-                    if (e.key !== 'Enter' || e.shiftKey || !free.trim() || !catalog) return
-                    e.preventDefault()
-                    const raw = free.trim()
-                    const hits = matchConcepts(catalog, raw)
-                    setConcepts((p) => applyText(catalog, raw, p))
-                    if (hits.length) setFree('')
-                  }}
-                />
-                <button ref={go} type="button" className={'pri' + (mode === 'exam' ? ' exam' : '')} disabled={!has || busy} onClick={() => void start()}>
-                  {mode === 'exam' ? `Inizia simulazione${paper ? ' su carta' : ''} · ${minutes} min` : 'Inizia allenamento'}
+                <div className="mic-field mic-fill mic-row">
+                  <textarea
+                    ref={freeField}
+                    readOnly={dictating}
+                    rows={free.includes('\n') ? 4 : 1}
+                    aria-label="Argomento libero"
+                    placeholder="Scrivi un argomento (es. «autovalori») o incolla un esercizio d'esame"
+                    value={free}
+                    onChange={(e) => {
+                      setFree(e.target.value)
+                      setToast('')
+                    }}
+                    onKeyDown={(e) => {
+                      // Enter looks for concepts; Shift+Enter keeps the lines of a pasted problem.
+                      if (e.key !== 'Enter' || e.shiftKey || !free.trim() || !catalog) return
+                      e.preventDefault()
+                      const raw = free.trim()
+                      const hits = matchConcepts(catalog, raw)
+                      setConcepts((p) => applyText(catalog, raw, p))
+                      if (hits.length) setFree('')
+                    }}
+                  />
+                  <MicButton dictation={dictation} />
+                </div>
+                <button
+                  ref={go}
+                  type="button"
+                  className={'pri' + (mode === 'exam' ? ' exam' : '')}
+                  disabled={!has || busy || dictating}
+                  onClick={() => void start()}
+                >
+                  {mode === 'exam'
+                    ? `Inizia simulazione${paper ? ' su carta' : ''} · ${minutes} min`
+                    : 'Inizia allenamento'}
                 </button>
               </div>
+              <DictationError dictation={dictation} />
             </div>
           </div>
         )}

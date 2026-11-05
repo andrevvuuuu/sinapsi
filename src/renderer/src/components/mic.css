@@ -1,12 +1,26 @@
 /* Dictation: the microphone sits inside the field, on the right, without adding height. */
 .mic-field {
   position: relative;
+  display: block;
 }
 .mic-field.mic-field:has(> .mic) > :is(textarea, input) {
   padding-right: calc(var(--ctl) + 8px);
 }
 .mic-field.mic-field:has(> .mic-sm) > :is(textarea, input) {
   padding-right: calc(var(--ctl-sm) + 8px);
+}
+/* In a flex row: the field and its microphone take the space the bare field had. */
+.mic-field.mic-fill {
+  flex: 1;
+  min-width: 0;
+}
+.mic-field > :is(textarea, input) {
+  width: 100%;
+}
+/* One-line textareas that may grow: the microphone stays at the foot, inside the box. */
+.mic-field.mic-row > .mic {
+  top: auto;
+  bottom: 0;
 }
 .mic {
   position: absolute;

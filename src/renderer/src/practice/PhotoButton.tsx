@@ -1,26 +1,59 @@
 import { useEffect, useRef, useState } from 'react'
+import { useDictation } from '../components/dictation'
+import { DictationError, MicButton } from '../components/MicButton'
 
-const clean = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+const clean = (e: unknown): string =>
+  (e instanceof Error ? e.message : String(e)).replace(
+    /^Error invoking remote method '[^']+': (Error: )?/,
+    ''
+  )
 
 /**
  * "Foto del foglio": the iPhone (Continuity Camera) or the Mac camera, or an image file.
  * Claude reads the sheet; Andrea checks and corrects the text before it is used.
  */
-function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText: (text: string) => void; onClose: () => void }): React.JSX.Element {
+function PhotoDialog({
+  sessionId,
+  onText,
+  onClose
+}: {
+  sessionId: string
+  onText: (text: string) => void
+  onClose: () => void
+}): React.JSX.Element {
   const api = window.sinapsi.practice
   const video = useRef<HTMLVideoElement>(null)
   const stream = useRef<MediaStream | null>(null)
   const [cams, setCams] = useState<MediaDeviceInfo[]>([])
   const [cam, setCam] = useState<string>('')
   const [camError, setCamError] = useState<string | null>(null)
-  const [state, setState] = useState<{ k: 'idle' } | { k: 'reading' } | { k: 'read'; text: string } | { k: 'error'; message: string }>({ k: 'idle' })
+  const [state, setState] = useState<
+    { k: 'idle' } | { k: 'reading' } | { k: 'read'; text: string } | { k: 'error'; message: string }
+  >({ k: 'idle' })
+
+  const readField = useRef<HTMLTextAreaElement>(null)
+  const dictation = useDictation({
+    target: readField,
+    value: state.k === 'read' ? state.text : '',
+    onChange: (text) => setState({ k: 'read', text })
+  })
+  const busy = dictation.state !== 'idle'
 
   useEffect(() => {
     const md = navigator.mediaDevices
-    if (!md?.getUserMedia) return void Promise.resolve().then(() => setCamError('Fotocamera non disponibile: scegli un’immagine.'))
+    if (!md?.getUserMedia)
+      return void Promise.resolve().then(() =>
+        setCamError('Fotocamera non disponibile: scegli un’immagine.')
+      )
     let live = true
     void (async () => {
-      if (!(await api.camera().catch(() => false))) return live && setCamError('Sinapsi non ha il permesso di usare la fotocamera (Impostazioni di Sistema → Privacy → Fotocamera).')
+      if (!(await api.camera().catch(() => false)))
+        return (
+          live &&
+          setCamError(
+            'Sinapsi non ha il permesso di usare la fotocamera (Impostazioni di Sistema → Privacy → Fotocamera).'
+          )
+        )
       try {
         // Labels appear only after a first permission grant.
         const first = await md.getUserMedia({ video: true })
@@ -81,7 +114,11 @@ function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText
     c.width = v.videoWidth
     c.height = v.videoHeight
     c.getContext('2d')?.drawImage(v, 0, 0)
-    c.toBlob((b) => b && void b.arrayBuffer().then((buf) => read(new Uint8Array(buf))), 'image/jpeg', 0.9)
+    c.toBlob(
+      (b) => b && void b.arrayBuffer().then((buf) => read(new Uint8Array(buf))),
+      'image/jpeg',
+      0.9
+    )
   }
 
   return (
@@ -99,16 +136,32 @@ function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText
             <label className="lab" htmlFor="pr-read">
               Letto dal foglio — controlla e correggi
             </label>
-            <textarea id="pr-read" className="pr-read" value={state.text} onChange={(e) => setState({ k: 'read', text: e.target.value })} />
+            <div className="mic-field">
+              <textarea
+                id="pr-read"
+                ref={readField}
+                readOnly={busy}
+                className="pr-read"
+                value={state.text}
+                onChange={(e) => setState({ k: 'read', text: e.target.value })}
+              />
+              <MicButton dictation={dictation} />
+            </div>
+            <DictationError dictation={dictation} />
             <div className="row">
-              <button type="button" className="ghost" onClick={() => setState({ k: 'idle' })}>
+              <button
+                type="button"
+                className="ghost"
+                disabled={busy}
+                onClick={() => setState({ k: 'idle' })}
+              >
                 Rifai la foto
               </button>
               <span className="sp" />
               <button
                 type="button"
                 className="pri"
-                disabled={!state.text.trim()}
+                disabled={busy || !state.text.trim()}
                 onClick={() => {
                   onText(state.text.trim())
                   onClose()
@@ -125,7 +178,11 @@ function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText
             ) : (
               <>
                 {cams.length > 1 && (
-                  <select aria-label="Fotocamera" value={cam} onChange={(e) => setCam(e.target.value)}>
+                  <select
+                    aria-label="Fotocamera"
+                    value={cam}
+                    onChange={(e) => setCam(e.target.value)}
+                  >
                     {cams.map((d) => (
                       <option key={d.deviceId} value={d.deviceId}>
                         {d.label || 'Fotocamera'}
@@ -137,14 +194,18 @@ function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText
                   ref={(el) => {
                     video.current = el
                     // A new <video> after "Rifai la foto" gets the running stream.
-                    if (el && stream.current && el.srcObject !== stream.current) el.srcObject = stream.current
+                    if (el && stream.current && el.srcObject !== stream.current)
+                      el.srcObject = stream.current
                   }}
                   className="pr-video"
                   autoPlay
                   playsInline
                   muted
                 />
-                <p className="mt-hint">Con l’iPhone vicino e lo stesso Apple ID, compare tra le fotocamere (Continuity Camera).</p>
+                <p className="mt-hint">
+                  Con l’iPhone vicino e lo stesso Apple ID, compare tra le fotocamere (Continuity
+                  Camera).
+                </p>
               </>
             )}
             {state.k === 'reading' && (
@@ -174,7 +235,12 @@ function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText
               </label>
               <span className="sp" />
               {!camError && (
-                <button type="button" className="pri" disabled={state.k === 'reading'} onClick={shoot}>
+                <button
+                  type="button"
+                  className="pri"
+                  disabled={state.k === 'reading'}
+                  onClick={shoot}
+                >
                   Scatta
                 </button>
               )}
@@ -186,7 +252,15 @@ function PhotoDialog({ sessionId, onText, onClose }: { sessionId: string; onText
   )
 }
 
-export function PhotoButton({ sessionId, onText, disabled }: { sessionId: string; onText: (text: string) => void; disabled?: boolean }): React.JSX.Element {
+export function PhotoButton({
+  sessionId,
+  onText,
+  disabled
+}: {
+  sessionId: string
+  onText: (text: string) => void
+  disabled?: boolean
+}): React.JSX.Element {
   const [open, setOpen] = useState(false)
   return (
     <>

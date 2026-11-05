@@ -1,18 +1,89 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PracticeState } from '../../../main/practice/events'
-import { calibrationLine, calibrationOf, calibrationTrend, type CalibrationExam } from '../../../shared/calibration'
+import {
+  calibrationLine,
+  calibrationOf,
+  calibrationTrend,
+  type CalibrationExam
+} from '../../../shared/calibration'
+import { useDictation } from '../components/dictation'
+import { DictationError, MicButton } from '../components/MicButton'
 import { RichText } from '../session/RichText'
 import { PhotoButton } from './PhotoButton'
 import { fmtPoints } from './exam-format'
+import { useDictating } from './use-dictating'
 
 const MAX = 20_000
 
+/** The written answer to one exercise, with the microphone inside the box. */
+export function AnswerBox({
+  id,
+  index,
+  value,
+  placeholder,
+  onChange,
+  onBusy
+}: {
+  id: string
+  index: number
+  value: string
+  placeholder: string
+  onChange: (v: string) => void
+  onBusy: (id: string, on: boolean) => void
+}): React.JSX.Element {
+  const field = useRef<HTMLTextAreaElement>(null)
+  const dictation = useDictation({
+    target: field,
+    value,
+    onChange: (v) => onChange(v.slice(0, MAX))
+  })
+  const busy = dictation.state !== 'idle'
+  const report = useRef(onBusy)
+  useLayoutEffect(() => {
+    report.current = onBusy
+  })
+  useEffect(() => {
+    report.current(id, busy)
+    return () => report.current(id, false)
+  }, [id, busy])
+  return (
+    <>
+      <div className="work">
+        <div className="mic-field">
+          <textarea
+            ref={field}
+            readOnly={busy}
+            aria-label={`Risposta all’esercizio ${index + 1}`}
+            maxLength={MAX}
+            placeholder={placeholder}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          <MicButton dictation={dictation} />
+        </div>
+      </div>
+      <DictationError dictation={dictation} />
+    </>
+  )
+}
+
 /** The points Andrea gives a problem, on the grader's scale, before writing out the answer. Once given they stay. */
-function SelfGrade({ index, max, given, onGive }: { index: number; max: number; given?: number; onGive: (points: number) => Promise<void> }): React.JSX.Element {
+function SelfGrade({
+  index,
+  max,
+  given,
+  onGive
+}: {
+  index: number
+  max: number
+  given?: number
+  onGive: (points: number) => Promise<void>
+}): React.JSX.Element {
   const [value, setValue] = useState('')
   const [busy, setBusy] = useState(false)
   const n = Number(value.replace(',', '.'))
-  const valid = value.trim() !== '' && Number.isFinite(n) && n >= 0 && n <= max && Number.isInteger(n * 2)
+  const valid =
+    value.trim() !== '' && Number.isFinite(n) && n >= 0 && n <= max && Number.isInteger(n * 2)
   if (given !== undefined)
     return (
       <p className="pr-self given">
@@ -70,12 +141,19 @@ export function PaperReview({
   const exam = state.exam!
   const self = exam.self ?? {}
   const missing = exam.sheet.problems.filter((p) => !(p.id in self)).length
-  const append = (id: string, t: string): void => setAnswers((a) => ({ ...a, [id]: [a[id]?.trim(), t].filter(Boolean).join('\n\n').slice(0, MAX) }))
+  const dictating = useDictating()
+  const append = (id: string, t: string): void =>
+    setAnswers((a) => ({
+      ...a,
+      [id]: [a[id]?.trim(), t].filter(Boolean).join('\n\n').slice(0, MAX)
+    }))
   return (
     <>
       <h2 className="pr-sheet-title">Penne giù</h2>
       <p className="mt-hint">
-        Per ogni esercizio confronta il tuo foglio con la soluzione e datti un voto, onesto, prima di vedere la correzione. Poi ricopia o fotografa la tua risposta: la correzione arriva quando tutti gli esercizi hanno il tuo voto.
+        Per ogni esercizio confronta il tuo foglio con la soluzione e datti un voto, onesto, prima
+        di vedere la correzione. Poi ricopia o fotografa la tua risposta: la correzione arriva
+        quando tutti gli esercizi hanno il tuo voto.
       </p>
       {exam.sheet.problems.map((p, i) => (
         <section key={p.id} className="card pr-ex" aria-label={`Esercizio ${i + 1}`}>
@@ -91,19 +169,23 @@ export function PaperReview({
             </div>
           )}
           <div className="sol">
-            <SelfGrade index={i} max={p.points} given={self[p.id]} onGive={(points) => api.examSelf(state.id, p.id, points)} />
+            <SelfGrade
+              index={i}
+              max={p.points}
+              given={self[p.id]}
+              onGive={(points) => api.examSelf(state.id, p.id, points)}
+            />
           </div>
           {p.id in self && (
             <>
-              <div className="work">
-                <textarea
-                  aria-label={`Risposta all’esercizio ${i + 1}`}
-                  maxLength={MAX}
-                  placeholder="Ricopia qui la soluzione scritta sul foglio (LaTeX con $…$) o fotografala."
-                  value={answers[p.id] ?? ''}
-                  onChange={(e) => setAnswers((a) => ({ ...a, [p.id]: e.target.value }))}
-                />
-              </div>
+              <AnswerBox
+                id={p.id}
+                index={i}
+                value={answers[p.id] ?? ''}
+                placeholder="Ricopia qui la soluzione scritta sul foglio (LaTeX con $…$) o fotografala."
+                onChange={(v) => setAnswers((a) => ({ ...a, [p.id]: v }))}
+                onBusy={dictating.report}
+              />
               <div className="row">
                 <PhotoButton sessionId={state.id} onText={(t) => append(p.id, t)} />
               </div>
@@ -117,15 +199,23 @@ export function PaperReview({
         </p>
       )}
       <div className="row">
-        {missing > 0 && <span className="mt-hint">{missing === 1 ? 'Manca il tuo voto su 1 esercizio.' : `Manca il tuo voto su ${missing} esercizi.`}</span>}
+        {missing > 0 && (
+          <span className="mt-hint">
+            {missing === 1
+              ? 'Manca il tuo voto su 1 esercizio.'
+              : `Manca il tuo voto su ${missing} esercizi.`}
+          </span>
+        )}
         <span className="sp" />
         <button
           type="button"
           className="pri exam"
-          disabled={missing > 0}
+          disabled={missing > 0 || dictating.any}
           onClick={() => {
             const empty = exam.sheet.problems.filter((p) => !answers[p.id]?.trim()).length
-            const ask = empty ? `${empty === 1 ? 'Un esercizio è' : `${empty} esercizi sono`} senza risposta e varranno 0. Mandare alla correzione?` : 'Mandare alla correzione? Dopo non potrai più modificare le risposte.'
+            const ask = empty
+              ? `${empty === 1 ? 'Un esercizio è' : `${empty} esercizi sono`} senza risposta e varranno 0. Mandare alla correzione?`
+              : 'Mandare alla correzione? Dopo non potrai più modificare le risposte.'
             if (window.confirm(ask)) onDeliver()
           }}
         >
@@ -136,7 +226,8 @@ export function PaperReview({
   )
 }
 
-const fmtDate = (at: number): string => new Date(at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
+const fmtDate = (at: number): string =>
+  new Date(at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
 const signed = (n: number): string => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtPoints(Math.abs(n))
 
 /** Self-grade against the grader's, for this exam and for every paper exam so far. */
@@ -145,13 +236,27 @@ export function CalibrationPanel({ state }: { state: PracticeState }): React.JSX
   const g = state.exam?.grade
   useEffect(() => {
     let live = true
-    void window.sinapsi.practice.calibration().then((h) => live && setHistory(h), () => live && setHistory([]))
+    void window.sinapsi.practice.calibration().then(
+      (h) => live && setHistory(h),
+      () => live && setHistory([])
+    )
     return () => {
       live = false
     }
   }, [state.id])
   if (!g || !state.exam) return null
-  const items = g.items.flatMap((it, i) => (it.self === undefined ? [] : [{ id: it.id, max: state.exam!.sheet.problems[i]?.points ?? 0, self: it.self, ai: it.points }]))
+  const items = g.items.flatMap((it, i) =>
+    it.self === undefined
+      ? []
+      : [
+          {
+            id: it.id,
+            max: state.exam!.sheet.problems[i]?.points ?? 0,
+            self: it.self,
+            ai: it.points
+          }
+        ]
+  )
   const c = calibrationOf(items)
   const past = history ?? []
   const trend = calibrationTrend(past)
@@ -173,7 +278,13 @@ export function CalibrationPanel({ state }: { state: PracticeState }): React.JSX
                   <span>{fmtDate(e.at)}</span>
                   <span className="pr-calib-topic">{e.topic}</span>
                   <span>{`${x.selfTotal} → ${x.aiTotal}`}</span>
-                  <span className={'chip ' + (Math.abs(x.bias) < 0.5 ? 'ok' : x.bias > 0 ? 'no' : 'mid')}>{signed(x.bias)}</span>
+                  <span
+                    className={
+                      'chip ' + (Math.abs(x.bias) < 0.5 ? 'ok' : x.bias > 0 ? 'no' : 'mid')
+                    }
+                  >
+                    {signed(x.bias)}
+                  </span>
                 </li>
               )
             })}

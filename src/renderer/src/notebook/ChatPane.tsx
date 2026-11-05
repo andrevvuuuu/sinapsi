@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChatTurn, Excerpt } from '../../../shared/notebook-types'
+import { useDictation } from '../components/dictation'
+import { DictationError, MicButton } from '../components/MicButton'
 import { RichText } from '../session/RichText'
 
-const STARTERS = ['Riassumi le fonti selezionate', 'Quali sono i concetti chiave?', 'Che domande d’esame potrebbero uscire?']
+const STARTERS = [
+  'Riassumi le fonti selezionate',
+  'Quali sono i concetti chiave?',
+  'Che domande d’esame potrebbero uscire?'
+]
 
 type Props = {
   turns: ChatTurn[]
@@ -14,14 +20,25 @@ type Props = {
   onCite: (e: Excerpt) => void
 }
 
-export function ChatPane({ turns, pending, selected, ready, onAsk, onRetry, onCite }: Props): React.JSX.Element {
+export function ChatPane({
+  turns,
+  pending,
+  selected,
+  ready,
+  onAsk,
+  onRetry,
+  onCite
+}: Props): React.JSX.Element {
   const [q, setQ] = useState('')
   const end = useRef<HTMLDivElement>(null)
+  const field = useRef<HTMLTextAreaElement>(null)
+  const dictation = useDictation({ target: field, value: q, onChange: setQ })
+  const busy = dictation.state !== 'idle'
   // Braces: scrollIntoView may return a promise, and an effect must not return anything but a cleanup.
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
   }, [turns.length, pending])
-  const canAsk = !pending && selected > 0 && q.trim().length > 0
+  const canAsk = !busy && !pending && selected > 0 && q.trim().length > 0
   const send = (): void => {
     if (!canAsk) return
     onAsk(q.trim())
@@ -34,7 +51,10 @@ export function ChatPane({ turns, pending, selected, ready, onAsk, onRetry, onCi
         {turns.length === 0 && !pending && (
           <div className="nb-hello">
             <h2>Chiedi alle tue fonti</h2>
-            <p>Rispondo solo con quello che c’è scritto nelle fonti selezionate, e ti dico dove. Se le fonti non lo dicono, te lo dico.</p>
+            <p>
+              Rispondo solo con quello che c’è scritto nelle fonti selezionate, e ti dico dove. Se
+              le fonti non lo dicono, te lo dico.
+            </p>
             <div className="nb-starters">
               {STARTERS.map((s) => (
                 <button key={s} type="button" onClick={() => setQ(s)}>
@@ -65,7 +85,14 @@ export function ChatPane({ turns, pending, selected, ready, onAsk, onRetry, onCi
                     {c.sources.map((n) => {
                       const e = t.excerpts.find((x) => x.n === n)
                       return e ? (
-                        <button key={n} type="button" className="nb-cite" aria-label={`Fonte ${n}: ${e.title}, ${e.label}`} title={`${e.title}, ${e.label}`} onClick={() => onCite(e)}>
+                        <button
+                          key={n}
+                          type="button"
+                          className="nb-cite"
+                          aria-label={`Fonte ${n}: ${e.title}, ${e.label}`}
+                          title={`${e.title}, ${e.label}`}
+                          onClick={() => onCite(e)}
+                        >
                           {n}
                         </button>
                       ) : null
@@ -79,8 +106,16 @@ export function ChatPane({ turns, pending, selected, ready, onAsk, onRetry, onCi
                   <p>{t.missing}</p>
                 </div>
               )}
-              {t.coverage && <p className="nb-dropped">{`Ho letto i ${t.coverage.used} passaggi più pertinenti su ${t.coverage.total}: per domande su tutto, seleziona meno fonti.`}</p>}
-              {t.dropped > 0 && <p className="nb-dropped">{t.dropped === 1 ? 'Ho tolto 1 frase che non citava le fonti.' : `Ho tolto ${t.dropped} frasi che non citavano le fonti.`}</p>}
+              {t.coverage && (
+                <p className="nb-dropped">{`Ho letto i ${t.coverage.used} passaggi più pertinenti su ${t.coverage.total}: per domande su tutto, seleziona meno fonti.`}</p>
+              )}
+              {t.dropped > 0 && (
+                <p className="nb-dropped">
+                  {t.dropped === 1
+                    ? 'Ho tolto 1 frase che non citava le fonti.'
+                    : `Ho tolto ${t.dropped} frasi che non citavano le fonti.`}
+                </p>
+              )}
             </article>
           )
         )}
@@ -99,24 +134,36 @@ export function ChatPane({ turns, pending, selected, ready, onAsk, onRetry, onCi
         }}
       >
         <div className="inrow">
-          <textarea
-            aria-label="Chiedi alle tue fonti"
-            placeholder="Chiedi alle tue fonti…"
-            rows={1}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault()
-                send()
-              }
-            }}
-          />
+          <div className="mic-field mic-fill mic-row">
+            <textarea
+              ref={field}
+              readOnly={busy}
+              aria-label="Chiedi alle tue fonti"
+              placeholder="Chiedi alle tue fonti…"
+              rows={1}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault()
+                  send()
+                }
+              }}
+            />
+            <MicButton dictation={dictation} />
+          </div>
           <button type="submit" className="nb-send" disabled={!canAsk}>
             Chiedi
           </button>
         </div>
-        <p className="nb-foot">{ready === 0 ? 'Nessuna fonte pronta: aggiungine una a sinistra.' : selected === 0 ? 'Seleziona almeno una fonte.' : `Risponde solo dalle fonti selezionate (${selected} di ${ready} pronte)`}</p>
+        <DictationError dictation={dictation} />
+        <p className="nb-foot">
+          {ready === 0
+            ? 'Nessuna fonte pronta: aggiungine una a sinistra.'
+            : selected === 0
+              ? 'Seleziona almeno una fonte.'
+              : `Risponde solo dalle fonti selezionate (${selected} di ${ready} pronte)`}
+        </p>
       </form>
     </section>
   )

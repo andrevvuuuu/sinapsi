@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PracticeProblem, PracticeState } from '../../../main/practice/events'
 import { MODE_IT, OUTCOME_IT, type Submission } from '../../../shared/practice-protocol'
+import { useDictation } from '../components/dictation'
+import { DictationError, MicButton } from '../components/MicButton'
 import { RichText } from '../session/RichText'
 import { ExamView } from './ExamView'
 import { snippet } from './exam-format'
@@ -8,15 +10,33 @@ import { PhotoButton } from './PhotoButton'
 import './practice.css'
 
 const PHASE_IT = { warmup: 'Riscaldamento', body: 'Corpo', retest: 'Ritest', done: 'Fine' } as const
-const OUTCOME_CHIP = { solved: ['risolto', 'ok'], solved_hints: ['aiuti', 'mid'], surrendered: ['arreso', 'no'] } as const
-const clean = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
-function ProblemDock({ problem, sessionId, onSend }: { problem: PracticeProblem; sessionId: string; onSend: (s: Submission) => Promise<void> }): React.JSX.Element {
+const OUTCOME_CHIP = {
+  solved: ['risolto', 'ok'],
+  solved_hints: ['aiuti', 'mid'],
+  surrendered: ['arreso', 'no']
+} as const
+const clean = (e: unknown): string =>
+  (e instanceof Error ? e.message : String(e)).replace(
+    /^Error invoking remote method '[^']+': (Error: )?/,
+    ''
+  )
+function ProblemDock({
+  problem,
+  sessionId,
+  onSend
+}: {
+  problem: PracticeProblem
+  sessionId: string
+  onSend: (s: Submission) => Promise<void>
+}): React.JSX.Element {
   const [text, setText] = useState('')
   const [line, setLine] = useState<number | undefined>(undefined)
   const [photoText, setPhotoText] = useState('')
   const [busy, setBusy] = useState(false)
   const sending = useRef(false)
   const area = useRef<HTMLTextAreaElement>(null)
+  const dictation = useDictation({ target: area, value: text, onChange: setText })
+  const dictating = dictation.state !== 'idle'
   // One request at a time: a double click must not cost a second hint.
   const once = async (sub: Submission): Promise<boolean> => {
     if (sending.current) return false
@@ -35,8 +55,13 @@ function ProblemDock({ problem, sessionId, onSend }: { problem: PracticeProblem;
   useEffect(() => area.current?.focus(), [problem.id])
   const ready = !!text.trim() || !!photoText || line !== undefined
   const send = async (): Promise<void> => {
-    if (!ready) return
-    const sub: Submission = { kind: 'thinking', ...(line !== undefined ? { line } : {}), ...(text.trim() ? { text: text.trim() } : {}), ...(photoText ? { photoText } : {}) }
+    if (!ready || dictating) return
+    const sub: Submission = {
+      kind: 'thinking',
+      ...(line !== undefined ? { line } : {}),
+      ...(text.trim() ? { text: text.trim() } : {}),
+      ...(photoText ? { photoText } : {})
+    }
     if (!(await once(sub))) return
     setText('')
     setPhotoText('')
@@ -52,7 +77,12 @@ function ProblemDock({ problem, sessionId, onSend }: { problem: PracticeProblem;
         {problem.lines && (
           <div className="lines" role="group" aria-label="Righe della dimostrazione">
             {problem.lines.map((l, i) => (
-              <button key={i} type="button" aria-pressed={line === i} onClick={() => setLine(line === i ? undefined : i)}>
+              <button
+                key={i}
+                type="button"
+                aria-pressed={line === i}
+                onClick={() => setLine(line === i ? undefined : i)}
+              >
                 <span>{i + 1}</span>
                 <RichText md={l} />
               </button>
@@ -63,19 +93,24 @@ function ProblemDock({ problem, sessionId, onSend }: { problem: PracticeProblem;
           <label className="lab" htmlFor="pr-wk">
             Il tuo ragionamento
           </label>
-          <textarea
-            ref={area}
-            id="pr-wk"
-            placeholder="Lavora qui, pensa ad alta voce. Puoi mandare anche solo un pezzo."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault()
-                void send()
-              }
-            }}
-          />
+          <div className="mic-field">
+            <textarea
+              ref={area}
+              readOnly={dictating}
+              id="pr-wk"
+              placeholder="Lavora qui, pensa ad alta voce. Puoi mandare anche solo un pezzo."
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault()
+                  void send()
+                }
+              }}
+            />
+            <MicButton dictation={dictation} />
+          </div>
+          <DictationError dictation={dictation} />
           {photoText && (
             <div className="att">
               <span className="file">letto dal foglio</span>
@@ -86,22 +121,40 @@ function ProblemDock({ problem, sessionId, onSend }: { problem: PracticeProblem;
           )}
         </div>
         <div className="row">
-          <PhotoButton sessionId={sessionId} onText={(t) => setPhotoText((p) => [p, t].filter(Boolean).join('\n\n'))} />
-          <button type="button" className="ghost warn" disabled={busy} onClick={() => void once({ kind: 'hint' })}>
+          <PhotoButton
+            sessionId={sessionId}
+            onText={(t) => setPhotoText((p) => [p, t].filter(Boolean).join('\n\n'))}
+          />
+          <button
+            type="button"
+            className="ghost warn"
+            disabled={busy}
+            onClick={() => void once({ kind: 'hint' })}
+          >
             Dammi un indizio
           </button>
           <button
             type="button"
             className="ghost quiet"
             onClick={() => {
-              if (window.confirm('Lasciare questo problema? Vedrai la soluzione e tornerà nel ritest.')) void once({ kind: 'dismiss' })
+              if (
+                window.confirm(
+                  'Lasciare questo problema? Vedrai la soluzione e tornerà nel ritest.'
+                )
+              )
+                void once({ kind: 'dismiss' })
             }}
           >
             Lascia il problema
           </button>
           <span className="sp" />
           <span className="hintk">↵ invia</span>
-          <button type="button" className="pri" disabled={!ready || busy} onClick={() => void send()}>
+          <button
+            type="button"
+            className="pri"
+            disabled={!ready || busy || dictating}
+            onClick={() => void send()}
+          >
             Invia
           </button>
         </div>
@@ -128,7 +181,15 @@ function Arc({ state }: { state: PracticeState }): React.JSX.Element {
               {list.map((p) => (
                 <li key={p.id}>
                   <span>{snippet(p.statement)}</span>
-                  {p.status === 'active' ? <span className="chip">in corso</span> : p.outcome && <span className={'chip ' + OUTCOME_CHIP[p.outcome][1]}>{OUTCOME_CHIP[p.outcome][0]}</span>}
+                  {p.status === 'active' ? (
+                    <span className="chip">in corso</span>
+                  ) : (
+                    p.outcome && (
+                      <span className={'chip ' + OUTCOME_CHIP[p.outcome][1]}>
+                        {OUTCOME_CHIP[p.outcome][0]}
+                      </span>
+                    )
+                  )}
                 </li>
               ))}
               {phase === 'retest' &&
@@ -138,7 +199,11 @@ function Arc({ state }: { state: PracticeState }): React.JSX.Element {
                     <span className="chip mid">in coda</span>
                   </li>
                 ))}
-              {list.length === 0 && (phase !== 'retest' || queued.length === 0) && <li className="empty">{phase === 'retest' ? 'Tutto ciò che sbagli torna qui, in forma nuova.' : '—'}</li>}
+              {list.length === 0 && (phase !== 'retest' || queued.length === 0) && (
+                <li className="empty">
+                  {phase === 'retest' ? 'Tutto ciò che sbagli torna qui, in forma nuova.' : '—'}
+                </li>
+              )}
             </ul>
           </div>
         ))}
@@ -147,11 +212,22 @@ function Arc({ state }: { state: PracticeState }): React.JSX.Element {
   )
 }
 
-export function PracticeView({ id, onBack, onStarted }: { id: string; onBack: () => void; onStarted: (id: string) => void }): React.JSX.Element {
+export function PracticeView({
+  id,
+  onBack,
+  onStarted
+}: {
+  id: string
+  onBack: () => void
+  onStarted: (id: string) => void
+}): React.JSX.Element {
   const api = window.sinapsi.practice
   const [s, setS] = useState<PracticeState | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [question, setQuestion] = useState('')
+  const askField = useRef<HTMLInputElement>(null)
+  const askMic = useDictation({ target: askField, value: question, onChange: setQuestion })
+  const asking = askMic.state !== 'idle'
   const end = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -203,7 +279,10 @@ export function PracticeView({ id, onBack, onStarted }: { id: string; onBack: ()
             className="pill nodrag"
             disabled={!learner}
             onClick={() => {
-              if (window.confirm('Chiudere la sessione? Il tutor fa il punto di ciò che hai fatto.')) void send({ kind: 'end' }).catch(() => undefined)
+              if (
+                window.confirm('Chiudere la sessione? Il tutor fa il punto di ciò che hai fatto.')
+              )
+                void send({ kind: 'end' }).catch(() => undefined)
             }}
           >
             Termina
@@ -242,7 +321,9 @@ export function PracticeView({ id, onBack, onStarted }: { id: string; onBack: ()
                   </div>
                 )
               const t = it.turn
-              const concluded = t.conclude ? s.problems.find((p) => p.id === problemAt[i]) : undefined
+              const concluded = t.conclude
+                ? s.problems.find((p) => p.id === problemAt[i])
+                : undefined
               return (
                 <div key={i}>
                   {t.blocks.map((b, k) => (
@@ -268,7 +349,9 @@ export function PracticeView({ id, onBack, onStarted }: { id: string; onBack: ()
                     <article className="card" aria-label="Problema concluso">
                       <div className="pr-cardhead">
                         <span className="lab">Concluso</span>
-                        <span className={'chip ' + OUTCOME_CHIP[t.conclude.outcome][1]}>{OUTCOME_IT[t.conclude.outcome]}</span>
+                        <span className={'chip ' + OUTCOME_CHIP[t.conclude.outcome][1]}>
+                          {OUTCOME_IT[t.conclude.outcome]}
+                        </span>
                       </div>
                       <p className="verdict">{t.conclude.verdict}</p>
                       {concluded?.modelSolution && (
@@ -277,15 +360,21 @@ export function PracticeView({ id, onBack, onStarted }: { id: string; onBack: ()
                           <RichText md={concluded.modelSolution} />
                         </div>
                       )}
-                      {concluded && <div className="meta">{`Modo: ${MODE_IT[concluded.mode]} · aiuto massimo: ${concluded.maxRung === null ? 'nessuno' : `R${concluded.maxRung}`}`}</div>}
+                      {concluded && (
+                        <div className="meta">{`Modo: ${MODE_IT[concluded.mode]} · aiuto massimo: ${concluded.maxRung === null ? 'nessuno' : `R${concluded.maxRung}`}`}</div>
+                      )}
                     </article>
                   )}
                   {t.summary && (
                     <article className="card" aria-label="Fine della sessione">
                       <div className="lab">Fine della sessione</div>
                       <p>{t.summary.note}</p>
-                      {t.summary.solved.length > 0 && <p className="verdict">Venuto bene: {t.summary.solved.join(' · ')}</p>}
-                      {t.summary.retest.length > 0 && <p className="verdict">Da riprendere: {t.summary.retest.join(' · ')}</p>}
+                      {t.summary.solved.length > 0 && (
+                        <p className="verdict">Venuto bene: {t.summary.solved.join(' · ')}</p>
+                      )}
+                      {t.summary.retest.length > 0 && (
+                        <p className="verdict">Da riprendere: {t.summary.retest.join(' · ')}</p>
+                      )}
                     </article>
                   )}
                 </div>
@@ -318,22 +407,42 @@ export function PracticeView({ id, onBack, onStarted }: { id: string; onBack: ()
                   {error}
                 </p>
               )}
-              {learner && active && <ProblemDock key={active.id} problem={active} sessionId={id} onSend={send} />}
+              {learner && active && (
+                <ProblemDock key={active.id} problem={active} sessionId={id} onSend={send} />
+              )}
               {learner && !active && (
                 <div className="shell">
                   <form
                     className="inner pr-ask"
                     onSubmit={(e) => {
                       e.preventDefault()
-                      if (!question.trim()) return
-                      void send({ kind: 'ask', text: question.trim() }).then(() => setQuestion(''), () => undefined)
+                      if (asking || !question.trim()) return
+                      void send({ kind: 'ask', text: question.trim() }).then(
+                        () => setQuestion(''),
+                        () => undefined
+                      )
                     }}
                   >
-                    <input aria-label="Domande su questo problema" placeholder="Domande su questo problema? Chiedi pure…" value={question} onChange={(e) => setQuestion(e.target.value)} />
-                    <button type="button" className="pri" onClick={() => void send({ kind: 'next' }).catch(() => undefined)}>
+                    <div className="mic-field mic-fill">
+                      <input
+                        ref={askField}
+                        readOnly={asking}
+                        aria-label="Domande su questo problema"
+                        placeholder="Domande su questo problema? Chiedi pure…"
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                      />
+                      <MicButton dictation={askMic} />
+                    </div>
+                    <button
+                      type="button"
+                      className="pri"
+                      onClick={() => void send({ kind: 'next' }).catch(() => undefined)}
+                    >
                       Prossimo problema
                     </button>
                   </form>
+                  <DictationError dictation={askMic} />
                 </div>
               )}
               {s.phase === 'done' && (

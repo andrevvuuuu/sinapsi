@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Exercise } from '../../../../shared/exercise-schema'
+import { useDictation } from '../../components/dictation'
+import { DictationError, MicButton } from '../../components/MicButton'
 import { RichText } from '../../session/RichText'
 import type { ExerciseState } from './shared'
 
@@ -54,14 +56,40 @@ export function TrueFalse({
 }): React.JSX.Element {
   const [value, setValue] = useState<boolean | null>(null)
   const [why, setWhy] = useState('')
+  const field = useRef<HTMLTextAreaElement>(null)
+  const busyRef = useRef(false)
+  const valueRef = useRef<boolean | null>(null)
+  const whyRef = useRef('')
+  // While the explanation is being dictated the answer is not ready: what is being said is still missing.
   const report = (v: boolean | null, w: string): void => {
+    valueRef.current = v
+    whyRef.current = w
     if (v === null) return
     onChange({
       answer: `${v ? 'Vero' : 'Falso'}${w.trim() ? ` — ${w.trim()}` : ''}`,
       correct: v === exercise.value,
-      ready: true
+      ready: !busyRef.current
     })
   }
+  const dictation = useDictation({
+    target: field,
+    value: why,
+    onChange: (t) => {
+      setWhy(t)
+      report(value, t)
+    },
+    enabled: !locked
+  })
+  const busy = dictation.state !== 'idle'
+  const reportRef = useRef(report)
+  useLayoutEffect(() => {
+    reportRef.current = report
+  })
+  useEffect(() => {
+    if (busyRef.current === busy) return
+    busyRef.current = busy
+    reportRef.current(valueRef.current, whyRef.current)
+  }, [busy])
   return (
     <div className="rv-tf">
       <blockquote>
@@ -89,16 +117,21 @@ export function TrueFalse({
       <label className="lab" htmlFor="rv-why">
         Perché?
       </label>
-      <textarea
-        id="rv-why"
-        value={why}
-        readOnly={locked}
-        placeholder="Il motivo, in una riga"
-        onChange={(e) => {
-          setWhy(e.target.value)
-          report(value, e.target.value)
-        }}
-      />
+      <div className="mic-field">
+        <textarea
+          id="rv-why"
+          ref={field}
+          value={why}
+          readOnly={locked || busy}
+          placeholder="Il motivo, in una riga"
+          onChange={(e) => {
+            setWhy(e.target.value)
+            report(value, e.target.value)
+          }}
+        />
+        {!locked && <MicButton dictation={dictation} />}
+      </div>
+      <DictationError dictation={dictation} />
     </div>
   )
 }

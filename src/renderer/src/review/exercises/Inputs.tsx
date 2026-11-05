@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { parseItalianNumber } from '../../../../shared/numbers'
+import { useDictation } from '../../components/dictation'
+import { DictationError, MicButton } from '../../components/MicButton'
 import { MathSelect } from '../../components/MathSelect'
 import { blanks, type Exercise, blankParts } from '../../../../shared/exercise-schema'
 import { RichText } from '../../session/RichText'
@@ -135,21 +137,44 @@ export function Open({
   onChange: (s: ExerciseState) => void
 }): React.JSX.Element {
   const [text, setText] = useState('')
+  const field = useRef<HTMLTextAreaElement>(null)
+  const textRef = useRef('')
+  const busyRef = useRef(false)
+  // While the answer is being dictated it is not ready: what is being said is still missing.
+  const update = (t: string): void => {
+    textRef.current = t
+    setText(t)
+    onChange({ answer: t, correct: null, ready: !busyRef.current && t.trim() !== '' })
+  }
+  const dictation = useDictation({ target: field, value: text, onChange: update, enabled: !locked })
+  const busy = dictation.state !== 'idle'
+  const onChangeRef = useRef(onChange)
+  useLayoutEffect(() => {
+    onChangeRef.current = onChange
+  })
+  useEffect(() => {
+    if (busyRef.current === busy) return
+    busyRef.current = busy
+    const t = textRef.current
+    onChangeRef.current({ answer: t, correct: null, ready: !busy && t.trim() !== '' })
+  }, [busy])
   return (
     <div className="rv-open">
       <label className="lab" htmlFor="rv-open">
         La tua risposta, ragionando ad alta voce
       </label>
-      <textarea
-        id="rv-open"
-        value={text}
-        readOnly={locked}
-        placeholder="Scrivi come ti viene, anche disordinato. Conta il ragionamento."
-        onChange={(e) => {
-          setText(e.target.value)
-          onChange({ answer: e.target.value, correct: null, ready: e.target.value.trim() !== '' })
-        }}
-      />
+      <div className="mic-field">
+        <textarea
+          id="rv-open"
+          ref={field}
+          value={text}
+          readOnly={locked || busy}
+          placeholder="Scrivi come ti viene, anche disordinato. Conta il ragionamento."
+          onChange={(e) => update(e.target.value)}
+        />
+        {!locked && <MicButton dictation={dictation} />}
+      </div>
+      <DictationError dictation={dictation} />
     </div>
   )
 }

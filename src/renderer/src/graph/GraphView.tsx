@@ -4,6 +4,8 @@ import { zoom as d3zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ExtractorStatus, GraphData } from '../../../shared/graph-types'
 import type { VaultIndex } from '../../../shared/vault-types'
+import { DICTATION_SHORT, useDictation } from '../components/dictation'
+import { DictationError, MicButton } from '../components/MicButton'
 import { RichText } from '../session/RichText'
 import { draw, radiusOf, type Colors, type Lens, type Sel } from './draw'
 import { createLayout, type Layout, type LayoutMode, type SimNode } from './layout'
@@ -78,6 +80,13 @@ export function GraphView({
   const [path, setPath] = useState<Set<string> | null>(null)
   const [query, setQuery] = useState('')
   const [hi, setHi] = useState(-1)
+  const searchField = useRef<HTMLInputElement>(null)
+  const searchMic = useDictation({
+    target: searchField,
+    value: query,
+    onChange: (v) => (setQuery(v), setHi(-1)),
+    maxSeconds: DICTATION_SHORT
+  })
   const [options, setOptions] = useState(false)
   // The graph menu sits behind a round button; it opens and closes with a short scale-and-fade.
   const [menu, setMenu] = useState<'closed' | 'open' | 'closing'>(menuOpen ? 'open' : 'closed')
@@ -526,27 +535,33 @@ export function GraphView({
               : 'Carico il grafo…'}
           </p>
           <div className="gsearch">
-            <input
-              role="combobox"
-              aria-label="Cerca nel grafo"
-              aria-expanded={hits.length > 0}
-              aria-controls="graph-results"
-              aria-activedescendant={hi >= 0 ? `gr-${hi}` : undefined}
-              placeholder="Cerca un concetto o una nota"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
-                setHi(-1)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowDown') setHi(Math.min(hits.length - 1, hi + 1))
-                else if (e.key === 'ArrowUp') setHi(Math.max(0, hi - 1))
-                else if (e.key === 'Enter' && hits.length) go(hits[Math.max(0, hi)])
-                else if (e.key === 'Escape' && query) setQuery('')
-                else return
-                e.preventDefault()
-              }}
-            />
+            <div className="mic-field">
+              <input
+                ref={searchField}
+                readOnly={searchMic.state !== 'idle'}
+                role="combobox"
+                aria-label="Cerca nel grafo"
+                aria-expanded={hits.length > 0}
+                aria-controls="graph-results"
+                aria-activedescendant={hi >= 0 ? `gr-${hi}` : undefined}
+                placeholder="Cerca un concetto o una nota"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setHi(-1)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') setHi(Math.min(hits.length - 1, hi + 1))
+                  else if (e.key === 'ArrowUp') setHi(Math.max(0, hi - 1))
+                  else if (e.key === 'Enter' && hits.length) go(hits[Math.max(0, hi)])
+                  else if (e.key === 'Escape' && query) setQuery('')
+                  else return
+                  e.preventDefault()
+                }}
+              />
+              <MicButton dictation={searchMic} size="sm" />
+            </div>
+            <DictationError dictation={searchMic} />
             {hits.length > 0 && (
               <ul role="listbox" id="graph-results" className="gresults">
                 {hits.map((h, i) => (

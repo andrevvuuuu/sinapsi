@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Game } from '../../../../shared/teacher-protocol'
+import { useDictation } from '../../components/dictation'
+import { DictationError, MicButton } from '../../components/MicButton'
 import { RichText } from '../RichText'
 import { clip, type GameProps } from './shared'
 import { tabooUsed } from './taboo-words'
@@ -10,6 +12,9 @@ type Taboo = Extract<Game, { type: 'taboo' }>
 export function Taboo({ game, onDone }: GameProps<Taboo>): React.JSX.Element {
   const [text, setText] = useState('')
   const used = tabooUsed(game.forbidden, text)
+  const field = useRef<HTMLTextAreaElement>(null)
+  const dictation = useDictation({ target: field, value: text, onChange: setText })
+  const busy = dictation.state !== 'idle'
   return (
     <div className="g-taboo">
       <p className="g-concept">
@@ -24,14 +29,29 @@ export function Taboo({ game, onDone }: GameProps<Taboo>): React.JSX.Element {
       </div>
       <label className="g-why">
         La tua spiegazione
-        <textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} />
+        <span className="mic-field">
+          <textarea
+            ref={field}
+            readOnly={busy}
+            rows={3}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <MicButton dictation={dictation} />
+        </span>
       </label>
+      <DictationError dictation={dictation} />
       {used.length > 0 && (
         <p className="g-fb no" role="alert">
           Hai usato: {used.join(', ')}
         </p>
       )}
-      <button type="button" className="pri" disabled={!text.trim() || used.length > 0} onClick={() => onDone({ score: 0, total: 0, detail: clip(`spiegazione: ${text.trim()}`) })}>
+      <button
+        type="button"
+        className="pri"
+        disabled={busy || !text.trim() || used.length > 0}
+        onClick={() => onDone({ score: 0, total: 0, detail: clip(`spiegazione: ${text.trim()}`) })}
+      >
         Invia la spiegazione
       </button>
     </div>
