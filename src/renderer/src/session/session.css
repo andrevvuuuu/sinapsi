@@ -10,10 +10,15 @@
 .sess .pill:hover{color:var(--ink)}
 .notechip{font-size:13px;color:var(--pen);padding:6px 12px;border-radius:999px;border:1px solid color-mix(in srgb,var(--pen) 35%,transparent);white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis}
 .sess .body{display:grid;grid-template-columns:1fr 280px;min-height:0}
+/* The conversation and the dock share the first cell: the dock floats over the bottom of the conversation, the plan stays on the right. */
+.sess .body{grid-template-rows:minmax(0,1fr)}
+.sess .side{grid-area:1/2}
 /* The conversation starts under the glass bar (same place on screen, offset by its padding) and fades into it while scrolling. */
 .sess .scroll{overflow:auto;min-height:0;position:relative;display:flex;flex-direction:column;margin-top:calc(-1 * var(--topbar-full));--scroll-edge-top:var(--topbar-full)}
-.sess .col{width:100%;max-width:760px;margin:0 auto;padding:calc(28px + var(--topbar-full)) 24px 40px;flex:1}
-.sess .msg{margin:0 0 18px;animation:in .4s var(--ease-out)}
+/* It also fades where it scrolls under the dock, whose real height (--dock-h, measured) the column keeps free at the end: at rest the last message sits whole above the dock. */
+.sess .scroll{grid-area:1/1;--scroll-edge-bottom:var(--dock-h,0px)}
+.sess .col{width:100%;max-width:760px;margin:0 auto;padding:calc(28px + var(--topbar-full)) 24px calc(var(--dock-h,0px) + 16px);flex:1}
+.sess .msg{margin:0 0 18px;animation:in .4s var(--ease-out);scroll-margin-top:calc(var(--topbar-full) + 16px)}
 @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .rich p{margin:0 0 12px}.rich p:last-child{margin-bottom:0}
 .rich.inline,.rich.inline p{display:inline;margin:0}
@@ -36,8 +41,19 @@
 .summary{margin-top:14px;padding:16px 18px;border-radius:18px;background:var(--surface);border:1px solid var(--hair)}
 .summary h3{font:400 22px/1.2 var(--serif);margin:6px 0}
 .summary ul{margin:0 0 8px;padding-left:20px}
-.dockwrap{position:sticky;bottom:0;padding:0 24px 20px;background:linear-gradient(transparent,var(--bg) 40px)}
+.dockwrap{grid-area:1/1;align-self:end;position:relative;z-index:4;padding:0 24px 20px;pointer-events:none}
 .dock{max-width:712px;margin:0 auto}
+/* At most a bit more than half the window (never so small that the question and its send row do not fit): beyond that the middle of the dock scrolls. */
+.dock{pointer-events:auto;display:flex;flex-direction:column;max-height:max(55vh,300px)}
+.dock>*{flex:none}
+.dock>.shell{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
+.dock>.shell>*{flex:none}
+.dock>.shell>.inner{flex:0 1 auto;min-height:0;overflow:auto}
+.sess .inner.has-scroll{display:flex;flex-direction:column;overflow:hidden}
+.inner.has-scroll>*{flex:none}
+.inner.has-scroll .q-head{max-height:30vh;overflow:auto}
+/* The options, confidence and reasoning scroll between the fixed question and send row; the padding keeps their focus rings unclipped. */
+.inner.has-scroll>.dock-scroll{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;margin:-4px -6px;padding:4px 6px}
 .sess .shell{padding:6px;border-radius:24px}
 .sess .inner{border-radius:19px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:14px 16px}
 .sess .q{font-size:17px;margin:4px 0 10px}

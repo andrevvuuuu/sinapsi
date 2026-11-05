@@ -60,3 +60,41 @@ test('a full learning session with the scripted tutor', async () => {
   await expect(win.getByRole('button', { name: /Teorema di Lagrange.*Apprendimento/ })).toBeVisible()
   await app.close()
 })
+
+test('long measure question in a 720px-high window', async () => {
+  const app = await electron.launch({
+    args: ['.'],
+    env: { ...process.env, SINAPSI_FAKE_TEACHER: '1', SINAPSI_FAKE_TEACHER_SCRIPT: 'long-measure', SINAPSI_VAULT: resolve('tests/fixtures/vault'), SINAPSI_DATA: mkdtempSync(join(tmpdir(), 'sinapsi-e2e-')) }
+  })
+  const win = await app.firstWindow()
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 720))
+  await expect.poll(() => win.evaluate(() => [window.innerWidth, window.innerHeight].join('×'))).toBe('1280×720')
+  await win.getByLabel('Cosa vuoi studiare?').fill('Principio del Buon Ordinamento')
+  await win.getByRole('button', { name: 'Inizia' }).click()
+  await win.getByLabel('La tua risposta').fill('Saper usare il principio del buon ordinamento nelle dimostrazioni per assurdo, e capire quando conviene rispetto all’induzione.')
+  await win.getByRole('button', { name: 'Invia risposta' }).click()
+
+  const send = win.getByRole('button', { name: 'Invia risposta' })
+  await expect(win.getByRole('button', { name: /^D:/ })).toBeAttached()
+  await expect(send).toBeInViewport({ ratio: 1 })
+  await expect(win.locator('.dock .q-head')).toBeInViewport({ ratio: 1 })
+  await win.waitForTimeout(800) // the smooth scroll to the tutor message
+  const dock = (await win.locator('.dock').boundingBox())!
+  expect(dock.height).toBeLessThanOrEqual(720 * 0.6)
+  // The tutor message that leads to the question starts in view, below the bar.
+  const tutor = win.locator('.sess .msg').filter({ hasText: 'Buon Ordinamento' }).last()
+  const barBottom = (await win.locator('.sess .top').boundingBox())!.y + (await win.locator('.sess .top').boundingBox())!.height
+  expect((await tutor.boundingBox())!.y).toBeGreaterThanOrEqual(barBottom - 1)
+  await win.screenshot({ path: 'test-results/session-measure-long.png' })
+  // Scrolled to the end, the last tutor message ends above the dock.
+  await win.evaluate(() => {
+    const el = document.querySelector('.sess .scroll')!
+    el.scrollTo({ top: el.scrollHeight })
+  })
+  await win.waitForTimeout(200)
+  const t = (await tutor.boundingBox())!
+  const dockTop = (await win.locator('.dock').boundingBox())!.y
+  expect(t.y + t.height).toBeLessThanOrEqual(dockTop)
+  await win.screenshot({ path: 'test-results/session-measure-long-end.png' })
+  await app.close()
+})

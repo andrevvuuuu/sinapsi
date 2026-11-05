@@ -150,82 +150,85 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
     }
   }
 
+  // The question and the send row stay in view; in a tall dock the options and fields scroll between them.
   return (
     <div className="shell glass">
-      <div className="inner">
+      <div className="inner has-scroll">
         <div className="lab">{ROLE_IT[q.role]}</div>
         <div ref={head} tabIndex={-1} className="q-head">
           <RichText md={q.prompt} className="q" />
         </div>
-        {isChoice && (
-          <>
-            <div className="opts" role="group" aria-label="Opzioni">
-              {q.options!.map((o, i) => (
+        <div className="dock-scroll">
+          {isChoice && (
+            <>
+              <div className="opts" role="group" aria-label="Opzioni">
+                {q.options!.map((o, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="opt"
+                    aria-pressed={pick === i}
+                    aria-label={`${LETTERS[i]}: ${o}`}
+                    onClick={() => setPick(i)}
+                  >
+                    <span className="k" aria-hidden="true">
+                      {LETTERS[i]}
+                    </span>
+                    <RichText md={o} className="inline" />
+                  </button>
+                ))}
                 <button
-                  key={i}
                   type="button"
-                  className="opt"
-                  aria-pressed={pick === i}
-                  aria-label={`${LETTERS[i]}: ${o}`}
-                  onClick={() => setPick(i)}
+                  className="opt idk"
+                  aria-pressed={pick === 'idk'}
+                  onClick={() => setPick('idk')}
                 >
-                  <span className="k" aria-hidden="true">
-                    {LETTERS[i]}
-                  </span>
-                  <RichText md={o} className="inline" />
+                  Non lo so
                 </button>
-              ))}
-              <button
-                type="button"
-                className="opt idk"
-                aria-pressed={pick === 'idk'}
-                onClick={() => setPick('idk')}
-              >
-                Non lo so
-              </button>
-            </div>
-            {pick !== 'idk' && (
-              <div className="conf">
-                <label className="lab" htmlFor="cf">
-                  Fiducia
-                </label>
-                <input
-                  id="cf"
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={10}
-                  value={confidence}
-                  onChange={(e) => setConfidence(Number(e.target.value))}
-                />
-                <output htmlFor="cf">{confidence}%</output>
               </div>
-            )}
-          </>
-        )}
-        <div className="think">
-          <label className="lab" htmlFor="th">
-            {isChoice ? 'Il tuo ragionamento' : 'La tua risposta'}
-          </label>
-          <div className="mic-field">
-            <textarea
-              id="th"
-              ref={answerField}
-              readOnly={answerBusy}
-              placeholder={
-                isChoice
-                  ? 'Perché questa risposta? Quello che ti passa per la testa.'
-                  : q.role === 'recall'
-                    ? 'Tutto quello che ricordi, senza guardare.'
-                    : 'Scrivi come ti viene.'
-              }
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={onKey}
-            />
-            <MicButton dictation={answerMic} />
+              {pick !== 'idk' && (
+                <div className="conf">
+                  <label className="lab" htmlFor="cf">
+                    Fiducia
+                  </label>
+                  <input
+                    id="cf"
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={10}
+                    value={confidence}
+                    onChange={(e) => setConfidence(Number(e.target.value))}
+                  />
+                  <output htmlFor="cf">{confidence}%</output>
+                </div>
+              )}
+            </>
+          )}
+          <div className="think">
+            <label className="lab" htmlFor="th">
+              {isChoice ? 'Il tuo ragionamento' : 'La tua risposta'}
+            </label>
+            <div className="mic-field">
+              <textarea
+                id="th"
+                ref={answerField}
+                readOnly={answerBusy}
+                placeholder={
+                  isChoice
+                    ? 'Perché questa risposta? Quello che ti passa per la testa.'
+                    : q.role === 'recall'
+                      ? 'Tutto quello che ricordi, senza guardare.'
+                      : 'Scrivi come ti viene.'
+                }
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={onKey}
+              />
+              <MicButton dictation={answerMic} />
+            </div>
+            <DictationError dictation={answerMic} />
           </div>
-          <DictationError dictation={answerMic} />
         </div>
         <div className="act">
           <span className="hint">↵ invia · ⇧↵ a capo</span>

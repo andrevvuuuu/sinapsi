@@ -9,9 +9,16 @@
 .pr-top .sp,.pr .row .sp,.mt-head .sp,.mt-dh .sp,.mt-df .sp{flex:1}
 .pr-topic{max-width:40ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:none!important;letter-spacing:.02em!important}
 .pr-body{flex:1;min-height:0;display:grid;grid-template-columns:1fr 280px}
+/* The conversation and the problem dock share the first cell: the dock floats over the bottom of the conversation, the arc stays on the right. */
+.pr-body{grid-template-rows:minmax(0,1fr)}
+.pr-body>.side{grid-area:1/2}
 /* The scrolling column starts under the glass bar (same place on screen, offset by its padding). */
 .pr-scroll,.pr>.pr-col,.pr-setup{margin-top:calc(-1 * var(--topbar-full));--scroll-edge-top:var(--topbar-full)}
 .pr-scroll{overflow:auto;min-height:0;display:flex;flex-direction:column}
+/* It fades under the dock too; the column keeps the dock's real height (--dock-h, measured) free at its end. */
+.pr-scroll{grid-area:1/1;--scroll-edge-bottom:var(--dock-h,0px)}
+.pr-scroll>.pr-col{padding-bottom:calc(var(--dock-h,0px) + 16px)}
+.pr-end{scroll-margin-bottom:calc(var(--dock-h,0px) + 16px)}
 .pr-col{width:100%;max-width:760px;margin:0 auto;padding:28px 24px 30px;flex:1}
 .pr-scroll>.pr-col,.pr>.pr-col{padding-top:calc(28px + var(--topbar-full))}
 /* The exam views put the column straight under .pr: it scrolls by itself. */
@@ -44,8 +51,17 @@
 .pr-err{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--bad) 12%,transparent);margin:0 0 18px}
 .pr-err p{margin:0;font-size:15px}
 .pr-alert{margin:0 0 10px;padding:10px 14px;border-radius:12px;background:color-mix(in srgb,var(--bad) 14%,transparent);font-size:14px}
-.pr .dockwrap{position:sticky;bottom:0;padding:0 24px 20px;background:linear-gradient(transparent,var(--bg) 40px)}
+.pr .dockwrap{grid-area:1/1;align-self:end;position:relative;z-index:4;padding:0 24px 20px;pointer-events:none}
 .pr .dock{max-width:712px;margin:0 auto}
+/* At most a bit more than half the window: beyond that the proof lines and the work scroll, the statement and the send row stay. */
+.pr .dock{pointer-events:auto;display:flex;flex-direction:column;max-height:max(55vh,300px)}
+.pr .dock>*{flex:none}
+.pr .dock>.shell{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
+.pr .dock>.shell>*{flex:none}
+.pr .dock>.shell>.inner{flex:0 1 auto;min-height:0;overflow:auto}
+.pr .inner.has-scroll{display:flex;flex-direction:column;overflow:hidden}
+.pr .inner.has-scroll>*{flex:none}
+.pr .inner.has-scroll>.dock-scroll{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;margin:-4px -6px;padding:4px 6px}
 .pr .shell{padding:6px;border-radius:24px}
 /* The material box in the setup sits in the page, not over it: it keeps its frosted frame, no glass. */
 .pr .shell:not(.glass){padding:5px;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--hair);backdrop-filter:blur(16px)}

@@ -3,6 +3,7 @@ import type { PracticeProblem, PracticeState } from '../../../main/practice/even
 import { MODE_IT, OUTCOME_IT, type Submission } from '../../../shared/practice-protocol'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
+import { useDockHeight } from '../components/useDockHeight'
 import { RichText } from '../session/RichText'
 import { ExamView } from './ExamView'
 import { snippet } from './exam-format'
@@ -69,56 +70,59 @@ function ProblemDock({
   }
   return (
     <section className="shell glass" aria-label="Problema">
-      <div className="inner">
+      {/* The statement and the send row stay in view; in a tall dock the lines and the work scroll between them. */}
+      <div className="inner has-scroll">
         <div className="lab">Problema</div>
         <div className="st">
           <RichText md={problem.statement} />
         </div>
-        {problem.lines && (
-          <div className="lines" role="group" aria-label="Righe della dimostrazione">
-            {problem.lines.map((l, i) => (
-              <button
-                key={i}
-                type="button"
-                aria-pressed={line === i}
-                onClick={() => setLine(line === i ? undefined : i)}
-              >
-                <span>{i + 1}</span>
-                <RichText md={l} />
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="work">
-          <label className="lab" htmlFor="pr-wk">
-            Il tuo ragionamento
-          </label>
-          <div className="mic-field">
-            <textarea
-              ref={area}
-              readOnly={dictating}
-              id="pr-wk"
-              placeholder="Lavora qui, pensa ad alta voce. Puoi mandare anche solo un pezzo."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault()
-                  void send()
-                }
-              }}
-            />
-            <MicButton dictation={dictation} />
-          </div>
-          <DictationError dictation={dictation} />
-          {photoText && (
-            <div className="att">
-              <span className="file">letto dal foglio</span>
-              <button type="button" className="linkish" onClick={() => setPhotoText('')}>
-                togli
-              </button>
+        <div className="dock-scroll">
+          {problem.lines && (
+            <div className="lines" role="group" aria-label="Righe della dimostrazione">
+              {problem.lines.map((l, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  aria-pressed={line === i}
+                  onClick={() => setLine(line === i ? undefined : i)}
+                >
+                  <span>{i + 1}</span>
+                  <RichText md={l} />
+                </button>
+              ))}
             </div>
           )}
+          <div className="work">
+            <label className="lab" htmlFor="pr-wk">
+              Il tuo ragionamento
+            </label>
+            <div className="mic-field">
+              <textarea
+                ref={area}
+                readOnly={dictating}
+                id="pr-wk"
+                placeholder="Lavora qui, pensa ad alta voce. Puoi mandare anche solo un pezzo."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault()
+                    void send()
+                  }
+                }}
+              />
+              <MicButton dictation={dictation} />
+            </div>
+            <DictationError dictation={dictation} />
+            {photoText && (
+              <div className="att">
+                <span className="file">letto dal foglio</span>
+                <button type="button" className="linkish" onClick={() => setPhotoText('')}>
+                  togli
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <div className="row">
           <PhotoButton
@@ -229,6 +233,9 @@ export function PracticeView({
   const askMic = useDictation({ target: askField, value: question, onChange: setQuestion })
   const asking = askMic.state !== 'idle'
   const end = useRef<HTMLDivElement>(null)
+  const scroller = useRef<HTMLDivElement>(null)
+  const dockwrap = useRef<HTMLDivElement>(null)
+  const measureDock = useDockHeight(scroller, dockwrap, s !== null)
 
   useEffect(() => {
     let live = true
@@ -240,8 +247,10 @@ export function PracticeView({
     }
   }, [api, id])
   useEffect(() => {
+    // The end must clear the dock as it is now, not after the next resize callback.
+    measureDock()
     end.current?.scrollIntoView({ block: 'end' })
-  }, [s?.items.length, s?.awaiting])
+  }, [s?.items.length, s?.awaiting, measureDock])
 
   if (!s) return <div className="pr" />
   if (s.mode === 'exam') return <ExamView state={s} onBack={onBack} onStarted={onStarted} />
@@ -290,7 +299,7 @@ export function PracticeView({
         )}
       </header>
       <div className="pr-body">
-        <div className="pr-scroll scroll-edge">
+        <div className="pr-scroll scroll-edge" ref={scroller}>
           <div className="pr-col" aria-live="polite">
             {s.items.map((it, i) => {
               if (it.kind === 'learner') {
@@ -398,62 +407,63 @@ export function PracticeView({
                 Il tutor ci pensa…
               </div>
             )}
-            <div ref={end} />
+            <div ref={end} className="pr-end" />
           </div>
-          <div className="dockwrap">
-            <div className="dock">
-              {error && (
-                <p className="pr-alert" role="alert">
-                  {error}
-                </p>
-              )}
-              {learner && active && (
-                <ProblemDock key={active.id} problem={active} sessionId={id} onSend={send} />
-              )}
-              {learner && !active && (
-                <div className="shell glass">
-                  <form
-                    className="inner pr-ask"
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      if (asking || !question.trim()) return
-                      void send({ kind: 'ask', text: question.trim() }).then(
-                        () => setQuestion(''),
-                        () => undefined
-                      )
-                    }}
+        </div>
+        {/* Floats over the bottom of the conversation, which reserves its height (--dock-h). */}
+        <div className="dockwrap" ref={dockwrap}>
+          <div className="dock">
+            {error && (
+              <p className="pr-alert" role="alert">
+                {error}
+              </p>
+            )}
+            {learner && active && (
+              <ProblemDock key={active.id} problem={active} sessionId={id} onSend={send} />
+            )}
+            {learner && !active && (
+              <div className="shell glass">
+                <form
+                  className="inner pr-ask"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    if (asking || !question.trim()) return
+                    void send({ kind: 'ask', text: question.trim() }).then(
+                      () => setQuestion(''),
+                      () => undefined
+                    )
+                  }}
+                >
+                  <div className="mic-field mic-fill">
+                    <input
+                      ref={askField}
+                      readOnly={asking}
+                      aria-label="Domande su questo problema"
+                      placeholder="Domande su questo problema? Chiedi pure…"
+                      value={question}
+                      onChange={(e) => setQuestion(e.target.value)}
+                    />
+                    <MicButton dictation={askMic} />
+                  </div>
+                  <button
+                    type="button"
+                    className="pri"
+                    onClick={() => void send({ kind: 'next' }).catch(() => undefined)}
                   >
-                    <div className="mic-field mic-fill">
-                      <input
-                        ref={askField}
-                        readOnly={asking}
-                        aria-label="Domande su questo problema"
-                        placeholder="Domande su questo problema? Chiedi pure…"
-                        value={question}
-                        onChange={(e) => setQuestion(e.target.value)}
-                      />
-                      <MicButton dictation={askMic} />
-                    </div>
-                    <button
-                      type="button"
-                      className="pri"
-                      onClick={() => void send({ kind: 'next' }).catch(() => undefined)}
-                    >
-                      Prossimo problema
-                    </button>
-                  </form>
-                  <DictationError dictation={askMic} />
-                </div>
-              )}
-              {s.phase === 'done' && (
-                <div className="row">
-                  <span className="sp" />
-                  <button type="button" className="pri" onClick={onBack}>
-                    Torna alla home
+                    Prossimo problema
                   </button>
-                </div>
-              )}
-            </div>
+                </form>
+                <DictationError dictation={askMic} />
+              </div>
+            )}
+            {s.phase === 'done' && (
+              <div className="row">
+                <span className="sp" />
+                <button type="button" className="pri" onClick={onBack}>
+                  Torna alla home
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <Arc state={s} />

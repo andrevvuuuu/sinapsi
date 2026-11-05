@@ -32,7 +32,7 @@ import { fakeNoteBridge } from './notes/fake-note'
 import { createNoteGenerator } from './notes/generator'
 import { readySources } from './notes/store'
 import { createLinkedSync } from './vault/linked'
-import { fakeTeacher } from './session/fake-teacher'
+import { fakeTeacher, LONG_MEASURE_SCRIPT } from './session/fake-teacher'
 import { createSessionRunner } from './session/runner'
 import { memoryBrief } from './session/memory-brief'
 import { createSuggester } from './suggest/suggest'
@@ -110,7 +110,9 @@ export function registerIpc(): { bridge: Bridge } {
   bridge.onStatus((s) => broadcast(CH.aiStatusChanged, s))
 
   const runner = createSessionRunner({
-    bridge: process.env.SINAPSI_FAKE_TEACHER === '1' ? fakeTeacher() : bridge,
+    bridge: process.env.SINAPSI_FAKE_TEACHER === '1'
+      ? fakeTeacher(process.env.SINAPSI_FAKE_TEACHER_SCRIPT === 'long-measure' ? LONG_MEASURE_SCRIPT : undefined)
+      : bridge,
     dir: join(dataDir(), 'sessions'),
     vault: async () => {
       const idx = await h.vaultIndex()

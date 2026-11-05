@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { SessionState } from '../../../shared/api'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
+import { useDockHeight } from '../components/useDockHeight'
 import { AnswerCard } from './AnswerCard'
 import { PlanMap } from './PlanMap'
 import { QuestionDock } from './QuestionDock'
@@ -47,6 +48,9 @@ export function SessionView({
     }
   }
   const scroller = useRef<HTMLDivElement>(null)
+  const dockwrap = useRef<HTMLDivElement>(null)
+  // The tutor message the pending question comes with: its start is scrolled into view.
+  const lastTutor = useRef<HTMLDivElement>(null)
   const freeField = useRef<HTMLTextAreaElement>(null)
   const dictation = useDictation({ target: freeField, value: free, onChange: setFree })
   const busy = dictation.state !== 'idle'
@@ -61,15 +65,23 @@ export function SessionView({
     }
   }, [api, id])
 
+  const measureDock = useDockHeight(scroller, dockwrap, s !== null)
+  const q = s?.awaiting === 'learner' ? s.pendingQuestion : undefined
+
   useEffect(() => {
     const el = scroller.current
-    if (el && typeof el.scrollTo === 'function')
+    if (!el) return
+    // The scroll target depends on the room the dock takes now, not after the next resize callback.
+    measureDock()
+    // A new question: read the message that leads to it from its start, not only its last lines.
+    if (q && lastTutor.current && typeof lastTutor.current.scrollIntoView === 'function') {
+      lastTutor.current.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    } else if (typeof el.scrollTo === 'function')
       el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-  }, [s?.items.length, s?.awaiting])
+  }, [s?.items.length, s?.awaiting, q?.id, measureDock])
 
   if (!s) return <div className="sess" />
   const score = sessionScore(s.items)
-  const q = s.awaiting === 'learner' ? s.pendingQuestion : undefined
   const sendFree = (): void => {
     if (busy || !free.trim()) return
     void api.say(id, free.trim())
@@ -100,7 +112,11 @@ export function SessionView({
             {s.items.map((it, i) => {
               if (it.kind === 'teacher')
                 return (
-                  <div key={i} className="msg">
+                  <div
+                    key={i}
+                    className="msg"
+                    ref={i === s.items.length - 1 ? lastTutor : undefined}
+                  >
                     {it.turn.blocks.map((b, j) => (
                       <RichText key={j} md={b.md} />
                     ))}
@@ -183,75 +199,76 @@ export function SessionView({
               </div>
             )}
           </div>
-          <div className="dockwrap">
-            <div className="dock">
-              {q && (
-                <QuestionDock
-                  key={q.id}
-                  question={q}
-                  onAnswer={(a) => void api.answer(id, a)}
-                  onSay={(t) => void api.say(id, t)}
-                />
-              )}
-              {!q && s.awaiting === 'learner' && s.phase !== 'done' && (
-                <div className="shell glass">
-                  <div className="inner sc-input">
-                    <div className="mic-field mic-fill mic-row">
-                      <textarea
-                        ref={freeField}
-                        readOnly={busy}
-                        aria-label="Fai una domanda al tutor"
-                        placeholder="Fai una domanda al tutor"
-                        value={free}
-                        rows={1}
-                        onChange={(e) => setFree(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault()
-                            sendFree()
-                          }
-                        }}
-                      />
-                      <MicButton dictation={dictation} />
-                    </div>
+        </div>
+        {/* Floats over the bottom of the conversation, which reserves its height (--dock-h). */}
+        <div className="dockwrap" ref={dockwrap}>
+          <div className="dock">
+            {q && (
+              <QuestionDock
+                key={q.id}
+                question={q}
+                onAnswer={(a) => void api.answer(id, a)}
+                onSay={(t) => void api.say(id, t)}
+              />
+            )}
+            {!q && s.awaiting === 'learner' && s.phase !== 'done' && (
+              <div className="shell glass">
+                <div className="inner sc-input">
+                  <div className="mic-field mic-fill mic-row">
+                    <textarea
+                      ref={freeField}
+                      readOnly={busy}
+                      aria-label="Fai una domanda al tutor"
+                      placeholder="Fai una domanda al tutor"
+                      value={free}
+                      rows={1}
+                      onChange={(e) => setFree(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          sendFree()
+                        }
+                      }}
+                    />
+                    <MicButton dictation={dictation} />
+                  </div>
+                  <button
+                    type="button"
+                    className="pri"
+                    disabled={busy || !free.trim()}
+                    onClick={sendFree}
+                  >
+                    Invia
+                  </button>
+                </div>
+                <DictationError dictation={dictation} />
+              </div>
+            )}
+            {s.phase === 'done' && (
+              <div className="shell glass">
+                <div className="inner act">
+                  <span>
+                    {s.notePath
+                      ? 'Sessione conclusa. Ora posso scrivere la nota viva dalla tua nota e da questa sessione.'
+                      : 'Sessione conclusa.'}
+                  </span>
+                  {s.notePath && (
                     <button
                       type="button"
                       className="pri"
-                      disabled={busy || !free.trim()}
-                      onClick={sendFree}
+                      disabled={creating}
+                      onClick={() => void createNota()}
                     >
-                      Invia
+                      Crea la nota viva
                     </button>
-                  </div>
-                  <DictationError dictation={dictation} />
+                  )}
+                  <button type="button" className={s.notePath ? 'ghost' : 'pri'} onClick={onBack}>
+                    Torna alla home
+                  </button>
+                  {createError && <span role="alert">{createError}</span>}
                 </div>
-              )}
-              {s.phase === 'done' && (
-                <div className="shell glass">
-                  <div className="inner act">
-                    <span>
-                      {s.notePath
-                        ? 'Sessione conclusa. Ora posso scrivere la nota viva dalla tua nota e da questa sessione.'
-                        : 'Sessione conclusa.'}
-                    </span>
-                    {s.notePath && (
-                      <button
-                        type="button"
-                        className="pri"
-                        disabled={creating}
-                        onClick={() => void createNota()}
-                      >
-                        Crea la nota viva
-                      </button>
-                    )}
-                    <button type="button" className={s.notePath ? 'ghost' : 'pri'} onClick={onBack}>
-                      Torna alla home
-                    </button>
-                    {createError && <span role="alert">{createError}</span>}
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
         <aside className="side" aria-label="Il piano">
