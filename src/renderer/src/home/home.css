@@ -130,7 +130,9 @@
 /* settings dialog */
 .overlay{position:fixed;inset:0;z-index:30;-webkit-app-region:no-drag;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
 .settings-dlg{--glass-shadow:0 40px 100px -30px rgba(0,0,0,.7);width:min(640px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px;animation:imp-in .2s var(--ease-out)}
+/* The 6 px glass ring replaced a 1 px border: the paddings inside are 5 px less, so the content stays where it was. */
 .sd-core{display:flex;flex-direction:column;overflow:hidden}
+.sd-core .sd-head{padding:11px 9px 4px 17px}.sd-core .sd-body{padding:4px 17px 16px}.sd-core .sd-foot{padding:12px 17px 13px}
 .sd-head{display:flex;align-items:center;justify-content:space-between;padding:16px 14px 4px 22px}
 .sd-head h2{font:400 30px/1 var(--serif);margin:0}
 .sd-body{overflow:auto;padding:4px 22px 16px;display:flex;flex-direction:column;gap:var(--space-group)}

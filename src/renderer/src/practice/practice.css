@@ -111,7 +111,7 @@
 .pr .mode.exam[aria-checked="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
 .pr .mode.exam[aria-checked="true"] .tick{border-color:var(--accent);background:var(--accent)}
 .pr .examrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 2px 2px}
-.pr .dur{display:flex;padding:3px;border-radius:999px;background:var(--faint);gap:2px}
+.pr .dur{display:flex;padding:3px;border-radius:999px;gap:2px}
 .pr .dur button{min-height:calc(var(--ctl-sm) - 6px);padding:0 14px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:500 13px var(--mono);cursor:pointer;white-space:nowrap}
 .pr .dur button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--inner),0 1px 3px rgba(0,0,0,.2)}
 .pr .custom{display:inline-flex;align-items:center;gap:4px;padding:3px;border-radius:999px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent)}

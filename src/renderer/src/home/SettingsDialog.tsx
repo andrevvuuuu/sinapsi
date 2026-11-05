@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_ENGINES, TASKS, type Settings, type Task } from '../../../shared/settings-schema'
+import { SegLens } from '../components/SegLens'
 
 const THEMES: [Settings['theme'], string][] = [
   ['lavagna', 'Lavagna'],
@@ -88,12 +89,13 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
           <div className="sd-body">
             <section>
               <h3>Tema</h3>
-              <div className="seg" role="group" aria-label="Tema">
+              <div className="seg seg-track glass glass-text" role="group" aria-label="Tema">
                 {THEMES.map(([id, label], i) => (
                   <button key={id} ref={i === 0 ? first : undefined} type="button" aria-pressed={settings.theme === id} onClick={() => onTheme(id)}>
                     {label}
                   </button>
                 ))}
+                <SegLens />
               </div>
             </section>
             <section>

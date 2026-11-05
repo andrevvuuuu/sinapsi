@@ -6,6 +6,7 @@ import type { ExtractorStatus, GraphData } from '../../../shared/graph-types'
 import type { VaultIndex } from '../../../shared/vault-types'
 import { DICTATION_SHORT, useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
+import { SegLens } from '../components/SegLens'
 import { RichText } from '../session/RichText'
 import { draw, radiusOf, type Colors, type Lens, type Sel } from './draw'
 import { createLayout, type Layout, type LayoutMode, type SimNode } from './layout'
@@ -582,7 +583,11 @@ export function GraphView({
             </div>
             <div className="gsec">
               <h3>Evidenzia</h3>
-              <div className="gseg glens" role="group" aria-label="Evidenzia">
+              <div
+                className="gseg glens seg-track glass glass-text"
+                role="group"
+                aria-label="Evidenzia"
+              >
                 {(
                   [
                     ['all', 'Tutto'],
@@ -600,6 +605,7 @@ export function GraphView({
                     {label}
                   </button>
                 ))}
+                <SegLens />
               </div>
             </div>
             <button
@@ -615,7 +621,11 @@ export function GraphView({
               <>
                 <div className="gsec">
                   <h3>Disposizione</h3>
-                  <div className="gseg" role="group" aria-label="Disposizione">
+                  <div
+                    className="gseg seg-track glass glass-text"
+                    role="group"
+                    aria-label="Disposizione"
+                  >
                     {MODES.map(([m, label]) => (
                       <button
                         key={m}
@@ -626,6 +636,7 @@ export function GraphView({
                         {label}
                       </button>
                     ))}
+                    <SegLens />
                   </div>
                   <p className="hint">{MODES.find((m) => m[0] === mode)![2]}</p>
                 </div>

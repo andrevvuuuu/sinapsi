@@ -6,6 +6,7 @@ import { BlockView, NotaContext } from './BlockView'
 import { FadeContext, type Layers, type Mode } from './context'
 import { fadeOf, sectionConcepts, type Fade } from './fading'
 import './nota.css'
+import { SegLens } from '../components/SegLens'
 
 const LAYERS: [keyof Layers, string][] = [
   ['sessione', 'Sessione'],
@@ -84,13 +85,14 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
       {n?.status === 'ready' && (
         <>
           <span className="sep" aria-hidden="true" />
-          <div className="nv-seg" role="group" aria-label="Modalità">
+          <div className="nv-seg seg-track" role="group" aria-label="Modalità">
             <button type="button" aria-pressed={mode === 'leggi'} onClick={() => setMode('leggi')}>
               Leggi
             </button>
             <button type="button" aria-pressed={mode === 'prova'} onClick={() => setMode('prova')}>
               Prova da solo
             </button>
+            <SegLens />
           </div>
           <span className="sep" aria-hidden="true" />
           <div className="layers" role="group" aria-label="Strati">

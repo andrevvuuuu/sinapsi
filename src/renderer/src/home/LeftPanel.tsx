@@ -7,6 +7,7 @@ import type { Settings } from '../../../shared/settings-schema'
 import { IconChevron, IconGear, IconPanel } from './icons'
 import { SettingsDialog } from './SettingsDialog'
 import { Splitter } from './Splitter'
+import { SegLens } from '../components/SegLens'
 
 const KINDS = ['Tutte', 'Apprendimento', 'Pratica', 'Ripasso'] as const
 type Kind = (typeof KINDS)[number]
@@ -116,12 +117,13 @@ export function LeftPanel(p: Props): React.JSX.Element {
         aria-label="Sessioni"
         style={p.sessionsHeight ? { maxHeight: p.sessionsHeight } : undefined}
       >
-        <div className="seg" role="group" aria-label="Sessioni da mostrare">
+        <div className="seg seg-track glass glass-text" role="group" aria-label="Sessioni da mostrare">
           {KINDS.map((k) => (
             <button key={k} type="button" aria-pressed={k === kind} onClick={() => setKind(k)}>
               {k}
             </button>
           ))}
+          <SegLens />
         </div>
         <div className="sess-search">
           {searching ? (

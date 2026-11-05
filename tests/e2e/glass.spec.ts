@@ -61,10 +61,35 @@ test('Liquid Glass on the controls, solid surfaces under the text, content scrol
   for (const state of [null, 'solid']) {
     await win.evaluate((v) => (v ? (document.documentElement.dataset.glass = v) : delete document.documentElement.dataset.glass), state)
     await win.waitForTimeout(300) // the material's colour transition
-    await expectSolid(win, ['.composer .modes-pill', '.composer .shell'])
+    await expectSolid(win, ['.composer .shell'])
+    // A segmented track goes back to its faint pre-glass look: no backdrop.
+    expect((await looks(win, ['.composer .modes-pill']))['.composer .modes-pill'].backdrop).toBe('none')
   }
   await win.evaluate(() => (document.documentElement.dataset.glass = 'on'))
   await shoot(win, 'home')
+
+  // Segmented controls: glass track, the lens slides onto the pressed option.
+  const lensGap = (group: string): Promise<number> =>
+    win.evaluate((g) => {
+      const track = document.querySelector(`[role="group"][aria-label="${g}"]`)!
+      const l = track.querySelector('.seg-lens')!.getBoundingClientRect()
+      const b = track.querySelector('button[aria-pressed="true"]')!.getBoundingClientRect()
+      return Math.max(Math.abs(l.left - b.left), Math.abs(l.top - b.top), Math.abs(l.width - b.width), Math.abs(l.height - b.height))
+    }, group)
+  for (const [group, pick, back] of [
+    ['Tipo di sessione', 'Pratica', 'Apprendimento'],
+    ['Sessioni da mostrare', 'Pratica', 'Tutte']
+  ] as const) {
+    await expectGlass(win, [`[role="group"][aria-label="${group}"]`])
+    expect(await lensGap(group)).toBeLessThanOrEqual(1)
+    await win.getByRole('group', { name: group }).getByRole('button', { name: pick, exact: true }).click()
+    await win.waitForTimeout(450) // the slide
+    expect(await lensGap(group)).toBeLessThanOrEqual(1)
+    await shoot(win, `seg-${pick === 'Pratica' && group === 'Tipo di sessione' ? 'modes' : 'left'}`)
+    await win.getByRole('group', { name: group }).getByRole('button', { name: back, exact: true }).click()
+    await win.waitForTimeout(450)
+    expect(await lensGap(group)).toBeLessThanOrEqual(1)
+  }
 
   // Settings dialog: a glass outer shell, the form on a solid core.
   await win.getByRole('button', { name: 'Impostazioni', exact: true }).click()

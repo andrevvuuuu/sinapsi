@@ -3,6 +3,7 @@ import { matchConcepts } from '../../../shared/practice-match'
 import type { Catalog } from '../../../shared/practice-types'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
+import { SegLens } from '../components/SegLens'
 import { MaterialDialog } from './MaterialDialog'
 import { clampMinutes, summary } from './summary'
 import './practice.css'
@@ -228,7 +229,7 @@ export function PracticeSetup({
               {mode === 'exam' && (
                 <div className="examrow">
                   <span className="lab">Durata</span>
-                  <div className="dur" role="group" aria-label="Durata">
+                  <div className="dur seg-track glass glass-text" role="group" aria-label="Durata">
                     {(['30', '60', '90'] as const).map((d) => (
                       <button
                         key={d}
@@ -246,6 +247,7 @@ export function PracticeSetup({
                     >
                       Altro…
                     </button>
+                    <SegLens />
                   </div>
                   {preset === 'custom' && (
                     <div className="custom">
@@ -278,13 +280,14 @@ export function PracticeSetup({
                     </div>
                   )}
                   <span className="lab">Dove</span>
-                  <div className="dur" role="group" aria-label="Dove scrivi">
+                  <div className="dur seg-track glass glass-text" role="group" aria-label="Dove scrivi">
                     <button type="button" aria-pressed={!paper} onClick={() => setPaper(false)}>
                       Al computer
                     </button>
                     <button type="button" aria-pressed={paper} onClick={() => setPaper(true)}>
                       Carta e penna
                     </button>
+                    <SegLens />
                   </div>
                   <div className="rules">
                     <span>✕ niente indizi</span>

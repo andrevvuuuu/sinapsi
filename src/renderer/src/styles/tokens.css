@@ -6,8 +6,8 @@
 [data-theme="lavagna"]{color-scheme:dark;--bg:#0f100d;--panel:#141511;--surface:#1a1b17;--hair:rgba(236,233,223,.09);--faint:rgba(236,233,223,.05);--inner:inset 0 1px 0 rgba(236,233,223,.05);--ink:#ece9df;--muted:#a19e92;--accent:#ef7a42;--good:#8fd1a6;--warn:#e9b95f;--bad:#f08080;--pen:#8fb8ff}
 [data-theme="trattato"]{color-scheme:light;--bg:#f3eee4;--panel:#ede7db;--surface:#fbf8f2;--hair:rgba(36,32,27,.11);--faint:rgba(36,32,27,.05);--inner:inset 0 1px 0 rgba(255,255,255,.8);--ink:#221e19;--muted:#615a4f;--accent:#a83d22;--good:#2f6e48;--warn:#8f6512;--bad:#a8323f;--pen:#2f55a8}
 /* Liquid Glass, only for the floating layer of controls (bars, menus, dialog shells), never under text to read. Regular variant: tint ~2/3 opaque, blur, saturation; rim, top highlight and soft shadow. --glass-ink stays AA over the brightest app colour; --glass-ink-2 is the secondary text on glass, still AA there (4.6:1 lavagna, 4.8:1 trattato over the most contrasting app colour). */
-[data-theme="lavagna"]{--glass-tint:rgba(26,27,23,.68);--glass-blur:24px;--glass-sat:1.6;--glass-rim:rgba(236,233,223,.12);--glass-spec:rgba(255,255,255,.14);--glass-shadow:0 1px 1px rgba(0,0,0,.24),0 12px 32px -8px rgba(0,0,0,.55);--glass-ink:#ece9df;--glass-ink-2:#d6d3c9}
-[data-theme="trattato"]{--glass-tint:rgba(251,248,242,.66);--glass-blur:24px;--glass-sat:1.4;--glass-rim:rgba(36,32,27,.1);--glass-spec:rgba(255,255,255,.85);--glass-shadow:0 1px 1px rgba(36,32,27,.06),0 12px 32px -8px rgba(36,32,27,.2);--glass-ink:#221e19;--glass-ink-2:#3f3a33}
+[data-theme="lavagna"]{--glass-tint:rgba(26,27,23,.68);--glass-blur:24px;--glass-sat:1.6;--glass-rim:rgba(236,233,223,.12);--glass-spec:rgba(255,255,255,.14);--glass-shadow:0 1px 1px rgba(0,0,0,.24),0 12px 32px -8px rgba(0,0,0,.55);--glass-ink:#ece9df;--glass-ink-2:#d6d3c9;--lens-tint:rgba(236,233,223,.16);--knob-tint:#e4e1d7}
+[data-theme="trattato"]{--glass-tint:rgba(251,248,242,.66);--glass-blur:24px;--glass-sat:1.4;--glass-rim:rgba(36,32,27,.1);--glass-spec:rgba(255,255,255,.85);--glass-shadow:0 1px 1px rgba(36,32,27,.06),0 12px 32px -8px rgba(36,32,27,.2);--glass-ink:#221e19;--glass-ink-2:#3f3a33;--lens-tint:rgba(255,255,255,.9);--knob-tint:#fff}
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
@@ -34,6 +34,18 @@ button.back-btn.back-btn.back-btn:hover{background:var(--surface);border-color:c
 .glass.glass-bar{box-shadow:none}
 /* Dialogs and the graph menu: a glass outer shell (6 px ring) around a solid core that holds the text, like the session's .shell/.inner. */
 .glass-shell{padding:6px}
+/* Segmented controls: a glass track (.seg-track, with .glass unless it already sits on glass) and the chosen option marked by a lens that slides to it (SegLens.tsx). The lens is the bright variant: tint, rim and highlight, no backdrop of its own, so never glass in glass. */
+.seg-track{position:relative;--glass-shadow:0 1px 2px rgba(0,0,0,.12)}
+/* Repeated class: above the views' own pressed styles (e.g. .nota .nv-seg button[aria-pressed]), which the lens replaces. */
+.seg-track.seg-track>button{position:relative;z-index:1}
+.seg-track.seg-track.seg-track>button[aria-pressed="true"]{background:transparent;box-shadow:none;color:var(--ink)}
+.seg-lens{position:absolute;top:0;left:0;z-index:0;pointer-events:none;border-radius:var(--lens-r,999px);background:linear-gradient(to bottom,color-mix(in srgb,var(--glass-spec) 50%,transparent),transparent 60%),var(--lens-tint);box-shadow:inset 0 1px 0 var(--glass-spec),inset 0 0 0 1px var(--glass-rim),0 1px 3px rgba(0,0,0,.18);transition:transform .32s var(--ease-out),width .32s var(--ease-out),height .32s var(--ease-out),opacity .2s}
+/* Solid material: the track and lens look as before the glass, a faint track and a surface option. */
+:root:not([data-glass="on"]) .seg-track.glass{background:var(--faint)}
+:root:not([data-glass="on"]) .seg-lens{background:var(--surface)}
+@media (prefers-reduced-motion:reduce){.seg-lens{transition:none}}
+/* Range thumbs are a small bright glass knob (session.css, nota.css): --knob-tint with a top highlight, rim and soft shadow. */
+:root{--knob:linear-gradient(to bottom,rgba(255,255,255,.9),transparent 70%) var(--knob-tint);--knob-shadow:inset 0 0 0 .5px var(--glass-rim),0 1px 3px rgba(0,0,0,.35)}
 .dlg-core{flex:1;min-height:0;border-radius:18px;background:var(--surface);box-shadow:var(--inner)}
 /* Text on glass: secondary labels use --glass-ink-2, never --muted (not AA over bright content). */
 .glass-text{--muted:var(--glass-ink-2)}

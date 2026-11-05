@@ -3,6 +3,7 @@ import type { ChipAction, Suggestions } from '../../../shared/api'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { IconSend } from './icons'
+import { SegLens } from '../components/SegLens'
 
 const MODES = ['Apprendimento', 'Pratica', 'Ripasso'] as const
 const KEY = { Apprendimento: 'learn', Pratica: 'practice', Ripasso: 'review' } as const
@@ -48,13 +49,14 @@ export function Composer({
   const chips = text ? [] : (suggestions?.[KEY[mode]] ?? [])
   return (
     <div className="composer" ref={box}>
-      <div className="seg modes-pill glass glass-text" role="group" aria-label="Tipo di sessione">
+      <div className="seg modes-pill seg-track glass glass-text" role="group" aria-label="Tipo di sessione">
         {MODES.map((m) => (
           <button key={m} type="button" aria-pressed={m === mode} onClick={() => setMode(m)}>
             {m}
             {m === 'Ripasso' && due > 0 && <span className="due">{due}</span>}
           </button>
         ))}
+        <SegLens />
       </div>
       <div className="shell glass">
         <div className="core">

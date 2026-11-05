@@ -12,7 +12,7 @@
 /* island */
 .nota .island{position:sticky;top:12px;z-index:30;display:flex;align-items:center;gap:4px;width:max-content;max-width:calc(100% - 32px);margin:12px auto 0;padding:5px;border-radius:999px;-webkit-app-region:no-drag;overflow-x:auto}
 .nota .island .back{min-height:44px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:var(--ink);font:500 14px var(--sans);cursor:pointer;white-space:nowrap}
-.nota .nv-seg{display:flex;gap:2px}
+.nota .nv-seg{display:flex;gap:2px;border-radius:999px}
 .nota .nv-seg button,.nota .layers button{min-height:44px;border:0;background:transparent;color:var(--muted);padding:0 14px;border-radius:999px;cursor:pointer;white-space:nowrap;font:500 14px var(--sans)}
 .nota .nv-seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .nota .sep{width:1px;height:22px;background:var(--hair);margin:0 4px;flex:none}
@@ -105,7 +105,7 @@
 .nota .fig .pts>.nv-chip[aria-pressed="true"]{background:color-mix(in srgb,var(--good) 14%,transparent);border-color:var(--good)}
 .nota input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer}
 .nota input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:6px;background:var(--hair)}
-.nota input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;border-radius:50%;background:var(--warn);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--hair)}
+.nota input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;border-radius:50%;background:var(--knob);border:3px solid var(--knob-tint);box-shadow:var(--knob-shadow)}
 .nota input[type=range]:focus-visible{outline:none}
 .nota input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--accent)}
 
