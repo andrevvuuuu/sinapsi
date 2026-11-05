@@ -286,18 +286,6 @@
   gap: 10px;
   margin-bottom: 8px;
 }
-.rv .rv-mic {
-  min-height: 36px;
-  font-variant-numeric: tabular-nums;
-}
-.rv .rv-mic.on {
-  border-color: var(--bad);
-  color: var(--bad);
-}
-.rv .rv-mic:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
 .rv-explain textarea {
   min-height: 140px;
 }

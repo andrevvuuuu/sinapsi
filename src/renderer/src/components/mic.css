@@ -1,0 +1,69 @@
+/* Dictation: the microphone sits inside the field, on the right, without adding height. */
+.mic-field {
+  position: relative;
+}
+.mic-field.mic-field:has(> .mic) > :is(textarea, input) {
+  padding-right: calc(var(--ctl) + 8px);
+}
+.mic-field.mic-field:has(> .mic-sm) > :is(textarea, input) {
+  padding-right: calc(var(--ctl-sm) + 8px);
+}
+.mic {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: var(--ctl);
+  height: var(--ctl);
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.mic-field > input ~ .mic {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.mic.mic-sm {
+  min-width: var(--ctl-sm);
+  height: var(--ctl-sm);
+  padding: 0 9px;
+}
+.mic svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.mic:hover {
+  color: var(--ink);
+  background: var(--faint);
+}
+.mic:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.mic[aria-pressed='true'] {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.mic[aria-disabled='true'] {
+  cursor: progress;
+  color: var(--muted);
+  background: transparent;
+}
+.mic-time {
+  font: 500 13px/1 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.mic-err {
+  margin: 8px 0 0;
+  color: var(--bad);
+  font-size: 14px;
+}
