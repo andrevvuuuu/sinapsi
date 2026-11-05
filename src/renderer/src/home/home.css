@@ -57,15 +57,18 @@
 .placeholder .orb{width:120px;height:120px;margin:0 auto 26px;border-radius:50%;border:1px dashed var(--hair);display:grid;place-items:center}
 .placeholder .orb i{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 14%,transparent)}
 .composer{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:min(620px,max(calc(100% - 64px),min(calc(100% - 32px),488px)));z-index:3}
+/* Concentric radii: shell 26 = core 20 + shell padding 6; chips 12 = core 20 − core padding 8. */
 .composer .shell{padding:6px;border-radius:26px}
-.composer .core{border-radius:21px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:10px}
+.composer .core{border-radius:20px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:10px}
 .composer .seg{width:max-content;margin:0 0 8px}
 .composer .seg button{flex:none}
 .inrow{display:flex;align-items:flex-end;gap:8px}
 .inrow textarea{flex:1;resize:none;border:0;background:transparent;color:var(--ink);font:400 16px/1.5 var(--sans);padding:8px;min-height:44px;max-height:140px;outline:none}
 .inrow textarea::placeholder{color:var(--muted);opacity:1}
-.send{width:44px;height:44px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);display:grid;place-items:center;cursor:pointer;flex:none}
-.send:disabled{opacity:.35;cursor:not-allowed}
+/* Send: filled with the accent when it can go (the focal point), an outline at ≥ 3:1 when it cannot. */
+.send{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--accent);background:var(--accent);color:var(--bg);display:grid;place-items:center;cursor:pointer;flex:none;transition:background-color .15s var(--ease-out),border-color .15s var(--ease-out),color .15s var(--ease-out)}
+.send:not(:disabled):hover{background:color-mix(in srgb,var(--accent) 88%,var(--ink));border-color:color-mix(in srgb,var(--accent) 88%,var(--ink))}
+.send:disabled{--send-off:color-mix(in srgb,var(--muted) 80%,var(--surface));background:transparent;border-color:var(--send-off);color:var(--send-off);cursor:not-allowed}
 .send svg{width:16px;height:16px}
 .rt{padding:4px 18px 14px}
 .rt h1{font:400 30px/1.05 var(--serif);margin:0 0 6px}
@@ -170,9 +173,9 @@
 
 /* Suggestions: what to do next, each with its reason. */
 .composer .suggest{display:flex;gap:6px;flex-wrap:nowrap;margin:0 0 8px;padding:0 2px;min-width:0}
-.composer .sg-chip{font:inherit;font-family:var(--sans);text-transform:none;letter-spacing:normal;display:flex;flex-direction:column;align-items:flex-start;gap:1px;flex:1 1 0;min-width:0;max-width:260px;min-height:44px;padding:6px 12px;border-radius:14px;border:1px solid var(--hair);background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--ink);text-align:left;cursor:pointer;transition:background .15s,border-color .15s}
+.composer .sg-chip{font:inherit;font-family:var(--sans);text-transform:none;letter-spacing:normal;display:flex;flex-direction:column;align-items:flex-start;gap:1px;flex:0 1 auto;min-width:0;max-width:260px;min-height:44px;padding:6px 12px;border-radius:12px;border:1px solid var(--hair);background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--ink);text-align:left;cursor:pointer;transition:background .15s,border-color .15s}
 .composer .sg-chip:hover{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:color-mix(in srgb,var(--accent) 40%,var(--hair))}
 .composer .sg-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.composer .sg-label,.composer .sg-why{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.composer .sg-label{font-size:13.5px;font-weight:500}
-.composer .sg-why{font-size:11.5px;color:var(--muted)}
+/* The title takes up to two lines before the ellipsis; the reason stays on one. */
+.composer .sg-label{max-width:100%;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;text-wrap:pretty;font-size:13.5px;line-height:1.25;font-weight:500}
+.composer .sg-why{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--muted)}
