@@ -73,8 +73,22 @@ function measureComposer() {
     opacity: Number(s.opacity),
     edge: Math.max(ratio(over(rgba(s.borderTopColor), core), core), ratio(sendFill, core)),
     icon: ratio(rgba(s.color), sendFill),
-    fill: s.backgroundColor
+    fill: s.backgroundColor,
+    // The keyboard focus ring: drawn, off the circle (the surface shows between fill and ring), ≥ 3:1 on the core.
+    focused: send.matches(':focus-visible'),
+    ring: { style: s.outlineStyle, width: parseFloat(s.outlineWidth), offset: parseFloat(s.outlineOffset), contrast: ratio(over(rgba(s.outlineColor), core), core) }
   }
+}
+
+/** True once the send button's `prop` has reached the colour `token` resolves to (its colour transition is over). */
+function sendSettled({ prop, token }: { prop: 'color' | 'backgroundColor'; token: string }): boolean {
+  const send = document.querySelector<HTMLButtonElement>('.composer .send')!
+  const probe = document.createElement('i')
+  probe.style.color = `var(${token})`
+  send.parentElement!.append(probe)
+  const want = getComputedStyle(probe).color
+  probe.remove()
+  return getComputedStyle(send)[prop] === want
 }
 
 test('home composer: full suggestion titles on one row, legible secondary text and send states', async () => {
@@ -86,11 +100,11 @@ test('home composer: full suggestion titles on one row, legible secondary text a
   const chips = win.locator('.composer .sg-chip')
   await expect(chips).toHaveCount(3)
   const field = win.getByLabel('Cosa vuoi studiare?')
-  const heightBefore = await win.locator('.composer').evaluate((el) => el.getBoundingClientRect())
+  const rectBefore = await win.locator('.composer').evaluate((el) => el.getBoundingClientRect())
 
   for (const theme of ['lavagna', 'trattato']) {
     await win.evaluate((t) => (document.documentElement.dataset.theme = t), theme)
-    await win.waitForTimeout(300)
+    await expect.poll(() => win.evaluate(sendSettled, { prop: 'color', token: '--btn-disabled-ink' })).toBe(true)
     const m = await win.evaluate(measureComposer)
     expect(new Set(m.tops).size, `${theme}: chips on one row`).toBe(1)
     for (const l of m.lines) expect(l, `${theme}: title at most two lines`).toBeLessThanOrEqual(2)
@@ -107,8 +121,18 @@ test('home composer: full suggestion titles on one row, legible secondary text a
     await win.screenshot({ path: `test-results/home-composer-${theme}.png` })
 
     await field.fill('Limiti')
-    await win.waitForTimeout(300) // the send button's colour transition
+    await expect.poll(() => win.evaluate(sendSettled, { prop: 'backgroundColor', token: '--accent' })).toBe(true)
+    // Reach the enabled send by keyboard: from the microphone, Tab.
+    await win.locator('.composer .mic').focus()
+    await win.keyboard.press('Tab')
+    await expect(win.locator('.composer .send')).toBeFocused()
     const on = await win.evaluate(measureComposer)
+    expect(on.focused, `${theme}: keyboard focus shows on send`).toBe(true)
+    expect(on.ring.style, `${theme}: send focus ring drawn`).toBe('solid')
+    expect(on.ring.width, `${theme}: send focus ring width`).toBeGreaterThanOrEqual(2)
+    expect(on.ring.offset, `${theme}: send focus ring stands off the filled circle`).toBeGreaterThanOrEqual(2)
+    expect(on.ring.contrast, `${theme}: send focus ring ≥ 3:1 on the core`).toBeGreaterThanOrEqual(3)
+    await win.screenshot({ path: `test-results/home-composer-send-focus-${theme}.png` })
     expect(on.disabled).toBe(false)
     expect(on.opacity).toBe(1)
     expect(on.fill, `${theme}: enabled send is filled differently from disabled`).not.toBe(m.fill)
@@ -117,7 +141,7 @@ test('home composer: full suggestion titles on one row, legible secondary text a
   }
   // Same place, same width: only the few px the second title line needs.
   const after = await win.locator('.composer').evaluate((el) => el.getBoundingClientRect())
-  expect(after.width).toBe(heightBefore.width)
-  expect(after.bottom).toBe(heightBefore.bottom)
+  expect(after.width).toBe(rectBefore.width)
+  expect(after.bottom).toBe(rectBefore.bottom)
   await app.close()
 })

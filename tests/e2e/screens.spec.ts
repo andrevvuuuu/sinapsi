@@ -26,31 +26,7 @@ const DENSE = ['.nota .island button', '.graph .gzoom button', '.mic.mic-sm', '.
  * the check reports it; the area that fixes the finding removes its entries. A listed finding that no longer
  * occurs fails the test too, so the list never goes stale.
  */
-const HOME_PANEL = [
-  // 8b: the left panel of the Home, still on screen behind the settings dialog and beside the graph.
-  'button «Tutte» 41×44 (div.seg.seg-track.glass.glass-text > button)',
-  'button «Nuovo notebook» 71×36 (div.sec-head > button.mini)',
-  'button «Bicipite» 252×34 (div.tree > button.leaf)',
-  'button «Teorema di Lagrange» 252×34 (div.tree > button.leaf)',
-  'button «Teorema di Rolle» 252×34 (div.tree > button.leaf)',
-  'button «Senza tag» 287×34 (div.tree > button.leaf)',
-  'button «Cambia cartella del vault» 165×36 (div.row > button.mini)'
-]
 const KNOWN: Record<string, string[]> = {
-  home: HOME_PANEL,
-  impostazioni: [
-    ...HOME_PANEL,
-    // 8b: the theme selector in the settings dialog.
-    'button «Lavagna» 197×38 (div.seg.seg-track.glass.glass-text > button)',
-    'button «Trattato» 192×38 (div.seg.seg-track.glass.glass-text > button)',
-    'button «Sistema» 195×38 (div.seg.seg-track.glass.glass-text > button)'
-  ],
-  grafo: [
-    ...HOME_PANEL,
-    // 8b: the left panel's notes vive, once one exists.
-    'button «Teorema di Rolle» 228×34 (div.kids > button.leaf.nv-leaf)',
-    'text «1» 10px (summary > small.cnt)'
-  ],
   // 8c: the plan's stage labels.
   'sessione-piano': ['text «già tuo» 10px (div > small)', 'text «adesso» 10px (div > small)', 'text «obiettivo» 10px (div > small)'],
   // 8f: the notebook's source bar, source rows and starter questions.
