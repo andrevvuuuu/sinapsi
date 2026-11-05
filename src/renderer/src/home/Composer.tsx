@@ -48,7 +48,7 @@ export function Composer({
   const chips = text ? [] : (suggestions?.[KEY[mode]] ?? [])
   return (
     <div className="composer" ref={box}>
-      <div className="seg modes-pill" role="group" aria-label="Tipo di sessione">
+      <div className="seg modes-pill glass glass-text" role="group" aria-label="Tipo di sessione">
         {MODES.map((m) => (
           <button key={m} type="button" aria-pressed={m === mode} onClick={() => setMode(m)}>
             {m}
@@ -56,7 +56,7 @@ export function Composer({
           </button>
         ))}
       </div>
-      <div className="shell">
+      <div className="shell glass">
         <div className="core">
           {chips.length > 0 && (
             <div className="suggest" role="group" aria-label="Consigliati">

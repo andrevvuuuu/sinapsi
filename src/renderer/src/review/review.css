@@ -1,5 +1,7 @@
 /* Ripasso: adapted from docs/prototipi/ripasso-v1.html, scoped under .rv */
+/* The page fades into a band under the glass bar while it scrolls (.scroll-edge-under). */
 .rv {
+  --scroll-edge-top: var(--topbar-h);
   position: fixed;
   inset: 0;
   overflow: auto;
@@ -22,9 +24,6 @@
   gap: 20px;
   padding: 14px 24px 14px 88px;
   min-height: var(--topbar-h);
-  background: color-mix(in srgb, var(--bg) 85%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--hair);
 }
 .rv-top .pill {

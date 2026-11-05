@@ -206,7 +206,7 @@ export function NotebookView({
 
   return (
     <div className={'nb' + (viewed || viewer?.excerpt ? ' with-viewer' : '')}>
-      <header className="nb-top drag">
+      <header className="nb-top drag glass glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>

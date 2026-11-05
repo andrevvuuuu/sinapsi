@@ -91,7 +91,7 @@ export function ExamView({
   }, [running, left <= 0])
 
   const header = (
-    <header className="pr-top drag">
+    <header className="pr-top drag glass glass-bar glass-text">
       <button type="button" className="pill nodrag back-btn" onClick={onBack}>
         ← Home
       </button>
@@ -114,7 +114,7 @@ export function ExamView({
     return (
       <div className="pr">
         {header}
-        <div className="pr-col">
+        <div className="pr-col scroll-edge">
           {state.awaiting === 'retry' ? (
             <div className="pr-err">
               <p>{lastError(state) ?? 'Il compito non è stato preparato.'}</p>
@@ -140,7 +140,7 @@ export function ExamView({
     return (
       <div className="pr">
         {header}
-        <div className="pr-col">
+        <div className="pr-col scroll-edge">
           <section className="pr-grade" aria-label="Voto">
             <span className="lab">Voto</span>
             <p className="pr-mark">{g.lode ? '30 e lode' : `${g.total}/30`}</p>
@@ -216,7 +216,7 @@ export function ExamView({
     return (
       <div className="pr">
         {header}
-        <div className="pr-col">
+        <div className="pr-col scroll-edge">
           {state.awaiting === 'retry' ? (
             <div className="pr-err">
               <p>La correzione non è riuscita. Le tue risposte sono salve.</p>
@@ -237,7 +237,7 @@ export function ExamView({
     return (
       <div className="pr">
         {header}
-        <div className="pr-col">
+        <div className="pr-col scroll-edge">
           <PaperReview
             state={state}
             answers={answers}
@@ -253,7 +253,7 @@ export function ExamView({
     return (
       <div className="pr">
         {header}
-        <div className="pr-col pr-paper">
+        <div className="pr-col pr-paper scroll-edge">
           <h2 className="pr-sheet-title">{exam.sheet.title}</h2>
           <p className="mt-hint">
             A macchina spenta: scrivi tutto su carta, senza appunti né aiuti. Allo scadere, o quando
@@ -287,7 +287,7 @@ export function ExamView({
   return (
     <div className="pr">
       {header}
-      <div className="pr-col">
+      <div className="pr-col scroll-edge">
         <h2 className="pr-sheet-title">{exam.sheet.title}</h2>
         <p className="mt-hint">
           Niente indizi e niente correzione durante: rispondi come all’esame. Le risposte si salvano

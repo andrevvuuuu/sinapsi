@@ -1,6 +1,8 @@
 .sess{display:grid;grid-template-rows:auto 1fr;height:100vh;font-size:17px;line-height:1.65}
 .sess .lab{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .sess .top{display:flex;align-items:center;gap:16px;padding:14px 24px 14px 88px;border-bottom:1px solid var(--hair);min-height:var(--topbar-h)}
+/* Above the conversation that scrolls under it. */
+.sess .top{position:relative;z-index:5}
 .sess .top h1{font:400 28px/1 var(--serif);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sess .phase{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);white-space:nowrap}
 .sess .sp{flex:1}
@@ -8,8 +10,9 @@
 .sess .pill:hover{color:var(--ink)}
 .notechip{font-size:13px;color:var(--pen);padding:6px 12px;border-radius:999px;border:1px solid color-mix(in srgb,var(--pen) 35%,transparent);white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis}
 .sess .body{display:grid;grid-template-columns:1fr 280px;min-height:0}
-.sess .scroll{overflow:auto;min-height:0;position:relative;display:flex;flex-direction:column}
-.sess .col{width:100%;max-width:760px;margin:0 auto;padding:28px 24px 40px;flex:1}
+/* The conversation starts under the glass bar (same place on screen, offset by its padding) and fades into it while scrolling. */
+.sess .scroll{overflow:auto;min-height:0;position:relative;display:flex;flex-direction:column;margin-top:calc(-1 * var(--topbar-full));--scroll-edge-top:var(--topbar-full)}
+.sess .col{width:100%;max-width:760px;margin:0 auto;padding:calc(28px + var(--topbar-full)) 24px 40px;flex:1}
 .sess .msg{margin:0 0 18px;animation:in .4s var(--ease-out)}
 @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .rich p{margin:0 0 12px}.rich p:last-child{margin-bottom:0}
@@ -35,7 +38,7 @@
 .summary ul{margin:0 0 8px;padding-left:20px}
 .dockwrap{position:sticky;bottom:0;padding:0 24px 20px;background:linear-gradient(transparent,var(--bg) 40px)}
 .dock{max-width:712px;margin:0 auto}
-.sess .shell{padding:5px;border-radius:24px;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--hair);backdrop-filter:blur(16px)}
+.sess .shell{padding:6px;border-radius:24px}
 .sess .inner{border-radius:19px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:14px 16px}
 .sess .q{font-size:17px;margin:4px 0 10px}
 .opts{display:flex;flex-direction:column;gap:6px}

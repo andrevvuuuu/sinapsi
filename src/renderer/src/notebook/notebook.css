@@ -52,8 +52,9 @@
 .nb-src-act{display:flex;gap:4px;align-items:center;grid-column:2;justify-content:flex-end}
 .nb-src-act .x{width:var(--ctl-sm);min-height:var(--ctl-sm);padding:0;border:0;background:transparent;color:var(--muted);font-size:18px}
 .nb-src-act .x:hover{color:var(--bad)}
-.nb-chat{display:flex;flex-direction:column;min-width:0;min-height:0}
-.nb-turns{flex:1;overflow:auto;padding:32px max(24px,calc((100% - 720px)/2)) 24px;display:flex;flex-direction:column;gap:18px}
+/* The chat starts under the glass bar (same place on screen, offset by its padding) and fades into it while scrolling. */
+.nb-chat{display:flex;flex-direction:column;min-width:0;min-height:0;margin-top:calc(-1 * var(--topbar-full))}
+.nb-turns{--scroll-edge-top:var(--topbar-full);flex:1;overflow:auto;padding:calc(32px + var(--topbar-full)) max(24px,calc((100% - 720px)/2)) 24px;display:flex;flex-direction:column;gap:18px}
 .nb-hello{margin:auto 0;text-align:center;padding:40px 0}
 .nb-hello h2{font:400 40px/1.05 var(--serif);margin:0 0 10px}
 .nb-hello p{color:var(--muted);max-width:52ch;margin:0 auto 20px}

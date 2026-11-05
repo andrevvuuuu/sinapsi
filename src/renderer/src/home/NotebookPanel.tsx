@@ -104,7 +104,7 @@ export function NotebookPanel({
           </button>
           {menu && (
             <div
-              className="imp-menu"
+              className="imp-menu glass glass-text"
               role="menu"
               aria-label="In quale notebook?"
               onKeyDown={(e) => {

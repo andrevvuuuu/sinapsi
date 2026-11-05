@@ -102,13 +102,13 @@ export function PracticeSetup({
 
   return (
     <div className="pr">
-      <header className="pr-top drag">
+      <header className="pr-top drag glass glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
         <h1>Pratica</h1>
       </header>
-      <div className="pr-setup">
+      <div className="pr-setup scroll-edge">
         <p className="pr-lead">
           {initial
             ? 'Ho preparato il materiale del consiglio che hai scelto: puoi aggiungere o togliere concetti prima di iniziare.'

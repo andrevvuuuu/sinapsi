@@ -41,7 +41,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
 
   if (q.role === 'plan') {
     return (
-      <div className="shell">
+      <div className="shell glass">
         <div className="inner">
           <div className="lab">Il piano</div>
           <div ref={head} tabIndex={-1} className="q-head">
@@ -106,7 +106,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
           </div>
           <DictationError dictation={thoughtsMic} />
         </div>
-        <div className="shell">
+        <div className="shell glass">
           <div className="inner">
             <button
               type="button"
@@ -151,7 +151,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
   }
 
   return (
-    <div className="shell">
+    <div className="shell glass">
       <div className="inner">
         <div className="lab">{ROLE_IT[q.role]}</div>
         <div ref={head} tabIndex={-1} className="q-head">

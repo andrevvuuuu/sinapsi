@@ -78,7 +78,7 @@ export function SessionView({
 
   return (
     <div className="sess">
-      <header className="top drag">
+      <header className="top drag glass glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
@@ -95,7 +95,7 @@ export function SessionView({
         {s.noteTitle && <span className="notechip">Dalla tua nota: {s.noteTitle}</span>}
       </header>
       <div className="body">
-        <div className="scroll" ref={scroller}>
+        <div className="scroll scroll-edge" ref={scroller}>
           <div className="col" aria-live="polite">
             {s.items.map((it, i) => {
               if (it.kind === 'teacher')
@@ -194,7 +194,7 @@ export function SessionView({
                 />
               )}
               {!q && s.awaiting === 'learner' && s.phase !== 'done' && (
-                <div className="shell">
+                <div className="shell glass">
                   <div className="inner sc-input">
                     <div className="mic-field mic-fill mic-row">
                       <textarea
@@ -227,7 +227,7 @@ export function SessionView({
                 </div>
               )}
               {s.phase === 'done' && (
-                <div className="shell">
+                <div className="shell glass">
                   <div className="inner act">
                     <span>
                       {s.notePath

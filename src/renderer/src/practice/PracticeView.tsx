@@ -68,7 +68,7 @@ function ProblemDock({
     setLine(undefined)
   }
   return (
-    <section className="shell" aria-label="Problema">
+    <section className="shell glass" aria-label="Problema">
       <div className="inner">
         <div className="lab">Problema</div>
         <div className="st">
@@ -265,7 +265,7 @@ export function PracticeView({
 
   return (
     <div className="pr">
-      <header className="pr-top drag">
+      <header className="pr-top drag glass glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
@@ -290,7 +290,7 @@ export function PracticeView({
         )}
       </header>
       <div className="pr-body">
-        <div className="pr-scroll">
+        <div className="pr-scroll scroll-edge">
           <div className="pr-col" aria-live="polite">
             {s.items.map((it, i) => {
               if (it.kind === 'learner') {
@@ -411,7 +411,7 @@ export function PracticeView({
                 <ProblemDock key={active.id} problem={active} sessionId={id} onSend={send} />
               )}
               {learner && !active && (
-                <div className="shell">
+                <div className="shell glass">
                   <form
                     className="inner pr-ask"
                     onSubmit={(e) => {

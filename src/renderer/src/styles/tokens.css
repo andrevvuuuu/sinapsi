@@ -1,11 +1,13 @@
 /* Sizes and spacing (layout only, same for every theme). */
+/* A top bar with its bottom hairline: how far the content scrolling under it starts. */
+:root{--topbar-full:calc(var(--topbar-h) + 1px)}
 :root{--ctl:44px;--ctl-sm:36px;--hit-min:28px;--topbar-h:72px;--space-label:8px;--space-group:20px}
 :root{--ease-out:cubic-bezier(.23,1,.32,1);--serif:'Instrument Serif',Georgia,serif;--sans:'Geist',ui-sans-serif,system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace;--hand:'Caveat',cursive}
 [data-theme="lavagna"]{color-scheme:dark;--bg:#0f100d;--panel:#141511;--surface:#1a1b17;--hair:rgba(236,233,223,.09);--faint:rgba(236,233,223,.05);--inner:inset 0 1px 0 rgba(236,233,223,.05);--ink:#ece9df;--muted:#a19e92;--accent:#ef7a42;--good:#8fd1a6;--warn:#e9b95f;--bad:#f08080;--pen:#8fb8ff}
 [data-theme="trattato"]{color-scheme:light;--bg:#f3eee4;--panel:#ede7db;--surface:#fbf8f2;--hair:rgba(36,32,27,.11);--faint:rgba(36,32,27,.05);--inner:inset 0 1px 0 rgba(255,255,255,.8);--ink:#221e19;--muted:#615a4f;--accent:#a83d22;--good:#2f6e48;--warn:#8f6512;--bad:#a8323f;--pen:#2f55a8}
-/* Liquid Glass, only for the floating layer of controls (bars, menus, dialog shells), never under text to read. Regular variant: tint ~2/3 opaque, blur, saturation; rim, top highlight and soft shadow. --glass-ink stays AA over the brightest app colour. */
-[data-theme="lavagna"]{--glass-tint:rgba(26,27,23,.68);--glass-blur:24px;--glass-sat:1.6;--glass-rim:rgba(236,233,223,.12);--glass-spec:rgba(255,255,255,.14);--glass-shadow:0 1px 1px rgba(0,0,0,.24),0 12px 32px -8px rgba(0,0,0,.55);--glass-ink:#ece9df}
-[data-theme="trattato"]{--glass-tint:rgba(251,248,242,.66);--glass-blur:24px;--glass-sat:1.4;--glass-rim:rgba(36,32,27,.1);--glass-spec:rgba(255,255,255,.85);--glass-shadow:0 1px 1px rgba(36,32,27,.06),0 12px 32px -8px rgba(36,32,27,.2);--glass-ink:#221e19}
+/* Liquid Glass, only for the floating layer of controls (bars, menus, dialog shells), never under text to read. Regular variant: tint ~2/3 opaque, blur, saturation; rim, top highlight and soft shadow. --glass-ink stays AA over the brightest app colour; --glass-ink-2 is the secondary text on glass, still AA there (4.6:1 lavagna, 4.8:1 trattato over the most contrasting app colour). */
+[data-theme="lavagna"]{--glass-tint:rgba(26,27,23,.68);--glass-blur:24px;--glass-sat:1.6;--glass-rim:rgba(236,233,223,.12);--glass-spec:rgba(255,255,255,.14);--glass-shadow:0 1px 1px rgba(0,0,0,.24),0 12px 32px -8px rgba(0,0,0,.55);--glass-ink:#ece9df;--glass-ink-2:#d6d3c9}
+[data-theme="trattato"]{--glass-tint:rgba(251,248,242,.66);--glass-blur:24px;--glass-sat:1.4;--glass-rim:rgba(36,32,27,.1);--glass-spec:rgba(255,255,255,.85);--glass-shadow:0 1px 1px rgba(36,32,27,.06),0 12px 32px -8px rgba(36,32,27,.2);--glass-ink:#221e19;--glass-ink-2:#3f3a33}
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
@@ -17,14 +19,25 @@ button{font:inherit;color:inherit}
 /* "← Home": the same size and weight in every view (repeated class: it wins over the views' own .pill rules). */
 button.back-btn.back-btn.back-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--hair);background:color-mix(in srgb,var(--surface) 82%,transparent);color:var(--ink);font:500 14px/1 var(--sans);white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s}
 button.back-btn.back-btn.back-btn:hover{background:var(--surface);border-color:color-mix(in srgb,var(--ink) 22%,transparent)}
+/* On a glass bar the button is part of the bar: a light fill of the bar's ink, no solid pill on the glass. */
+.glass button.back-btn.back-btn.back-btn{background:color-mix(in srgb,var(--glass-ink) 6%,transparent)}
+.glass button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--glass-ink) 12%,transparent);border-color:color-mix(in srgb,var(--glass-ink) 22%,transparent)}
 .island button.back-btn.back-btn.back-btn{border-color:transparent;background:transparent}
 
-/* The material. Rim and highlight are inset shadows: no border, so it never changes an element's size. */
-.glass{color:var(--glass-ink);background:linear-gradient(to bottom,color-mix(in srgb,var(--glass-spec) 30%,transparent),transparent 50%),var(--glass-tint);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));box-shadow:inset 0 1px 0 var(--glass-spec),inset 0 0 0 1px var(--glass-rim),var(--glass-shadow);transition:background-color .2s var(--ease-out),box-shadow .2s var(--ease-out)}
+/* The material. Rim and highlight are inset shadows: no border, so it never changes an element's size. Repeated class: it wins over a view's own one-class background (e.g. .seg). */
+.glass.glass{color:var(--glass-ink);background:linear-gradient(to bottom,color-mix(in srgb,var(--glass-spec) 30%,transparent),transparent 50%),var(--glass-tint);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));box-shadow:inset 0 1px 0 var(--glass-spec),inset 0 0 0 1px var(--glass-rim),var(--glass-shadow);transition:background-color .2s var(--ease-out),box-shadow .2s var(--ease-out)}
 /* Edge refraction where Chromium takes an SVG filter as a backdrop-filter (#glass-refract, GlassFilter.tsx); elsewhere blur and saturation only. The url() goes last: in front of blur() Chromium drops the blur. */
-@supports (backdrop-filter:url(#glass-refract)){.glass{backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat)) url(#glass-refract)}}
-/* «Riduci trasparenza» (data-glass from macOS): a solid surface, nothing seen through it. */
-[data-glass="solid"] .glass{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}
+@supports (backdrop-filter:url(#glass-refract)){.glass.glass{backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat)) url(#glass-refract)}}
+/* Solid unless data-glass="on": with «Riduci trasparenza» (data-glass="solid") and before macOS has answered, so the glass never flashes. */
+:root:not([data-glass="on"]) .glass{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}
+/* A full-width bar: the material without the slab's rim and drop shadow; its own hairline closes it. */
+.glass.glass-bar{box-shadow:none}
+/* Large, text-heavy glass (dialogs, the graph menu): more opaque, as Apple's larger glass surfaces are. */
+.glass.glass-thick{--glass-tint:color-mix(in srgb,var(--surface) 90%,transparent)}
+/* Text on glass: secondary labels use --glass-ink-2, never --muted (not AA over bright content). */
+.glass-text{--muted:var(--glass-ink-2)}
 @media (prefers-reduced-motion:reduce){.glass{transition:none}}
 /* Scroll edge effect: content fades where it scrolls under a floating control. Set --scroll-edge-top / --scroll-edge-bottom to the depth of the fade on the side that needs it. */
 .scroll-edge{mask-image:linear-gradient(to bottom,transparent,#000 var(--scroll-edge-top,0px),#000 calc(100% - var(--scroll-edge-bottom,0px)),transparent)}
+/* The same fade where the bar scrolls with the content (a sticky bar inside the scroller, which a mask would fade too): a band of background, fixed under the bar, that the content dissolves into. */
+.scroll-edge-under::before{content:"";position:fixed;top:0;left:0;right:0;height:var(--scroll-edge-top,0px);background:linear-gradient(var(--bg),color-mix(in srgb,var(--bg) 60%,transparent) 50%,transparent);pointer-events:none;z-index:var(--scroll-edge-z,4)}

@@ -63,7 +63,7 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
-        className="settings-dlg"
+        className="settings-dlg glass glass-thick glass-text"
         role="dialog"
         aria-modal="true"
         aria-labelledby="st-title"

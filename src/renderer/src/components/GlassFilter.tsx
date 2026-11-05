@@ -6,8 +6,8 @@ function setGlass(reduced: boolean): void {
 
 /**
  * The Liquid Glass material at runtime, mounted once above every view: the SVG filter `.glass`
- * refracts its edges with (tokens.css), and `data-glass` on <html>, 'solid' while macOS
- * «Riduci trasparenza» is on.
+ * refracts its edges with (tokens.css), and `data-glass` on <html>: 'on' once macOS says
+ * transparency is allowed, 'solid' while «Riduci trasparenza» is on.
  */
 export function GlassFilter(): React.JSX.Element {
   useEffect(() => {
@@ -17,10 +17,15 @@ export function GlassFilter(): React.JSX.Element {
       changed = true
       setGlass(reduced)
     })
-    // A change that arrives before the first answer is newer than it.
-    void ui.reducedTransparency().then((reduced) => {
-      if (!changed) setGlass(reduced)
-    })
+    // A change that arrives before the first answer is newer than it. Until an answer comes the
+    // attribute stays unset and tokens.css keeps the glass solid; if the answer fails, solid it stays.
+    ui.reducedTransparency()
+      .then((reduced) => {
+        if (!changed) setGlass(reduced)
+      })
+      .catch(() => {
+        if (!changed) setGlass(true)
+      })
     return () => {
       changed = true
       off()

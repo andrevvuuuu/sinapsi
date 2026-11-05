@@ -5,13 +5,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { GlassFilter } from '../../src/renderer/src/components/GlassFilter'
 
 /** window.sinapsi.ui as the preload exposes it; `emit` plays macOS changing the setting. */
-function mockUi(reduced: boolean): { emit: (v: boolean) => void; unsubscribe: ReturnType<typeof vi.fn> } {
+function mockUi(reduced: boolean | Promise<boolean>): { emit: (v: boolean) => void; unsubscribe: ReturnType<typeof vi.fn> } {
   const listeners = new Set<(v: boolean) => void>()
   const unsubscribe = vi.fn()
   Object.assign(window, {
     sinapsi: {
       ui: {
-        reducedTransparency: vi.fn(async () => reduced),
+        reducedTransparency: vi.fn(() => Promise.resolve(reduced)),
         onReducedTransparency: (cb: (v: boolean) => void) => {
           listeners.add(cb)
           return () => {
@@ -45,6 +45,22 @@ describe('Liquid Glass material', () => {
       render(<GlassFilter />)
     })
     expect(document.documentElement.dataset.glass).toBe('on')
+  })
+
+  it('leaves the glass off until macOS has answered, so it never flashes', async () => {
+    mockUi(new Promise<boolean>(() => {}))
+    await act(async () => {
+      render(<GlassFilter />)
+    })
+    expect(document.documentElement.dataset.glass).toBeUndefined()
+  })
+
+  it('stays solid when the first answer fails', async () => {
+    mockUi(Promise.reject(new Error('ipc')))
+    await act(async () => {
+      render(<GlassFilter />)
+    })
+    expect(document.documentElement.dataset.glass).toBe('solid')
   })
 
   it('switches live when the setting changes', async () => {

@@ -77,7 +77,7 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
   }, [])
 
   const bar = (
-    <nav className="island" aria-label="Controlli della nota">
+    <nav className="island glass glass-text" aria-label="Controlli della nota">
       <button type="button" className="back back-btn" onClick={onBack}>
         ← Home
       </button>
@@ -108,7 +108,7 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
 
   if (!n && loadError)
     return (
-      <div className="nota">
+      <div className="nota scroll-edge-under">
         {bar}
         <div className="nv-gen" role="alert">
           <h1>Questa nota non si riesce ad aprire</h1>
@@ -116,10 +116,10 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
         </div>
       </div>
     )
-  if (!n) return <div className="nota">{bar}</div>
+  if (!n) return <div className="nota scroll-edge-under">{bar}</div>
   if (n.status !== 'ready' || !n.nota)
     return (
-      <div className="nota">
+      <div className="nota scroll-edge-under">
         {bar}
         <div className="state">
           <h1>{n.sourceTitle}</h1>
@@ -148,7 +148,7 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
 
   return (
     <NotaContext.Provider value={{ layers }}>
-      <div className="nota">
+      <div className="nota scroll-edge-under">
         {bar}
         <Page nota={n.nota} stored={n} mode={mode} fade={known ? (section) => fadeOf(sectionConcepts(known.graph, n.sourcePath, section), known.memory) : undefined} />
       </div>

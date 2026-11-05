@@ -484,7 +484,7 @@ export function GraphView({
       <button
         ref={menuBtn}
         type="button"
-        className={'gmenu-btn' + (menu === 'open' ? ' on' : '')}
+        className={'gmenu-btn glass' + (menu === 'open' ? ' on' : '')}
         aria-label="Vista del grafo"
         aria-expanded={menu === 'open'}
         aria-controls="graph-menu"
@@ -519,7 +519,7 @@ export function GraphView({
         <section
           ref={panelRef}
           id="graph-menu"
-          className={'gpanel' + (menu === 'closing' ? ' closing' : '')}
+          className={'gpanel glass glass-thick glass-text' + (menu === 'closing' ? ' closing' : '')}
           aria-label="Controlli del grafo"
           onKeyDown={(e) => {
             if (e.key === 'Escape' && !e.defaultPrevented) {
@@ -647,7 +647,7 @@ export function GraphView({
         </section>
       )}
       {model && !(livePaths && livePaths.length === 0) && (
-        <div className="gzoom" role="group" aria-label="Zoom">
+        <div className="gzoom glass" role="group" aria-label="Zoom">
           <button
             type="button"
             aria-label="Avvicina"

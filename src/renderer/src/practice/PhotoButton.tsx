@@ -123,7 +123,7 @@ function PhotoDialog({
 
   return (
     <div className="pr-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="pr-photo" role="dialog" aria-modal="true" aria-label="Foto del foglio">
+      <div className="pr-photo glass glass-thick glass-text" role="dialog" aria-modal="true" aria-label="Foto del foglio">
         <div className="mt-dh">
           <h2>Foto del foglio</h2>
           <span className="sp" />

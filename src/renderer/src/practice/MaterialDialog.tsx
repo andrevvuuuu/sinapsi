@@ -133,7 +133,7 @@ export function MaterialDialog({
 
   return (
     <div className="pr-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="mt-dlg" role="dialog" aria-modal="true" aria-labelledby="mt-dt">
+      <div className="mt-dlg glass glass-thick glass-text" role="dialog" aria-modal="true" aria-labelledby="mt-dt">
         <div className="mt-dh">
           <h2 id="mt-dt">Scegli il materiale</h2>
           <div className="mt-tabs" role="tablist">

@@ -1,5 +1,6 @@
 /* Nota viva: adapted from docs/prototipi/nota-v7.html, scoped under .nota and using the app tokens. */
-.nota{--shell:color-mix(in srgb,var(--ink) 3.5%,transparent);--shadow:0 40px 80px -48px rgba(0,0,0,.55);position:fixed;inset:0;overflow:auto;background:var(--bg);color:var(--ink);font:400 18px/1.7 var(--sans);scroll-padding-top:90px}
+/* The page fades into a band under the island while it scrolls (.scroll-edge-under). */
+.nota{--scroll-edge-top:var(--topbar-h);--scroll-edge-z:29;--shell:color-mix(in srgb,var(--ink) 3.5%,transparent);--shadow:0 40px 80px -48px rgba(0,0,0,.55);position:fixed;inset:0;overflow:auto;background:var(--bg);color:var(--ink);font:400 18px/1.7 var(--sans);scroll-padding-top:90px}
 [data-theme="trattato"] .nota{--shadow:0 40px 80px -50px rgba(80,60,30,.35)}
 .nota .katex{font-size:1.06em}
 .nota .katex-display{margin:18px 0;overflow-x:auto;overflow-y:hidden;padding:4px 0}
@@ -9,7 +10,7 @@
 .nota h3{font:400 28px/1.15 var(--serif);margin:36px 0 12px}
 
 /* island */
-.nota .island{position:sticky;top:12px;z-index:30;display:flex;align-items:center;gap:4px;width:max-content;max-width:calc(100% - 32px);margin:12px auto 0;padding:4px;border-radius:999px;background:color-mix(in srgb,var(--surface) 82%,transparent);border:1px solid var(--hair);box-shadow:var(--inner);backdrop-filter:blur(18px);-webkit-app-region:no-drag;overflow-x:auto}
+.nota .island{position:sticky;top:12px;z-index:30;display:flex;align-items:center;gap:4px;width:max-content;max-width:calc(100% - 32px);margin:12px auto 0;padding:5px;border-radius:999px;-webkit-app-region:no-drag;overflow-x:auto}
 .nota .island .back{min-height:44px;padding:0 14px;border:0;border-radius:999px;background:transparent;color:var(--ink);font:500 14px var(--sans);cursor:pointer;white-space:nowrap}
 .nota .nv-seg{display:flex;gap:2px}
 .nota .nv-seg button,.nota .layers button{min-height:44px;border:0;background:transparent;color:var(--muted);padding:0 14px;border-radius:999px;cursor:pointer;white-space:nowrap;font:500 14px var(--sans)}

@@ -16,9 +16,8 @@
 .graph canvas.hov {
   cursor: pointer;
 }
-.graph .gpanel,
-.graph .gcard,
-.graph .gzoom {
+/* The card holds text to read: a solid-ish surface. The menu, its button and the zoom are glass (.glass in GraphView). */
+.graph .gcard {
   background: color-mix(in srgb, var(--surface) 86%, transparent);
   border: 1px solid var(--hair);
   box-shadow: var(--inner);
@@ -36,7 +35,7 @@
   max-height: calc(100% - 280px);
   overflow: auto;
   border-radius: 22px;
-  padding: 14px;
+  padding: 15px;
 }
 .graph .gpanel h2 {
   font: 400 28px/1 var(--serif);
@@ -190,6 +189,7 @@
   z-index: 5;
   display: flex;
   flex-direction: column;
+  padding: 1px;
   border-radius: 16px;
   overflow: hidden;
 }
@@ -369,12 +369,8 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 1px solid var(--hair);
-  background: color-mix(in srgb, var(--surface) 86%, transparent);
-  backdrop-filter: blur(18px);
-  color: var(--ink);
+  border: 0;
   cursor: pointer;
-  box-shadow: var(--inner), 0 10px 30px -14px rgba(0, 0, 0, 0.5);
   transition: transform 0.18s var(--ease-out), background-color 0.2s ease, color 0.2s ease;
 }
 .graph .gmenu-btn svg {

@@ -74,8 +74,8 @@ export function NotePicker({
   }
 
   return (
-    <div className="nota">
-      <nav className="island" aria-label="Controlli">
+    <div className="nota scroll-edge-under">
+      <nav className="island glass glass-text" aria-label="Controlli">
         <button type="button" className="back back-btn" onClick={onBack}>
           ← Home
         </button>

@@ -47,7 +47,7 @@ export function ChatPane({
 
   return (
     <section className="nb-chat" aria-label="Chat sulle fonti">
-      <div className="nb-turns">
+      <div className="nb-turns scroll-edge">
         {turns.length === 0 && !pending && (
           <div className="nb-hello">
             <h2>Chiedi alle tue fonti</h2>
