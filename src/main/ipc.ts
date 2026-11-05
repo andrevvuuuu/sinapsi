@@ -4,7 +4,7 @@ import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { makeGraphHandlers, makeHandlers, makeNotebookHandlers, makeNoteHandlers, makePracticeHandlers, makeReviewHandlers, makeSessionHandlers, practiceTopic } from './ipc-handlers'
+import { makeGraphHandlers, makeHandlers, makeNotebookHandlers, makeNoteHandlers, makePracticeHandlers, makeReviewHandlers, makeSessionHandlers, makeVoiceHandlers, practiceTopic } from './ipc-handlers'
 import { createExamService } from './practice/exam'
 import { fakeTutor } from './practice/fake-tutor'
 import { buildCatalog, buildMaterialContext } from './practice/material'
@@ -23,6 +23,8 @@ import { memoryStore } from './memory/store'
 import { reviewSessions } from './memory/history'
 import { variantsStore } from './memory/variants'
 import { transcribeVoice } from './memory/voice'
+import { createDictation, findWhisperPython, spawnWhisperServer } from './voice/dictation'
+import whisperServer from '../../resources/whisper_server.py?asset&asarUnpack'
 import { fakeExtractBridge } from './graph/fake-extract'
 import { createExtractor, type Extractor } from './graph/jobs'
 import { graphStore } from './graph/store'
@@ -287,10 +289,26 @@ export function registerIpc(): { bridge: Bridge } {
     settings: async () => settings.load(),
     workDir: join(dataDir(), 'ai-work')
   })
-  const rh = makeReviewHandlers(review, {
-    voice: (bytes) => transcribeVoice({ run: process.env.SINAPSI_FAKE_MEDIA === '1' ? fakeMedia() : nodeSpawn, dir: join(dataDir(), 'ai-work'), bytes }),
+  const fakeVoice = process.env.SINAPSI_FAKE_MEDIA === '1'
+  const dictation = createDictation({
+    spawn: spawnWhisperServer(whisperServer),
+    // With fake media (e2e) only the CLI path runs, against the stand-in tools.
+    resolvePython: fakeVoice ? async () => null : () => findWhisperPython(),
+    fallback: (bytes) => transcribeVoice({ run: fakeVoice ? fakeMedia() : nodeSpawn, dir: join(dataDir(), 'ai-work'), bytes }),
+    dir: join(dataDir(), 'ai-work')
+  })
+  app.on('will-quit', () => dictation.dispose())
+  const vh = makeVoiceHandlers({
+    transcribe: (bytes, onStage) => dictation.transcribe(bytes, onStage),
     microphone: async () => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true)
   })
+  ipcMain.handle(CH.voiceTranscribe, (e, bytes) =>
+    vh.transcribe(bytes, (s) => {
+      if (!e.sender.isDestroyed()) e.sender.send(CH.voiceStage, s)
+    })
+  )
+  ipcMain.handle(CH.voiceMicrophone, () => vh.microphone())
+  const rh = makeReviewHandlers(review, { voice: (bytes) => vh.transcribe(bytes), microphone: () => vh.microphone() })
   ipcMain.handle(CH.reviewPlan, (_e, opts) => rh.plan(opts))
   ipcMain.handle(CH.reviewGrade, (_e, req) => rh.grade(req))
   ipcMain.handle(CH.reviewExplain, (_e, req) => rh.explain(req))

@@ -52,6 +52,9 @@ export const CH = {
   reviewExplain: 'review:explain',
   reviewVoice: 'review:voice',
   reviewMicrophone: 'review:microphone',
+  voiceTranscribe: 'voice:transcribe',
+  voiceMicrophone: 'voice:microphone',
+  voiceStage: 'voice:stage',
   reviewRecord: 'review:record',
   reviewMemory: 'review:memory',
   reviewIntervals: 'review:intervals',
@@ -131,12 +134,21 @@ export interface SinapsiApi {
     positions(): Promise<GraphPositions>
     savePositions(p: GraphPositions): Promise<void>
   }
+  /** Dictation into any text field, with mlx_whisper kept in memory. */
+  voice: {
+    /** A recording (WebM or MP4) as Italian text. */
+    transcribe(bytes: Uint8Array): Promise<string>
+    /** Asks macOS for the microphone. */
+    microphone(): Promise<boolean>
+    /** What the running transcription is doing: downloading the model, loading it, transcribing. */
+    onStage(cb: (s: 'download' | 'load' | 'transcribe') => void): () => void
+  }
   review: {
     plan(opts?: { conceptIds?: string[]; weakest?: boolean }): Promise<import('../main/memory/review').ReviewPlan>
     grade(req: { conceptId: string; exercise: import('./exercise-schema').Exercise; answer: string; confidence: number }): Promise<import('../main/memory/review').GradeResult>
     /** "Spiegalo tu": the whole dialogue so far, Andrea's last turn included. */
     explain(req: { conceptId: string; exercise: import('./exercise-schema').Exercise; turns: import('../main/memory/explain').ExplainTurn[]; confidence: number }): Promise<import('../main/memory/review').ExplainResult>
-    /** A spoken answer as text (mlx_whisper). */
+    /** A spoken answer as text (mlx_whisper). Same service as voice.transcribe. */
     voice(bytes: Uint8Array): Promise<string>
     /** Asks macOS for the microphone. */
     microphone(): Promise<boolean>

@@ -19,6 +19,7 @@ import type { PracticeRunner } from './practice/runner'
 import type { ExamService } from './practice/exam'
 import { MaterialSchema, type Catalog, type Material } from '../shared/practice-types'
 import { SubmissionSchema } from '../shared/practice-protocol'
+import type { Stage } from './voice/dictation'
 
 const Choice = z.object({ engine: z.enum(['agy', 'claude']), model: z.string().optional() }).strict()
 const Patch = z
@@ -152,6 +153,17 @@ export function makeReviewHandlers(svc: ReviewService, d: { voice: (bytes: Uint8
     record: async (r: unknown) => svc.record(ReviewLineSchema.parse(r)),
     memory: () => svc.memory(),
     intervals: async (id: unknown) => svc.intervals(z.string().min(1).max(64).parse(id))
+  }
+}
+
+/** Dictation anywhere in the app: the renderer sends the recording, the stages come back through onStage. */
+export function makeVoiceHandlers(d: { transcribe: (bytes: Uint8Array, onStage?: (s: Stage) => void) => Promise<string>; microphone: () => Promise<boolean> }) {
+  return {
+    transcribe: async (bytes: unknown, onStage?: (s: Stage) => void) => {
+      if (!(bytes instanceof Uint8Array)) throw new Error('registrazione non valida')
+      return d.transcribe(bytes, onStage)
+    },
+    microphone: () => d.microphone()
   }
 }
 

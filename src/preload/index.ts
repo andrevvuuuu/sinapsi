@@ -46,6 +46,11 @@ const api: SinapsiApi = {
     positions: () => ipcRenderer.invoke(CH.graphPositions),
     savePositions: (p) => ipcRenderer.invoke(CH.graphSavePositions, p)
   },
+  voice: {
+    transcribe: (bytes) => ipcRenderer.invoke(CH.voiceTranscribe, bytes),
+    microphone: () => ipcRenderer.invoke(CH.voiceMicrophone),
+    onStage: (cb) => subscribe(CH.voiceStage, cb)
+  },
   review: {
     plan: (opts) => ipcRenderer.invoke(CH.reviewPlan, opts),
     grade: (req) => ipcRenderer.invoke(CH.reviewGrade, req),
