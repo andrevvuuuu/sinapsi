@@ -1,10 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, powerMonitor, powerSaveBlocker, shell, systemPreferences } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, powerMonitor, powerSaveBlocker, shell, systemPreferences } from 'electron'
 import { join } from 'node:path'
 import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { makeGraphHandlers, makeHandlers, makeNotebookHandlers, makeNoteHandlers, makePracticeHandlers, makeReviewHandlers, makeSessionHandlers, practiceTopic } from './ipc-handlers'
+import { makeGraphHandlers, makeHandlers, makeNotebookHandlers, makeNoteHandlers, makePracticeHandlers, makeReviewHandlers, makeSessionHandlers, makeVoiceHandlers, practiceTopic } from './ipc-handlers'
 import { createExamService } from './practice/exam'
 import { fakeTutor } from './practice/fake-tutor'
 import { buildCatalog, buildMaterialContext } from './practice/material'
@@ -23,6 +23,8 @@ import { memoryStore } from './memory/store'
 import { reviewSessions } from './memory/history'
 import { variantsStore } from './memory/variants'
 import { transcribeVoice } from './memory/voice'
+import { createDictation, findWhisperPython, spawnWhisperServer } from './voice/dictation'
+import whisperServer from '../../resources/whisper_server.py?asset&asarUnpack'
 import { fakeExtractBridge } from './graph/fake-extract'
 import { createExtractor, type Extractor } from './graph/jobs'
 import { graphStore } from './graph/store'
@@ -30,7 +32,7 @@ import { fakeNoteBridge } from './notes/fake-note'
 import { createNoteGenerator } from './notes/generator'
 import { readySources } from './notes/store'
 import { createLinkedSync } from './vault/linked'
-import { fakeTeacher } from './session/fake-teacher'
+import { fakeTeacher, LONG_MEASURE_SCRIPT } from './session/fake-teacher'
 import { createSessionRunner } from './session/runner'
 import { memoryBrief } from './session/memory-brief'
 import { createSuggester } from './suggest/suggest'
@@ -109,7 +111,9 @@ export function registerIpc(): { bridge: Bridge } {
   bridge.onStatus((s) => broadcast(CH.aiStatusChanged, s))
 
   const runner = createSessionRunner({
-    bridge: process.env.SINAPSI_FAKE_TEACHER === '1' ? fakeTeacher() : bridge,
+    bridge: process.env.SINAPSI_FAKE_TEACHER === '1'
+      ? fakeTeacher(process.env.SINAPSI_FAKE_TEACHER_SCRIPT === 'long-measure' ? LONG_MEASURE_SCRIPT : undefined)
+      : bridge,
     dir: join(dataDir(), 'sessions'),
     vault: async () => {
       const idx = await h.vaultIndex()
@@ -289,15 +293,29 @@ export function registerIpc(): { bridge: Bridge } {
     settings: async () => settings.load(),
     workDir: join(dataDir(), 'ai-work')
   })
-  const rh = makeReviewHandlers(review, {
-    voice: (bytes) => transcribeVoice({ run: process.env.SINAPSI_FAKE_MEDIA === '1' ? fakeMedia() : nodeSpawn, dir: join(dataDir(), 'ai-work'), bytes }),
+  const fakeVoice = process.env.SINAPSI_FAKE_MEDIA === '1'
+  const dictation = createDictation({
+    spawn: spawnWhisperServer(whisperServer),
+    // With fake media (e2e) only the CLI path runs, against the stand-in tools.
+    resolvePython: fakeVoice ? async () => null : () => findWhisperPython(),
+    fallback: (bytes) => transcribeVoice({ run: fakeVoice ? fakeMedia() : nodeSpawn, dir: join(dataDir(), 'ai-work'), bytes }),
+    dir: join(dataDir(), 'ai-work')
+  })
+  app.on('will-quit', () => dictation.dispose())
+  const vh = makeVoiceHandlers({
+    transcribe: (bytes, onStage) => dictation.transcribe(bytes, onStage),
     microphone: async () => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true)
   })
+  ipcMain.handle(CH.voiceTranscribe, (e, bytes) =>
+    vh.transcribe(bytes, (s) => {
+      if (!e.sender.isDestroyed()) e.sender.send(CH.voiceStage, s)
+    })
+  )
+  ipcMain.handle(CH.voiceMicrophone, () => vh.microphone())
+  const rh = makeReviewHandlers(review)
   ipcMain.handle(CH.reviewPlan, (_e, opts) => rh.plan(opts))
   ipcMain.handle(CH.reviewGrade, (_e, req) => rh.grade(req))
   ipcMain.handle(CH.reviewExplain, (_e, req) => rh.explain(req))
-  ipcMain.handle(CH.reviewVoice, (_e, bytes) => rh.voice(bytes))
-  ipcMain.handle(CH.reviewMicrophone, () => rh.microphone())
   ipcMain.handle(CH.reviewRecord, (_e, r) => rh.record(r))
   ipcMain.handle(CH.reviewMemory, () => rh.memory())
   ipcMain.handle(CH.reviewIntervals, (_e, id) => rh.intervals(id))
@@ -374,6 +392,16 @@ export function registerIpc(): { bridge: Bridge } {
     now: Date.now
   })
   ipcMain.handle(CH.suggestGet, () => suggestions())
+
+  // «Riduci trasparenza»: the renderer turns the Liquid Glass into a solid surface. 'updated' fires
+  // for every appearance change (dark mode, contrast…), so only a change of this setting is sent.
+  let reducedTransparency = nativeTheme.prefersReducedTransparency
+  ipcMain.handle(CH.uiTransparency, () => nativeTheme.prefersReducedTransparency)
+  nativeTheme.on('updated', () => {
+    if (nativeTheme.prefersReducedTransparency === reducedTransparency) return
+    reducedTransparency = nativeTheme.prefersReducedTransparency
+    broadcast(CH.uiTransparencyChanged, reducedTransparency)
+  })
 
   // Background extraction: a few notes a day, only while the Mac is idle.
   const tick = async (): Promise<void> => {

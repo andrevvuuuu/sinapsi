@@ -11,6 +11,8 @@ export const WHISPER_MODEL = 'mlx-community/whisper-large-v3-turbo'
 const HOSTS = new Set(['www.youtube.com', 'youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be'])
 const ID = /^[\w-]{11}$/
 const TRANSCRIBE_TIMEOUT = 3 * 3600_000
+/** The message for a missing mlx_whisper, the same from the CLI and from the dictation server. */
+export const MISSING_WHISPER = 'Manca mlx_whisper: installalo con «pip install mlx-whisper»'
 const YT_TIMEOUT = 20 * 60_000
 
 export function youtubeId(u: string): string | null {

@@ -1,15 +1,28 @@
-import { useContext, useState } from 'react'
+import { useContext, useRef, useState } from 'react'
 import { blankSpans } from '../../../../shared/exercise-schema'
+import { useDictation } from '../../components/dictation'
+import { DictationError, MicButton } from '../../components/MicButton'
 import { MathSelect } from '../../components/MathSelect'
 import type { LeafBlock } from '../../../../shared/nota-schema'
 import { RichText } from '../../session/RichText'
 import { FadeContext, NotaContext, type Mode } from '../context'
 
 /** "Prima prova tu": the answer stays covered until he has written his own attempt, or says honestly he has none. */
-export function TryCover({ prompt, children, label = 'Ho provato, mostra' }: { prompt?: string; children: React.ReactNode; label?: string }): React.JSX.Element {
+export function TryCover({
+  prompt,
+  children,
+  label = 'Ho provato, mostra'
+}: {
+  prompt?: string
+  children: React.ReactNode
+  label?: string
+}): React.JSX.Element {
   const { noteId } = useContext(NotaContext)
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
+  const field = useRef<HTMLTextAreaElement>(null)
+  const dictation = useDictation({ target: field, value: text, onChange: setText, enabled: !open })
+  const busy = dictation.state !== 'idle'
   const reveal = (skipped: boolean): void => {
     setOpen(true)
     // The attempt is kept: what he wrote before seeing the answer is the signal the reliance metrics read.
@@ -32,12 +45,23 @@ export function TryCover({ prompt, children, label = 'Ho provato, mostra' }: { p
       <p>
         <b>Prima prova tu.</b> {prompt && <RichText md={prompt} className="inline" />}
       </p>
-      <textarea aria-label="La tua risposta" placeholder="Scrivi il passo come lo faresti all'esame…" value={text} onChange={(e) => setText(e.target.value)} />
+      <div className="mic-field">
+        <textarea
+          ref={field}
+          readOnly={busy}
+          aria-label="La tua risposta"
+          placeholder="Scrivi il passo come lo faresti all'esame…"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <MicButton dictation={dictation} />
+      </div>
+      <DictationError dictation={dictation} />
       <div className="acts">
-        <button type="button" className="btn" disabled={!text.trim()} onClick={() => reveal(false)}>
+        <button type="button" className="btn" disabled={busy || !text.trim()} onClick={() => reveal(false)}>
           {label}
         </button>
-        <button type="button" className="linkish" onClick={() => reveal(true)}>
+        <button type="button" className="linkish" disabled={busy} onClick={() => reveal(true)}>
           Non lo so, mostra
         </button>
       </div>
@@ -48,7 +72,13 @@ export function TryCover({ prompt, children, label = 'Ho provato, mostra' }: { p
 /** "Prova da solo" turns itself on where he has already reviewed the section's concepts. */
 const useMode = (mode: Mode): Mode => ((useContext(FadeContext)?.stage ?? 0) > 0 ? 'prova' : mode)
 
-export function TryIt({ block, mode: chosen }: { block: Extract<LeafBlock, { type: 'tryit' }>; mode: Mode }): React.JSX.Element {
+export function TryIt({
+  block,
+  mode: chosen
+}: {
+  block: Extract<LeafBlock, { type: 'tryit' }>
+  mode: Mode
+}): React.JSX.Element {
   const mode = useMode(chosen)
   if (mode === 'prova')
     return (
@@ -65,14 +95,31 @@ export function TryIt({ block, mode: chosen }: { block: Extract<LeafBlock, { typ
   )
 }
 
-const LEVEL: Record<Extract<LeafBlock, { type: 'exercise' }>['level'], string> = { svolto: 'Svolto', completa: 'Da completare', solo: 'Da solo', esame: 'Esame' }
+const LEVEL: Record<Extract<LeafBlock, { type: 'exercise' }>['level'], string> = {
+  svolto: 'Svolto',
+  completa: 'Da completare',
+  solo: 'Da solo',
+  esame: 'Esame'
+}
 
-export function Exercise({ block, mode: chosen }: { block: Extract<LeafBlock, { type: 'exercise' }>; mode: Mode }): React.JSX.Element {
+export function Exercise({
+  block,
+  mode: chosen
+}: {
+  block: Extract<LeafBlock, { type: 'exercise' }>
+  mode: Mode
+}): React.JSX.Element {
   const mode = useMode(chosen)
   const steps = (
     <ol>
       {block.steps.map((s, i) => (
-        <li key={i}>{block.level === 'completa' ? <ChoiceStep md={s} /> : <RichText md={s} className="inline" />}</li>
+        <li key={i}>
+          {block.level === 'completa' ? (
+            <ChoiceStep md={s} />
+          ) : (
+            <RichText md={s} className="inline" />
+          )}
+        </li>
       ))}
     </ol>
   )
@@ -84,7 +131,10 @@ export function Exercise({ block, mode: chosen }: { block: Extract<LeafBlock, { 
         <RichText md={block.title} className="inline title" />
       </div>
       {covered ? (
-        <TryCover prompt="Scrivi la tua soluzione, poi confrontala." label="Confronta con la soluzione">
+        <TryCover
+          prompt="Scrivi la tua soluzione, poi confrontala."
+          label="Confronta con la soluzione"
+        >
           {steps}
         </TryCover>
       ) : (
@@ -117,8 +167,17 @@ function ChoiceStep({ md }: { md: string }): React.JSX.Element {
           <RichText key={i} md={p.text} className="inline" />
         ) : (
           <span key={i} className="sel">
-            <MathSelect label="Scegli" options={p.options} value={picked[i] ?? null} onChange={(k) => setPicked({ ...picked, [i]: k })} />
-            {picked[i] !== undefined && <span className={'v ' + (picked[i] === p.correct ? 'ok' : 'no')}>{picked[i] === p.correct ? 'Giusto' : 'Rivedi questo passo'}</span>}
+            <MathSelect
+              label="Scegli"
+              options={p.options}
+              value={picked[i] ?? null}
+              onChange={(k) => setPicked({ ...picked, [i]: k })}
+            />
+            {picked[i] !== undefined && (
+              <span className={'v ' + (picked[i] === p.correct ? 'ok' : 'no')}>
+                {picked[i] === p.correct ? 'Giusto' : 'Rivedi questo passo'}
+              </span>
+            )}
           </span>
         )
       )}

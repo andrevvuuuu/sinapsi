@@ -4,152 +4,198 @@
 .app aside.left{border-right:1px solid var(--hair)}.app aside.right{border-left:1px solid var(--hair)}
 .app.l-off aside.left,.app.r-off aside.right{visibility:hidden}
 .drag{-webkit-app-region:drag}.nodrag{-webkit-app-region:no-drag}
-.icon-btn{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;border:0;background:transparent;color:var(--muted);cursor:pointer;transition:background-color .15s ease,color .15s ease,transform .12s var(--ease-out)}
-.icon-btn:active{transform:scale(.95)}
-.icon-btn:hover{background:var(--faint);color:var(--ink)}
+.icon-btn{width:var(--ctl);height:var(--ctl);display:grid;place-items:center;border-radius:var(--r-md);border:0;background:var(--btn-text-bg);color:var(--muted);cursor:pointer;transition:var(--btn-transition),transform .12s var(--ease-out)}
+.icon-btn:hover{background:var(--btn-secondary-bg-hover);color:var(--ink)}
+.icon-btn:active{background:var(--btn-secondary-bg-pressed);color:var(--ink);transform:scale(.95)}
+.icon-btn:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-md)}
+.icon-btn:disabled{color:var(--btn-disabled-ink);background:var(--btn-disabled-bg);cursor:not-allowed;transform:none}
 .icon-btn svg{width:18px;height:18px}
-.ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:34px 10px 10px 18px;min-height:84px}
-.app aside.right .ph{padding-left:12px}
-.logo{display:flex;align-items:center;gap:10px;font:400 26px/1 var(--serif);letter-spacing:-.01em;white-space:nowrap}
+/* The 34 px top lines the panel head up with the window's traffic lights. */
+.ph{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2);padding:34px var(--s-3) var(--s-3) var(--s-5);min-height:84px}
+.app aside.right .ph{padding-left:var(--s-3)}
+.logo{display:flex;align-items:center;gap:var(--s-3);font:400 var(--fs-display)/1 var(--serif);letter-spacing:-.01em;white-space:nowrap}
 .logo .logo-mark{flex:none;color:var(--ink)}
-.psec{padding:6px 12px 12px;min-height:0}
-.psec h2{font:600 11px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:10px 6px 10px}
-.seg{display:flex;padding:3px;border-radius:999px;background:var(--faint);gap:2px}
-.seg button{flex:1;min-height:38px;border:0;background:transparent;color:var(--muted);border-radius:999px;font:500 13px var(--sans);cursor:pointer;padding:0 12px;white-space:nowrap;transition:background-color .2s ease,color .2s ease}
+.psec{padding:var(--s-2) var(--s-3) var(--s-3);min-height:0}
+/* Section titles of the side panels and the settings: one caption style (11 px, semibold, uppercase), the same distance to what they head. */
+.psec h2,.sec-head h2,.obs-sec h2,.sd-body h3{font:var(--fw-semibold) var(--fs-caption)/1.3 var(--sans);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted)}
+.psec h2{margin:var(--s-3) var(--s-2)}
+.seg{display:flex;padding:3px;border-radius:var(--r-pill);background:var(--faint);gap:2px}
+.seg button{flex:1;min-width:var(--ctl);min-height:38px;border:0;background:transparent;color:var(--muted);border-radius:var(--r-pill);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;padding:0 var(--s-3);white-space:nowrap;transition:background-color .2s var(--ease-out),color .2s var(--ease-out)}
+.seg button:not([aria-pressed="true"]):hover{color:var(--ink)}
+/* Inside the track the lens is the selection, so the ring sits inside the button (the track would clip an outer one). */
+.seg button:focus-visible{outline:var(--btn-focus-ring);outline-offset:-2px;border-radius:var(--r-pill)}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--inner),0 1px 3px rgba(0,0,0,.18)}
 .scroll{overflow:auto;scrollbar-width:thin;scrollbar-color:var(--hair) transparent}
-.empty{font-size:13px;color:var(--muted);padding:12px 8px}
-.divider{height:1px;background:var(--hair);margin:4px 18px}
-.tree{font-size:14px;padding:0 4px}
-.tree details>summary{list-style:none;display:flex;align-items:center;gap:8px;min-height:36px;padding:0 8px;border-radius:10px;cursor:pointer}
+.empty{font-size:var(--fs-footnote);color:var(--muted);padding:var(--s-3) var(--s-2)}
+.divider{height:1px;background:var(--hair);margin:var(--s-1) var(--s-5)}
+/* Tree rows: dense macOS sidebar rows (36 px, above --hit-min), folder and note alike. */
+.tree{font-size:var(--fs-body);padding:0 var(--s-1)}
+.tree details>summary{list-style:none;display:flex;align-items:center;gap:var(--s-2);min-height:var(--ctl-sm);padding:0 var(--s-2);border-radius:var(--r-sm);cursor:pointer}
+.tree details>summary:focus-visible{outline-offset:-2px;border-radius:var(--r-sm)}
 .tree details>summary::-webkit-details-marker{display:none}
 .tree summary svg{width:12px;height:12px;color:var(--muted);transition:transform .2s var(--ease-out)}
 .tree details[open]>summary svg{transform:rotate(90deg)}
-.tree summary:hover,.tree .leaf:hover{background:var(--faint)}
-.tree .kids{padding-left:12px;border-left:1px solid var(--hair);margin-left:14px}
-.tree .leaf{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;padding:0 8px;border:0;border-radius:10px;background:transparent;color:var(--muted);text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree summary:hover,.tree .leaf:hover{background:var(--btn-secondary-bg-hover)}
+.tree summary:active,.tree .leaf:active{background:var(--btn-secondary-bg-pressed)}
+.tree .kids{padding-left:var(--s-3);border-left:1px solid var(--hair);margin-left:14px}
+.tree .leaf{display:flex;align-items:center;gap:var(--s-2);width:100%;min-height:var(--ctl-sm);padding:0 var(--s-2);border:0;border-radius:var(--r-sm);background:transparent;color:var(--muted);font:inherit;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:var(--btn-transition)}
+.tree .leaf:focus-visible{outline-offset:-2px;border-radius:var(--r-sm)}
 .tree .leaf span{overflow:hidden;text-overflow:ellipsis}
-.tree .leaf.off{opacity:.5}
-.tree .leaf small{margin-left:auto;font:500 10px var(--mono)}
+/* A note the vault cannot read now: the tertiary colour, still AA (opacity would drop it below). */
+.tree .leaf.off{color:var(--placeholder)}
+.tree .leaf small{margin-left:auto;font:var(--font-caption)}
 .tree .leaf small.verifica{color:var(--warn)}
 .tree .leaf small.verifica.errori{font-weight:700}
-.pf{margin-top:auto;padding:10px 12px;border-top:1px solid var(--hair);position:relative}
-.pf .row{display:flex;align-items:center;gap:8px}
-.pf .vp{flex:1;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.btn{min-height:44px;border-radius:999px;border:1px solid var(--hair);background:var(--surface);cursor:pointer;padding:0 16px;font:500 14px var(--sans);box-shadow:var(--inner)}
-.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.btn:disabled{opacity:.45;cursor:not-allowed}
+.pf{margin-top:auto;padding:var(--s-3);border-top:1px solid var(--hair);position:relative}
+.pf .row{display:flex;align-items:center;gap:var(--s-2)}
+.pf .vp{flex:1;min-width:0;font-size:var(--fs-footnote);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Buttons. Secondary: a surface pill with the control outline; .pri: the ink fill. Hover, pressed and focus from the --btn tokens; disabled keeps a readable label and outline, no fill. */
+.btn{min-height:var(--ctl);min-width:var(--ctl);border-radius:var(--r-pill);border:1px solid var(--btn-secondary-border);background:var(--surface);color:var(--btn-secondary-ink);cursor:pointer;padding:0 var(--s-4);font:var(--fw-medium) var(--fs-body) var(--sans);box-shadow:var(--inner);transition:var(--btn-transition)}
+.btn:not(:disabled):hover{background:color-mix(in srgb,var(--surface),var(--ink) 6%)}
+.btn:not(:disabled):active{background:color-mix(in srgb,var(--surface),var(--ink) 12%)}
+.btn.pri{background:var(--btn-primary-bg);color:var(--btn-primary-ink);border-color:var(--btn-primary-bg)}
+.btn.pri:not(:disabled):hover{background:var(--btn-primary-bg-hover);border-color:var(--btn-primary-bg-hover)}
+.btn.pri:not(:disabled):active{background:var(--btn-primary-bg-pressed);border-color:var(--btn-primary-bg-pressed)}
+.btn:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-pill)}
+.btn:disabled,.btn.pri:disabled{background:var(--btn-disabled-bg);color:var(--btn-disabled-ink);border-color:var(--btn-disabled-border);box-shadow:none;cursor:not-allowed}
 .center{position:relative;min-width:0;overflow:hidden}
 .topbar{position:absolute;top:0;left:0;right:0;height:52px}
-.status{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:3;display:flex;gap:8px}
-.pill{display:flex;align-items:center;gap:8px;min-height:32px;padding:0 14px;border-radius:999px;background:color-mix(in srgb,var(--surface) 82%,transparent);border:1px solid var(--hair);backdrop-filter:blur(14px);font-size:13px;color:var(--muted);white-space:nowrap}
+.status{position:absolute;top:var(--s-4);left:50%;transform:translateX(-50%);z-index:3;display:flex;gap:var(--s-2)}
+.pill{display:flex;align-items:center;gap:var(--s-2);min-height:var(--s-8);padding:0 var(--s-4);border-radius:var(--r-pill);background:color-mix(in srgb,var(--surface) 82%,transparent);border:1px solid var(--hair);backdrop-filter:blur(14px);font-size:var(--fs-footnote);color:var(--muted);white-space:nowrap}
 .pill i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .pill.idle i{background:var(--good)}.pill.busy i{background:var(--warn)}.pill.auth i,.pill.missing i,.pill.error i{background:var(--bad)}
 .pill b{color:var(--ink);font-weight:500}
 .reopen{position:absolute;top:44px;z-index:4}
-.reopen.l{left:14px}.reopen.r{right:14px}
+.reopen.l{left:var(--s-4)}.reopen.r{right:var(--s-4)}
 .reopen .icon-btn{background:var(--surface);border:1px solid var(--hair)}
 .app:not(.l-off) .reopen.l,.app:not(.r-off) .reopen.r{display:none}
 .placeholder{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:0 40px 160px}
-.placeholder h2{font:400 40px/1.05 var(--serif);margin:0 0 10px}
+/* The hero line of the empty Home: the one size above the type scale, on purpose. */
+.placeholder h2{font:400 40px/1.05 var(--serif);margin:0 0 var(--s-3)}
 .placeholder h2 em{color:var(--accent)}
 .placeholder p{color:var(--muted);margin:0 auto;max-width:44ch}
-.placeholder .orb{width:120px;height:120px;margin:0 auto 26px;border-radius:50%;border:1px dashed var(--hair);display:grid;place-items:center}
+.placeholder .orb{width:120px;height:120px;margin:0 auto 26px;border-radius:50%;border:1px dashed var(--ctl-edge);display:grid;place-items:center}
 .placeholder .orb i{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 14%,transparent)}
 .composer{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:min(620px,max(calc(100% - 64px),min(calc(100% - 32px),488px)));z-index:3}
-.composer .shell{padding:5px;border-radius:26px;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--hair);backdrop-filter:blur(18px)}
-.composer .core{border-radius:21px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:10px}
-.composer .seg{width:max-content;margin:0 0 8px}
+/* Concentric radii: shell 26 = core 20 + shell padding 6. The chips sit 8 px from the core's top edge and 12 px from its sides (core padding 8/10 + the row's 2), so their 12 px radius is the concentric one for the sides (20 − 8 would be the top's); the field row below is unaffected. */
+.composer .shell{padding:6px;border-radius:26px}
+.composer .core{border-radius:20px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:10px}
+.composer .seg{width:max-content;margin:0 0 var(--s-2)}
 .composer .seg button{flex:none}
-.inrow{display:flex;align-items:flex-end;gap:8px}
-.inrow textarea{flex:1;resize:none;border:0;background:transparent;color:var(--ink);font:400 16px/1.5 var(--sans);padding:8px;min-height:44px;max-height:140px;outline:none}
+.inrow{display:flex;align-items:flex-end;gap:var(--s-2)}
+.inrow textarea{flex:1;resize:none;border:0;background:transparent;color:var(--ink);font:400 var(--fs-callout)/1.5 var(--sans);padding:var(--s-2);min-height:44px;max-height:140px;outline:none}
 .inrow textarea::placeholder{color:var(--muted);opacity:1}
-.send{width:44px;height:44px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);display:grid;place-items:center;cursor:pointer;flex:none}
-.send:disabled{opacity:.35;cursor:not-allowed}
+/* Send: filled with the accent when it can go (the focal point), an outline at ≥ 3:1 when it cannot. */
+.send{width:var(--ctl);height:var(--ctl);border-radius:50%;border:1.5px solid var(--accent);background:var(--accent);color:var(--bg);display:grid;place-items:center;cursor:pointer;flex:none;transition:background-color .15s var(--ease-out),border-color .15s var(--ease-out),color .15s var(--ease-out)}
+.send:not(:disabled):hover{background:color-mix(in srgb,var(--accent) 88%,var(--ink));border-color:color-mix(in srgb,var(--accent) 88%,var(--ink))}
+.send:not(:disabled):active{background:color-mix(in srgb,var(--accent) 76%,var(--ink));border-color:color-mix(in srgb,var(--accent) 76%,var(--ink));transform:scale(.95)}
+/* The ring stands 2 px off the filled circle, so the surface shows between the accent fill and the accent ring. */
+.send:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:50%}
+.send:disabled{background:var(--btn-disabled-bg);border-color:var(--btn-disabled-border);color:var(--btn-disabled-ink);cursor:not-allowed}
 .send svg{width:16px;height:16px}
-.rt{padding:4px 18px 14px}
-.rt h1{font:400 30px/1.05 var(--serif);margin:0 0 6px}
-.rt p{margin:0;color:var(--muted);font-size:14px}
-.btn-imp{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px 0 12px;border-radius:999px;border:1px solid var(--hair);background:var(--surface);cursor:not-allowed;font:500 13px var(--sans);opacity:.6}
-.btn-imp svg{width:15px;height:15px}
-.btn-imp.on{cursor:pointer;opacity:1;color:var(--ink)}
-.btn-imp.on:hover{background:var(--faint)}
-.nb-new{display:flex;gap:8px;padding:12px 6px;flex:none}
-.nb-new input{flex:1;min-width:0;min-height:44px;border-radius:12px;border:1px solid var(--hair);background:var(--surface);color:var(--ink);padding:0 12px;font:400 14px var(--sans)}
+.rt{padding:var(--s-1) var(--s-5) var(--s-4)}
+.rt h1{font:var(--font-display);margin:0 0 var(--s-2)}
+.rt p{margin:0;color:var(--muted);font-size:var(--fs-footnote)}
+/* «Importa fonti»: a secondary pill; without .on it is the disabled state (readable label, no fill). */
+.btn-imp{display:flex;align-items:center;gap:var(--s-2);min-height:var(--ctl);padding:0 var(--s-4) 0 var(--s-3);border-radius:var(--r-pill);border:1px solid var(--btn-disabled-border);background:var(--btn-disabled-bg);color:var(--btn-disabled-ink);cursor:not-allowed;font:var(--fw-medium) var(--fs-footnote) var(--sans);transition:var(--btn-transition)}
+.btn-imp svg{width:16px;height:16px}
+.btn-imp.on{cursor:pointer;color:var(--ink);background:var(--surface);border-color:var(--btn-secondary-border)}
+.btn-imp.on:hover{background:color-mix(in srgb,var(--surface),var(--ink) 6%)}
+.btn-imp.on:active{background:color-mix(in srgb,var(--surface),var(--ink) 12%)}
+.btn-imp:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-pill)}
+.nb-new{display:flex;gap:var(--s-2);padding:var(--s-3) var(--s-2);flex:none}
+.nb-new input{flex:1;min-width:0;min-height:var(--ctl);border-radius:var(--r-md);border:1px solid var(--ctl-edge);background:var(--surface);color:var(--ink);padding:0 var(--s-3);font:400 var(--fs-body) var(--sans)}
 .missing{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:40px;z-index:2;background:var(--bg)}
-.missing h2{font:400 36px/1.1 var(--serif);margin:0 0 10px}
-.missing p{color:var(--muted);margin:0 0 18px}
-.missing code{font:400 13px var(--mono)}
-.toast{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);padding:10px 18px;border-radius:999px;background:var(--surface);border:1px solid var(--hair);font-size:14px;z-index:6;box-shadow:0 20px 40px -20px rgba(0,0,0,.5)}
-.app aside.left .seg button{flex:1 1 auto;padding:0 8px;font-size:12.5px}
-.sessions{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:2px}
-.sessions button{width:100%;text-align:left;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;align-items:center;padding:10px;min-height:44px;border-radius:12px;border:0;background:transparent;cursor:pointer}
-.sessions button:hover{background:var(--faint)}
+.missing h2{font:400 36px/1.1 var(--serif);margin:0 0 var(--s-3)}
+.missing p{color:var(--muted);margin:0 0 var(--s-5)}
+.missing code{font:400 var(--fs-footnote) var(--mono)}
+.toast{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);padding:var(--s-3) var(--s-5);border-radius:var(--r-pill);background:var(--surface);border:1px solid var(--hair);font-size:var(--fs-body);z-index:6;box-shadow:0 20px 40px -20px rgba(0,0,0,.5)}
+.app aside.left .seg button{flex:1 1 auto;padding:0 var(--s-2)}
+.sessions{list-style:none;margin:var(--s-3) 0 0;padding:0;display:flex;flex-direction:column;gap:2px}
+.sessions button{width:100%;text-align:left;display:grid;grid-template-columns:auto 1fr;gap:2px var(--s-3);align-items:center;padding:var(--s-2) var(--s-3);min-height:var(--ctl);border-radius:var(--r-md);border:0;background:transparent;cursor:pointer;transition:var(--btn-transition)}
+.sessions button:hover{background:var(--btn-secondary-bg-hover)}
+.sessions button:active{background:var(--btn-secondary-bg-pressed)}
+.sessions button:focus-visible{outline-offset:-2px;border-radius:var(--r-md)}
 .sessions .dot{grid-row:span 2;width:8px;height:8px;border-radius:50%;background:var(--accent)}
-.sessions .t{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sessions .s{grid-column:2;font-size:12px;color:var(--muted)}
+.sessions .t{font-size:var(--fs-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sessions .s{grid-column:2;font-size:var(--fs-footnote);color:var(--muted)}
 .sessions .dot.nv-ready{background:var(--good)}.sessions .dot.nv-error{background:var(--bad)}
-.composer .seg .due{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--accent);color:var(--bg);font:600 11px var(--mono)}
+.composer .seg .due{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:var(--s-2);padding:0 6px;border-radius:var(--r-pill);background:var(--accent);color:var(--bg);font:var(--fw-semibold) var(--fs-caption) var(--mono)}
 
 /* Wireframe 27/10: the mode slider detached above the field */
-.composer .modes-pill{width:max-content;margin:0 auto 10px;padding:4px;border-radius:999px;background:color-mix(in srgb,var(--surface) 70%,transparent);border:1px solid var(--hair);backdrop-filter:blur(18px);box-shadow:var(--inner),0 16px 40px -24px rgba(0,0,0,.6)}
-.composer .modes-pill button{flex:none;min-height:44px;padding:0 16px}
-.composer .core{padding:8px 10px}
+.composer .modes-pill{width:max-content;margin:0 auto var(--s-3);padding:5px;border-radius:var(--r-pill)}
+.composer .modes-pill button{flex:none;min-height:var(--ctl);padding:0 var(--s-4)}
+.composer .core{padding:var(--s-2) 10px}
 /* left panel */
-.sess-search{margin:8px 0 2px}
-.sess-search input{width:100%;min-height:44px;border-radius:12px;border:1px solid var(--hair);background:var(--surface);color:var(--ink);padding:0 12px;font:400 13px var(--sans)}
-.sess-find{width:100%;min-height:44px;border-radius:12px;border:1px dashed var(--hair);background:transparent;color:var(--muted);font:500 13px var(--sans);cursor:pointer;text-align:left;padding:0 12px}
-.sess-find:hover{background:var(--faint);color:var(--ink)}
+.sess-search{margin:var(--s-2) 0 2px}
+.sess-search input{width:100%;min-height:var(--ctl);border-radius:var(--r-md);border:1px solid var(--ctl-edge);background:var(--surface);color:var(--ink);padding:0 var(--s-3);font:400 var(--fs-footnote) var(--sans)}
+.sess-find{width:100%;min-height:var(--ctl);border-radius:var(--r-md);border:1px dashed var(--ctl-edge);background:transparent;color:var(--muted);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;text-align:left;padding:0 var(--s-3);transition:var(--btn-transition)}
+.sess-find:hover{background:var(--btn-secondary-bg-hover);color:var(--ink)}
+.sess-find:active{background:var(--btn-secondary-bg-pressed);color:var(--ink)}
+.sess-find:focus-visible{border-radius:var(--r-md)}
 .app aside.left .psec[aria-label="Sessioni"]{display:flex;flex-direction:column;max-height:42vh}
 .app aside.left .psec[aria-label="Sessioni"] .sessions{overflow:auto;min-height:0;padding-bottom:12px}
 .nv-explorer{flex:1;min-height:0}
-.tree summary .cnt{margin-left:auto;font:500 10px var(--mono);color:var(--muted)}
+.tree summary .cnt{margin-left:auto;font:var(--font-caption);color:var(--muted)}
 .nv-leaf{color:var(--ink)!important}
 .nv-leaf .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
 .nv-leaf .dot.nv-ready{background:var(--good)}.nv-leaf .dot.nv-error{background:var(--bad)}
 /* right panel */
 .imp-wrap{position:relative}
-.imp-menu{position:absolute;right:0;top:50px;z-index:20;min-width:220px;padding:8px;border-radius:16px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--inner),0 24px 50px -24px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:2px;animation:imp-in .18s var(--ease-out);transform-origin:top right}
-.imp-menu .lab{font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:4px 8px}
-.imp-menu button{min-height:44px;border:0;border-radius:10px;background:transparent;text-align:left;padding:0 10px;font:500 13px var(--sans);cursor:pointer}
-.imp-menu button:hover,.imp-menu button:focus-visible{background:var(--faint)}
+.imp-menu{position:absolute;right:0;top:50px;z-index:20;min-width:220px;padding:var(--s-2);border-radius:var(--r-lg);display:flex;flex-direction:column;gap:2px;animation:imp-in .18s var(--ease-out);transform-origin:top right}
+/* Concentric: 10 px rows inside an 18 px menu with 8 px padding. */
+.imp-menu .lab{font:var(--font-caption);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted);padding:var(--s-1) var(--s-2)}
+.imp-menu button{min-height:var(--ctl);border:0;border-radius:10px;background:transparent;text-align:left;padding:0 var(--s-3);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;transition:var(--btn-transition)}
+.imp-menu button:hover,.imp-menu button:focus-visible{background:color-mix(in srgb,var(--glass-ink) 8%,transparent)}
+.imp-menu button:active{background:color-mix(in srgb,var(--glass-ink) 14%,transparent)}
+.imp-menu button:focus-visible{outline-offset:-2px;border-radius:10px}
 .imp-menu .new{color:var(--accent)}
 @keyframes imp-in{from{opacity:0;transform:scale(.95)}}
-.nb-sec{padding:4px 12px 10px;display:flex;flex-direction:column;min-height:0;max-height:38vh}
-.sec-head{display:flex;align-items:center;justify-content:space-between;margin:0 6px}
-.sec-head h2,.obs-sec h2{font:600 11px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:10px 0}
-.obs-sec h2{margin:10px 6px}
+.nb-sec{padding:var(--s-1) var(--s-3) var(--s-3);display:flex;flex-direction:column;min-height:0;max-height:38vh}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin:0 var(--s-2)}
+.sec-head h2{margin:var(--s-3) 0}
+.obs-sec h2{margin:var(--s-3) var(--s-2)}
 .nb-sec .sessions{overflow:auto;min-height:0;margin:0}
-.nb-sec .empty{padding:4px 6px;overflow:auto;min-height:0}
+.nb-sec .empty{padding:var(--s-1) var(--s-2);overflow:auto;min-height:0}
 .nb-sec .sec-head{flex:none}
 .obs-sec{flex:1;min-height:0}
-.mini{min-height:var(--ctl-sm);padding:0 12px;border-radius:999px;border:1px solid var(--hair);background:transparent;color:var(--ink);font:500 12px var(--sans);cursor:pointer;white-space:nowrap}
-.mini:hover{background:var(--faint)}
-.panel-alert{margin:0 14px 8px;padding:8px 12px;border-radius:12px;background:color-mix(in srgb,var(--bad) 14%,transparent);font-size:13px}
+/* Small secondary pill of the panels («+ Nuovo», «Cambia cartella del vault»): 44 px to hit, a quieter label. */
+.mini{min-height:var(--ctl);min-width:var(--ctl);padding:0 var(--s-4);border-radius:var(--r-pill);border:1px solid var(--btn-secondary-border);background:var(--btn-secondary-bg);color:var(--btn-secondary-ink);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;white-space:nowrap;transition:var(--btn-transition)}
+.mini:hover{background:var(--btn-secondary-bg-hover)}
+.mini:active{background:var(--btn-secondary-bg-pressed)}
+.mini:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-pill)}
+.mini:disabled{background:var(--btn-disabled-bg);color:var(--btn-disabled-ink);border-color:var(--btn-disabled-border);cursor:not-allowed}
+.panel-alert{margin:0 var(--s-4) var(--s-2);padding:var(--s-2) var(--s-3);border-radius:var(--r-md);background:color-mix(in srgb,var(--bad) 14%,transparent);font-size:var(--fs-footnote)}
 .app aside.right .pf .row{justify-content:space-between}
 /* settings dialog */
-.overlay{position:fixed;inset:0;z-index:30;-webkit-app-region:no-drag;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
-.settings-dlg{width:min(640px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px;background:var(--surface);border:1px solid var(--hair);box-shadow:var(--inner),0 40px 100px -30px rgba(0,0,0,.7);animation:imp-in .2s var(--ease-out)}
+.overlay{position:fixed;inset:0;z-index:30;-webkit-app-region:no-drag;display:grid;place-items:center;padding:var(--s-6);background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
+.settings-dlg{--glass-shadow:0 40px 100px -30px rgba(0,0,0,.7);width:min(640px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px;animation:imp-in .2s var(--ease-out)}
+/* The 6 px glass ring replaced a 1 px border: the paddings inside are 5 px less, so the content stays where it was. */
+.sd-core{display:flex;flex-direction:column;overflow:hidden}
+.sd-core .sd-head{padding:11px 9px 4px 17px}.sd-core .sd-body{padding:4px 17px 16px}.sd-core .sd-foot{padding:12px 17px 13px}
 .sd-head{display:flex;align-items:center;justify-content:space-between;padding:16px 14px 4px 22px}
-.sd-head h2{font:400 30px/1 var(--serif);margin:0}
+.sd-head h2{font:var(--font-display);margin:0}
 .sd-body{overflow:auto;padding:4px 22px 16px;display:flex;flex-direction:column;gap:var(--space-group)}
-.sd-body .seg button{min-height:calc(var(--ctl) - 6px)}
-.sd-body h3{font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 var(--space-label)}
-.sd-hint{font-size:13px;color:var(--muted);margin:0 0 8px}
-.sd-engines{display:flex;flex-direction:column;gap:6px}
-.sd-engine{display:grid;grid-template-columns:1fr 110px 190px;gap:8px;align-items:center;font-size:14px}
-.sd-engine select,.sd-engine input,.sd-row input[type="number"]{min-height:44px;border-radius:10px;border:1px solid var(--hair);background:var(--bg);color:var(--ink);padding:0 10px;font:400 13px var(--sans)}
-.sd-engine input{font-family:var(--mono);font-size:12px}
-.sd-row{display:flex;align-items:center;gap:10px;font-size:14px;min-height:44px}
+/* The theme selector: 44 px options like every other control (the track adds its 3 px around them). */
+.sd-body .seg button{min-height:var(--ctl)}
+.sd-body h3{margin:0 0 var(--space-label)}
+.sd-hint{font-size:var(--fs-footnote);color:var(--muted);margin:0 0 var(--s-3)}
+.sd-engines{display:flex;flex-direction:column;gap:var(--s-2)}
+.sd-engine{display:grid;grid-template-columns:1fr 110px 212px;gap:var(--s-2);align-items:center;font-size:var(--fs-body)}
+.sd-engine select,.sd-engine input,.sd-row input[type="number"]{min-height:var(--ctl);border-radius:10px;border:1px solid var(--ctl-edge);background:var(--bg);color:var(--ink);padding:0 var(--s-3);font:400 var(--fs-footnote) var(--sans);transition:border-color .15s var(--ease-out)}
+.sd-engine select:hover,.sd-engine input:hover,.sd-row input[type="number"]:hover{border-color:color-mix(in srgb,var(--ink) 60%,transparent)}
+.sd-engine input{font-family:var(--mono)}
+.sd-row{display:flex;align-items:center;gap:var(--s-3);font-size:var(--fs-body);min-height:var(--ctl)}
 .sd-row input[type="number"]{width:80px;margin-left:auto}
 .sd-row input[type="checkbox"]{width:18px;height:18px;accent-color:var(--accent)}
-.sd-foot{display:flex;align-items:center;gap:10px;padding:12px 22px 18px;border-top:1px solid var(--hair)}
+.sd-foot{display:flex;align-items:center;gap:var(--s-3);padding:12px 22px 18px;border-top:1px solid var(--hair)}
 .sd-foot .sp{flex:1}
-.sd-error{margin:0;font-size:13px;color:var(--bad)}
-.sd-ok{margin:0;font-size:13px;color:var(--good)}
-.app aside.left .seg[aria-label="Sessioni da mostrare"] button{padding:0 6px;font-size:12px;min-height:44px}
+.sd-error{margin:0;font-size:var(--fs-footnote);color:var(--bad)}
+.sd-ok{margin:0;font-size:var(--fs-footnote);color:var(--good)}
+/* Four filters in the 263 px track: a documented exception at 12 px (under the 13 px footnote step), so each label keeps air inside its lens and between its neighbours; still 44 px at least each way. */
+.app aside.left .seg[aria-label="Sessioni da mostrare"] button{padding:0 6px;font-size:12px;min-height:var(--ctl);min-width:var(--ctl)}
 
-.composer-hint{margin:6px 10px 2px;font-size:13px;color:var(--bad)}
+.composer-hint{margin:var(--s-2) var(--s-3) 2px;font-size:var(--fs-footnote);color:var(--bad)}
 .q-head:focus{outline:none}
 
 /* Draggable lines between the home sections (wireframe 28/10) */
@@ -166,10 +212,13 @@
 .no-select{user-select:none}
 
 /* Suggestions: what to do next, each with its reason. */
-.composer .suggest{display:flex;gap:6px;flex-wrap:nowrap;margin:0 0 8px;padding:0 2px;min-width:0}
-.composer .sg-chip{font:inherit;font-family:var(--sans);text-transform:none;letter-spacing:normal;display:flex;flex-direction:column;align-items:flex-start;gap:1px;flex:1 1 0;min-width:0;max-width:260px;min-height:44px;padding:6px 12px;border-radius:14px;border:1px solid var(--hair);background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--ink);text-align:left;cursor:pointer;transition:background .15s,border-color .15s}
-.composer .sg-chip:hover{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:color-mix(in srgb,var(--accent) 40%,var(--hair))}
-.composer .sg-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.composer .sg-label,.composer .sg-why{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.composer .sg-label{font-size:13.5px;font-weight:500}
-.composer .sg-why{font-size:11.5px;color:var(--muted)}
+.composer .suggest{display:flex;gap:var(--s-2);flex-wrap:nowrap;margin:0 0 var(--s-2);padding:0 2px;min-width:0}
+.composer .sg-chip{font:inherit;font-family:var(--sans);text-transform:none;letter-spacing:normal;display:flex;flex-direction:column;align-items:flex-start;gap:1px;flex:0 1 auto;min-width:0;max-width:260px;min-height:var(--ctl);padding:6px var(--s-3);border-radius:var(--r-md);border:1px solid var(--ctl-edge);background:color-mix(in srgb,var(--accent) 6%,transparent);color:var(--ink);text-align:left;cursor:pointer;transition:var(--btn-transition)}
+.composer .sg-chip:hover{background:color-mix(in srgb,var(--accent) 14%,transparent);border-color:color-mix(in srgb,var(--accent) 60%,var(--ctl-edge))}
+.composer .sg-chip:active{background:color-mix(in srgb,var(--accent) 20%,transparent)}
+.composer .sg-chip:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-md)}
+/* The title takes up to two lines before the ellipsis; the reason stays on one. */
+.composer .sg-label{max-width:100%;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;text-wrap:pretty;font-size:var(--fs-footnote);line-height:1.3;font-weight:var(--fw-medium)}
+.composer .sg-why{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-footnote);color:var(--muted)}
+/* The dialog's close glyph: a 24 px light ×, which draws about as large as the panel's 18 px icons; the body text size would leave it tiny. */
+.sd-head .icon-btn{font:300 24px/1 var(--sans)}

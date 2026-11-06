@@ -35,12 +35,12 @@ describe('home layout', () => {
     expect((container.querySelector('.center') as HTMLElement).style.getPropertyValue('--composer-h')).toBe('190px')
     vi.unstubAllGlobals()
   })
-  it('section buttons in the panels are compact, with room before the form they open', () => {
-    expect(home).toMatch(/\.mini\{min-height:var\(--ctl-sm\)/)
-    expect(home).toMatch(/\.nb-new\{display:flex;gap:8px;padding:12px 6px;flex:none\}/)
+  it('section buttons in the panels are 44 px to hit, with room before the form they open', () => {
+    expect(home).toMatch(/\.mini\{min-height:var\(--ctl\);min-width:var\(--ctl\)/)
+    expect(home).toMatch(/\.nb-new\{display:flex;gap:var\(--s-2\);padding:var\(--s-3\) var\(--s-2\);flex:none\}/)
   })
   it('a short notebook section scrolls its text instead of spilling over the next one', () => {
-    expect(home).toMatch(/\.nb-sec \.empty\{padding:4px 6px;overflow:auto;min-height:0\}/)
+    expect(home).toMatch(/\.nb-sec \.empty\{padding:var\(--s-1\) var\(--s-2\);overflow:auto;min-height:0\}/)
   })
   it('the session list keeps its last row clear of the divider', () => {
     expect(home).toMatch(/\.app aside\.left \.psec\[aria-label="Sessioni"\] \.sessions\{overflow:auto;min-height:0;padding-bottom:12px\}/)

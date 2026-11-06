@@ -51,8 +51,9 @@ export const CH = {
   reviewPlan: 'review:plan',
   reviewGrade: 'review:grade',
   reviewExplain: 'review:explain',
-  reviewVoice: 'review:voice',
-  reviewMicrophone: 'review:microphone',
+  voiceTranscribe: 'voice:transcribe',
+  voiceMicrophone: 'voice:microphone',
+  voiceStage: 'voice:stage',
   reviewRecord: 'review:record',
   reviewMemory: 'review:memory',
   reviewIntervals: 'review:intervals',
@@ -89,7 +90,9 @@ export const CH = {
   practicePhoto: 'practice:photo',
   practiceCamera: 'practice:camera',
   practiceUpdated: 'practice:updated',
-  suggestGet: 'suggest:get'
+  suggestGet: 'suggest:get',
+  uiTransparency: 'ui:transparency',
+  uiTransparencyChanged: 'ui:transparency-changed'
 } as const
 
 export interface SinapsiApi {
@@ -134,15 +137,20 @@ export interface SinapsiApi {
     positions(): Promise<GraphPositions>
     savePositions(p: GraphPositions): Promise<void>
   }
+  /** Dictation into any text field, with mlx_whisper kept in memory. */
+  voice: {
+    /** A recording (WebM or MP4) as Italian text. */
+    transcribe(bytes: Uint8Array): Promise<string>
+    /** Asks macOS for the microphone. */
+    microphone(): Promise<boolean>
+    /** What the running transcription is doing: downloading the model, loading it, transcribing. */
+    onStage(cb: (s: 'download' | 'load' | 'transcribe') => void): () => void
+  }
   review: {
     plan(opts?: { conceptIds?: string[]; weakest?: boolean }): Promise<import('../main/memory/review').ReviewPlan>
     grade(req: { conceptId: string; exercise: import('./exercise-schema').Exercise; answer: string; confidence: number }): Promise<import('../main/memory/review').GradeResult>
     /** "Spiegalo tu": the whole dialogue so far, Andrea's last turn included. */
     explain(req: { conceptId: string; exercise: import('./exercise-schema').Exercise; turns: import('../main/memory/explain').ExplainTurn[]; confidence: number }): Promise<import('../main/memory/review').ExplainResult>
-    /** A spoken answer as text (mlx_whisper). */
-    voice(bytes: Uint8Array): Promise<string>
-    /** Asks macOS for the microphone. */
-    microphone(): Promise<boolean>
     record(r: import('./memory-types').ReviewLine): Promise<{ memory: import('./memory-types').Memory; intervals: Record<import('./memory-types').Grade, string> }>
     memory(): Promise<Record<string, import('./memory-types').Memory>>
     intervals(conceptId: string): Promise<Record<import('./memory-types').Grade, string>>
@@ -198,4 +206,10 @@ export interface SinapsiApi {
   }
   /** What to study, review or practise next, each with its reason (no AI). */
   suggest: { get(): Promise<import('../main/suggest/suggest').Suggestions> }
+  /** macOS appearance settings the Liquid Glass material follows. */
+  ui: {
+    /** True when «Riduci trasparenza» is on: the glass becomes a solid surface. */
+    reducedTransparency(): Promise<boolean>
+    onReducedTransparency(cb: (reduced: boolean) => void): () => void
+  }
 }

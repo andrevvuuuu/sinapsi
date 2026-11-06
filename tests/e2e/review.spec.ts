@@ -55,7 +55,7 @@ test('Spiegalo tu: a spoken explanation, one question from the picky student, th
   await win.getByRole('button', { name: 'Inizia ripasso' }).click()
 
   await expect(win.getByText(/compagno pignolo/)).toBeVisible()
-  await win.getByRole('button', { name: 'Parla' }).click()
+  await win.getByRole('button', { name: 'Detta' }).click()
   await win.getByRole('button', { name: /Ferma/ }).click()
   await expect(win.getByLabel('La tua spiegazione, a libro chiuso')).toHaveValue(/Lagrange segue da Rolle/)
   await win.getByRole('button', { name: 'Verifica' }).click()

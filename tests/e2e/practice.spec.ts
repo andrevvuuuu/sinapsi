@@ -34,6 +34,13 @@ test('a training session: material, a problem, a hint, the solution, the next pr
   await expect(card.getByText('Risolto con aiuti')).toBeVisible()
   await expect(card.getByText('Soluzione di riferimento')).toBeVisible()
   await expect(win.getByRole('complementary', { name: 'Andamento della sessione' }).getByText('in coda')).toBeVisible()
+  // The conclusion, last in the conversation, ends above the dock that floats over it.
+  await expect
+    .poll(async () => {
+      const c = (await card.boundingBox())!
+      return c.y + c.height - (await win.locator('.pr .dock').boundingBox())!.y
+    })
+    .toBeLessThanOrEqual(0)
   await win.screenshot({ path: 'test-results/practice-train.png' })
   await win.getByRole('button', { name: 'Prossimo problema' }).click()
   await expect(dock.getByRole('group', { name: 'Righe della dimostrazione' })).toBeVisible()

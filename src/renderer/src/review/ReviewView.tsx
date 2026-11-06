@@ -259,7 +259,7 @@ export function ReviewView({
   }, [i, items])
 
   const top = (
-    <header className="rv-top drag">
+    <header className="rv-top drag glass glass-bar glass-text">
       <button type="button" className="pill nodrag back-btn" onClick={onBack}>
         ← Home
       </button>
@@ -286,7 +286,7 @@ export function ReviewView({
 
   if (!items)
     return (
-      <div className="rv">
+      <div className="rv scroll-edge-under">
         {top}
         <main className="rv-main">
           <p className="rv-loading" role="status">
@@ -306,7 +306,7 @@ export function ReviewView({
     })
     const notes = new Set(items.map((x) => x.noteTitle)).size
     return (
-      <div className="rv">
+      <div className="rv scroll-edge-under">
         {top}
         <main className="rv-main">
           <section className="rv-intro">
@@ -407,7 +407,7 @@ export function ReviewView({
     const mis = results.filter((r) => r.misconception)
     const minutes = Math.max(1, Math.round(((endedAt ?? startedAt) - startedAt) / 60_000))
     return (
-      <div className="rv">
+      <div className="rv scroll-edge-under">
         {top}
         <main className="rv-main">
           <section className="rv-sum">
@@ -491,7 +491,7 @@ export function ReviewView({
     idk: 'Va bene non saperlo'
   }
   return (
-    <div className="rv">
+    <div className="rv scroll-edge-under">
       {top}
       <main className="rv-main">
         <article className="rv-item" aria-labelledby="rv-q">

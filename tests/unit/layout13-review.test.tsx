@@ -16,10 +16,10 @@ describe('review layout', () => {
     expect(go.parentElement?.className).toBe('rv-go')
     expect(css).toMatch(/\.rv-go \{\s*position: sticky;\s*bottom: 0;/)
   })
-  it('uses the shared sizes: top bar 72, buttons 44, chips 36', () => {
+  it('uses the shared sizes: top bar 72, buttons 44, exercise-type chips 44', () => {
     expect(css).toMatch(/\.rv-top \{[^}]*min-height: var\(--topbar-h\);/)
     expect(css).toMatch(/\.rv-top \.pill \{\s*min-height: var\(--ctl\);/)
     expect(css).toMatch(/\.rv \.pri \{[^}]*min-height: var\(--ctl\);/)
-    expect(css).toMatch(/\.rv-chips button \{\s*min-height: var\(--ctl-sm\);/)
+    expect(css).toMatch(/\.rv-chips button \{\s*min-height: var\(--ctl\);/)
   })
 })

@@ -1,4 +1,7 @@
 /* Union graph: adapted from docs/prototipi/grafo-v2.html, scoped under .graph */
+/* Scales from tokens.css (8a): type --fs-*, distances --s-* (multiples of 4), radii --r-*, button states --btn-*.
+   The menu (.gpanel), its round button and the zoom are dense graph controls (DENSE in screens.spec): they keep
+   their 36–40 px rows. The detail card's controls are 44 px. Control outlines use --btn-secondary-border / --ctl-edge. */
 .graph {
   position: absolute;
   inset: 0;
@@ -16,9 +19,8 @@
 .graph canvas.hov {
   cursor: pointer;
 }
-.graph .gpanel,
-.graph .gcard,
-.graph .gzoom {
+/* The card holds text to read: a solid-ish surface. The menu, its button and the zoom are glass (.glass in GraphView). */
+.graph .gcard {
   background: color-mix(in srgb, var(--surface) 86%, transparent);
   border: 1px solid var(--hair);
   box-shadow: var(--inner);
@@ -34,18 +36,25 @@
   z-index: 5;
   width: 290px;
   max-height: calc(100% - 280px);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  /* Concentric: the 16 px core in the 6 px glass ring. */
   border-radius: 22px;
-  padding: 14px;
+}
+/* The menu's text sits on the solid core inside the glass ring (15 px to the content, as before). */
+.graph .gpanel-core {
+  overflow: auto;
+  border-radius: 16px;
+  padding: 9px;
 }
 .graph .gpanel h2 {
-  font: 400 28px/1 var(--serif);
-  margin: 2px 4px 4px;
+  font: var(--fw-regular) var(--fs-display) / 1 var(--serif);
+  margin: 2px var(--s-1) var(--s-1);
 }
 .graph .meta {
-  font: 500 12px var(--mono);
+  font: var(--fw-medium) var(--fs-caption) var(--mono);
   color: var(--muted);
-  margin: 0 4px 12px;
+  margin: 0 var(--s-1) var(--s-3);
   line-height: 1.5;
 }
 .graph .gsearch {
@@ -53,13 +62,15 @@
 }
 .graph .gsearch input {
   width: 100%;
-  min-height: 44px;
-  border-radius: 14px;
-  border: 1px solid var(--hair);
+  min-height: var(--ctl);
+  border-radius: var(--r-md);
+  border: 1px solid var(--ctl-edge);
   background: var(--faint);
   color: var(--ink);
   font: inherit;
-  padding: 0 14px;
+  font-size: var(--fs-body);
+  padding: 0 var(--s-4);
+  transition: border-color 0.15s var(--ease-out);
 }
 .graph .gsearch input::placeholder {
   color: var(--muted);
@@ -73,43 +84,51 @@
   margin: 6px 0 0;
   padding: 0;
 }
+/* Search results: dense 40 px rows of the menu. */
 .graph .gresults li {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s-3);
   min-height: 40px;
-  padding: 0 10px;
-  border-radius: 10px;
+  padding: 0 var(--s-3);
+  border-radius: var(--r-sm);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--fs-body);
 }
 .graph .gresults li:hover,
 .graph .gresults li[aria-selected='true'] {
-  background: var(--faint);
+  background: var(--btn-secondary-bg-hover);
+}
+.graph .gresults li:active {
+  background: var(--btn-secondary-bg-pressed);
 }
 .graph .gresults small {
   margin-left: auto;
-  font: 500 11px var(--mono);
+  font: var(--font-caption);
   color: var(--muted);
 }
 .graph .gsec {
-  margin-top: 14px;
-  padding-top: 12px;
+  margin-top: var(--s-4);
+  padding-top: var(--s-3);
   border-top: 1px solid var(--hair);
 }
+/* Section titles: the caption of the Home panels and the settings. */
 .graph .gsec h3 {
-  font: 600 11px var(--sans);
-  letter-spacing: 0.12em;
+  font: var(--fw-semibold) var(--fs-caption) / 1.3 var(--sans);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--muted);
-  margin: 0 4px 8px;
+  margin: 0 var(--s-1) var(--s-2);
 }
+/* The lens selector: a segmented track with 9 px option corners, concentric with its 12 px track 3 px out. It sits in the
+   glass menu, so the track is a faint fill, not a second glass (the lens still slides over it). */
 .graph .gseg {
   display: flex;
   gap: 2px;
   padding: 3px;
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--faint);
+  --lens-r: 9px;
 }
 .graph .gseg button {
   flex: 1;
@@ -118,55 +137,84 @@
   border-radius: 9px;
   background: transparent;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   cursor: pointer;
+  transition: color 0.15s var(--ease-out);
+}
+.graph .gseg button:hover {
+  color: var(--ink);
 }
 .graph .gseg button[aria-pressed='true'] {
   background: var(--surface);
   color: var(--ink);
   box-shadow: 0 1px 0 var(--hair);
 }
+.graph .gseg button:focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: -2px;
+  border-radius: 9px;
+}
 .graph .hint {
-  font-size: 12.5px;
+  font-size: var(--fs-footnote);
   color: var(--muted);
-  margin: 8px 4px 0;
+  margin: var(--s-2) var(--s-1) 0;
   line-height: 1.45;
 }
 .graph .gtoggles {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--s-2);
 }
+/* Layer toggles: off, a muted label in the control outline; on, the --ink label and border. */
 .graph .gtoggles button {
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 1px solid var(--hair);
-  background: transparent;
+  min-height: var(--ctl-sm);
+  padding: 0 var(--s-3);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--btn-secondary-border);
+  background: var(--btn-secondary-bg);
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   cursor: pointer;
+  transition: var(--btn-transition);
+}
+.graph .gtoggles button:hover {
+  background: var(--btn-secondary-bg-hover);
+  color: var(--ink);
+}
+.graph .gtoggles button:active {
+  background: var(--btn-secondary-bg-pressed);
 }
 .graph .gtoggles button[aria-pressed='true'] {
   color: var(--ink);
   border-color: var(--ink);
 }
 .graph .gstatus {
-  margin: 12px 4px 0;
-  font-size: 13px;
+  margin: var(--s-3) var(--s-1) 0;
+  font-size: var(--fs-footnote);
   color: var(--muted);
 }
 .graph .gstatus.err {
   color: var(--bad);
 }
+/* «Riprova»: a text button inside the status line; its 28 px hit area overhangs the line. */
 .graph .gstatus button {
+  min-height: var(--hit-min);
+  margin: calc((1lh - var(--hit-min)) / 2) 0;
+  padding: 0 var(--s-2);
   border: 0;
-  background: none;
-  color: var(--ink);
-  text-decoration: underline;
+  border-radius: var(--r-pill);
+  background: var(--btn-text-bg);
+  color: var(--btn-text-ink);
+  font: inherit;
+  font-weight: var(--fw-medium);
   cursor: pointer;
-  padding: 0;
-  min-height: 0;
+  transition: var(--btn-transition);
+}
+.graph .gstatus button:hover {
+  background: var(--btn-text-bg-hover);
+}
+.graph .gstatus button:active {
+  background: var(--btn-text-bg-pressed);
 }
 .graph .pulse {
   display: inline-block;
@@ -184,23 +232,36 @@
 }
 .graph .gzoom {
   position: absolute;
-  right: 16px;
+  right: var(--s-4);
   /* Above the composer (22 px from the bottom) with 16 px to spare, whatever its height. */
   bottom: calc(var(--composer-h, 128px) + 38px);
   z-index: 5;
   display: flex;
   flex-direction: column;
-  border-radius: 16px;
+  padding: 1px;
+  border-radius: var(--r-lg);
   overflow: hidden;
 }
 .graph .gzoom button {
-  width: 44px;
-  height: 44px;
+  width: var(--ctl);
+  height: var(--ctl);
   border: 0;
   background: transparent;
   color: var(--ink);
-  font-size: 18px;
+  font-size: var(--fs-callout);
   cursor: pointer;
+  transition: background-color 0.15s var(--ease-out);
+}
+.graph .gzoom button:hover {
+  background: color-mix(in srgb, var(--glass-ink) 8%, transparent);
+}
+.graph .gzoom button:active {
+  background: color-mix(in srgb, var(--glass-ink) 14%, transparent);
+}
+.graph .gzoom button:focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: -3px;
+  border-radius: var(--r-md);
 }
 .graph .gzoom button + button {
   border-top: 1px solid var(--hair);
@@ -208,54 +269,73 @@
 .graph .gcard {
   position: absolute;
   top: 88px;
-  right: 16px;
+  right: var(--s-4);
   z-index: 6;
   width: 340px;
   max-height: calc(100% - 220px);
   overflow: auto;
   border-radius: 22px;
-  padding: 18px 18px 16px;
+  padding: var(--s-5) var(--s-4) var(--s-4);
 }
+/* Close: 44 px to hit, a 36 px circle drawn inside it (content-box background), 10 px from the card's corner. */
 .graph .gcard .x {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 36px;
-  height: 36px;
+  top: 6px;
+  right: 6px;
+  width: var(--ctl);
+  height: var(--ctl);
+  padding: var(--s-1);
+  background-clip: content-box;
   border-radius: 50%;
   border: 0;
-  background: var(--faint);
+  background-color: var(--faint);
   color: var(--ink);
   cursor: pointer;
-  font-size: 18px;
+  font-size: var(--fs-callout);
+  transition: var(--btn-transition);
+}
+.graph .gcard .x:hover {
+  background-color: var(--btn-secondary-bg-hover);
+}
+.graph .gcard .x:active {
+  background-color: var(--btn-secondary-bg-pressed);
+}
+.graph .gcard .x:focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: -2px;
+  border-radius: 50%;
 }
 .graph .gcard .chips {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: var(--s-2);
+  /* Room for the close button's 36 px circle, so the three chips keep one row as before (28 px past the padding; the circle's
+     edge is 30 px in, the 1 px border and the chips' rounding cover the rest). Its 44 px hit area may reach under the chips, which are not interactive. */
+  margin-right: var(--s-7);
 }
 .graph .gcard .chips span {
-  font: 500 11px var(--mono);
+  font: var(--font-caption);
   color: var(--muted);
-  padding: 3px 8px;
-  border-radius: 999px;
+  padding: 3px var(--s-2);
+  border-radius: var(--r-pill);
   border: 1px solid var(--hair);
 }
+/* 40 px on the right keep the title clear of the close button, as before. */
 .graph .gcard h3 {
-  font: 400 28px/1.1 var(--serif);
-  margin: 0 40px 8px 0;
+  font: var(--fw-regular) var(--fs-display) / 1.1 var(--serif);
+  margin: 0 40px var(--s-2) 0;
 }
 .graph .gcard h4 {
-  font: 600 11px var(--sans);
-  letter-spacing: 0.12em;
+  font: var(--fw-semibold) var(--fs-caption) / 1.3 var(--sans);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--muted);
-  margin: 16px 0 6px;
+  margin: var(--s-4) 0 var(--s-2);
 }
 .graph .gcard p,
 .graph .gcard .stmt {
-  font-size: 14.5px;
+  font-size: var(--fs-body);
   margin: 0;
 }
 .graph .gcard .rows {
@@ -265,28 +345,39 @@
 }
 .graph .gcard .rows li.s {
   display: flex;
-  gap: 8px;
+  gap: var(--s-2);
   align-items: baseline;
-  font-size: 14px;
-  padding: 4px 0;
+  font-size: var(--fs-body);
+  padding: var(--s-1) 0;
 }
+/* A concept to jump to: a 44 px row, 8 px in so its tint lines up with the text above. */
 .graph .gcard .rows button {
-  width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 40px;
-  padding: 0 8px;
+  gap: var(--s-3);
+  min-height: var(--ctl);
+  padding: 0 var(--s-2);
+  margin: 0 calc(-1 * var(--s-2));
+  width: calc(100% + 2 * var(--s-2));
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   background: transparent;
   text-align: left;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--fs-body);
   color: var(--ink);
+  transition: var(--btn-transition);
 }
 .graph .gcard .rows button:hover {
-  background: var(--faint);
+  background: var(--btn-secondary-bg-hover);
+}
+.graph .gcard .rows button:active {
+  background: var(--btn-secondary-bg-pressed);
+}
+.graph .gcard .rows button:focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: -2px;
+  border-radius: var(--r-sm);
 }
 .graph .gcard .rows i {
   width: 9px;
@@ -296,30 +387,51 @@
 }
 .graph .gcard small {
   margin-left: auto;
-  font: 500 11px var(--mono);
+  font: var(--font-caption);
   color: var(--muted);
   text-align: right;
 }
 .graph .gcard .acts {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
+  gap: var(--s-2);
+  margin-top: var(--s-4);
 }
+/* Secondary and primary buttons; 13 px labels so «Cosa serve per capirlo (n)» keeps to the 300 px card. */
 .graph .gcard .acts button {
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--hair);
-  background: transparent;
-  color: var(--ink);
-  font: 500 13px var(--sans);
+  min-height: var(--ctl);
+  padding: 0 var(--s-4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--btn-secondary-border);
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-ink);
+  font: var(--fw-medium) var(--fs-footnote) var(--sans);
   cursor: pointer;
+  transition: var(--btn-transition);
+}
+.graph .gcard .acts button:hover {
+  background: var(--btn-secondary-bg-hover);
+}
+.graph .gcard .acts button:active {
+  background: var(--btn-secondary-bg-pressed);
 }
 .graph .gcard .acts button.pri {
-  background: var(--ink);
-  color: var(--bg);
-  border-color: var(--ink);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
+  border-color: var(--btn-primary-bg);
+}
+.graph .gcard .acts button.pri:hover {
+  background: var(--btn-primary-bg-hover);
+  border-color: var(--btn-primary-bg-hover);
+}
+.graph .gcard .acts button.pri:active {
+  background: var(--btn-primary-bg-pressed);
+  border-color: var(--btn-primary-bg-pressed);
+}
+.graph :is(.gcard .acts button, .gtoggles button, .gmenu-btn):focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: var(--btn-focus-offset);
+  border-radius: var(--r-pill);
 }
 @media (prefers-reduced-motion: reduce) {
   .graph .pulse {
@@ -329,30 +441,40 @@
 .graph .gpanel {
   width: 270px;
 }
+/* «Disposizione e strati»: a dense 40 px disclosure row of the menu. */
 .graph .gmore {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
   min-height: 40px;
-  margin-top: 10px;
-  padding: 0 6px;
+  margin-top: var(--s-3);
+  padding: 0 var(--s-2);
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   background: transparent;
   color: var(--muted);
-  font: 500 13px var(--sans);
+  font: var(--fw-medium) var(--fs-footnote) var(--sans);
   cursor: pointer;
+  transition: var(--btn-transition);
 }
 .graph .gmore:hover {
-  background: var(--faint);
+  background: var(--btn-secondary-bg-hover);
   color: var(--ink);
+}
+.graph .gmore:active {
+  background: var(--btn-secondary-bg-pressed);
+}
+.graph .gmore:focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: -2px;
+  border-radius: var(--r-sm);
 }
 .graph .gcard {
   width: 300px;
 }
 .graph .glens{flex-wrap:wrap}
-.graph .glens button{flex:1 1 45%;min-height:40px;font-size:12.5px}
+.graph .glens button{flex:1 1 45%;min-height:40px;font-size:var(--fs-footnote)}
 .graph .gcard .chips .mem{color:var(--muted)}
 .graph .gcard .chips .mem.la-sai{color:var(--good);border-color:color-mix(in srgb,var(--good) 45%,transparent)}
 .graph .gcard .chips .mem.incerto{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent)}
@@ -362,19 +484,15 @@
 .graph .gmenu-btn {
   position: absolute;
   top: 60px;
-  left: 16px;
+  left: var(--s-4);
   z-index: 6;
   width: 44px;
   height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 1px solid var(--hair);
-  background: color-mix(in srgb, var(--surface) 86%, transparent);
-  backdrop-filter: blur(18px);
-  color: var(--ink);
+  border: 0;
   cursor: pointer;
-  box-shadow: var(--inner), 0 10px 30px -14px rgba(0, 0, 0, 0.5);
   transition: transform 0.18s var(--ease-out), background-color 0.2s ease, color 0.2s ease;
 }
 .graph .gmenu-btn svg {
@@ -441,4 +559,4 @@
 }
 
 .graph .glive-empty{position:absolute;inset:0;display:grid;place-items:center;padding:0 60px 180px;text-align:center;pointer-events:none;z-index:2}
-.graph .glive-empty p{max-width:44ch;color:var(--muted);font:400 26px/1.25 var(--serif);margin:0}
+.graph .glive-empty p{max-width:44ch;color:var(--muted);font:var(--fw-regular) var(--fs-display)/1.25 var(--serif);margin:0}

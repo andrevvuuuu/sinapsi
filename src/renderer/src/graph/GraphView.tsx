@@ -4,6 +4,9 @@ import { zoom as d3zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ExtractorStatus, GraphData } from '../../../shared/graph-types'
 import type { VaultIndex } from '../../../shared/vault-types'
+import { DICTATION_SHORT, useDictation } from '../components/dictation'
+import { DictationError, MicButton } from '../components/MicButton'
+import { SegLens } from '../components/SegLens'
 import { RichText } from '../session/RichText'
 import { draw, radiusOf, type Colors, type Lens, type Sel } from './draw'
 import { createLayout, type Layout, type LayoutMode, type SimNode } from './layout'
@@ -78,6 +81,13 @@ export function GraphView({
   const [path, setPath] = useState<Set<string> | null>(null)
   const [query, setQuery] = useState('')
   const [hi, setHi] = useState(-1)
+  const searchField = useRef<HTMLInputElement>(null)
+  const searchMic = useDictation({
+    target: searchField,
+    value: query,
+    onChange: (v) => (setQuery(v), setHi(-1)),
+    maxSeconds: DICTATION_SHORT
+  })
   const [options, setOptions] = useState(false)
   // The graph menu sits behind a round button; it opens and closes with a short scale-and-fade.
   const [menu, setMenu] = useState<'closed' | 'open' | 'closing'>(menuOpen ? 'open' : 'closed')
@@ -475,7 +485,7 @@ export function GraphView({
       <button
         ref={menuBtn}
         type="button"
-        className={'gmenu-btn' + (menu === 'open' ? ' on' : '')}
+        className={'gmenu-btn glass' + (menu === 'open' ? ' on' : '')}
         aria-label="Vista del grafo"
         aria-expanded={menu === 'open'}
         aria-controls="graph-menu"
@@ -510,7 +520,7 @@ export function GraphView({
         <section
           ref={panelRef}
           id="graph-menu"
-          className={'gpanel' + (menu === 'closing' ? ' closing' : '')}
+          className={'gpanel glass glass-shell' + (menu === 'closing' ? ' closing' : '')}
           aria-label="Controlli del grafo"
           onKeyDown={(e) => {
             if (e.key === 'Escape' && !e.defaultPrevented) {
@@ -519,120 +529,143 @@ export function GraphView({
             }
           }}
         >
-          <h2>Il tuo grafo</h2>
-          <p className="meta">
-            {model
-              ? `${model.concepts.length} concetti da ${model.regions.length} note · ${new Set(model.arrows.map((a) => a.chain)).size} catene · ${multi} in più note`
-              : 'Carico il grafo…'}
-          </p>
-          <div className="gsearch">
-            <input
-              role="combobox"
-              aria-label="Cerca nel grafo"
-              aria-expanded={hits.length > 0}
-              aria-controls="graph-results"
-              aria-activedescendant={hi >= 0 ? `gr-${hi}` : undefined}
-              placeholder="Cerca un concetto o una nota"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
-                setHi(-1)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowDown') setHi(Math.min(hits.length - 1, hi + 1))
-                else if (e.key === 'ArrowUp') setHi(Math.max(0, hi - 1))
-                else if (e.key === 'Enter' && hits.length) go(hits[Math.max(0, hi)])
-                else if (e.key === 'Escape' && query) setQuery('')
-                else return
-                e.preventDefault()
-              }}
-            />
-            {hits.length > 0 && (
-              <ul role="listbox" id="graph-results" className="gresults">
-                {hits.map((h, i) => (
-                  <li
-                    key={`${h.kind}:${h.id}`}
-                    id={`gr-${i}`}
-                    role="option"
-                    aria-selected={i === hi}
-                    onClick={() => go(h)}
-                  >
-                    <span>{h.label}</span>
-                    <small>{h.kind === 'concept' ? 'concetto' : 'nota'}</small>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div className="gsec">
-            <h3>Evidenzia</h3>
-            <div className="gseg glens" role="group" aria-label="Evidenzia">
-              {(
-                [
-                  ['all', 'Tutto'],
-                  ['due', `Da ripassare (${counts.due})`],
-                  ['never', `Mai visti (${counts.never})`],
-                  ['fragile', `Basi fragili (${counts.fragile})`]
-                ] as [Lens, string][]
-              ).map(([l, label]) => (
-                <button key={l} type="button" aria-pressed={lens === l} onClick={() => setLens(l)}>
-                  {label}
-                </button>
-              ))}
+          <div className="gpanel-core dlg-core">
+            <h2>Il tuo grafo</h2>
+            <p className="meta">
+              {model
+                ? `${model.concepts.length} concetti da ${model.regions.length} note · ${new Set(model.arrows.map((a) => a.chain)).size} catene · ${multi} in più note`
+                : 'Carico il grafo…'}
+            </p>
+            <div className="gsearch">
+              <div className="mic-field">
+                <input
+                  ref={searchField}
+                  readOnly={searchMic.state !== 'idle'}
+                  role="combobox"
+                  aria-label="Cerca nel grafo"
+                  aria-expanded={hits.length > 0}
+                  aria-controls="graph-results"
+                  aria-activedescendant={hi >= 0 ? `gr-${hi}` : undefined}
+                  placeholder="Cerca un concetto o una nota"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value)
+                    setHi(-1)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown') setHi(Math.min(hits.length - 1, hi + 1))
+                    else if (e.key === 'ArrowUp') setHi(Math.max(0, hi - 1))
+                    else if (e.key === 'Enter' && hits.length) go(hits[Math.max(0, hi)])
+                    else if (e.key === 'Escape' && query) setQuery('')
+                    else return
+                    e.preventDefault()
+                  }}
+                />
+                <MicButton dictation={searchMic} size="sm" />
+              </div>
+              <DictationError dictation={searchMic} />
+              {hits.length > 0 && (
+                <ul role="listbox" id="graph-results" className="gresults">
+                  {hits.map((h, i) => (
+                    <li
+                      key={`${h.kind}:${h.id}`}
+                      id={`gr-${i}`}
+                      role="option"
+                      aria-selected={i === hi}
+                      onClick={() => go(h)}
+                    >
+                      <span>{h.label}</span>
+                      <small>{h.kind === 'concept' ? 'concetto' : 'nota'}</small>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          </div>
-          <button
-            type="button"
-            className="gmore"
-            aria-expanded={options}
-            onClick={() => setOptions(!options)}
-          >
-            Disposizione e strati
-            <span aria-hidden="true">{options ? '−' : '+'}</span>
-          </button>
-          {options && (
-            <>
-              <div className="gsec">
-                <h3>Disposizione</h3>
-                <div className="gseg" role="group" aria-label="Disposizione">
-                  {MODES.map(([m, label]) => (
+            <div className="gsec">
+              <h3>Evidenzia</h3>
+              <div
+                className="gseg glens seg-track"
+                role="group"
+                aria-label="Evidenzia"
+              >
+                {(
+                  [
+                    ['all', 'Tutto'],
+                    ['due', `Da ripassare (${counts.due})`],
+                    ['never', `Mai visti (${counts.never})`],
+                    ['fragile', `Basi fragili (${counts.fragile})`]
+                  ] as [Lens, string][]
+                ).map(([l, label]) => (
+                  <button
+                    key={l}
+                    type="button"
+                    aria-pressed={lens === l}
+                    onClick={() => setLens(l)}
+                  >
+                    {label}
+                  </button>
+                ))}
+                <SegLens />
+              </div>
+            </div>
+            <button
+              type="button"
+              className="gmore"
+              aria-expanded={options}
+              onClick={() => setOptions(!options)}
+            >
+              Disposizione e strati
+              <span aria-hidden="true">{options ? '−' : '+'}</span>
+            </button>
+            {options && (
+              <>
+                <div className="gsec">
+                  <h3>Disposizione</h3>
+                  <div
+                    className="gseg seg-track"
+                    role="group"
+                    aria-label="Disposizione"
+                  >
+                    {MODES.map(([m, label]) => (
+                      <button
+                        key={m}
+                        type="button"
+                        aria-pressed={mode === m}
+                        onClick={() => changeMode(m)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                    <SegLens />
+                  </div>
+                  <p className="hint">{MODES.find((m) => m[0] === mode)![2]}</p>
+                </div>
+                <div className="gsec gtoggles">
+                  {(
+                    [
+                      ['regions', 'Regioni'],
+                      ['wikilinks', 'Link di Obsidian'],
+                      ['frontier', `Frontiera${model ? ` (${model.frontier.length})` : ''}`]
+                    ] as const
+                  ).map(([key, label]) => (
                     <button
-                      key={m}
+                      key={key}
                       type="button"
-                      aria-pressed={mode === m}
-                      onClick={() => changeMode(m)}
+                      aria-pressed={show[key]}
+                      onClick={() => setShow({ ...show, [key]: !show[key] })}
                     >
                       {label}
                     </button>
                   ))}
                 </div>
-                <p className="hint">{MODES.find((m) => m[0] === mode)![2]}</p>
-              </div>
-              <div className="gsec gtoggles">
-                {(
-                  [
-                    ['regions', 'Regioni'],
-                    ['wikilinks', 'Link di Obsidian'],
-                    ['frontier', `Frontiera${model ? ` (${model.frontier.length})` : ''}`]
-                  ] as const
-                ).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={show[key]}
-                    onClick={() => setShow({ ...show, [key]: !show[key] })}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
+              </>
+            )}
+            <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
+          </div>
         </section>
       )}
       {model && !(livePaths && livePaths.length === 0) && (
-        <div className="gzoom" role="group" aria-label="Zoom">
+        <div className="gzoom glass" role="group" aria-label="Zoom">
           <button
             type="button"
             aria-label="Avvicina"

@@ -6,7 +6,7 @@ import { transcribe, type RunTool } from '../notebook/media'
 export const VOICE_MAX = 40 * 1024 * 1024
 
 /** The recording's container from its first bytes: MediaRecorder writes WebM (EBML), Safari-style recorders MP4. */
-function extOf(b: Uint8Array): 'webm' | 'm4a' | null {
+export function extOf(b: Uint8Array): 'webm' | 'm4a' | null {
   if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return 'webm'
   if (String.fromCharCode(...b.slice(4, 8)) === 'ftyp') return 'm4a'
   return null

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Composer } from '../../src/renderer/src/home/Composer'
 import Home from '../../src/renderer/src/home/Home'
 import type { VaultResult } from '../../src/shared/api'
 import { settingsSchema } from '../../src/shared/settings-schema'
@@ -129,5 +130,30 @@ describe('centre', () => {
     fireEvent.keyDown(search, { key: 'Escape' })
     expect(screen.queryByRole('combobox', { name: 'Cerca nel grafo' })).toBeNull()
     expect(document.activeElement).toBe(btn)
+  })
+})
+
+describe('composer', () => {
+  const chip = (label: string, reason: string) => ({ label, reason, action: { kind: 'learn' as const, topic: label } })
+  const SUG = { learn: [chip('Principio del Buon Ordinamento dei Naturali', 'sessione da finire'), chip('Numeri Reali', 'base di 25 note')], review: [], practice: [] }
+  it('gives each suggestion its full text on hover and to assistive tech', () => {
+    render(<Composer onSubmit={vi.fn()} suggestions={SUG} />)
+    const group = screen.getByRole('group', { name: 'Consigliati' })
+    const chips = within(group).getAllByRole('button')
+    expect(chips.map((c) => c.getAttribute('title'))).toEqual(['Principio del Buon Ordinamento dei Naturali — sessione da finire', 'Numeri Reali — base di 25 note'])
+    expect(chips.map((c) => c.getAttribute('aria-label'))).toEqual(chips.map((c) => c.getAttribute('title')))
+    expect(screen.getByRole('button', { name: 'Principio del Buon Ordinamento dei Naturali — sessione da finire' }).querySelector('.sg-label')!.textContent).toBe('Principio del Buon Ordinamento dei Naturali')
+  })
+  it('exposes when send is disabled and when it is enabled', () => {
+    const onSubmit = vi.fn()
+    render(<Composer onSubmit={onSubmit} suggestions={SUG} />)
+    const send = screen.getByRole('button', { name: 'Inizia' })
+    expect(send).toHaveProperty('disabled', true)
+    fireEvent.click(send)
+    expect(onSubmit).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Cosa vuoi studiare?'), { target: { value: 'Limiti' } })
+    expect(send).toHaveProperty('disabled', false)
+    fireEvent.click(send)
+    expect(onSubmit).toHaveBeenCalledWith('Apprendimento', 'Limiti')
   })
 })

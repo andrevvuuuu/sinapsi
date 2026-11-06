@@ -1,49 +1,52 @@
 /* Ripasso: adapted from docs/prototipi/ripasso-v1.html, scoped under .rv */
+/* The page fades into a band under the glass bar while it scrolls (.scroll-edge-under). */
+/* Scales from tokens.css (8a): type --fs-*, distances --s-* (multiples of 4), radii --r-*, button states --btn-*.
+   Control outlines use --btn-secondary-border / --ctl-edge (3:1); --hair only on non-interactive containers.
+   Answer options (choices, «Vero o falso», steps, grades) stay options: secondary outlines, an --ink border when picked. */
 .rv {
+  --scroll-edge-top: var(--topbar-h);
   position: fixed;
   inset: 0;
   overflow: auto;
   background: var(--bg);
   color: var(--ink);
-  font: 400 17px/1.6 var(--sans);
+  font: var(--fw-regular) var(--fs-callout) / 1.6 var(--sans);
 }
 .rv .lab {
-  font: 500 11px var(--mono);
-  letter-spacing: 0.12em;
+  font: var(--font-caption);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--muted);
 }
+/* The same bar as every other screen (session, practice): 88 px on the left clears the window's traffic lights. */
 .rv-top {
   position: sticky;
   top: 0;
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: var(--s-5);
   padding: 14px 24px 14px 88px;
   min-height: var(--topbar-h);
-  background: color-mix(in srgb, var(--bg) 85%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--hair);
 }
 .rv-top .pill {
   min-height: var(--ctl);
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--hair);
+  padding: 0 var(--s-4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--ctl-edge);
   background: transparent;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--fs-footnote);
   color: var(--muted);
 }
 .rv-title {
-  font: 400 26px/1 var(--serif);
+  font: var(--fw-regular) var(--fs-display) / 1 var(--serif);
 }
 .rv-track {
   flex: 1;
   display: flex;
-  gap: 6px;
+  gap: var(--s-2);
   align-items: center;
   max-width: 420px;
   margin: 0 auto;
@@ -51,7 +54,7 @@
 .rv-track i {
   flex: 1;
   height: 6px;
-  border-radius: 6px;
+  border-radius: var(--r-pill);
   background: var(--faint);
 }
 .rv-track i.done {
@@ -61,53 +64,55 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 .rv-track small {
-  font: 500 13px var(--mono);
+  font: var(--fw-medium) var(--fs-footnote) var(--mono);
   color: var(--muted);
   white-space: nowrap;
-  margin-left: 8px;
+  margin-left: var(--s-2);
 }
+/* 40 px above the column (a multiple of 4 past the --s-* steps); 120 px below keeps the last row clear of the sticky start bar. */
 .rv-main {
   max-width: 760px;
   margin: 0 auto;
-  padding: 40px 20px 120px;
+  padding: 40px var(--s-5) 120px;
 }
 .rv-loading {
   color: var(--muted);
 }
+/* The page headline: a fluid display size of its own, larger than the type scale on purpose. */
 .rv h1 {
-  font: 400 clamp(40px, 6vw, 64px)/1 var(--serif);
-  margin: 10px 0 14px;
+  font: var(--fw-regular) clamp(40px, 6vw, 64px) / 1 var(--serif);
+  margin: var(--s-3) 0 var(--s-4);
   letter-spacing: -0.01em;
 }
 .rv-intro p,
 .rv-sum .lede {
   color: var(--muted);
-  margin: 0 0 26px;
+  margin: 0 0 var(--s-6);
   max-width: 52ch;
 }
 .rv-plan {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 28px;
+  gap: var(--s-3);
+  margin-bottom: var(--s-7);
 }
 .rv-plan div {
-  padding: 14px 16px;
-  border-radius: 16px;
+  padding: var(--s-4);
+  border-radius: var(--r-lg);
   background: var(--faint);
 }
 .rv-plan b {
   display: block;
-  font: 400 30px/1.1 var(--serif);
+  font: var(--font-display);
 }
 .rv-plan span {
-  font-size: 14px;
+  font-size: var(--fs-body);
   color: var(--muted);
 }
 .rv-list {
   list-style: none;
   padding: 0;
-  margin: 0 0 28px;
+  margin: 0 0 var(--s-7);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -115,97 +120,156 @@
 .rv-list li {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 4px;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-1);
   border-bottom: 1px solid var(--hair);
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 .rv-list li > span:first-child {
   display: flex;
   flex-direction: column;
 }
 .rv-list small {
-  font-size: 13px;
+  font-size: var(--fs-footnote);
   color: var(--muted);
 }
 .rv-list .r {
   margin-left: auto;
-  font: 500 13px var(--mono);
+  font: var(--fw-medium) var(--fs-footnote) var(--mono);
   color: var(--muted);
 }
 .rv-types {
-  margin: 0 0 28px;
+  margin: 0 0 var(--s-7);
 }
 .rv-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  gap: var(--s-2);
+  margin-top: var(--space-label);
 }
+/* Exercise types: toggles. Off: a muted label in the control outline; on: --ink label and border on a faint fill. */
 .rv-chips button {
-  min-height: var(--ctl-sm);
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--hair);
-  background: transparent;
+  min-height: var(--ctl);
+  padding: 0 var(--s-4);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--btn-secondary-border);
+  background: var(--btn-secondary-bg);
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--fs-body);
   cursor: pointer;
+  transition: var(--btn-transition);
+}
+.rv-chips button:hover {
+  background: var(--btn-secondary-bg-hover);
+  color: var(--ink);
+}
+.rv-chips button:active {
+  background: var(--btn-secondary-bg-pressed);
 }
 .rv-chips button[aria-pressed='true'] {
   color: var(--ink);
   border-color: var(--ink);
   background: var(--faint);
 }
+.rv-chips button[aria-pressed='true']:hover {
+  background: var(--btn-secondary-bg-hover);
+}
+.rv-chips button[aria-pressed='true']:active {
+  background: var(--btn-secondary-bg-pressed);
+}
+/* Primary (.pri), secondary (.ghost) and text (.link) buttons: states from the --btn tokens, as in the session.
+   Disabled keeps a readable --muted label inside the control outline, no opacity. */
 .rv .pri {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s-2);
   min-height: var(--ctl);
-  padding: 0 22px;
-  border-radius: 999px;
-  border: 0;
-  background: var(--ink);
-  color: var(--bg);
-  font: 500 16px var(--sans);
+  padding: 0 var(--s-5);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--btn-primary-bg);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
+  font: var(--fw-medium) var(--fs-body) var(--sans);
+  white-space: nowrap;
   cursor: pointer;
+  transition: var(--btn-transition);
+}
+.rv .pri:not(:disabled):hover {
+  background: var(--btn-primary-bg-hover);
+  border-color: var(--btn-primary-bg-hover);
+}
+.rv .pri:not(:disabled):active {
+  background: var(--btn-primary-bg-pressed);
+  border-color: var(--btn-primary-bg-pressed);
 }
 .rv .pri:disabled {
-  opacity: 0.4;
+  background: var(--btn-disabled-bg);
+  border-color: var(--btn-disabled-border);
+  color: var(--btn-disabled-ink);
   cursor: not-allowed;
 }
 .rv .ghost {
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: 999px;
-  border: 1px solid var(--hair);
-  background: transparent;
-  color: var(--ink);
+  min-height: var(--ctl);
+  padding: 0 var(--s-5);
+  border-radius: var(--r-pill);
+  border: 1px solid var(--btn-secondary-border);
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-ink);
+  font: var(--fw-medium) var(--fs-body) var(--sans);
+  white-space: nowrap;
   cursor: pointer;
-  font-size: 15px;
+  transition: var(--btn-transition);
 }
+.rv .ghost:not(:disabled):hover {
+  background: var(--btn-secondary-bg-hover);
+}
+.rv .ghost:not(:disabled):active {
+  background: var(--btn-secondary-bg-pressed);
+}
+.rv .ghost:disabled {
+  background: var(--btn-disabled-bg);
+  border-color: var(--btn-disabled-border);
+  color: var(--btn-disabled-ink);
+  cursor: not-allowed;
+}
+/* Its label lines up with the text above: the 12 px padding hangs out to the left. */
 .rv .link {
-  min-height: 44px;
+  min-height: var(--ctl);
+  padding: 0 var(--s-3);
+  margin-left: calc(-1 * var(--s-3));
   border: 0;
-  background: none;
-  color: var(--muted);
-  text-decoration: underline;
+  border-radius: var(--r-pill);
+  background: var(--btn-text-bg);
+  color: var(--btn-text-ink);
+  font: var(--fw-medium) var(--fs-body) var(--sans);
   cursor: pointer;
-  font-size: 14px;
+  transition: var(--btn-transition);
+}
+.rv .link:hover {
+  background: var(--btn-text-bg-hover);
+}
+.rv .link:active {
+  background: var(--btn-text-bg-pressed);
+}
+.rv :is(.pri, .ghost, .link, .rv-chips button):focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: var(--btn-focus-offset);
+  border-radius: var(--r-pill);
 }
 .rv-acts {
   display: flex;
-  gap: 10px;
+  gap: var(--s-3);
   align-items: center;
   justify-content: flex-end;
-  margin-top: 14px;
+  margin-top: var(--s-4);
   flex-wrap: wrap;
 }
 .rv-acts .ghost {
   margin-right: auto;
 }
+/* The exercise card: the 24 px shell radius of tokens.css (an 18 px core plus a 6 px ring), 24 px in. */
 .rv-item {
-  padding: 26px 26px 22px;
+  padding: var(--s-6);
   border-radius: 24px;
   background: var(--surface);
   border: 1px solid var(--hair);
@@ -223,47 +287,47 @@
 .rv-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
   flex-wrap: wrap;
 }
 .rv .chip {
   display: inline-flex;
   align-items: center;
-  font: 500 11px var(--mono);
-  letter-spacing: 0.1em;
+  font: var(--font-caption);
+  letter-spacing: var(--track-caption);
   text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 999px;
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--r-pill);
   background: var(--faint);
   color: var(--muted);
 }
 .rv-q {
-  font-size: 20px;
-  line-height: 1.5;
-  margin: 0 0 18px;
+  font-size: var(--fs-title);
+  line-height: 1.45;
+  margin: 0 0 var(--s-5);
 }
 .rv-q .rich p {
   margin: 0;
 }
 /* Spiegalo tu: the hint, the dialogue with the picky student, the microphone. */
 .rv-hint {
-  margin: -8px 0 18px;
-  font-size: 14px;
+  margin: calc(-1 * var(--s-2)) 0 var(--s-5);
+  font-size: var(--fs-body);
   color: var(--muted);
 }
 .rv-dialog {
   list-style: none;
-  margin: 0 0 16px;
+  margin: 0 0 var(--s-4);
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--s-3);
 }
 .rv-dialog li {
-  padding: 10px 14px;
-  border-radius: 14px;
-  font-size: 15px;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  font-size: var(--fs-body);
 }
 .rv-dialog li.andrea {
   background: var(--faint);
@@ -274,7 +338,7 @@
 }
 .rv-dialog .lab {
   display: block;
-  margin-bottom: 2px;
+  margin-bottom: var(--s-1);
 }
 .rv-dialog .rich p {
   margin: 0;
@@ -283,35 +347,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-.rv .rv-mic {
-  min-height: 36px;
-  font-variant-numeric: tabular-nums;
-}
-.rv .rv-mic.on {
-  border-color: var(--bad);
-  color: var(--bad);
-}
-.rv .rv-mic:disabled {
-  opacity: 0.6;
-  cursor: progress;
+  gap: var(--s-3);
+  margin-bottom: var(--space-label);
 }
 .rv-explain textarea {
   min-height: 140px;
 }
+/* Fields: the control outline; accent border on focus. 12 px in, so the first line sits level with the in-field microphone. */
 .rv textarea,
 .rv input:not([type='range']),
 .rv select {
   width: 100%;
-  border: 1px solid var(--hair);
-  border-radius: 14px;
+  border: 1px solid var(--ctl-edge);
+  border-radius: var(--r-md);
   background: var(--faint);
   color: var(--ink);
   font: inherit;
-  font-size: 16px;
-  padding: 10px 14px;
+  font-size: var(--fs-callout);
+  padding: var(--s-3) var(--s-4);
+  transition: border-color 0.15s var(--ease-out);
 }
 .rv textarea {
   min-height: 96px;
@@ -323,32 +377,34 @@
   outline: none;
   border-color: var(--accent);
 }
+/* Choices: secondary buttons. A 12 px row holds a 32 px key with an 8 px radius, 10 px in. */
 .rv .opt {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--s-3);
   width: 100%;
   text-align: left;
-  margin: 8px 0 0;
+  margin: var(--s-2) 0 0;
   min-height: 52px;
-  padding: 10px 18px 10px 10px;
-  border-radius: 18px;
-  border: 1px solid var(--hair);
-  background: transparent;
+  padding: 10px var(--s-4) 10px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--btn-secondary-border);
+  background: var(--btn-secondary-bg);
   cursor: pointer;
-  font-size: 16px;
+  font-size: var(--fs-callout);
   line-height: 1.4;
   color: var(--ink);
+  transition: var(--btn-transition);
 }
 .rv .opt .k {
   flex: none;
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   display: grid;
   place-items: center;
   background: var(--faint);
-  font: 500 13px var(--mono);
+  font: var(--fw-medium) var(--fs-footnote) var(--mono);
   color: var(--muted);
 }
 .rv .opt[aria-pressed='true'] {
@@ -358,6 +414,7 @@
   background: var(--ink);
   color: var(--bg);
 }
+/* After the check: the right answer in green, a wrong pick in red. */
 .rv [data-state='ok'] {
   border-color: var(--good) !important;
   background: color-mix(in srgb, var(--good) 12%, transparent) !important;
@@ -366,30 +423,54 @@
   border-color: var(--bad) !important;
   background: color-mix(in srgb, var(--bad) 10%, transparent) !important;
 }
-.rv .opt:disabled {
+/* Answer options share their states: hover and pressed tints, the accent focus ring, and once locked a readable
+   --muted label (the right answer and the wrong pick keep --ink on their tint). */
+.rv :is(.opt, .rv-seg button, .rv-steps button, .rv-order .mv button, .rv-grade button):not(:disabled):hover {
+  background: var(--btn-secondary-bg-hover);
+}
+.rv :is(.opt, .rv-seg button, .rv-steps button, .rv-order .mv button, .rv-grade button):not(:disabled):active {
+  background: var(--btn-secondary-bg-pressed);
+}
+.rv :is(.opt, .rv-seg button, .rv-steps button, .rv-grade button):focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: var(--btn-focus-offset);
+  border-radius: var(--r-md);
+}
+.rv-order .mv button:focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: var(--btn-focus-offset);
+  border-radius: var(--r-sm);
+}
+.rv :is(.opt, .rv-seg button, .rv-steps button):disabled {
+  color: var(--btn-disabled-ink);
   cursor: default;
 }
+.rv :is(.opt, .rv-seg button, .rv-steps button):disabled:is([data-state], [aria-pressed='true']) {
+  color: var(--ink);
+}
 .rv-tf blockquote {
-  margin: 0 0 14px;
-  padding: 12px 16px;
+  margin: 0 0 var(--s-4);
+  padding: var(--s-3) var(--s-4);
   border-left: 3px solid var(--accent);
   background: var(--faint);
-  border-radius: 0 12px 12px 0;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
 }
+/* «Vero o falso»: two answer options side by side (not a segmented control). */
 .rv-seg {
   display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
 }
 .rv-seg button {
   flex: 1;
   min-height: 48px;
-  border-radius: 14px;
-  border: 1px solid var(--hair);
-  background: transparent;
+  border-radius: var(--r-md);
+  border: 1px solid var(--btn-secondary-border);
+  background: var(--btn-secondary-bg);
   color: var(--ink);
-  font-size: 16px;
+  font-size: var(--fs-callout);
   cursor: pointer;
+  transition: var(--btn-transition);
 }
 .rv-seg button[aria-pressed='true'] {
   border-color: var(--ink);
@@ -401,14 +482,14 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--s-2);
 }
 .rv-order li {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 8px 8px 16px;
-  border-radius: 14px;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+  border-radius: var(--r-md);
   border: 1px solid var(--hair);
 }
 .rv-order .txt {
@@ -416,42 +497,46 @@
 }
 .rv-order .mv {
   display: flex;
-  gap: 4px;
+  gap: var(--s-1);
 }
 .rv-order .mv button {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid var(--hair);
-  background: transparent;
+  width: var(--ctl);
+  height: var(--ctl);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--btn-secondary-border);
+  background: var(--btn-secondary-bg);
   color: var(--ink);
   cursor: pointer;
+  transition: var(--btn-transition);
 }
 .rv-order .mv button:disabled {
-  opacity: 0.3;
+  border-color: var(--btn-disabled-border);
+  background: var(--btn-disabled-bg);
+  color: var(--btn-disabled-ink);
   cursor: default;
 }
 .rv-steps {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--s-2);
 }
 .rv-steps button {
   display: flex;
-  gap: 12px;
+  gap: var(--s-3);
   align-items: center;
   min-height: 52px;
-  padding: 8px 16px;
-  border-radius: 14px;
-  border: 1px solid var(--hair);
-  background: transparent;
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--btn-secondary-border);
+  background: var(--btn-secondary-bg);
   color: var(--ink);
   text-align: left;
-  font-size: 16px;
+  font-size: var(--fs-callout);
   cursor: pointer;
+  transition: var(--btn-transition);
 }
 .rv-steps button b {
-  font: 500 13px var(--mono);
+  font: var(--fw-medium) var(--fs-footnote) var(--mono);
   color: var(--muted);
 }
 .rv-steps button[aria-pressed='true'] {
@@ -459,36 +544,37 @@
 }
 .rv-why {
   color: var(--muted);
-  font-size: 15px;
-  margin: 6px 2px 0;
+  font-size: var(--fs-body);
+  margin: var(--s-2) 0 0;
 }
 .rv-fill {
-  font-size: 18px;
+  font-size: var(--fs-callout);
   line-height: 2.4;
 }
+/* The blanks sit inside the running text: 40 px, so they fit its 2.4 line height. */
 .rv-fill select {
   width: auto;
   display: inline-block;
   min-height: 40px;
-  padding: 0 10px;
-  margin: 0 6px;
+  padding: 0 var(--s-2);
+  margin: 0 var(--s-1);
 }
 .rv-match {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--s-3);
 }
 .rv-match label {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--s-3);
   align-items: center;
 }
 .rv-est span {
   display: flex;
-  gap: 10px;
+  gap: var(--s-3);
   align-items: center;
-  margin-top: 6px;
+  margin-top: var(--space-label);
 }
 .rv-est input {
   max-width: 220px;
@@ -497,34 +583,35 @@
 .rv-conf {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 14px;
+  gap: var(--s-4);
   align-items: center;
-  margin: 16px 0 4px;
+  margin: var(--s-4) 0 var(--s-1);
 }
 .rv-conf input {
   accent-color: var(--accent);
-  height: 40px;
+  height: var(--ctl);
 }
 .rv-conf output {
-  font: 500 14px var(--mono);
-  min-width: 44px;
+  font: var(--fw-medium) var(--fs-footnote) var(--mono);
+  min-width: var(--ctl);
   text-align: right;
 }
 .rv-reveal {
-  margin-top: 18px;
+  margin-top: var(--s-5);
   border-top: 1px solid var(--hair);
-  padding-top: 18px;
+  padding-top: var(--s-5);
 }
 .rv-verdict {
-  padding: 14px 16px;
-  border-radius: 16px;
-  margin-bottom: 14px;
-  font-size: 15px;
+  padding: var(--s-4);
+  border-radius: var(--r-md);
+  margin-bottom: var(--s-4);
+  font-size: var(--fs-body);
 }
 .rv-verdict b {
   display: block;
-  font-size: 16px;
-  margin-bottom: 2px;
+  font-size: var(--fs-callout);
+  font-weight: var(--fw-semibold);
+  margin-bottom: var(--s-1);
 }
 .rv-verdict .rich p {
   margin: 0;
@@ -539,9 +626,10 @@
 .rv-verdict.idk {
   background: color-mix(in srgb, var(--warn) 14%, transparent);
 }
+/* --warn alone is 4.09:1 on its own tint in trattato: a fifth of --ink brings the title to AA (5.2 trattato, 7.7 lavagna). */
 .rv-verdict.partial b,
 .rv-verdict.idk b {
-  color: var(--warn);
+  color: color-mix(in srgb, var(--warn) 80%, var(--ink));
 }
 .rv-verdict.wrong,
 .rv-verdict.mis {
@@ -552,26 +640,27 @@
   color: var(--bad);
 }
 .rv-model {
-  font-size: 15px;
+  font-size: var(--fs-body);
   color: var(--muted);
-  padding: 0 2px 14px;
+  padding: 0 0 var(--s-5);
 }
 .rv-model .lab {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: var(--s-1);
 }
+/* Grades: four answer options. The proposed one carries an accent caption centred on its top edge. */
 .rv-grade {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--s-2);
+  margin-top: var(--space-label);
 }
 .rv-grade button {
   position: relative;
   min-height: 60px;
-  border-radius: 16px;
-  border: 1px solid var(--hair);
-  background: transparent;
+  border-radius: var(--r-md);
+  border: 1px solid var(--btn-secondary-border);
+  background: var(--btn-secondary-bg);
   color: var(--ink);
   cursor: pointer;
   display: flex;
@@ -579,10 +668,11 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  font-size: 15px;
+  font-size: var(--fs-body);
+  transition: var(--btn-transition);
 }
 .rv-grade button small {
-  font: 500 12px var(--mono);
+  font: var(--fw-medium) var(--fs-footnote) var(--mono);
   color: var(--muted);
 }
 .rv-grade button[aria-pressed='true'] {
@@ -591,12 +681,12 @@
 }
 .rv-grade .sug {
   position: absolute;
-  top: -9px;
-  font: 500 10px var(--mono);
-  letter-spacing: 0.06em;
+  top: calc(-1 * var(--s-2));
+  font: var(--font-caption);
+  letter-spacing: var(--track-caption);
   text-transform: uppercase;
-  padding: 1px 8px;
-  border-radius: 999px;
+  padding: 1px var(--s-2);
+  border-radius: var(--r-pill);
   background: var(--accent);
   color: var(--bg);
 }
@@ -604,21 +694,21 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 16px;
-  gap: 12px;
+  margin-top: var(--s-4);
+  gap: var(--s-3);
   flex-wrap: wrap;
 }
 .rv-callout {
   display: flex;
-  gap: 14px;
+  gap: var(--s-4);
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  padding: 14px 16px;
-  border-radius: 16px;
+  padding: var(--s-4);
+  border-radius: var(--r-lg);
   background: var(--faint);
-  margin-bottom: 12px;
-  font-size: 15px;
+  margin-bottom: var(--s-3);
+  font-size: var(--fs-body);
 }
 .rv-callout.bad {
   background: color-mix(in srgb, var(--bad) 10%, transparent);
@@ -627,26 +717,26 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 18px 0 28px;
+  margin: var(--s-5) 0 var(--s-7);
 }
 .rv-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: var(--s-4);
   align-items: center;
-  padding: 10px 4px;
+  padding: var(--s-3) var(--s-1);
   border-bottom: 1px solid var(--hair);
-  font-size: 15px;
+  font-size: var(--fs-body);
 }
 .rv-row small {
   display: block;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-footnote);
 }
 .rv-row .bars {
   position: relative;
   height: 10px;
-  border-radius: 6px;
+  border-radius: var(--r-pill);
   background: var(--faint);
   overflow: hidden;
 }
@@ -655,7 +745,7 @@
   left: 0;
   top: 0;
   bottom: 0;
-  border-radius: 6px;
+  border-radius: var(--r-pill);
 }
 .rv-row .bars .after {
   background: var(--good);
@@ -681,13 +771,24 @@
 }
 .rv .rv-err {
   color: var(--bad);
-  font-size: 14px;
-  margin: 8px 0 0;
+  font-size: var(--fs-body);
+  margin: var(--s-2) 0 0;
 }
 /* The start of a review stays in view below a long list. */
 .rv-go {
   position: sticky;
   bottom: 0;
-  padding: 16px 0 24px;
+  padding: var(--s-4) 0 var(--s-6);
   background: var(--bg);
+}
+/* A short fade above the sticky start bar, like the other scroll edges: the list dissolves into it instead of being cut. */
+.rv-go::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: var(--s-6);
+  background: linear-gradient(to top, var(--bg), color-mix(in srgb, var(--bg) 60%, transparent) 50%, transparent);
+  pointer-events: none;
 }

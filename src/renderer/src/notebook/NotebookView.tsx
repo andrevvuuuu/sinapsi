@@ -1,11 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { NOTEBOOKLM_PREFIX, type ChatTurn, type Excerpt, type Notebook } from '../../../shared/notebook-types'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  NOTEBOOKLM_PREFIX,
+  type ChatTurn,
+  type Excerpt,
+  type Notebook
+} from '../../../shared/notebook-types'
+import { DICTATION_SHORT, useDictation } from '../components/dictation'
+import { DictationError, MicButton } from '../components/MicButton'
 import { ChatPane } from './ChatPane'
 import { SourceList } from './SourceList'
 import { SourceViewer } from './SourceViewer'
 import './notebook.css'
 
-const clean = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+const clean = (e: unknown): string =>
+  (e instanceof Error ? e.message : String(e)).replace(
+    /^Error invoking remote method '[^']+': (Error: )?/,
+    ''
+  )
 
 function LinkBox({ notebook }: { notebook: Notebook }): React.JSX.Element {
   const api = window.sinapsi
@@ -13,7 +24,8 @@ function LinkBox({ notebook }: { notebook: Notebook }): React.JSX.Element {
   const [value, setValue] = useState(notebook.link ?? '')
   const [err, setErr] = useState<string | null>(null)
   const save = async (link: string | null): Promise<void> => {
-    if (link !== null && !link.startsWith(NOTEBOOKLM_PREFIX)) return setErr(`Serve il link di un notebook, che inizia con ${NOTEBOOKLM_PREFIX}`)
+    if (link !== null && !link.startsWith(NOTEBOOKLM_PREFIX))
+      return setErr(`Serve il link di un notebook, che inizia con ${NOTEBOOKLM_PREFIX}`)
     try {
       await api.notebook.update(notebook.id, { link })
       setErr(null)
@@ -26,10 +38,19 @@ function LinkBox({ notebook }: { notebook: Notebook }): React.JSX.Element {
     <div className="nb-link">
       {notebook.link ? (
         <>
-          <button type="button" className="pill nodrag" onClick={() => void api.app.openExternal(notebook.link!)}>
+          <button
+            type="button"
+            className="pill nodrag"
+            onClick={() => void api.app.openExternal(notebook.link!)}
+          >
             Apri in NotebookLM <span aria-hidden="true">↗</span>
           </button>
-          <button type="button" className="ghost nodrag" aria-label="Modifica il link a NotebookLM" onClick={() => setOpen((o) => !o)}>
+          <button
+            type="button"
+            className="ghost nodrag"
+            aria-label="Modifica il link a NotebookLM"
+            onClick={() => setOpen((o) => !o)}
+          >
             Modifica
           </button>
         </>
@@ -47,10 +68,21 @@ function LinkBox({ notebook }: { notebook: Notebook }): React.JSX.Element {
           }}
         >
           <label htmlFor="nb-link-in">Link del notebook su NotebookLM</label>
-          <input id="nb-link-in" autoFocus placeholder={`${NOTEBOOKLM_PREFIX}notebook/…`} value={value} onChange={(e) => setValue(e.target.value)} />
+          <input
+            id="nb-link-in"
+            autoFocus
+            placeholder={`${NOTEBOOKLM_PREFIX}notebook/…`}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
           <p className="hint">
-            Apri NotebookLM, entra nel notebook con lo stesso argomento, copia il link dalla barra degli indirizzi e incollalo qui.{' '}
-            <button type="button" className="linkish" onClick={() => void api.app.openExternal(NOTEBOOKLM_PREFIX)}>
+            Apri NotebookLM, entra nel notebook con lo stesso argomento, copia il link dalla barra
+            degli indirizzi e incollalo qui.{' '}
+            <button
+              type="button"
+              className="linkish"
+              onClick={() => void api.app.openExternal(NOTEBOOKLM_PREFIX)}
+            >
               Apri NotebookLM
             </button>
           </p>
@@ -75,7 +107,13 @@ function LinkBox({ notebook }: { notebook: Notebook }): React.JSX.Element {
   )
 }
 
-export function NotebookView({ id, onBack }: { id: string; onBack: () => void }): React.JSX.Element {
+export function NotebookView({
+  id,
+  onBack
+}: {
+  id: string
+  onBack: () => void
+}): React.JSX.Element {
   const api = window.sinapsi
   const [nb, setNb] = useState<Notebook | null | undefined>(undefined)
   const [turns, setTurns] = useState<ChatTurn[]>([])
@@ -86,6 +124,17 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
   const [viewer, setViewer] = useState<{ sourceId: string; excerpt: Excerpt | null } | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [name, setName] = useState('')
+  const nameField = useRef<HTMLInputElement>(null)
+  // The dictated name waits in the field, focused again: Enter or leaving it saves, as with typing.
+  const nameMic = useDictation({
+    target: nameField,
+    value: name,
+    maxSeconds: DICTATION_SHORT,
+    onChange: (v) => {
+      setName(v)
+      nameField.current?.focus()
+    }
+  })
 
   const load = useCallback(async () => {
     const found = (await api.notebook.list()).find((n) => n.id === id) ?? null
@@ -104,7 +153,11 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
       setSubjects(idx.subjects.map((s) => s.id))
       setNotes(idx.notes.filter((n) => n.available).map((n) => ({ path: n.path, title: n.title })))
     })
-    const checkBusy = (): void => void api.notebook.busy?.(id).then((b) => setPending(b), () => undefined)
+    const checkBusy = (): void =>
+      void api.notebook.busy?.(id).then(
+        (b) => setPending(b),
+        () => undefined
+      )
     void Promise.resolve().then(checkBusy)
     return api.notebook.onUpdate((e) => {
       void load()
@@ -151,25 +204,39 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
 
   return (
     <div className={'nb' + (viewed || viewer?.excerpt ? ' with-viewer' : '')}>
-      <header className="nb-top drag">
+      <header className="nb-top drag glass glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
-        <input
-          className="nb-name nodrag"
-          aria-label="Nome del notebook"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => {
-            const n = name.trim()
-            if (n && n !== nb.name) void api.notebook.update(id, { name: n }).catch((e) => setMessage(clean(e)))
-            else setName(nb.name)
-          }}
-          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-        />
+        <div className="mic-field mic-fill nodrag">
+          <input
+            ref={nameField}
+            readOnly={nameMic.state !== 'idle'}
+            className="nb-name nodrag"
+            aria-label="Nome del notebook"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => {
+              const n = name.trim()
+              if (n && n !== nb.name)
+                void api.notebook.update(id, { name: n }).catch((e) => setMessage(clean(e)))
+              else setName(nb.name)
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+          />
+          <MicButton dictation={nameMic} size="sm" />
+        </div>
         <label className="nb-subject nodrag">
           <span className="lab">Materia</span>
-          <select aria-label="Materia" value={nb.subject ?? ''} onChange={(e) => void api.notebook.update(id, { subject: e.target.value || null }).catch((er) => setMessage(clean(er)))}>
+          <select
+            aria-label="Materia"
+            value={nb.subject ?? ''}
+            onChange={(e) =>
+              void api.notebook
+                .update(id, { subject: e.target.value || null })
+                .catch((er) => setMessage(clean(er)))
+            }
+          >
             <option value="">nessuna</option>
             {subjects.map((s) => (
               <option key={s} value={s}>
@@ -183,13 +250,19 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
           type="button"
           className="ghost nodrag"
           onClick={() => {
-            if (!window.confirm(`Eliminare il notebook «${nb.name}» con tutte le sue fonti? Non si può annullare.`)) return
+            if (
+              !window.confirm(
+                `Eliminare il notebook «${nb.name}» con tutte le sue fonti? Non si può annullare.`
+              )
+            )
+              return
             void api.notebook.remove(id).then(onBack, (e) => setMessage(clean(e)))
           }}
         >
           Elimina notebook
         </button>
       </header>
+      <DictationError dictation={nameMic} />
       {message && (
         <p className="nb-alert floating" role="alert">
           {message}
@@ -218,12 +291,22 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
           ready={ready.length}
           onAsk={(q) => void ask(q)}
           onRetry={(i) => {
-            const prev = turns.slice(0, i).reverse().find((t) => t.role === 'user')
+            const prev = turns
+              .slice(0, i)
+              .reverse()
+              .find((t) => t.role === 'user')
             if (prev && prev.role === 'user') void ask(prev.text, prev.sourceIds)
           }}
           onCite={(e) => setViewer({ sourceId: e.sourceId, excerpt: e })}
         />
-        {viewed && <SourceViewer key={viewed.id} source={viewed} excerpt={viewer!.excerpt} onClose={() => setViewer(null)} />}
+        {viewed && (
+          <SourceViewer
+            key={viewed.id}
+            source={viewed}
+            excerpt={viewer!.excerpt}
+            onClose={() => setViewer(null)}
+          />
+        )}
         {!viewed && viewer?.excerpt && (
           <aside className="nb-viewer" role="complementary" aria-label={viewer.excerpt.title}>
             <header>
@@ -231,7 +314,12 @@ export function NotebookView({ id, onBack }: { id: string; onBack: () => void })
                 <span className="lab">Fonte rimossa</span>
                 <h2>{viewer.excerpt.title}</h2>
               </div>
-              <button type="button" className="x" aria-label="Chiudi la fonte" onClick={() => setViewer(null)}>
+              <button
+                type="button"
+                className="x"
+                aria-label="Chiudi la fonte"
+                onClick={() => setViewer(null)}
+              >
                 ×
               </button>
             </header>

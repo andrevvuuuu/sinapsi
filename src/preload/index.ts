@@ -47,12 +47,15 @@ const api: SinapsiApi = {
     positions: () => ipcRenderer.invoke(CH.graphPositions),
     savePositions: (p) => ipcRenderer.invoke(CH.graphSavePositions, p)
   },
+  voice: {
+    transcribe: (bytes) => ipcRenderer.invoke(CH.voiceTranscribe, bytes),
+    microphone: () => ipcRenderer.invoke(CH.voiceMicrophone),
+    onStage: (cb) => subscribe(CH.voiceStage, cb)
+  },
   review: {
     plan: (opts) => ipcRenderer.invoke(CH.reviewPlan, opts),
     grade: (req) => ipcRenderer.invoke(CH.reviewGrade, req),
     explain: (req) => ipcRenderer.invoke(CH.reviewExplain, req),
-    voice: (bytes) => ipcRenderer.invoke(CH.reviewVoice, bytes),
-    microphone: () => ipcRenderer.invoke(CH.reviewMicrophone),
     record: (r) => ipcRenderer.invoke(CH.reviewRecord, r),
     memory: () => ipcRenderer.invoke(CH.reviewMemory),
     intervals: (id) => ipcRenderer.invoke(CH.reviewIntervals, id),
@@ -95,7 +98,11 @@ const api: SinapsiApi = {
     camera: () => ipcRenderer.invoke(CH.practiceCamera),
     onUpdate: (cb) => subscribe(CH.practiceUpdated, cb)
   },
-  suggest: { get: () => ipcRenderer.invoke(CH.suggestGet) }
+  suggest: { get: () => ipcRenderer.invoke(CH.suggestGet) },
+  ui: {
+    reducedTransparency: () => ipcRenderer.invoke(CH.uiTransparency),
+    onReducedTransparency: (cb) => subscribe(CH.uiTransparencyChanged, cb)
+  }
 }
 
 contextBridge.exposeInMainWorld('sinapsi', api)
