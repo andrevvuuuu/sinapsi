@@ -18,9 +18,9 @@
 [data-theme="lavagna"]{--placeholder:#8a877c;--ctl-edge:rgba(236,233,223,.4);--btn-primary-bg:var(--ink);--btn-primary-bg-hover:#dcd9cf;--btn-primary-bg-pressed:#c9c6bc;--btn-primary-ink:var(--bg);--btn-secondary-bg:rgba(236,233,223,0);--btn-secondary-bg-hover:rgba(236,233,223,.08);--btn-secondary-bg-pressed:rgba(236,233,223,.14);--btn-secondary-ink:var(--ink);--btn-secondary-border:var(--ctl-edge);--btn-text-bg:rgba(236,233,223,0);--btn-text-bg-hover:rgba(236,233,223,.06);--btn-text-bg-pressed:rgba(236,233,223,.1);--btn-text-ink:var(--accent)}
 [data-theme="trattato"]{--placeholder:#6b6559;--ctl-edge:rgba(36,32,27,.52);--btn-primary-bg:var(--ink);--btn-primary-bg-hover:#3a352e;--btn-primary-bg-pressed:#4d473f;--btn-primary-ink:var(--bg);--btn-secondary-bg:rgba(36,32,27,0);--btn-secondary-bg-hover:rgba(36,32,27,.06);--btn-secondary-bg-pressed:rgba(36,32,27,.1);--btn-secondary-ink:var(--ink);--btn-secondary-border:var(--ctl-edge);--btn-text-bg:rgba(36,32,27,0);--btn-text-bg-hover:rgba(36,32,27,.04);--btn-text-bg-pressed:rgba(36,32,27,.06);--btn-text-ink:var(--accent)}
 :root{--btn-focus:var(--accent);--btn-focus-ring:2px solid var(--btn-focus);--btn-focus-offset:2px;--btn-disabled-bg:transparent;--btn-disabled-ink:var(--muted);--btn-disabled-border:var(--ctl-edge);--btn-transition:background-color .15s var(--ease-out),border-color .15s var(--ease-out),color .15s var(--ease-out)}
-/* Text on Liquid Glass (@glass-sdk/liquid-glass, Regular material). --glass-ink is the library's foreground (--lg-foreground), --glass-ink-2 the secondary text, --glass-accent / --glass-pen the accent and pen labels (session phase, score, «Dalla tua nota»). All AA over what the material makes of the app's grounds (--bg, --surface, --panel) and of the content that can scroll under a bar, which the scroll edge band (.edge-fade) keeps at most 30 % visible at the labels: the worst case is --ink at 30 % over --bg, through the material's tone curve (tests/unit/contrast.test.ts models it from the library's own constants). --knob-edge rings the slider thumb's white face. */
-[data-theme="lavagna"]{--glass-ink:#ece9df;--glass-ink-2:#d6d3c9;--glass-accent:#fac4a8;--glass-pen:#c2d8ff;--knob-edge:rgba(236,233,223,.46)}
-[data-theme="trattato"]{--glass-ink:#221e19;--glass-ink-2:#3f3a33;--glass-accent:#86301a;--glass-pen:#223e7a;--knob-edge:rgba(36,32,27,.58)}
+/* Text on Liquid Glass (@glass-sdk/liquid-glass, Regular material). --glass-ink is the library's foreground (--lg-foreground), --glass-ink-2 the secondary text, --glass-accent / --glass-pen the accent and pen labels (session phase, score, «Dalla tua nota»). All AA over what the material makes of the app's grounds (--bg, --surface, --panel) and of the content that can scroll under a bar, which the scroll edge band (.edge-fade) keeps at most 30 % visible at the labels: the worst case is --ink at 30 % over --bg, through the material's tone curve (tests/unit/contrast.test.ts models it from the library's own constants). --knob-edge rings the slider thumb's white face. The selection of a segmented control is ringed with --seg-edge, 3:1 on its track (glass or faint) in both themes; --lens-fill fills the full lens of a track that is not glass. */
+[data-theme="lavagna"]{--glass-ink:#ece9df;--glass-ink-2:#d6d3c9;--glass-accent:#fac4a8;--glass-pen:#c2d8ff;--knob-edge:rgba(236,233,223,.46);--seg-edge:rgba(236,233,223,.46);--lens-fill:#3d3c38}
+[data-theme="trattato"]{--glass-ink:#221e19;--glass-ink-2:#3f3a33;--glass-accent:#86301a;--glass-pen:#223e7a;--knob-edge:rgba(36,32,27,.58);--seg-edge:rgba(36,32,27,.62);--lens-fill:#ffffff}
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:var(--font-body);-webkit-font-smoothing:antialiased;overflow:hidden}
@@ -61,13 +61,16 @@ button.back-btn.back-btn.back-btn:active{background:linear-gradient(var(--btn-se
 /* The library dims unselected tabs to 85 %: the labels keep the app's AA colours instead. */
 .seg-track .lg-tab{opacity:1}
 .seg-track .lg-tab[data-active]{color:var(--ink)}
-/* A track on glass or on a solid core is not glass (.seg-plain): only the selection is. */
+/* The selection is ringed (--seg-edge, 3:1 on its track): inset, so the surface's outline does not clip it, and rounded as the
+   outline the library draws (it flattens the radius inline and publishes it as --lg-radius). */
+.seg-track .lg-tab-indicator{box-shadow:inset 0 0 0 1.5px var(--seg-edge);border-radius:var(--lg-radius,var(--lens-r,999px))!important}
+/* A track on glass or on a solid core is not glass (.seg-plain): its selection is the library's indicator as a full lens (Seg), sliding with the library's placement. */
 .seg-plain{position:relative}
+.seg-track .seg-lens{z-index:0;border-radius:var(--lens-r,999px);background:linear-gradient(to bottom,rgba(255,255,255,.35),transparent 60%) var(--lens-fill);box-shadow:inset 0 0 0 1.5px var(--seg-edge),0 1px 3px rgba(0,0,0,.18);transition:left .32s var(--ease-out),top .32s var(--ease-out),width .32s var(--ease-out),height .32s var(--ease-out)}
 /* Solid material: a faint track and a surface option, as before the glass. */
 :root:not([data-glass="on"]) .seg-track.lg-surface,.lg-scene[data-glass-failed] .seg-track.lg-surface{background:var(--faint)}
-/* Range thumbs (GlassSlider): the library's white face, ringed by --knob-edge, the control's 3:1 outline on the surface and both tracks. */
+/* Range thumbs (GlassSlider): the library's white face, ringed by --knob-edge (on the thumb, below), the control's 3:1 outline on the surface and both tracks. */
 :root{--knob-shadow:0 0 0 1px var(--knob-edge),0 1px 3px rgba(0,0,0,.35)}
-.lg-control-face{box-shadow:var(--knob-shadow)}
 .dlg-core{flex:1;min-height:0;border-radius:18px;background:var(--surface);box-shadow:var(--inner)}
 /* Text on glass: secondary labels use --glass-ink-2, never --muted (not AA over bright content). */
 .glass-text{--muted:var(--glass-ink-2)}
@@ -89,3 +92,14 @@ button.back-btn.back-btn.back-btn:active{background:linear-gradient(var(--btn-se
 .range-scene{min-width:0}
 .range-scene .lg-slider{width:100%}
 .range-scene .lg-slider-control{height:var(--ctl)}
+/* Shadows of glass that is clipped to its shape (the library writes a clip-path on every surface): cast from a wrapper
+   or a parent that is not clipped, along the opaque cores, as the core and shell shadows were before. */
+.shell-drop{filter:drop-shadow(0 1px 1px rgba(0,0,0,.18)) drop-shadow(0 16px 22px rgba(0,0,0,.32))}
+.dock{filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)) drop-shadow(0 16px 22px rgba(0,0,0,.35))}
+.dlg-drop{display:flex;justify-content:center;width:100%;max-height:100%;filter:drop-shadow(0 30px 40px rgba(0,0,0,.45))}
+[data-theme="trattato"] :is(.shell-drop,.dock){filter:drop-shadow(0 1px 1px rgba(36,32,27,.08)) drop-shadow(0 16px 22px rgba(36,32,27,.16))}
+/* Sliders: the white face is clipped to its shape, so the thumb itself (not clipped) carries the 3:1 ring and, from the keyboard, the focus ring. */
+.lg-slider-thumb{border-radius:999px;box-shadow:var(--knob-shadow)}
+.lg-slider-thumb:has(input:focus-visible){box-shadow:var(--knob-shadow),0 0 0 4px var(--btn-focus)}
+/* Focus rings of the library's tabs: the tab is clipped to its capsule and the library flattens its radius inline, so the ring is inset and follows the capsule. */
+.seg-track .lg-tab:focus-visible{outline:var(--btn-focus-ring);outline-offset:-3px;border-radius:var(--lens-r,999px)!important}

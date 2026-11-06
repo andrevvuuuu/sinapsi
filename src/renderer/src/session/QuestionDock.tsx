@@ -5,6 +5,7 @@ import { DictationError, MicButton } from '../components/MicButton'
 import { GlassRange, GlassShell, ScrollEdges } from '../components/glass'
 import { RichText } from './RichText'
 import { GameDock } from './games/GameDock'
+import { focusWhenShown } from '../components/glass-theme'
 
 const LETTERS = 'ABCDEF'
 
@@ -22,7 +23,8 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
   const [text, setText] = useState('')
   // A new question takes the focus, so screen readers and the keyboard start from it.
   const head = useRef<HTMLDivElement>(null)
-  useEffect(() => head.current?.focus(), [revealed])
+  // Once the dock's glass shell shows (a frame after it mounts).
+  useEffect(() => focusWhenShown(head.current), [revealed])
   // Three free-text fields, only one on screen at a time: the plan change, the thoughts while reading, the answer.
   const planField = useRef<HTMLTextAreaElement>(null)
   const thoughtsField = useRef<HTMLTextAreaElement>(null)
@@ -202,6 +204,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
                     step={10}
                     value={confidence}
                     onValueChange={(v) => setConfidence(v)}
+                    thumbProps={{ getAriaValueText: (_text, v) => `${v}%` }}
                   />
                   <output aria-hidden="true">{confidence}%</output>
                 </div>

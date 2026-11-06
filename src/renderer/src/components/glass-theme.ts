@@ -28,3 +28,20 @@ export function useGlassOn(): boolean {
     () => false
   )
 }
+
+/**
+ * Focuses `el` as soon as it can take the focus. A library glass surface stays hidden (visibility) until it has
+ * measured its outline, a frame or two after it mounts, and a hidden element refuses the focus: so the focus is
+ * tried again on the next frames, for up to a second. Returns the cancel, for an effect's cleanup.
+ */
+export function focusWhenShown(el: HTMLElement | null | undefined): () => void {
+  if (!el) return () => {}
+  let frame = 0
+  let tries = 0
+  const go = (): void => {
+    el.focus()
+    if (document.activeElement !== el && el.isConnected && tries++ < 60) frame = requestAnimationFrame(go)
+  }
+  go()
+  return () => cancelAnimationFrame(frame)
+}

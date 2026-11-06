@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Game } from '../../../../shared/teacher-protocol'
 import { RichText } from '../RichText'
 import { clip, type GameProps } from './shared'
+import { focusWhenShown } from '../../components/glass-theme'
 
 const SECONDS = 8
 const FEEDBACK_MS = 1200
@@ -56,8 +57,10 @@ export function Speed({ game, onDone }: GameProps<Speed>): React.JSX.Element {
     }, FEEDBACK_MS)
     return () => clearTimeout(t)
   }, [feedback])
+  // Once the game's glass shell shows (a frame after it mounts).
   useEffect(() => {
-    if (!feedback && !done) trueBtn.current?.focus()
+    if (feedback || done) return undefined
+    return focusWhenShown(trueBtn.current)
   }, [i, feedback, done])
   useEffect(() => {
     if (done || feedback) return

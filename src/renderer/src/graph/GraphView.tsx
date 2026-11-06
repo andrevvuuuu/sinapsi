@@ -7,7 +7,7 @@ import type { VaultIndex } from '../../../shared/vault-types'
 import { DICTATION_SHORT, useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { GlassButton, GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
-import { GlassGround, SceneBoundary, Seg, ViewScene } from '../components/glass'
+import { SceneBoundary, Seg } from '../components/glass'
 import { RichText } from '../session/RichText'
 import { draw, radiusOf, type Colors, type Lens, type Sel } from './draw'
 import { createLayout, type Layout, type LayoutMode, type SimNode } from './layout'
@@ -545,8 +545,7 @@ function GraphBody({
             }
           }}
         >
-          <ViewScene className="gpanel-core dlg-core">
-            <GlassGround />
+          <div className="gpanel-core dlg-core">
             <h2>Il tuo grafo</h2>
             <p className="meta">
               {model
@@ -660,7 +659,7 @@ function GraphBody({
               </>
             )}
             <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
-          </ViewScene>
+          </div>
         </GlassSurface>
       )}
       {model && !(livePaths && livePaths.length === 0) && (

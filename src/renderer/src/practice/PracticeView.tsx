@@ -11,6 +11,7 @@ import { ExamView } from './ExamView'
 import { snippet } from './exam-format'
 import { PhotoButton } from './PhotoButton'
 import './practice.css'
+import { focusWhenShown } from '../components/glass-theme'
 
 const PHASE_IT = { warmup: 'Riscaldamento', body: 'Corpo', retest: 'Ritest', done: 'Fine' } as const
 const OUTCOME_CHIP = {
@@ -56,7 +57,8 @@ function ProblemDock({
       setBusy(false)
     }
   }
-  useEffect(() => area.current?.focus(), [problem.id])
+  // Once the dock's glass shell shows (a frame after it mounts).
+  useEffect(() => focusWhenShown(area.current), [problem.id])
   const ready = !!text.trim() || !!photoText || line !== undefined
   const send = async (): Promise<void> => {
     if (!ready || dictating) return

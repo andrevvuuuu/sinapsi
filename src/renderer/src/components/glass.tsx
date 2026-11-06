@@ -65,20 +65,48 @@ const InScene = createContext(false)
 /**
  * The app's GlassScene: Regular material, the theme's appearance. If the material cannot be prepared (no
  * WebGPU adapter, a GPU error) onDiagnostic logs it once and the scene is marked data-glass-failed, which
- * tokens.css turns into solid surfaces: the content stays readable.
+ * tokens.css turns into solid surfaces: the content stays readable. The same while the scene stays without its
+ * material (data-glass-ready not "true") for more than STALL_MS, should the library fail without saying so; that
+ * one ends when the material arrives.
  */
+const STALL_MS = 4000
 export function ViewScene({
   children,
   ...props
-}: Omit<GlassSceneProps, 'appearance' | 'onDiagnostic'>): React.JSX.Element {
+}: Omit<GlassSceneProps, 'appearance' | 'onDiagnostic' | 'ref'>): React.JSX.Element {
   const appearance = useGlassAppearance()
   const [failed, setFailed] = useState(false)
+  const [stalled, setStalled] = useState(false)
+  const [root, setRoot] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!root || failed || typeof MutationObserver === 'undefined') return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const check = (): void => {
+      if (root.dataset.glassReady === 'true') {
+        clearTimeout(timer)
+        timer = undefined
+        setStalled(false)
+      } else if (timer === undefined)
+        timer = setTimeout(() => {
+          console.warn('[glass] il materiale non arriva, superfici piene finché non è pronto')
+          setStalled(true)
+        }, STALL_MS)
+    }
+    const mo = new MutationObserver(check)
+    mo.observe(root, { attributes: true, attributeFilter: ['data-glass-ready'] })
+    check()
+    return () => {
+      mo.disconnect()
+      clearTimeout(timer)
+    }
+  }, [root, failed])
   return (
     <GlassScene
       material="regular"
       appearance={appearance}
       {...props}
-      {...{ 'data-glass-failed': failed ? '' : undefined }}
+      ref={setRoot}
+      {...{ 'data-glass-failed': failed || stalled ? '' : undefined }}
       onDiagnostic={(d) => {
         if (!d.error || failed) return
         console.warn(`[glass] il materiale non è disponibile, superfici piene: ${d.error.message}`)
@@ -116,9 +144,12 @@ export type SegOption<T extends string> = {
 
 /**
  * A segmented control: the library's tabs, a moving glass selection over a glass track (GlassTabs). On a
- * surface that is already glass or a solid core inside glass (`track="plain"`), the track is not glass and
- * only the selection is (the library's selection lens, tinted so it reads on a flat surface): never a glass
- * panel inside a glass panel.
+ * surface that is already glass or a solid core inside glass (`track="plain"`), the track is not glass and the
+ * selection is the library's tab indicator drawn as a full lens (no glass of its own, so never glass in glass and no
+ * scene needed): Base UI's moving indicator with the library's placement, filled and ringed in the theme's lens
+ * colours. Either selection carries a --seg-edge ring, 3:1 on its track. Focus never selects: the arrow keys move
+ * the focus, Enter or Space (or a click) choose, so a picker that takes the focus (a dialog opening on it, a focus
+ * trap walking it) never changes a setting by itself.
  */
 export function Seg<T extends string>({
   label,
@@ -139,34 +170,41 @@ export function Seg<T extends string>({
   ground?: 'surface' | 'panel'
 }): React.JSX.Element {
   const appearance = useGlassAppearance()
-  const tint = track === 'plain' ? (appearance === 'dark' ? '#55544d' : '#ffffff') : undefined
   const triggers = options.map((o) => (
     <GlassTabsTrigger key={o.value} value={o.value} ref={o.ref}>
       {o.label}
     </GlassTabsTrigger>
   ))
-  const tabs = (
+  const root = (list: ReactNode): React.JSX.Element => (
     <GlassTabsRoot
       className="seg-root"
       value={value ?? null}
       onValueChange={(v) => onChange(v as T)}
     >
-      {track === 'glass' ? (
-        <GlassTabsList aria-label={label} className={`seg-track ${className}`}>
-          <GlassTabsIndicator />
-          {triggers}
-        </GlassTabsList>
-      ) : (
-        <Tabs.List
-          activateOnFocus
-          aria-label={label}
-          className={`lg-tabs-list seg-track seg-plain ${className}`}
-        >
-          <GlassTabsIndicator tint={tint} />
-          {triggers}
-        </Tabs.List>
-      )}
+      {list}
     </GlassTabsRoot>
+  )
+  if (track === 'plain')
+    return root(
+      <Tabs.List
+        activateOnFocus={false}
+        aria-label={label}
+        className={`lg-tabs-list seg-track seg-plain ${className}`}
+      >
+        <Tabs.Indicator className="lg-tab-indicator seg-lens" />
+        {triggers}
+      </Tabs.List>
+    )
+  // In the light appearance the clear selection over the light track is tinted white, as the old white pill was.
+  const tabs = root(
+    <GlassTabsList
+      aria-label={label}
+      activateOnFocus={false}
+      className={`seg-track ${className}`}
+    >
+      <GlassTabsIndicator tint={appearance === 'light' ? '#ffffff' : undefined} />
+      {triggers}
+    </GlassTabsList>
   )
   if (ground)
     return (
@@ -194,7 +232,8 @@ export function GlassOverlay({
   return (
     <ViewScene className={className} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <GlassGround className="overlay-scrim" />
-      {children}
+      {/* The dialog's shadow: its glass shell is clipped to its shape, so the shadow is cast around it from here. */}
+      <div className="dlg-drop">{children}</div>
     </ViewScene>
   )
 }

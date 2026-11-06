@@ -174,7 +174,6 @@ button.mt-chip:active{background:var(--btn-secondary-bg-pressed)}
 .pr .dur{display:flex;padding:3px;border-radius:var(--r-pill);gap:2px}
 .pr .dur button{min-height:var(--ctl);padding:0 var(--s-4);border:0;border-radius:var(--r-pill);background:transparent;color:var(--muted);font:var(--fw-medium) var(--fs-footnote) var(--mono);cursor:pointer;white-space:nowrap;transition:color .15s var(--ease-out)}
 .pr .dur button:hover{color:var(--ink)}
-.pr .dur button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--inner),0 1px 3px rgba(0,0,0,.2)}
 /* Altro…: the minutes between two 44 px steppers, in a pill as tall as the tracks beside it. */
 .pr .custom{display:inline-flex;align-items:center;gap:var(--s-1);padding:3px;border-radius:var(--r-pill);border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .pr .custom button{width:var(--ctl);height:var(--ctl);border-radius:50%;border:0;background:var(--faint);cursor:pointer;font:var(--fw-medium) var(--fs-body) var(--mono);transition:var(--btn-transition)}
@@ -224,7 +223,7 @@ button.mt-chip:active{background:var(--btn-secondary-bg-pressed)}
 .pr-overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:var(--s-6)}
 /* The scrim is the overlay scene's content (GlassOverlay): the dialog's glass shell refracts it. */
 .pr-overlay .overlay-scrim.overlay-scrim{background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
-.pr .mt-dlg{--glass-shadow:0 40px 100px -30px rgba(0,0,0,.7);display:flex;flex-direction:column;width:min(1040px,100%);height:min(720px,calc(100vh - 48px));border-radius:24px}
+.pr .mt-dlg{display:flex;flex-direction:column;width:min(1040px,100%);height:min(720px,calc(100vh - 48px));border-radius:24px}
 /* The 6 px glass ring replaced a 1 px border: the paddings at the core's edges are 5 px less, so the content stays where it was
    (the same compensation as the settings dialog). */
 .pr .mt-core{display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden}
@@ -290,7 +289,7 @@ button.mt-chip:active{background:var(--btn-secondary-bg-pressed)}
 .pr .mt-file .pp{margin-left:auto;font:var(--fw-medium) var(--fs-footnote) var(--mono);color:var(--muted)}
 .pr .mt-file:has(.mt-cb:checked){border-color:var(--ink);background:var(--faint)}
 .pr .mt-df{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) 13px 7px}
-.pr-photo{--glass-shadow:0 40px 100px -30px rgba(0,0,0,.7);width:min(720px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px}
+.pr-photo{width:min(720px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px}
 .pr-photo-core{overflow:auto}
 .pr-photo-body{padding:var(--s-1) 13px 13px;display:flex;flex-direction:column;gap:var(--s-3)}
 .pr-photo select{min-height:var(--ctl);border-radius:var(--r-md);border:1px solid var(--ctl-edge);background:var(--bg);color:var(--ink);padding:0 var(--s-3);font-size:var(--fs-body)}

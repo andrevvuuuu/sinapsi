@@ -67,68 +67,71 @@ export function Composer({
             )
           }))}
         />
-        <GlassSurface radius={26} className="shell">
-          <div className="core">
-            {chips.length > 0 && (
-              <div className="suggest" role="group" aria-label="Consigliati">
-                {chips.map((c, i) => (
-                  <button
-                    key={`${i}:${c.label}`}
-                    type="button"
-                    className="sg-chip"
-                    aria-label={`${c.label} — ${c.reason}`}
-                    title={`${c.label} — ${c.reason}`}
-                    onClick={() => onPick?.(c.action)}
-                  >
-                    <span className="sg-label">{c.label}</span>
-                    <span className="sg-why">{c.reason}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="inrow">
-              <div className="mic-field mic-fill mic-row">
-                <textarea
-                  ref={field}
-                  readOnly={busy}
-                  rows={1}
-                  aria-label="Cosa vuoi studiare?"
-                  placeholder={
-                    mode === 'Ripasso'
-                      ? 'Cosa vuoi ripassare? Vuoto: quello che sta sbiadendo'
-                      : mode === 'Pratica'
-                        ? 'Su cosa ti alleni? Vuoto: i suggeriti per oggi'
-                        : 'Cosa vuoi studiare?'
-                  }
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      send()
+        {/* The shell's shadow, cast from outside it: the glass shell is clipped to its shape. */}
+        <div className="shell-drop">
+          <GlassSurface radius={26} className="shell">
+            <div className="core">
+              {chips.length > 0 && (
+                <div className="suggest" role="group" aria-label="Consigliati">
+                  {chips.map((c, i) => (
+                    <button
+                      key={`${i}:${c.label}`}
+                      type="button"
+                      className="sg-chip"
+                      aria-label={`${c.label} — ${c.reason}`}
+                      title={`${c.label} — ${c.reason}`}
+                      onClick={() => onPick?.(c.action)}
+                    >
+                      <span className="sg-label">{c.label}</span>
+                      <span className="sg-why">{c.reason}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="inrow">
+                <div className="mic-field mic-fill mic-row">
+                  <textarea
+                    ref={field}
+                    readOnly={busy}
+                    rows={1}
+                    aria-label="Cosa vuoi studiare?"
+                    placeholder={
+                      mode === 'Ripasso'
+                        ? 'Cosa vuoi ripassare? Vuoto: quello che sta sbiadendo'
+                        : mode === 'Pratica'
+                          ? 'Su cosa ti alleni? Vuoto: i suggeriti per oggi'
+                          : 'Cosa vuoi studiare?'
                     }
-                  }}
-                />
-                <MicButton dictation={dictation} />
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        send()
+                      }
+                    }}
+                  />
+                  <MicButton dictation={dictation} />
+                </div>
+                <button
+                  type="button"
+                  className="send"
+                  aria-label="Inizia"
+                  disabled={!canSend}
+                  onClick={send}
+                >
+                  <IconSend />
+                </button>
               </div>
-              <button
-                type="button"
-                className="send"
-                aria-label="Inizia"
-                disabled={!canSend}
-                onClick={send}
-              >
-                <IconSend />
-              </button>
+              <DictationError dictation={dictation} />
+              {tooLong && (
+                <p className="composer-hint" role="alert">
+                  Argomento troppo lungo: massimo 500 caratteri (ne hai scritti {text.trim().length}).
+                </p>
+              )}
             </div>
-            <DictationError dictation={dictation} />
-            {tooLong && (
-              <p className="composer-hint" role="alert">
-                Argomento troppo lungo: massimo 500 caratteri (ne hai scritti {text.trim().length}).
-              </p>
-            )}
-          </div>
-        </GlassSurface>
+          </GlassSurface>
+        </div>
       </SceneBoundary>
     </div>
   )

@@ -565,6 +565,7 @@ export function ReviewView({
                       step={10}
                       value={confidence}
                       onValueChange={(v) => setConfidence(v)}
+                      thumbProps={{ getAriaValueText: (_text, v) => `${v}%` }}
                     />
                     <output aria-hidden="true">{confidence}%</output>
                   </div>

@@ -21,10 +21,9 @@
 .psec h2{margin:var(--s-3) var(--s-2)}
 .seg{display:flex;padding:3px;border-radius:var(--r-pill);background:var(--faint);gap:2px}
 .seg button{flex:1;min-width:var(--ctl);min-height:38px;border:0;background:transparent;color:var(--muted);border-radius:var(--r-pill);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;padding:0 var(--s-3);white-space:nowrap;transition:background-color .2s var(--ease-out),color .2s var(--ease-out)}
-.seg button:not([aria-pressed="true"]):hover{color:var(--ink)}
+.seg button:not([data-active]):hover{color:var(--ink)}
 /* Inside the track the lens is the selection, so the ring sits inside the button (the track would clip an outer one). */
 .seg button:focus-visible{outline:var(--btn-focus-ring);outline-offset:-2px;border-radius:var(--r-pill)}
-.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--inner),0 1px 3px rgba(0,0,0,.18)}
 .scroll{overflow:auto;scrollbar-width:thin;scrollbar-color:var(--hair) transparent}
 .empty{font-size:var(--fs-footnote);color:var(--muted);padding:var(--s-3) var(--s-2)}
 .divider{height:1px;background:var(--hair);margin:var(--s-1) var(--s-5)}
@@ -173,7 +172,7 @@
 .overlay{position:fixed;inset:0;z-index:30;-webkit-app-region:no-drag;display:grid;place-items:center;padding:var(--s-6)}
 /* The scrim is the overlay scene's content (GlassOverlay): the dialog's glass shell refracts it. */
 .overlay .overlay-scrim.overlay-scrim{background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
-.settings-dlg{--glass-shadow:0 40px 100px -30px rgba(0,0,0,.7);width:min(640px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px;animation:imp-in .2s var(--ease-out)}
+.settings-dlg{width:min(640px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px;animation:imp-in .2s var(--ease-out)}
 /* The 6 px glass ring replaced a 1 px border: the paddings inside are 5 px less, so the content stays where it was. */
 .sd-core{display:flex;flex-direction:column;overflow:hidden}
 .sd-core .sd-head{padding:11px 9px 4px 17px}.sd-core .sd-body{padding:4px 17px 16px}.sd-core .sd-foot{padding:12px 17px 13px}

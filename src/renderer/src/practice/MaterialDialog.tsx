@@ -5,6 +5,7 @@ import type { Catalog, CatalogConcept } from '../../../shared/practice-types'
 import { DICTATION_SHORT, useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { summary } from './summary'
+import { focusWhenShown } from '../components/glass-theme'
 
 type Filter = 'weak' | 'due' | 'never' | null
 const norm = (s: string): string => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -90,7 +91,8 @@ export function MaterialDialog({
     onChange: setQ,
     maxSeconds: DICTATION_SHORT
   })
-  useEffect(() => search.current?.focus(), [])
+  // The dialog's glass shell shows a frame after it mounts: the field takes the focus once it can.
+  useEffect(() => focusWhenShown(search.current), [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()

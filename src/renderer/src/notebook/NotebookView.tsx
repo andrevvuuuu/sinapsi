@@ -33,9 +33,15 @@ function LinkBox({ notebook }: { notebook: Notebook }): React.JSX.Element {
     const a = anchor.current
     const host = a?.closest('.nb')
     if (!open || !a || !host) return setAt(null)
-    const r = a.getBoundingClientRect()
-    const h = host.getBoundingClientRect()
-    setAt({ host, top: r.top - h.top + 52, right: h.right - r.right })
+    // Under the button, and still there when the window changes size.
+    const place = (): void => {
+      const r = a.getBoundingClientRect()
+      const h = host.getBoundingClientRect()
+      setAt({ host, top: r.top - h.top + 52, right: h.right - r.right })
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
   }, [open])
   const save = async (link: string | null): Promise<void> => {
     if (link !== null && !link.startsWith(NOTEBOOKLM_PREFIX))
