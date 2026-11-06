@@ -312,4 +312,38 @@ describe('dictation in every free-text field', () => {
     expect(send.disabled).toBe(false)
     expect(onSubmit).not.toHaveBeenCalled()
   })
+
+  it('dictating the notebook name fills the field and saves only on the usual commit', async () => {
+    const NB = '11111111-1111-4111-8111-111111111111'
+    const notebook = { id: NB, name: 'Analisi', subject: null, link: null, createdAt: 1, sources: [] }
+    const update = vi.fn(async () => undefined)
+    window.sinapsi = {
+      ...window.sinapsi,
+      notebook: {
+        list: vi.fn(async () => [notebook]),
+        chat: vi.fn(async () => []),
+        onUpdate: vi.fn(() => () => undefined),
+        busy: vi.fn(async () => false),
+        update
+      },
+      vault: { index: vi.fn(async () => ({ subjects: [], notes: [] })) }
+    } as never
+    render(<NotebookView id={NB} onBack={vi.fn()} />)
+    const field = (await screen.findByLabelText('Nome del notebook')) as HTMLInputElement
+    await flush()
+    fireEvent.click(micOf(field)!)
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: 'Ferma la dettatura' }))
+    await flush()
+    await act(async () => finish('uno'))
+    await flush()
+    expect(field.value).toBe('Analisi uno')
+    // Nothing is sent on its own: the words wait in the field, which has the focus back.
+    expect(update).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(field)
+    fireEvent.keyDown(field, { key: 'Enter' })
+    await flush()
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(update).toHaveBeenCalledWith(NB, { name: 'Analisi uno' })
+  })
 })

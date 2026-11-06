@@ -104,7 +104,14 @@ export function useDictation(opts: {
     const from = Math.min(el?.selectionStart ?? len, len)
     const to = Math.min(el?.selectionEnd ?? from, len)
     const chunks: Blob[] = []
-    const r = new MediaRecorder(stream)
+    let r: MediaRecorder
+    try {
+      r = new MediaRecorder(stream)
+    } catch {
+      // No recorder, no recording: the microphone must not stay on (the orange dot in the menu bar).
+      stream.getTracks().forEach((t) => t.stop())
+      return setError('Non riesco ad aprire il microfono.')
+    }
     r.ondataavailable = (e) => void (e.data.size && chunks.push(e.data))
     r.onstop = () => {
       stream.getTracks().forEach((t) => t.stop())
@@ -149,10 +156,15 @@ export function useDictation(opts: {
           if (alive.current) setStage(null)
         })
     }
+    try {
+      r.start()
+    } catch {
+      stream.getTracks().forEach((t) => t.stop())
+      return setError('Non riesco ad aprire il microfono.')
+    }
     if (recording && recording !== me) recording.stop()
     recording = me
     recorder.current = r
-    r.start()
     setSeconds(0)
     setState('recording')
   }

@@ -125,16 +125,14 @@ export function NotebookView({
   const [message, setMessage] = useState<string | null>(null)
   const [name, setName] = useState('')
   const nameField = useRef<HTMLInputElement>(null)
-  // The mic fills the name while the field has lost focus, so the new name is saved at once.
+  // The dictated name waits in the field, focused again: Enter or leaving it saves, as with typing.
   const nameMic = useDictation({
     target: nameField,
     value: name,
     maxSeconds: DICTATION_SHORT,
     onChange: (v) => {
       setName(v)
-      const n = v.trim()
-      if (n && nb && n !== nb.name)
-        void api.notebook.update(id, { name: n }).catch((e) => setMessage(clean(e)))
+      nameField.current?.focus()
     }
   })
 

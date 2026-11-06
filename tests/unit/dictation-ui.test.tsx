@@ -109,6 +109,9 @@ function Field({
   )
 }
 
+/** The live region that announces the dictation's state. */
+const live = (): HTMLElement => document.querySelector('.mic-field [aria-live]') as HTMLElement
+
 const flush = async (): Promise<void> => {
   await act(async () => {
     for (let i = 0; i < 10; i++) await Promise.resolve()
@@ -196,7 +199,7 @@ describe('useDictation and MicButton', () => {
     await flush()
     fireEvent.click(screen.getByRole('button', { name: 'Ferma la dettatura' }))
     await flush()
-    expect(screen.getByText('Trascrivo…')).toBeTruthy()
+    expect(live().textContent).toBe('Trascrivo…')
     unmount()
     resolve('troppo tardi')
     await flush()
@@ -268,6 +271,25 @@ describe('useDictation and MicButton', () => {
     expect(FakeRecorder.all).toHaveLength(0)
   })
 
+  it('turns the microphone off when the recorder cannot start', async () => {
+    const voice = mockVoice()
+    vi.stubGlobal(
+      'MediaRecorder',
+      class {
+        constructor() {
+          throw new DOMException('no audio', 'NotSupportedError')
+        }
+      }
+    )
+    render(<Field label="Argomento" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Detta' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Non riesco ad aprire il microfono.')
+    expect(trackStop).toHaveBeenCalled()
+    expect(voice.transcribe).not.toHaveBeenCalled()
+    // Not stuck: the button is ready for another try.
+    expect(screen.getByRole('button', { name: 'Detta' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
   it('shows the transcription error without the IPC prefix', async () => {
     mockVoice({
       transcribe: async () => {
@@ -298,12 +320,38 @@ describe('useDictation and MicButton', () => {
     await flush()
     fireEvent.click(screen.getByRole('button', { name: 'Ferma la dettatura' }))
     await flush()
-    const live = screen.getByText('Trascrivo…')
+    const region = live()
+    expect(region.textContent).toBe('Trascrivo…')
     act(() => stage('download'))
-    expect(live.textContent).toBe('Scarico il modello di trascrizione…')
-    const node = live.firstChild
+    expect(region.textContent).toBe('Scarico il modello di trascrizione…')
+    const node = region.firstChild
     act(() => stage('download'))
-    expect(live.firstChild).toBe(node)
+    expect(region.firstChild).toBe(node)
+  })
+
+  it('shows what it is doing inside the microphone, without a new row', async () => {
+    let stage!: (s: 'download' | 'load' | 'transcribe') => void
+    const voice = mockVoice({ transcribe: () => new Promise<string>(() => undefined) })
+    voice.onStage.mockImplementation(((cb: typeof stage) => {
+      stage = cb
+      return () => undefined
+    }) as never)
+    const { container } = render(<Field label="Argomento" />)
+    const box = container.querySelector('.mic-field') as HTMLElement
+    const children = box.children.length
+    fireEvent.click(screen.getByRole('button', { name: 'Detta' }))
+    await flush()
+    fireEvent.click(screen.getByRole('button', { name: 'Ferma la dettatura' }))
+    await flush()
+    const mic = screen.getByRole('button', { name: 'Detta' })
+    const shown = (): string => mic.querySelector('.mic-status')?.textContent ?? ''
+    expect(shown()).toBe('Trascrivo…')
+    act(() => stage('download'))
+    expect(shown()).toBe('Scarico il modello…')
+    act(() => stage('transcribe'))
+    expect(shown()).toBe('Trascrivo…')
+    // The words sit in the button: the field's box gains nothing.
+    expect(box.children.length).toBe(children)
   })
 
   it('Option+Space toggles dictation in the focused field', async () => {

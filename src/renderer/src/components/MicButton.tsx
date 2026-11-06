@@ -32,10 +32,11 @@ export function MicButton({
 }): React.JSX.Element {
   const on = d.state === 'recording'
   const busy = d.state === 'transcribing'
+  const download = busy && d.stage === 'download'
   const status = on
     ? 'Registro'
     : busy
-      ? d.stage === 'download'
+      ? download
         ? 'Scarico il modello di trascrizione…'
         : 'Trascrivo…'
       : ''
@@ -52,6 +53,12 @@ export function MicButton({
       >
         {on ? <IconStop /> : <IconMic />}
         {on && <span className="mic-time">{clock(d.seconds)}</span>}
+        {/* What it is doing, beside the icon like the elapsed time; the live region below says it in full. */}
+        {busy && (
+          <span className="mic-status" aria-hidden="true">
+            {download ? 'Scarico il modello…' : 'Trascrivo…'}
+          </span>
+        )}
       </button>
       <span className="sr" aria-live="polite">
         {status}

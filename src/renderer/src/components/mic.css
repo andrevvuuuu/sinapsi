@@ -4,10 +4,10 @@
   display: block;
 }
 .mic-field.mic-field:has(> .mic) > :is(textarea, input) {
-  padding-right: calc(var(--ctl) + 8px);
+  padding-right: calc(var(--ctl) + var(--s-2));
 }
 .mic-field.mic-field:has(> .mic-sm) > :is(textarea, input) {
-  padding-right: calc(var(--ctl-sm) + 8px);
+  padding-right: calc(var(--ctl-sm) + var(--s-2));
 }
 /* In a flex row: the field and its microphone take the space the bare field had. */
 .mic-field.mic-fill {
@@ -30,19 +30,17 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--s-2);
   min-width: var(--ctl);
   height: var(--ctl);
-  padding: 0 12px;
+  padding: 0 var(--s-3);
   border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
+  border-radius: var(--r-pill);
+  background: var(--btn-text-bg);
   color: var(--muted);
   cursor: pointer;
-  transition:
-    color 0.15s,
-    background 0.15s,
-    border-color 0.15s;
+  white-space: nowrap;
+  transition: var(--btn-transition);
 }
 .mic-field > input ~ .mic {
   top: 50%;
@@ -51,7 +49,7 @@
 .mic.mic-sm {
   min-width: var(--ctl-sm);
   height: var(--ctl-sm);
-  padding: 0 9px;
+  padding: 0 var(--s-2);
 }
 .mic svg {
   width: 16px;
@@ -60,28 +58,38 @@
 }
 .mic:hover {
   color: var(--ink);
-  background: var(--faint);
+  background: var(--btn-secondary-bg-hover);
+}
+.mic:active {
+  background: var(--btn-secondary-bg-pressed);
 }
 .mic:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: var(--btn-focus-ring);
   outline-offset: -2px;
 }
+/* Recording and transcribing, the pill is wider than the room the field keeps for it: a solid fill, so the words
+   it widens over do not show through. */
 .mic[aria-pressed='true'] {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
 }
 .mic[aria-disabled='true'] {
   cursor: progress;
   color: var(--muted);
-  background: transparent;
+  border-color: var(--btn-disabled-border);
+  background: var(--surface);
 }
 .mic-time {
-  font: 500 13px/1 var(--mono);
+  font: var(--fw-medium) var(--fs-footnote) / 1 var(--mono);
   font-variant-numeric: tabular-nums;
 }
+/* «Trascrivo…», «Scarico il modello…»: the pill widens to the left over the field, which is read-only meanwhile. */
+.mic-status {
+  font: var(--fw-medium) var(--fs-footnote) / 1 var(--sans);
+}
 .mic-err {
-  margin: 8px 0 0;
+  margin: var(--s-2) 0 0;
   color: var(--bad);
-  font-size: 14px;
+  font: var(--font-footnote);
 }
