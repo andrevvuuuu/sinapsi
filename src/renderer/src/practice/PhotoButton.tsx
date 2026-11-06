@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 
@@ -263,13 +264,24 @@ export function PhotoButton({
   onText: (text: string) => void
   disabled?: boolean
 }): React.JSX.Element {
-  const [open, setOpen] = useState(false)
+  // The dialog covers the whole practice screen: rendered at the .pr root, since a glass dock (backdrop-filter)
+  // would otherwise hold the fixed overlay inside itself and clip it.
+  const [host, setHost] = useState<Element | null>(null)
   return (
     <>
-      <button type="button" className="ghost" disabled={disabled} onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="ghost"
+        disabled={disabled}
+        onClick={(e) => setHost(e.currentTarget.closest('.pr') ?? document.body)}
+      >
         Foto del foglio
       </button>
-      {open && <PhotoDialog sessionId={sessionId} onText={onText} onClose={() => setOpen(false)} />}
+      {host &&
+        createPortal(
+          <PhotoDialog sessionId={sessionId} onText={onText} onClose={() => setHost(null)} />,
+          host
+        )}
     </>
   )
 }

@@ -244,9 +244,36 @@ test('practice: training and exam', async () => {
   await win.getByRole('group', { name: 'Tipo di sessione' }).getByRole('button', { name: 'Pratica', exact: true }).click()
   await win.getByLabel('Cosa vuoi studiare?').fill('rolle')
   await win.getByRole('button', { name: 'Inizia' }).click()
+  // The setup, in exam mode: material, the two modes, the duration and the place.
+  await win.getByRole('radio', { name: /Simulazione d'esame/ }).click()
+  await screen(win, 'pratica-setup')
+  // The material dialog, whole inside the window at 1280×820 and 1280×720.
+  await win.getByRole('button', { name: 'Scegli…' }).click()
+  await expect(win.getByRole('dialog', { name: 'Scegli il materiale' })).toBeVisible()
+  await win.waitForTimeout(300)
+  for (const h of [820, 720]) {
+    await app.evaluate(({ BrowserWindow }, h) => BrowserWindow.getAllWindows()[0].setContentSize(1280, h), h)
+    await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(h)
+    const r = await win.getByRole('dialog', { name: 'Scegli il materiale' }).boundingBox()
+    expect(r!.y, `material dialog at ${h}: top inside the window`).toBeGreaterThanOrEqual(0)
+    expect(r!.y + r!.height, `material dialog at ${h}: bottom inside the window`).toBeLessThanOrEqual(h)
+  }
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 820))
+  await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(820)
+  await screen(win, 'pratica-materiale')
+  await win.getByRole('button', { name: 'Chiudi' }).click()
+  await win.getByRole('radio', { name: /Allenamento/ }).click()
   await win.getByRole('button', { name: 'Inizia allenamento' }).click()
-  await expect(win.getByRole('region', { name: 'Problema' }).getByText(/Mostra che per ogni/)).toBeVisible()
+  const dock = win.getByRole('region', { name: 'Problema' })
+  await expect(dock.getByText(/Mostra che per ogni/)).toBeVisible()
   await screen(win, 'pratica-allenamento')
+  // «Foto del foglio» from the glass dock: its overlay covers the whole window, not just the dock.
+  await dock.getByRole('button', { name: 'Foto del foglio' }).click()
+  await expect(win.getByRole('dialog', { name: 'Foto del foglio' })).toBeVisible()
+  const overlay = await win.locator('.pr-overlay').boundingBox()
+  expect([overlay!.x, overlay!.y, overlay!.width, overlay!.height]).toEqual([0, 0, 1280, 820])
+  await screen(win, 'pratica-foto')
+  await win.getByRole('button', { name: 'Chiudi' }).click()
   await win.getByRole('button', { name: '← Home' }).click()
 
   await win.getByRole('group', { name: 'Tipo di sessione' }).getByRole('button', { name: 'Pratica', exact: true }).click()
