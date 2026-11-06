@@ -67,6 +67,90 @@ export function blankParts(text: string): string[] {
   return parts
 }
 export const blanks = (text: string): { options: string[]; correct: number }[] => blankSpans(text).map(({ options, correct }) => ({ options, correct }))
+
+/** Positions of the single $ delimiters of a piece of text ($$ counts as one, \$ as none). */
+function dollarsAt(s: string): number[] {
+  const out: number[] = []
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '\\') i++
+    else if (s[i] === '$') {
+      out.push(i)
+      if (s[i + 1] === '$') i++
+    }
+  }
+  return out
+}
+
+/** "$" + the math, with the spaces kept outside: "$f(1) = " closes as "$f(1) =$ ", which renderMd reads as math. */
+function mathOf(s: string): string {
+  const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(s)!
+  return m[2] ? `${m[1]}$${m[2]}$${m[3]}` : s
+}
+
+export type ClozeBlank = { options: string[]; correct: number; math: boolean }
+export type Cloze = { parts: string[]; blanks: ClozeBlank[] }
+
+/**
+ * The parts of a cloze text ready to render on their own: the model often puts the blanks inside a formula
+ * («$f(1) = {{ -2 | *0 | 1 }}$») and forgets the closing $, so the pieces around the blanks would show raw
+ * «$f(1) =» or «\frac{…}». Here the math is balanced across the pieces: a piece that opens $ without closing
+ * it is closed at its end and reopened where the formula continues after the blank; a $ opened after the last
+ * blank and never closed is dropped. Options of a blank inside a formula become formulas themselves.
+ */
+export function clozeParts(text: string): Cloze {
+  const spans = blankSpans(text)
+  const raw = blankParts(text)
+  const marks = raw.map(dollarsAt)
+  // Which pieces start inside a formula, and whether the formula is still open at the end of each.
+  const total = marks.reduce((n, m) => n + m.length, 0)
+  // A $ left open with no blank after it closes nothing: it is dropped.
+  let dropAt: [number, number] | null = null
+  let open = false
+  const startsIn: boolean[] = []
+  const endsIn: boolean[] = []
+  raw.forEach((_, i) => {
+    startsIn.push(open)
+    if (marks[i].length % 2 === 1) open = !open
+    endsIn.push(open)
+  })
+  if (total % 2 === 1) {
+    // The unmatched $ is the last one. If no blank follows it, drop it; otherwise the formula ends at the last blank.
+    const lastPiece = marks.findLastIndex((m) => m.length > 0)
+    if (lastPiece === raw.length - 1) {
+      dropAt = [lastPiece, marks[lastPiece][marks[lastPiece].length - 1]]
+      endsIn[lastPiece] = false
+    } else {
+      // The formula closes right after the last blank: the closing $ the model forgot.
+      startsIn[raw.length - 1] = false
+      endsIn[raw.length - 1] = false
+    }
+  }
+  const parts = raw.map((piece, i) => {
+    let s = piece
+    if (dropAt && dropAt[0] === i) s = s.slice(0, dropAt[1]) + s.slice(dropAt[1] + 1)
+    const m = dollarsAt(s)
+    let head = ''
+    let body = s
+    // A formula carried over from the previous blank: it continues up to this piece's first $.
+    if (startsIn[i]) {
+      const cut = m.length ? m[0] : s.length
+      head = mathOf(s.slice(0, cut))
+      body = m.length ? s.slice(cut + (s[cut + 1] === '$' ? 2 : 1)) : ''
+    }
+    // A formula still open at the end: close it before the blank.
+    if (endsIn[i] && (!startsIn[i] || m.length)) {
+      const bm = dollarsAt(body)
+      const at = bm[bm.length - 1]
+      body = body.slice(0, at) + mathOf(body.slice(at + 1))
+    }
+    return head + body
+  })
+  const blanks = spans.map((b, i) => {
+    const math = endsIn[i]
+    return { options: b.options.map((o) => (math && !o.includes('$') ? `$${o}$` : o)), correct: b.correct, math }
+  })
+  return { parts, blanks }
+}
 const fillOk = (text: string): boolean => {
   const groups = blankSpans(text)
   return groups.length > 0 && groups.every((g) => g.starred === 1)
