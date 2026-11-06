@@ -15,12 +15,10 @@
 /* The conversation and the dock share the first cell: the dock floats over the bottom of the conversation, the plan stays on the right. */
 .sess .body{grid-template-rows:minmax(0,1fr)}
 .sess .side{grid-area:1/2}
-/* The conversation starts under the glass bar (same place on screen, offset by its padding) and fades into it while scrolling. */
+/* The conversation is the scene's live content (GlassContent): it starts under the glass bar (same place on screen, offset by its padding) and fades into it while scrolling (.edge-fade, GlassScrollEdges). */
 .sess .scroll{overflow:auto;min-height:0;position:relative;display:flex;flex-direction:column;margin-top:calc(-1 * var(--topbar-full));--scroll-edge-top:var(--topbar-full)}
-/* It also fades where it scrolls under the dock, whose real height (--dock-h, measured) the column keeps free at the end: at rest the last message sits whole above the dock. */
-.sess .scroll{grid-area:1/1;--scroll-edge-bottom:var(--dock-h,0px)}
-/* Both edges fade outside the glass, not only under it, so where the glass is nearly opaque the text dissolves into it instead of being cut by it. Top: from opaque 24 px below the bar to 8 % at its hairline (the first message rests 28 px below, and a message scrolled to stops 24 px below). Bottom: from 16 px above the dock (the column's free space at rest) to 30 % just past its edge. */
-.sess .scroll.scroll-edge{mask-image:linear-gradient(to bottom,transparent calc(var(--scroll-edge-top,0px) - var(--s-4)),rgba(0,0,0,.08) var(--scroll-edge-top,0px),#000 calc(var(--scroll-edge-top,0px) + var(--s-6)),#000 calc(100% - var(--scroll-edge-bottom,0px) - var(--s-4)),rgba(0,0,0,.3) calc(100% - var(--scroll-edge-bottom,0px) + var(--s-2)),transparent)}
+/* The dock's real height (--dock-h, measured) the column keeps free at the end: at rest the last message sits whole above the dock. */
+.sess .scroll{grid-area:1/1}
 .sess .col{width:100%;max-width:760px;margin:0 auto;padding:calc(var(--s-7) + var(--topbar-full)) var(--s-6) calc(var(--dock-h,0px) + var(--s-4));flex:1}
 .sess .msg{margin:0 0 var(--s-5);animation:in .4s var(--ease-out);scroll-margin-top:calc(var(--topbar-full) + var(--s-6))}
 @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -58,10 +56,6 @@
 .inner.has-scroll .q-head{max-height:30vh;overflow:auto}
 /* The options, confidence and reasoning scroll between the fixed question and send row; the padding keeps their focus rings unclipped. */
 .inner.has-scroll>.dock-scroll{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;margin:-4px -6px;padding:4px 6px}
-/* A short scroll edge fade says there is more, only on the side where content is hidden (data-more-*, useScrollEdges). */
-.dock-scroll.scroll-edge{--scroll-edge-top:0px;--scroll-edge-bottom:0px}
-.dock-scroll[data-more-above]{--scroll-edge-top:18px}
-.dock-scroll[data-more-below]{--scroll-edge-bottom:18px}
 .sess .shell{padding:6px;border-radius:24px}
 .sess .inner{border-radius:19px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:14px 16px}
 /* Inside the dock the rhythm is tighter than the page's, a documented exception: the whole Misura question (four options, Fiducia, «Il tuo ragionamento», send row) must fit at rest in an 820 px window. Options 6 px apart, the reasoning field 4 px below, the send row 10 px below. */
@@ -78,9 +72,6 @@
 .opt.idk{border-style:dashed;color:var(--muted);padding-left:var(--s-4)}
 .conf{display:grid;grid-template-columns:auto 1fr auto;gap:var(--s-3);align-items:center;margin:var(--s-2) 0 2px}
 .conf output{font:var(--fw-medium) var(--fs-footnote) var(--mono)}
-.sess input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:44px;background:transparent;cursor:pointer;margin:0}
-.sess input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:5px;background:var(--faint)}
-.sess input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7.5px;border-radius:50%;background:var(--knob);border:3px solid var(--knob-tint);box-shadow:var(--knob-shadow)}
 .think{border:1px solid var(--ctl-edge);border-radius:var(--r-md);padding:6px var(--s-3);margin-top:var(--s-1)}
 .think:focus-within,.rt:focus-within{border-color:var(--accent)}
 .think textarea,.rt textarea,.sess .sc-input textarea{width:100%;border:0;background:transparent;color:var(--ink);font:inherit;font-size:var(--fs-body);resize:none;outline:none}

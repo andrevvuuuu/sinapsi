@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
 import type { GraphData, Memory, StoredNote } from '../../../shared/api'
 import type { Nota } from '../../../shared/nota-schema'
 import { Inline, Md } from './Md'
@@ -6,7 +7,7 @@ import { BlockView, NotaContext } from './BlockView'
 import { FadeContext, SectionContext, type Layers, type Mode } from './context'
 import { fadeOf, sectionConcepts, type Fade } from './fading'
 import './nota.css'
-import { SegLens } from '../components/SegLens'
+import { ScrollEdges, Seg, ViewScene } from '../components/glass'
 
 const LAYERS: [keyof Layers, string][] = [
   ['sessione', 'Sessione'],
@@ -16,6 +17,23 @@ const LAYERS: [keyof Layers, string][] = [
 
 /** The message of an error thrown in main, without Electron's "Error invoking remote method" prefix. */
 export const remoteMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+
+/**
+ * The nota's scene: the floating island (a glass surface) over the page, which scrolls under it as the scene's live
+ * content. The page keeps the island's room at its top (the scroll edge band, .nota-scroll).
+ */
+export function NotaFrame({ bar, children }: { bar: ReactNode; children?: ReactNode }): React.JSX.Element {
+  const page = useRef<HTMLDivElement>(null)
+  return (
+    <ViewScene className="nota">
+      {bar}
+      <ScrollEdges target={page} edges={['top']} size={66} />
+      <GlassContent layout="scroll" className="nota-scroll edge-fade" ref={page}>
+        {children}
+      </GlassContent>
+    </ViewScene>
+  )
+}
 
 function Elapsed({ since }: { since: number }): React.JSX.Element {
   const [now, setNow] = useState(() => Date.now())
@@ -78,22 +96,24 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
   }, [])
 
   const bar = (
-    <nav className="island glass glass-text" aria-label="Controlli della nota">
+    <GlassSurface render={<nav />} radius="capsule" className="island glass-text" aria-label="Controlli della nota">
       <button type="button" className="back back-btn" onClick={onBack}>
         ← Home
       </button>
       {n?.status === 'ready' && (
         <>
           <span className="sep" aria-hidden="true" />
-          <div className="nv-seg seg-track" role="group" aria-label="Modalità">
-            <button type="button" aria-pressed={mode === 'leggi'} onClick={() => setMode('leggi')}>
-              Leggi
-            </button>
-            <button type="button" aria-pressed={mode === 'prova'} onClick={() => setMode('prova')}>
-              Prova da solo
-            </button>
-            <SegLens />
-          </div>
+          <Seg
+            label="Modalità"
+            track="plain"
+            className="nv-seg"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'leggi', label: 'Leggi' },
+              { value: 'prova', label: 'Prova da solo' }
+            ]}
+          />
           <span className="sep" aria-hidden="true" />
           <div className="layers" role="group" aria-label="Strati">
             {LAYERS.map(([k, label]) => (
@@ -105,24 +125,22 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
           </div>
         </>
       )}
-    </nav>
+    </GlassSurface>
   )
 
   if (!n && loadError)
     return (
-      <div className="nota scroll-edge-under">
-        {bar}
+      <NotaFrame bar={bar}>
         <div className="nv-gen" role="alert">
           <h1>Questa nota non si riesce ad aprire</h1>
           <p>Il file della nota viva è danneggiato. Puoi crearne una nuova dalla nota Obsidian: aprila dalla home e scegli «Crea la nota viva».</p>
         </div>
-      </div>
+      </NotaFrame>
     )
-  if (!n) return <div className="nota scroll-edge-under">{bar}</div>
+  if (!n) return <NotaFrame bar={bar} />
   if (n.status !== 'ready' || !n.nota)
     return (
-      <div className="nota scroll-edge-under">
-        {bar}
+      <NotaFrame bar={bar}>
         <div className="state">
           <h1>{n.sourceTitle}</h1>
           {n.status === 'generating' ? (
@@ -145,15 +163,14 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
             </>
           )}
         </div>
-      </div>
+      </NotaFrame>
     )
 
   return (
     <NotaContext.Provider value={{ layers, noteId: id }}>
-      <div className="nota scroll-edge-under">
-        {bar}
+      <NotaFrame bar={bar}>
         <Page nota={n.nota} stored={n} mode={mode} fade={known ? (section) => fadeOf(sectionConcepts(known.graph, n.sourcePath, section), known.memory) : undefined} />
-      </div>
+      </NotaFrame>
     </NotaContext.Provider>
   )
 }

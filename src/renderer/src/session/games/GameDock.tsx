@@ -1,4 +1,5 @@
 import { GAME_IT, type LearnerAnswer, type Question } from '../../../../shared/teacher-protocol'
+import { GlassShell } from '../../components/glass'
 import { RichText } from '../RichText'
 import { Match } from './Match'
 import { Order } from './Order'
@@ -13,7 +14,7 @@ export function GameDock({ question: q, onAnswer }: { question: Question; onAnsw
   if (!g) return null
   const done = (game: NonNullable<LearnerAnswer['game']>): void => onAnswer({ questionId: q.id, game })
   return (
-    <section className="shell glass g-dock" aria-label={`Gioco «${GAME_IT[g.type]}»`}>
+    <GlassShell render={<section />} className="g-dock" aria-label={`Gioco «${GAME_IT[g.type]}»`}>
       <div className="inner">
         <div className="g-head">
           <span className="lab">{`Gioco · ${GAME_IT[g.type]}`}</span>
@@ -28,6 +29,6 @@ export function GameDock({ question: q, onAnswer }: { question: Question; onAnsw
         {g.type === 'spot' && <Spot id={q.id} game={g} onDone={done} />}
         {g.type === 'taboo' && <Taboo id={q.id} game={g} onDone={done} />}
       </div>
-    </section>
+    </GlassShell>
   )
 }

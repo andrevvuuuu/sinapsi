@@ -1,13 +1,12 @@
 /* Ripasso: adapted from docs/prototipi/ripasso-v1.html, scoped under .rv */
-/* The page fades into a band under the glass bar while it scrolls (.scroll-edge-under). */
+/* The page fades into a band under the glass bar while it scrolls (.edge-fade, GlassScrollEdges). */
 /* Scales from tokens.css (8a): type --fs-*, distances --s-* (multiples of 4), radii --r-*, button states --btn-*.
    Control outlines use --btn-secondary-border / --ctl-edge (3:1); --hair only on non-interactive containers.
    Answer options (choices, «Vero o falso», steps, grades) stay options: secondary outlines, an --ink border when picked. */
 .rv {
-  --scroll-edge-top: var(--topbar-h);
   position: fixed;
   inset: 0;
-  overflow: auto;
+  overflow: hidden;
   background: var(--bg);
   color: var(--ink);
   font: var(--fw-regular) var(--fs-callout) / 1.6 var(--sans);
@@ -20,8 +19,10 @@
 }
 /* The same bar as every other screen (session, practice): 88 px on the left clears the window's traffic lights. */
 .rv-top {
-  position: sticky;
+  position: absolute;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 5;
   display: flex;
   align-items: center;
@@ -70,6 +71,13 @@
   margin-left: var(--s-2);
 }
 /* 40 px above the column (a multiple of 4 past the --s-* steps); 120 px below keeps the last row clear of the sticky start bar. */
+/* The page scrolls under the bar as the scene's live content (GlassContent), the bar's room kept at its top. */
+.rv-scroll {
+  --scroll-edge-top: var(--topbar-h);
+}
+.rv-scroll > .rv-main {
+  margin-top: var(--topbar-full);
+}
 .rv-main {
   max-width: 760px;
   margin: 0 auto;

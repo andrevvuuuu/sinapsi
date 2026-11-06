@@ -3,6 +3,8 @@ import type { SessionState } from '../../../shared/api'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { useDockHeight } from '../components/useDockHeight'
+import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
+import { GlassShell, ScrollEdges, ViewScene } from '../components/glass'
 import { AnswerCard } from './AnswerCard'
 import { PlanMap } from './PlanMap'
 import { QuestionDock } from './QuestionDock'
@@ -89,8 +91,8 @@ export function SessionView({
   }
 
   return (
-    <div className="sess">
-      <header className="top drag glass glass-bar glass-text">
+    <ViewScene className="sess">
+      <GlassSurface render={<header />} radius={0} className="top drag glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
@@ -105,9 +107,9 @@ export function SessionView({
           </span>
         )}
         {s.noteTitle && <span className="notechip">Dalla tua nota: {s.noteTitle}</span>}
-      </header>
+      </GlassSurface>
       <div className="body">
-        <div className="scroll scroll-edge" ref={scroller}>
+        <GlassContent layout="scroll" className="scroll edge-fade" ref={scroller}>
           <div className="col" aria-live="polite">
             {s.items.map((it, i) => {
               if (it.kind === 'teacher')
@@ -199,7 +201,9 @@ export function SessionView({
               </div>
             )}
           </div>
-        </div>
+        </GlassContent>
+        {/* The library's scroll edge where the conversation passes under the bar and the dock. */}
+        <ScrollEdges target={scroller} size={72} />
         {/* Floats over the bottom of the conversation, which reserves its height (--dock-h). */}
         <div className="dockwrap" ref={dockwrap}>
           <div className="dock">
@@ -212,7 +216,7 @@ export function SessionView({
               />
             )}
             {!q && s.awaiting === 'learner' && s.phase !== 'done' && (
-              <div className="shell glass">
+              <GlassShell>
                 <div className="inner sc-input">
                   <div className="mic-field mic-fill mic-row">
                     <textarea
@@ -242,10 +246,10 @@ export function SessionView({
                   </button>
                 </div>
                 <DictationError dictation={dictation} />
-              </div>
+              </GlassShell>
             )}
             {s.phase === 'done' && (
-              <div className="shell glass">
+              <GlassShell>
                 <div className="inner act">
                   <span>
                     {s.notePath
@@ -267,7 +271,7 @@ export function SessionView({
                   </button>
                   {createError && <span role="alert">{createError}</span>}
                 </div>
-              </div>
+              </GlassShell>
             )}
           </div>
         </div>
@@ -276,6 +280,6 @@ export function SessionView({
           <PlanMap plan={s.plan} current={s.currentNodeId} done={s.doneNodeIds} />
         </aside>
       </div>
-    </div>
+    </ViewScene>
   )
 }

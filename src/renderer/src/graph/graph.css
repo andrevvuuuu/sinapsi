@@ -19,7 +19,7 @@
 .graph canvas.hov {
   cursor: pointer;
 }
-/* The card holds text to read: a solid-ish surface. The menu, its button and the zoom are glass (.glass in GraphView). */
+/* The card holds text to read: a solid-ish surface. The menu, its button and the zoom are glass (library surfaces in GraphView). */
 .graph .gcard {
   background: color-mix(in srgb, var(--surface) 86%, transparent);
   border: 1px solid var(--hair);
@@ -121,7 +121,7 @@
   margin: 0 var(--s-1) var(--s-2);
 }
 /* The lens selector: a segmented track with 9 px option corners, concentric with its 12 px track 3 px out. It sits in the
-   glass menu, so the track is a faint fill, not a second glass (the lens still slides over it). */
+   glass menu, so the track is a faint fill, not a second glass (its selection, the library's tab indicator drawn as a full lens, slides over it). */
 .graph .gseg {
   display: flex;
   gap: 2px;
@@ -143,11 +143,6 @@
 }
 .graph .gseg button:hover {
   color: var(--ink);
-}
-.graph .gseg button[aria-pressed='true'] {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: 0 1px 0 var(--hair);
 }
 .graph .gseg button:focus-visible {
   outline: var(--btn-focus-ring);
@@ -560,3 +555,8 @@
 
 .graph .glive-empty{position:absolute;inset:0;display:grid;place-items:center;padding:0 60px 180px;text-align:center;pointer-events:none;z-index:2}
 .graph .glive-empty p{max-width:44ch;color:var(--muted);font:var(--fw-regular) var(--fs-display)/1.25 var(--serif);margin:0}
+/* The round button is a library surface, clipped to its circle: its focus ring is drawn inside. */
+.graph button.gmenu-btn.gmenu-btn:focus-visible {
+  outline-offset: -4px;
+  border-radius: 50% !important;
+}

@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { GlassRange } from '../../components/glass'
 import type { FigElement, Figure } from '../../../../shared/nota-schema'
 import { Inline } from '../Md'
 import { plainText } from '../math'
@@ -240,7 +241,7 @@ export function FigureView({ fig, step, onParams }: { fig: Figure; step?: number
                   <Inline md={p.label} />
                   <span className="out" aria-hidden="true">{fmt(params[p.id])}</span>
                 </label>
-                <input type="range" aria-label={plain(p.label)} min={p.min} max={p.max} step={p.step} value={params[p.id]} onChange={(e) => setParam(p.id, Number(e.target.value))} />
+                <GlassRange aria-label={plain(p.label)} min={p.min} max={p.max} step={p.step} value={params[p.id]} onValueChange={(v) => setParam(p.id, v)} />
               </div>
             ))}
           </div>

@@ -26,8 +26,10 @@ describe('home layout', () => {
     expect(graph).toMatch(/\.graph \.gzoom \{[^}]*bottom: calc\(var\(--composer-h, 128px\) \+ 38px\)/)
   })
   it('the composer tells its container how tall it is', () => {
-    let cb: ResizeObserverCallback = () => undefined
-    vi.stubGlobal('ResizeObserver', class { constructor(c: ResizeObserverCallback) { cb = c } observe() {} disconnect() {} })
+    // Every ResizeObserver of the render (the composer's and the glass library's) gets the resize.
+    const cbs: ResizeObserverCallback[] = []
+    const cb = (...a: Parameters<ResizeObserverCallback>): void => cbs.forEach((c) => c(...a))
+    vi.stubGlobal('ResizeObserver', class { constructor(c: ResizeObserverCallback) { cbs.push(c) } observe() {} unobserve() {} disconnect() {} })
     const { container } = render(<main className="center"><Composer onSubmit={vi.fn()} /></main>)
     const box = container.querySelector('.composer') as HTMLElement
     Object.defineProperty(box, 'offsetHeight', { value: 190 })

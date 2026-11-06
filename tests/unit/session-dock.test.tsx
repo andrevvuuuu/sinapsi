@@ -1,10 +1,18 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { RefObject } from 'react'
 import { QuestionDock } from '../../src/renderer/src/session/QuestionDock'
 import { SessionView } from '../../src/renderer/src/session/SessionView'
 import type { SessionState } from '../../src/shared/api'
 import type { Question } from '../../src/shared/teacher-protocol'
+
+// The library's scroll edges, recorded: which scroller each one fades (the fade itself is the library's, and needs layout).
+const edges = vi.hoisted(() => [] as { target: RefObject<HTMLElement | null>; size?: number; edges?: readonly string[] }[])
+vi.mock('@glass-sdk/liquid-glass', async (original) => ({
+  ...(await original<typeof import('@glass-sdk/liquid-glass')>()),
+  GlassScrollEdges: (p: (typeof edges)[number]) => (edges.push(p), null)
+}))
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const question: Question = {
@@ -26,18 +34,21 @@ const state: SessionState = {
   pendingQuestion: question
 }
 
-const unobserved: ResizeObserverCallback = () => undefined
-let resize: ResizeObserverCallback = unobserved
+// Every ResizeObserver of the render (the dock's and the glass library's): resize() plays a resize to all of them.
+let observers: ResizeObserverCallback[] = []
+const resize = (...args: Parameters<ResizeObserverCallback>): void => observers.forEach((cb) => cb(...args))
 const scrollIntoView = vi.fn()
 beforeEach(() => {
-  resize = unobserved
+  observers = []
+  edges.length = 0
   vi.stubGlobal(
     'ResizeObserver',
     class {
       constructor(cb: ResizeObserverCallback) {
-        resize = cb
+        observers.push(cb)
       }
       observe(): void {}
+      unobserve(): void {}
       disconnect(): void {}
     }
   )
@@ -55,7 +66,7 @@ describe('the question dock and the conversation above it', () => {
     const { container } = render(<SessionView id={ID} onBack={vi.fn()} />)
     await screen.findByText('Quale ragionamento è corretto?')
     // The text can be on screen before the effects that observe the dock have run (a slow, loaded machine).
-    await waitFor(() => expect(resize).not.toBe(unobserved))
+    await waitFor(() => expect(observers.length).toBeGreaterThan(0))
     const dock = container.querySelector('.dockwrap') as HTMLElement
     const scroller = container.querySelector('.scroll') as HTMLElement
     dock.getBoundingClientRect = () => ({ height: 412.4 }) as DOMRect
@@ -72,21 +83,14 @@ describe('the question dock and the conversation above it', () => {
     expect(target).toBe(msg)
   })
 
-  it('marks the options area where more of it is hidden, so the fade shows only there', () => {
+  it('fades the options area where more of it is hidden, with the library\'s scroll edges', () => {
     const { container } = render(<QuestionDock question={question} onAnswer={vi.fn()} onSay={vi.fn()} />)
     const area = container.querySelector('.dock-scroll') as HTMLElement
-    const metrics = { scrollTop: 0, scrollHeight: 600, clientHeight: 300 }
-    for (const k of Object.keys(metrics) as (keyof typeof metrics)[])
-      Object.defineProperty(area, k, { configurable: true, get: () => metrics[k] })
-    const at = (top: number): [boolean, boolean] => {
-      metrics.scrollTop = top
-      fireEvent.scroll(area)
-      return [area.hasAttribute('data-more-above'), area.hasAttribute('data-more-below')]
-    }
-    expect(at(0)).toEqual([false, true])
-    expect(at(150)).toEqual([true, true])
-    expect(at(300)).toEqual([true, false])
-    metrics.scrollHeight = 300
-    expect(at(0)).toEqual([false, false])
+    // GlassScrollEdges fades only an edge with content hidden beyond it, and none when nothing overflows: it watches
+    // exactly this scroller, on both edges (its default), with a short fade.
+    const mine = edges.filter((e) => e.target.current === area)
+    expect(mine).not.toHaveLength(0)
+    expect(mine.at(-1)!.edges ?? ['top', 'bottom']).toEqual(['top', 'bottom'])
+    expect(mine.at(-1)!.size).toBeLessThanOrEqual(24)
   })
 })

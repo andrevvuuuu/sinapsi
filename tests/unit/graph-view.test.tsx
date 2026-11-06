@@ -107,14 +107,15 @@ describe('GraphView', () => {
   it('keeps layout options folded until asked, then switches layout', async () => {
     mount()
     await screen.findByText(/4 concetti/)
-    expect(screen.queryByRole('button', { name: 'A piani' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'A piani' })).toBeNull()
     const more = screen.getByRole('button', { name: 'Disposizione e strati' })
     expect(more.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(more)
-    const b = screen.getByRole('button', { name: 'A piani' })
+    // The layout selector is a segmented control: the library's tabs.
+    const b = screen.getByRole('tab', { name: 'A piani' })
     fireEvent.click(b)
-    expect(b.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByRole('button', { name: 'Radiale' }).getAttribute('aria-pressed')).toBe('false')
+    expect(b.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Radiale' }).getAttribute('aria-selected')).toBe('false')
   })
   it('says which note is being extracted and shows errors', async () => {
     const { push } = mount()

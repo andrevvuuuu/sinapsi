@@ -18,12 +18,9 @@
 [data-theme="lavagna"]{--placeholder:#8a877c;--ctl-edge:rgba(236,233,223,.4);--btn-primary-bg:var(--ink);--btn-primary-bg-hover:#dcd9cf;--btn-primary-bg-pressed:#c9c6bc;--btn-primary-ink:var(--bg);--btn-secondary-bg:rgba(236,233,223,0);--btn-secondary-bg-hover:rgba(236,233,223,.08);--btn-secondary-bg-pressed:rgba(236,233,223,.14);--btn-secondary-ink:var(--ink);--btn-secondary-border:var(--ctl-edge);--btn-text-bg:rgba(236,233,223,0);--btn-text-bg-hover:rgba(236,233,223,.06);--btn-text-bg-pressed:rgba(236,233,223,.1);--btn-text-ink:var(--accent)}
 [data-theme="trattato"]{--placeholder:#6b6559;--ctl-edge:rgba(36,32,27,.52);--btn-primary-bg:var(--ink);--btn-primary-bg-hover:#3a352e;--btn-primary-bg-pressed:#4d473f;--btn-primary-ink:var(--bg);--btn-secondary-bg:rgba(36,32,27,0);--btn-secondary-bg-hover:rgba(36,32,27,.06);--btn-secondary-bg-pressed:rgba(36,32,27,.1);--btn-secondary-ink:var(--ink);--btn-secondary-border:var(--ctl-edge);--btn-text-bg:rgba(36,32,27,0);--btn-text-bg-hover:rgba(36,32,27,.04);--btn-text-bg-pressed:rgba(36,32,27,.06);--btn-text-ink:var(--accent)}
 :root{--btn-focus:var(--accent);--btn-focus-ring:2px solid var(--btn-focus);--btn-focus-offset:2px;--btn-disabled-bg:transparent;--btn-disabled-ink:var(--muted);--btn-disabled-border:var(--ctl-edge);--btn-transition:background-color .15s var(--ease-out),border-color .15s var(--ease-out),color .15s var(--ease-out)}
-/* Liquid Glass, only for the floating layer of controls (bars, menus, dialog shells), never under text to read. Regular variant: tint ~2/3 opaque, blur, saturation; rim, top highlight and soft shadow. --glass-ink stays AA over the brightest app colour; --glass-ink-2 is the secondary text on glass, still AA there (4.6:1 lavagna, 4.8:1 trattato over the most contrasting app colour). */
-[data-theme="lavagna"]{--glass-tint:rgba(26,27,23,.68);--glass-blur:24px;--glass-sat:1.6;--glass-rim:rgba(236,233,223,.12);--glass-spec:rgba(255,255,255,.14);--glass-shadow:0 1px 1px rgba(0,0,0,.24),0 12px 32px -8px rgba(0,0,0,.55);--glass-ink:#ece9df;--glass-ink-2:#d6d3c9;--lens-tint:rgba(236,233,223,.16);--knob-tint:#e4e1d7;--knob-edge:rgba(236,233,223,.46)}
-/* Accent and pen labels on glass (session phase, score, «Dalla tua nota»): the theme's hue, lightness moved until it is AA over the tint over --bg, --surface and the content that can scroll under the bar. That content is masked by the scroll edge (it fades in across the bar's height): at the labels it is at most 65 % visible, so the worst case is --ink at 65 % over --bg. Accent: lavagna 4.62:1, trattato 4.66:1. Pen (kept at the stricter unmasked value): lavagna 4.61:1, trattato 4.66:1. */
-[data-theme="lavagna"]{--glass-accent:#f39e76;--glass-pen:#c2d8ff}
-[data-theme="trattato"]{--glass-tint:rgba(251,248,242,.66);--glass-blur:24px;--glass-sat:1.4;--glass-rim:rgba(36,32,27,.1);--glass-spec:rgba(255,255,255,.85);--glass-shadow:0 1px 1px rgba(36,32,27,.06),0 12px 32px -8px rgba(36,32,27,.2);--glass-ink:#221e19;--glass-ink-2:#3f3a33;--lens-tint:rgba(255,255,255,.9);--knob-tint:#fff;--knob-edge:rgba(36,32,27,.58)}
-[data-theme="trattato"]{--glass-accent:#8f341d;--glass-pen:#223e7a}
+/* Text on Liquid Glass (@glass-sdk/liquid-glass, Regular material). --glass-ink is the library's foreground (--lg-foreground), --glass-ink-2 the secondary text, --glass-accent / --glass-pen the accent and pen labels (session phase, score, «Dalla tua nota»). All AA over what the material makes of the app's grounds (--bg, --surface, --panel) and of the content that can scroll under a bar, which the scroll edge band (.edge-fade) keeps at most 30 % visible at the labels: the worst case is --ink at 30 % over --bg, through the material's tone curve (tests/unit/contrast.test.ts models it from the library's own constants). --knob-edge rings the slider thumb's white face. The selection of a segmented control is ringed with --seg-edge, 3:1 on its track (glass or faint) in both themes; --lens-fill fills the full lens of a track that is not glass. */
+[data-theme="lavagna"]{--glass-ink:#ece9df;--glass-ink-2:#d6d3c9;--glass-accent:#fac4a8;--glass-pen:#c2d8ff;--knob-edge:rgba(236,233,223,.46);--seg-edge:rgba(236,233,223,.46);--lens-fill:#3d3c38}
+[data-theme="trattato"]{--glass-ink:#221e19;--glass-ink-2:#3f3a33;--glass-accent:#86301a;--glass-pen:#223e7a;--knob-edge:rgba(36,32,27,.58);--seg-edge:rgba(36,32,27,.62);--lens-fill:#ffffff}
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:var(--font-body);-webkit-font-smoothing:antialiased;overflow:hidden}
@@ -39,38 +36,70 @@ button.back-btn.back-btn.back-btn{display:inline-flex;align-items:center;gap:var
 button.back-btn.back-btn.back-btn:hover{background:var(--surface)}
 button.back-btn.back-btn.back-btn:active{background:linear-gradient(var(--btn-secondary-bg-pressed),var(--btn-secondary-bg-pressed)) var(--surface)}
 /* On a glass bar the button is part of the bar: a light fill of the bar's ink, no solid pill on the glass. */
-.glass button.back-btn.back-btn.back-btn{background:color-mix(in srgb,var(--glass-ink) 6%,transparent)}
-.glass button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--glass-ink) 12%,transparent)}
-.glass button.back-btn.back-btn.back-btn:active{background:color-mix(in srgb,var(--glass-ink) 18%,transparent)}
+.lg-surface button.back-btn.back-btn.back-btn{background:color-mix(in srgb,var(--glass-ink) 6%,transparent)}
+.lg-surface button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--glass-ink) 12%,transparent)}
+.lg-surface button.back-btn.back-btn.back-btn:active{background:color-mix(in srgb,var(--glass-ink) 18%,transparent)}
 .island button.back-btn.back-btn.back-btn{border-color:transparent;background:transparent}
 
-/* The material. Rim and highlight are inset shadows: no border, so it never changes an element's size. Repeated class: it wins over a view's own one-class background (e.g. .seg). */
-.glass.glass{color:var(--glass-ink);background:linear-gradient(to bottom,color-mix(in srgb,var(--glass-spec) 30%,transparent),transparent 50%),var(--glass-tint);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));box-shadow:inset 0 1px 0 var(--glass-spec),inset 0 0 0 1px var(--glass-rim),var(--glass-shadow);transition:background-color .2s var(--ease-out),box-shadow .2s var(--ease-out)}
-/* Edge refraction where Chromium takes an SVG filter as a backdrop-filter (#glass-refract, GlassFilter.tsx); elsewhere blur and saturation only. The url() goes last: in front of blur() Chromium drops the blur. */
-@supports (backdrop-filter:url(#glass-refract)){.glass.glass{backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat)) url(#glass-refract)}}
-/* Solid unless data-glass="on": with «Riduci trasparenza» (data-glass="solid") and before macOS has answered, so the glass never flashes. */
-:root:not([data-glass="on"]) .glass{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}
-/* A full-width bar: the material without the slab's rim and drop shadow; its own hairline closes it. */
-.glass.glass-bar{box-shadow:none}
+/* Liquid Glass is @glass-sdk/liquid-glass (components/glass.tsx): each view is a GlassScene whose GlassContent is the
+   live content the glass refracts; bars, shells, menus, segmented controls and slider thumbs are its surfaces, in the
+   Regular material with the theme's appearance (lavagna dark, trattato light). Only on the control layer, never under
+   text to read; the library's stylesheet is imported once with the module.
+   Text and icons on glass: --lg-foreground, the library's foreground variable, set to the theme's ink. */
+:root{--lg-foreground:var(--glass-ink)}
+/* A flat ground as a scene's content (GlassGround): under the scene's own children, painting the surface the glass refracts. */
+.glass-ground{z-index:-1;background:var(--surface);border-radius:inherit;pointer-events:none}
+/* Solid unless data-glass="on" (with «Riduci trasparenza», and before macOS has answered, so the glass never flashes) and
+   where the scene could not prepare its material (data-glass-failed, no WebGPU): every surface is a full surface. */
+:root:not([data-glass="on"]) .lg-surface,.lg-scene[data-glass-failed] .lg-surface{background:var(--surface)}
+/* A full-width bar: square corners, its own hairline closes it. */
+.glass-bar{border-radius:0}
 /* Dialogs and the graph menu: a glass outer shell (6 px ring) around a solid core that holds the text, like the session's .shell/.inner. */
 .glass-shell{padding:6px}
-/* Segmented controls: a glass track (.seg-track, with .glass unless it already sits on glass) and the chosen option marked by a lens that slides to it (SegLens.tsx). The lens is the bright variant: tint, rim and highlight, no backdrop of its own, so never glass in glass. */
-.seg-track{position:relative;--glass-shadow:0 1px 2px rgba(0,0,0,.12)}
-/* Repeated class: above the views' own pressed styles (e.g. .nota .nv-seg button[aria-pressed]), which the lens replaces. */
-.seg-track.seg-track>button{position:relative;z-index:1}
-.seg-track.seg-track.seg-track>button[aria-pressed="true"]{background:transparent;box-shadow:none;color:var(--ink)}
-.seg-lens{position:absolute;top:0;left:0;z-index:0;pointer-events:none;border-radius:var(--lens-r,999px);background:linear-gradient(to bottom,color-mix(in srgb,var(--glass-spec) 50%,transparent),transparent 60%),var(--lens-tint);box-shadow:inset 0 1px 0 var(--glass-spec),inset 0 0 0 1px var(--glass-rim),0 1px 3px rgba(0,0,0,.18);transition:transform .32s var(--ease-out),width .32s var(--ease-out),height .32s var(--ease-out),opacity .2s}
-/* Solid material: the track and lens look as before the glass, a faint track and a surface option. */
-:root:not([data-glass="on"]) .seg-track.glass{background:var(--faint)}
-:root:not([data-glass="on"]) .seg-lens{background:var(--surface)}
-@media (prefers-reduced-motion:reduce){.seg-lens{transition:none}}
-/* Range thumbs are a small bright glass knob (session.css, nota.css): --knob-tint with a top highlight, a ring and soft shadow. The ring (--knob-edge, outside the knob, per theme) is the control's outline, a little firmer than --ctl-edge so it stays 3:1 on the surface and on both tracks too (3.4:1 at worst): the white knob alone all but vanishes on the light surface. */
-:root{--knob:linear-gradient(to bottom,rgba(255,255,255,.9),transparent 70%) var(--knob-tint);--knob-shadow:0 0 0 1px var(--knob-edge),0 1px 3px rgba(0,0,0,.35)}
+/* Segmented controls (Seg in glass.tsx): the library's tabs. The Tabs root takes no box, so the track sits where the old group did. */
+.seg-root{display:contents}
+/* The library dims unselected tabs to 85 %: the labels keep the app's AA colours instead. */
+.seg-track .lg-tab{opacity:1}
+.seg-track .lg-tab[data-active]{color:var(--ink)}
+/* The selection is ringed (--seg-edge, 3:1 on its track): inset, so the surface's outline does not clip it, and rounded as the
+   outline the library draws (it flattens the radius inline and publishes it as --lg-radius). */
+.seg-track .lg-tab-indicator{box-shadow:inset 0 0 0 1.5px var(--seg-edge);border-radius:var(--lg-radius,var(--lens-r,999px))!important}
+/* A track on glass or on a solid core is not glass (.seg-plain): its selection is the library's indicator as a full lens (Seg), sliding with the library's placement. */
+.seg-plain{position:relative}
+.seg-track .seg-lens{z-index:0;border-radius:var(--lens-r,999px);background:linear-gradient(to bottom,rgba(255,255,255,.35),transparent 60%) var(--lens-fill);box-shadow:inset 0 0 0 1.5px var(--seg-edge),0 1px 3px rgba(0,0,0,.18);transition:left .32s var(--ease-out),top .32s var(--ease-out),width .32s var(--ease-out),height .32s var(--ease-out)}
+/* Solid material: a faint track and a surface option, as before the glass. */
+:root:not([data-glass="on"]) .seg-track.lg-surface,.lg-scene[data-glass-failed] .seg-track.lg-surface{background:var(--faint)}
+/* Range thumbs (GlassSlider): the library's white face, ringed by --knob-edge (on the thumb, below), the control's 3:1 outline on the surface and both tracks. */
+:root{--knob-shadow:0 0 0 1px var(--knob-edge),0 1px 3px rgba(0,0,0,.35)}
 .dlg-core{flex:1;min-height:0;border-radius:18px;background:var(--surface);box-shadow:var(--inner)}
 /* Text on glass: secondary labels use --glass-ink-2, never --muted (not AA over bright content). */
 .glass-text{--muted:var(--glass-ink-2)}
-@media (prefers-reduced-motion:reduce){.glass{transition:none}}
-/* Scroll edge effect: content fades where it scrolls under a floating control. Set --scroll-edge-top / --scroll-edge-bottom to the depth of the fade on the side that needs it. */
-.scroll-edge{mask-image:linear-gradient(to bottom,transparent,#000 var(--scroll-edge-top,0px),#000 calc(100% - var(--scroll-edge-bottom,0px)),transparent)}
-/* The same fade where the bar scrolls with the content (a sticky bar inside the scroller, which a mask would fade too): a band of background, fixed under the bar, that the content dissolves into. */
-.scroll-edge-under::before{content:"";position:fixed;top:0;left:0;right:0;height:var(--scroll-edge-top,0px);background:linear-gradient(var(--bg),color-mix(in srgb,var(--bg) 60%,transparent) 50%,transparent);pointer-events:none;z-index:var(--scroll-edge-z,4)}
+/* Scroll edge, under a floating bar: the library's GlassScrollEdges blurs the content there; a band of background inside the
+   content (sticky, so the glass refracts it too) fades it as well, so the text on the bar stays AA whatever scrolls under it.
+   Set --scroll-edge-top to the bar's depth (and --scroll-edge-solid to where the band starts fading, 60 % by default). */
+.edge-fade::before{content:"";display:block;flex:none;position:sticky;pointer-events:none;z-index:var(--scroll-edge-z,4)}
+/* A scroller with its own top padding says how much (--scroll-pad-top), so the band starts and sticks at its top edge (sticky offsets count from inside the padding); --scroll-gap is its flex gap. */
+.edge-fade::before{top:calc(-1 * var(--scroll-pad-top,0px));height:var(--scroll-edge-top,0px);margin-top:calc(-1 * var(--scroll-pad-top,0px));margin-bottom:calc(-1 * var(--scroll-edge-top,0px) - var(--scroll-gap,0px));background:linear-gradient(var(--bg) var(--scroll-edge-solid,60%),transparent)}
+/* The library places its content over the whole scene (absolute, inset 0): the views whose scroller is in their own
+   flow (a grid cell, a flex column) keep it there. */
+.lg-content:is(.scroll,.pr-scroll,.pr-col,.pr-setup,.nb-body){position:relative;inset:auto;width:auto;height:auto}
+/* A scene's live content is opaque, the page's ground under it, so the glass never samples transparent pixels. */
+.lg-content{background:var(--bg)}
+.lg-content.glass-ground{background:var(--surface)}
+.lg-content.glass-ground.panel-ground{background:var(--panel)}
+.lg-content.glass-ground.bg-ground{background:var(--bg)}
+/* A GlassRange fills its cell, in the 44 px row of the native range it replaces. */
+.range-scene{min-width:0}
+.range-scene .lg-slider{width:100%}
+.range-scene .lg-slider-control{height:var(--ctl)}
+/* Shadows of glass that is clipped to its shape (the library writes a clip-path on every surface): cast from a wrapper
+   or a parent that is not clipped, along the opaque cores, as the core and shell shadows were before. */
+.shell-drop{filter:drop-shadow(0 1px 1px rgba(0,0,0,.18)) drop-shadow(0 16px 22px rgba(0,0,0,.32))}
+.dock{filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)) drop-shadow(0 16px 22px rgba(0,0,0,.35))}
+.dlg-drop{display:flex;justify-content:center;width:100%;max-height:100%;filter:drop-shadow(0 30px 40px rgba(0,0,0,.45))}
+[data-theme="trattato"] :is(.shell-drop,.dock){filter:drop-shadow(0 1px 1px rgba(36,32,27,.08)) drop-shadow(0 16px 22px rgba(36,32,27,.16))}
+/* Sliders: the white face is clipped to its shape, so the thumb itself (not clipped) carries the 3:1 ring and, from the keyboard, the focus ring. */
+.lg-slider-thumb{border-radius:999px;box-shadow:var(--knob-shadow)}
+.lg-slider-thumb:has(input:focus-visible){box-shadow:var(--knob-shadow),0 0 0 4px var(--btn-focus)}
+/* Focus rings of the library's tabs: the tab is clipped to its capsule and the library flattens its radius inline, so the ring is inset and follows the capsule. */
+.seg-track .lg-tab:focus-visible{outline:var(--btn-focus-ring);outline-offset:-3px;border-radius:var(--lens-r,999px)!important}

@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { DICTATION_SHORT, useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
+import {
+  GlassContent,
+  GlassMenu,
+  GlassMenuContent,
+  GlassMenuGroup,
+  GlassMenuGroupLabel,
+  GlassMenuItem,
+  GlassMenuTrigger
+} from '@glass-sdk/liquid-glass'
+import { ViewScene } from '../components/glass'
 import type { Notebook } from '../../../shared/notebook-types'
 import type { TreeNode } from './build-tree'
 import { IconPanel, IconUpload } from './icons'
@@ -49,21 +59,12 @@ export function NotebookPanel({
   const naming = nameMic.state !== 'idle'
   const [menu, setMenu] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!api.notebook) return
     const load = (): void => void api.notebook.list().then(setList, () => undefined)
     load()
     return api.notebook.onUpdate(load)
   }, [api])
-  useEffect(() => {
-    if (!menu) return
-    const off = (e: MouseEvent): void => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenu(false)
-    }
-    document.addEventListener('mousedown', off)
-    return () => document.removeEventListener('mousedown', off)
-  }, [menu])
 
   const importInto = async (id: string | null): Promise<void> => {
     setMenu(false)
@@ -82,184 +83,168 @@ export function NotebookPanel({
 
   return (
     <aside className="right" aria-label="Notebook e note di Obsidian">
-      <div className="ph drag">
-        <button
-          type="button"
-          className="icon-btn nodrag"
-          aria-label="Chiudi il pannello Notebook"
-          onClick={onClose}
-        >
-          <IconPanel />
-        </button>
-        <div className="imp-wrap nodrag" ref={menuRef}>
+      {/* The panel is a scene for the import menu: its sections are the live content the menu's glass refracts. */}
+      <ViewScene className="aside-scene">
+        <div className="ph drag">
           <button
             type="button"
-            className="btn-imp on"
-            aria-haspopup="menu"
-            aria-expanded={menu}
-            onClick={() => setMenu((m) => !m)}
+            className="icon-btn nodrag"
+            aria-label="Chiudi il pannello Notebook"
+            onClick={onClose}
           >
-            <IconUpload />
-            Importa fonti
+            <IconPanel />
           </button>
-          {menu && (
-            <div
-              className="imp-menu glass glass-text"
-              role="menu"
-              aria-label="In quale notebook?"
-              onKeyDown={(e) => {
-                const items = [
-                  ...e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]')
-                ]
-                const i = items.indexOf(document.activeElement as HTMLElement)
-                if (e.key === 'Escape') setMenu(false)
-                else if (e.key === 'ArrowDown') items[(i + 1) % items.length]?.focus()
-                else if (e.key === 'ArrowUp') items[(i - 1 + items.length) % items.length]?.focus()
-                else return
-                e.preventDefault()
-              }}
-            >
-              <span className="lab">In quale notebook?</span>
-              {list.map((n) => (
-                <button
-                  key={n.id}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => void importInto(n.id)}
-                >
-                  {n.name}
-                </button>
-              ))}
+          {/* The library's menu: positioning, focus, keyboard and outside clicks are Base UI's; the popup is glass. */}
+          <div className="imp-wrap nodrag">
+            <GlassMenu open={menu} onOpenChange={setMenu}>
+              <GlassMenuTrigger render={<button type="button" className="btn-imp on" />}>
+                <IconUpload />
+                Importa fonti
+              </GlassMenuTrigger>
+              <GlassMenuContent
+                className="imp-menu glass-text"
+                aria-label="In quale notebook?"
+                side="bottom"
+                align="end"
+                sideOffset={6}
+                radius={18}
+              >
+                <GlassMenuGroup>
+                  <GlassMenuGroupLabel className="lab">In quale notebook?</GlassMenuGroupLabel>
+                  {list.map((n) => (
+                    <GlassMenuItem key={n.id} onClick={() => void importInto(n.id)}>
+                      {n.name}
+                    </GlassMenuItem>
+                  ))}
+                  <GlassMenuItem className="new" onClick={() => void importInto(null)}>
+                    Nuovo notebook…
+                  </GlassMenuItem>
+                </GlassMenuGroup>
+              </GlassMenuContent>
+            </GlassMenu>
+          </div>
+        </div>
+        <GlassContent layout="flow" className="aside-body">
+          {error && (
+            <p className="panel-alert" role="alert">
+              {error}
+            </p>
+          )}
+          <section
+            className="nb-sec"
+            aria-label="Notebook"
+            style={notebooksHeight ? { maxHeight: notebooksHeight } : undefined}
+          >
+            <div className="sec-head">
+              <h2>Notebook</h2>
               <button
                 type="button"
-                role="menuitem"
-                className="new"
-                onClick={() => void importInto(null)}
+                className="mini"
+                aria-expanded={creating}
+                aria-label="Nuovo notebook"
+                onClick={() => setCreating((c) => !c)}
               >
-                Nuovo notebook…
+                + Nuovo
               </button>
             </div>
-          )}
-        </div>
-      </div>
-      {error && (
-        <p className="panel-alert" role="alert">
-          {error}
-        </p>
-      )}
-      <section
-        className="nb-sec"
-        aria-label="Notebook"
-        style={notebooksHeight ? { maxHeight: notebooksHeight } : undefined}
-      >
-        <div className="sec-head">
-          <h2>Notebook</h2>
-          <button
-            type="button"
-            className="mini"
-            aria-expanded={creating}
-            aria-label="Nuovo notebook"
-            onClick={() => setCreating((c) => !c)}
-          >
-            + Nuovo
-          </button>
-        </div>
-        {creating && (
-          <>
-            <form
-              className="nb-new"
-              onSubmit={(e) => {
-                e.preventDefault()
-                const n = name.trim()
-                if (!n || naming) return
-                void api.notebook.create(n).then(
-                  (id) => {
-                    setName('')
-                    setCreating(false)
-                    onOpen(id)
-                  },
-                  (er) => setError(clean(er))
-                )
-              }}
-            >
-              <div className="mic-field mic-fill">
-                <input
-                  ref={nameField}
-                  readOnly={naming}
-                  autoFocus
-                  aria-label="Nome del notebook"
-                  placeholder="Per esempio: Analisi 1"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-                <MicButton dictation={nameMic} size="sm" />
-              </div>
-              <button type="submit" className="btn pri" disabled={naming}>
-                Crea
-              </button>
-            </form>
-            <DictationError dictation={nameMic} />
-          </>
-        )}
-        {list.length === 0 ? (
-          <p className="empty">
-            Nessun notebook ancora: le tue fonti (PDF, slide, registrazioni, video) e una chat che
-            risponde solo da quelle.
-          </p>
-        ) : (
-          <ul className="sessions scroll">
-            {list.map((n) => {
-              const working = n.sources.some(
-                (s) => s.status === 'queued' || s.status === 'processing'
-              )
-              return (
-                <li key={n.id}>
-                  <button type="button" onClick={() => onOpen(n.id)}>
-                    <span className={'dot' + (working ? '' : ' nv-ready')} />
-                    <span className="t">{n.name}</span>
-                    <span className="s">
-                      {n.sources.length === 1 ? '1 fonte' : `${n.sources.length} fonti`}
-                      {n.subject ? ` · ${n.subject}` : ''}
-                      {working ? ' · in lavorazione' : ''}
-                    </span>
+            {creating && (
+              <>
+                <form
+                  className="nb-new"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    const n = name.trim()
+                    if (!n || naming) return
+                    void api.notebook.create(n).then(
+                      (id) => {
+                        setName('')
+                        setCreating(false)
+                        onOpen(id)
+                      },
+                      (er) => setError(clean(er))
+                    )
+                  }}
+                >
+                  <div className="mic-field mic-fill">
+                    <input
+                      ref={nameField}
+                      readOnly={naming}
+                      autoFocus
+                      aria-label="Nome del notebook"
+                      placeholder="Per esempio: Analisi 1"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                    <MicButton dictation={nameMic} size="sm" />
+                  </div>
+                  <button type="submit" className="btn pri" disabled={naming}>
+                    Crea
                   </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
-      {onNotebooksHeight ? (
-        <Splitter
-          orientation="horizontal"
-          label="Altezza dei notebook"
-          value={notebooksHeight ?? 280}
-          min={120}
-          max={900}
-          onChange={onNotebooksHeight}
-          className="sec-split"
-        />
-      ) : (
-        <div className="divider" />
-      )}
-      <section className="psec scroll obs-sec" aria-label="Note di Obsidian">
-        <h2>Note di Obsidian</h2>
-        {tree.length ? (
-          <NoteTree nodes={tree} onOpen={(path) => onOpenNote?.(path)} />
-        ) : (
-          <p className="empty">Nessuna nota letta dal vault.</p>
-        )}
-      </section>
-      <div className="pf">
-        <div className="row">
-          <span className="vp" title={vaultPath}>
-            {vaultPath ? `Vault: ${vaultPath.split('/').pop()}` : 'Vault non scelto'}
-          </span>
-          <button type="button" className="mini" onClick={onChooseVault}>
-            Cambia cartella del vault
-          </button>
-        </div>
-      </div>
+                </form>
+                <DictationError dictation={nameMic} />
+              </>
+            )}
+            {list.length === 0 ? (
+              <p className="empty">
+                Nessun notebook ancora: le tue fonti (PDF, slide, registrazioni, video) e una chat che
+                risponde solo da quelle.
+              </p>
+            ) : (
+              <ul className="sessions scroll">
+                {list.map((n) => {
+                  const working = n.sources.some(
+                    (s) => s.status === 'queued' || s.status === 'processing'
+                  )
+                  return (
+                    <li key={n.id}>
+                      <button type="button" onClick={() => onOpen(n.id)}>
+                        <span className={'dot' + (working ? '' : ' nv-ready')} />
+                        <span className="t">{n.name}</span>
+                        <span className="s">
+                          {n.sources.length === 1 ? '1 fonte' : `${n.sources.length} fonti`}
+                          {n.subject ? ` · ${n.subject}` : ''}
+                          {working ? ' · in lavorazione' : ''}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </section>
+          {onNotebooksHeight ? (
+            <Splitter
+              orientation="horizontal"
+              label="Altezza dei notebook"
+              value={notebooksHeight ?? 280}
+              min={120}
+              max={900}
+              onChange={onNotebooksHeight}
+              className="sec-split"
+            />
+          ) : (
+            <div className="divider" />
+          )}
+          <section className="psec scroll obs-sec" aria-label="Note di Obsidian">
+            <h2>Note di Obsidian</h2>
+            {tree.length ? (
+              <NoteTree nodes={tree} onOpen={(path) => onOpenNote?.(path)} />
+            ) : (
+              <p className="empty">Nessuna nota letta dal vault.</p>
+            )}
+          </section>
+          <div className="pf">
+            <div className="row">
+              <span className="vp" title={vaultPath}>
+                {vaultPath ? `Vault: ${vaultPath.split('/').pop()}` : 'Vault non scelto'}
+              </span>
+              <button type="button" className="mini" onClick={onChooseVault}>
+                Cambia cartella del vault
+              </button>
+            </div>
+          </div>
+        </GlassContent>
+      </ViewScene>
     </aside>
   )
 }

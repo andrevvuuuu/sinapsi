@@ -22,18 +22,18 @@
 .pr-body{grid-template-rows:minmax(0,1fr)}
 .pr-body>.side{grid-area:1/2}
 /* The scrolling column starts under the glass bar (same place on screen, offset by its padding). */
-.pr-scroll,.pr>.pr-col,.pr-setup{margin-top:calc(-1 * var(--topbar-full));--scroll-edge-top:var(--topbar-full)}
+.pr-scroll,.pr>[data-glass-blur-host]>.pr-col,.pr-setup{margin-top:calc(-1 * var(--topbar-full));--scroll-edge-top:var(--topbar-full)}
 .pr-scroll{overflow:auto;min-height:0;display:flex;flex-direction:column}
-/* It fades under the dock too; the column keeps the dock's real height (--dock-h, measured) free at its end. */
-.pr-scroll{grid-area:1/1;--scroll-edge-bottom:var(--dock-h,0px)}
+/* The column keeps the dock's real height (--dock-h, measured) free at its end. */
+.pr-scroll{grid-area:1/1}
 .pr-scroll>.pr-col{padding-bottom:calc(var(--dock-h,0px) + var(--s-4))}
 .pr-end{scroll-margin-bottom:calc(var(--dock-h,0px) + var(--s-4))}
 .pr-col{width:100%;max-width:760px;margin:0 auto;padding:var(--s-7) var(--s-6) var(--s-8);flex:1}
-.pr-scroll>.pr-col,.pr>.pr-col{padding-top:calc(var(--s-7) + var(--topbar-full))}
-/* The exam views put the column straight under .pr: it scrolls by itself. */
-.pr>.pr-col{overflow:auto;min-height:0;max-width:none;padding-left:max(24px,calc((100% - 712px) / 2));padding-right:max(24px,calc((100% - 712px) / 2))}
+.pr-scroll>.pr-col,.pr>[data-glass-blur-host]>.pr-col{padding-top:calc(var(--s-7) + var(--topbar-full))}
+/* The exam views put the column straight under .pr (inside the library's transparent content wrapper): it scrolls by itself, the scene's live content. */
+.pr>[data-glass-blur-host]>.pr-col{--scroll-pad-top:calc(var(--s-7) + var(--topbar-full));overflow:auto;min-height:0;max-width:none;padding-left:max(24px,calc((100% - 712px) / 2));padding-right:max(24px,calc((100% - 712px) / 2))}
 /* 40 px below the setup (a multiple of 4 past the --s-* steps), as under the review's column. */
-.pr-setup{overflow:auto;padding:calc(var(--s-7) + var(--topbar-full)) var(--s-6) 40px}
+.pr-setup{--scroll-pad-top:calc(var(--s-7) + var(--topbar-full));overflow:auto;padding:calc(var(--s-7) + var(--topbar-full)) var(--s-6) 40px}
 .pr-setup>*{max-width:760px;margin-left:auto;margin-right:auto}
 .pr-lead{margin:0 auto var(--s-4)}
 .pr .msg{margin:0 0 var(--s-4);animation:pr-in .4s var(--ease-out)}
@@ -75,14 +75,11 @@
 .pr .inner.has-scroll>*{flex:none}
 .pr .inner.has-scroll>.dock-scroll{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;margin:-4px -6px;padding:4px 6px}
 /* A short scroll edge fade only on the side where content is hidden (data-more-*, useScrollEdges). */
-.pr .dock-scroll.scroll-edge{--scroll-edge-top:0px;--scroll-edge-bottom:0px}
-.pr .dock-scroll[data-more-above]{--scroll-edge-top:18px}
-.pr .dock-scroll[data-more-below]{--scroll-edge-bottom:18px}
 /* The dock's shell and core, as the session's: a 6 px ring, 14/16 px inside the core (the in-dock rhythm keeps the base values,
    so the dock never grows past its rest height: .inner .st 4/10, .work 8, .row 10 are the documented exceptions). */
 .pr .shell{padding:6px;border-radius:24px}
 /* The material box in the setup sits in the page, not over it: it keeps its frosted frame, no glass (5 px + a 1 px border = the 6 px ring). */
-.pr .shell:not(.glass){padding:5px;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--hair);backdrop-filter:blur(16px)}
+.pr .shell:not(.lg-surface){padding:5px;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--hair);backdrop-filter:blur(16px)}
 .pr .inner{border-radius:19px;background:var(--surface);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);padding:14px 16px}
 .pr .inner .st{margin:4px 0 10px;max-height:160px;overflow:auto}
 /* The work field: the control outline, accent on focus. */
@@ -177,7 +174,6 @@ button.mt-chip:active{background:var(--btn-secondary-bg-pressed)}
 .pr .dur{display:flex;padding:3px;border-radius:var(--r-pill);gap:2px}
 .pr .dur button{min-height:var(--ctl);padding:0 var(--s-4);border:0;border-radius:var(--r-pill);background:transparent;color:var(--muted);font:var(--fw-medium) var(--fs-footnote) var(--mono);cursor:pointer;white-space:nowrap;transition:color .15s var(--ease-out)}
 .pr .dur button:hover{color:var(--ink)}
-.pr .dur button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--inner),0 1px 3px rgba(0,0,0,.2)}
 /* Altro…: the minutes between two 44 px steppers, in a pill as tall as the tracks beside it. */
 .pr .custom{display:inline-flex;align-items:center;gap:var(--s-1);padding:3px;border-radius:var(--r-pill);border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent)}
 .pr .custom button{width:var(--ctl);height:var(--ctl);border-radius:50%;border:0;background:var(--faint);cursor:pointer;font:var(--fw-medium) var(--fs-body) var(--mono);transition:var(--btn-transition)}
@@ -224,8 +220,10 @@ button.mt-chip:active{background:var(--btn-secondary-bg-pressed)}
 .pr .ghost.pr-file:focus-within{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset)}
 .pr .mt-cb:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:5px}
 /* dialogs */
-.pr-overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:var(--s-6);background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
-.pr .mt-dlg{--glass-shadow:0 40px 100px -30px rgba(0,0,0,.7);display:flex;flex-direction:column;width:min(1040px,100%);height:min(720px,calc(100vh - 48px));border-radius:24px}
+.pr-overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:var(--s-6)}
+/* The scrim is the overlay scene's content (GlassOverlay): the dialog's glass shell refracts it. */
+.pr-overlay .overlay-scrim.overlay-scrim{background:rgba(0,0,0,.55);backdrop-filter:blur(4px)}
+.pr .mt-dlg{display:flex;flex-direction:column;width:min(1040px,100%);height:min(720px,calc(100vh - 48px));border-radius:24px}
 /* The 6 px glass ring replaced a 1 px border: the paddings at the core's edges are 5 px less, so the content stays where it was
    (the same compensation as the settings dialog). */
 .pr .mt-core{display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden}
@@ -291,7 +289,7 @@ button.mt-chip:active{background:var(--btn-secondary-bg-pressed)}
 .pr .mt-file .pp{margin-left:auto;font:var(--fw-medium) var(--fs-footnote) var(--mono);color:var(--muted)}
 .pr .mt-file:has(.mt-cb:checked){border-color:var(--ink);background:var(--faint)}
 .pr .mt-df{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) 13px 7px}
-.pr-photo{--glass-shadow:0 40px 100px -30px rgba(0,0,0,.7);width:min(720px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px}
+.pr-photo{width:min(720px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px}
 .pr-photo-core{overflow:auto}
 .pr-photo-body{padding:var(--s-1) 13px 13px;display:flex;flex-direction:column;gap:var(--s-3)}
 .pr-photo select{min-height:var(--ctl);border-radius:var(--r-md);border:1px solid var(--ctl-edge);background:var(--bg);color:var(--ink);padding:0 var(--s-3);font-size:var(--fs-body)}

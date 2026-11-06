@@ -7,7 +7,7 @@ import type { Settings } from '../../../shared/settings-schema'
 import { IconChevron, IconGear, IconPanel } from './icons'
 import { SettingsDialog } from './SettingsDialog'
 import { Splitter } from './Splitter'
-import { SegLens } from '../components/SegLens'
+import { Seg } from '../components/glass'
 import { Inline } from '../nota/Md'
 
 const KINDS = ['Tutte', 'Apprendimento', 'Pratica', 'Ripasso'] as const
@@ -118,14 +118,15 @@ export function LeftPanel(p: Props): React.JSX.Element {
         aria-label="Sessioni"
         style={p.sessionsHeight ? { maxHeight: p.sessionsHeight } : undefined}
       >
-        <div className="seg seg-track glass glass-text" role="group" aria-label="Sessioni da mostrare">
-          {KINDS.map((k) => (
-            <button key={k} type="button" aria-pressed={k === kind} onClick={() => setKind(k)}>
-              {k}
-            </button>
-          ))}
-          <SegLens />
-        </div>
+        {/* The panel under the selector is flat: a scene of its own over a ground of the panel's colour. */}
+        <Seg
+          label="Sessioni da mostrare"
+          className="seg glass-text"
+          ground="panel"
+          value={kind}
+          onChange={setKind}
+          options={KINDS.map((k) => ({ value: k, label: k }))}
+        />
         <div className="sess-search">
           {searching ? (
             <div className="mic-field">

@@ -3,7 +3,8 @@ import { matchConcepts } from '../../../shared/practice-match'
 import type { Catalog } from '../../../shared/practice-types'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
-import { SegLens } from '../components/SegLens'
+import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
+import { ScrollEdges, Seg, ViewScene } from '../components/glass'
 import { MaterialDialog } from './MaterialDialog'
 import { clampMinutes, summary } from './summary'
 import './practice.css'
@@ -40,6 +41,8 @@ export function PracticeSetup({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const go = useRef<HTMLButtonElement>(null)
+  // The setup under the bar, the scene's live content.
+  const page = useRef<HTMLDivElement>(null)
   const freeField = useRef<HTMLTextAreaElement>(null)
   const dictation = useDictation({ target: freeField, value: free, onChange: setFree })
   const dictating = dictation.state !== 'idle'
@@ -102,14 +105,15 @@ export function PracticeSetup({
   }
 
   return (
-    <div className="pr">
-      <header className="pr-top drag glass glass-bar glass-text">
+    <ViewScene className="pr">
+      <GlassSurface render={<header />} radius={0} className="pr-top drag glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
         <h1>Pratica</h1>
-      </header>
-      <div className="pr-setup scroll-edge">
+      </GlassSurface>
+      <ScrollEdges target={page} size={72} />
+      <GlassContent layout="scroll" className="pr-setup edge-fade" ref={page}>
         <p className="pr-lead">
           {initial
             ? 'Ho preparato il materiale del consiglio che hai scelto: puoi aggiungere o togliere concetti prima di iniziare.'
@@ -229,26 +233,17 @@ export function PracticeSetup({
               {mode === 'exam' && (
                 <div className="examrow">
                   <span className="lab">Durata</span>
-                  <div className="dur seg-track glass glass-text" role="group" aria-label="Durata">
-                    {(['30', '60', '90'] as const).map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        aria-pressed={preset === d}
-                        onClick={() => setPreset(d)}
-                      >
-                        {d} min
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      aria-pressed={preset === 'custom'}
-                      onClick={() => setPreset('custom')}
-                    >
-                      Altro…
-                    </button>
-                    <SegLens />
-                  </div>
+                  <Seg
+                    label="Durata"
+                    className="dur glass-text"
+                    ground="surface"
+                    value={preset}
+                    onChange={setPreset}
+                    options={[
+                      ...(['30', '60', '90'] as const).map((d) => ({ value: d, label: `${d} min` })),
+                      { value: 'custom' as const, label: 'Altro…' }
+                    ]}
+                  />
                   {preset === 'custom' && (
                     <div className="custom">
                       <button
@@ -280,15 +275,17 @@ export function PracticeSetup({
                     </div>
                   )}
                   <span className="lab">Dove</span>
-                  <div className="dur seg-track glass glass-text" role="group" aria-label="Dove scrivi">
-                    <button type="button" aria-pressed={!paper} onClick={() => setPaper(false)}>
-                      Al computer
-                    </button>
-                    <button type="button" aria-pressed={paper} onClick={() => setPaper(true)}>
-                      Carta e penna
-                    </button>
-                    <SegLens />
-                  </div>
+                  <Seg
+                    label="Dove scrivi"
+                    className="dur glass-text"
+                    ground="surface"
+                    value={paper ? 'paper' : 'pc'}
+                    onChange={(v) => setPaper(v === 'paper')}
+                    options={[
+                      { value: 'pc', label: 'Al computer' },
+                      { value: 'paper', label: 'Carta e penna' }
+                    ]}
+                  />
                   <div className="rules">
                     <span>✕ niente indizi</span>
                     <span>✕ niente correzione durante</span>
@@ -343,7 +340,7 @@ export function PracticeSetup({
             </div>
           </div>
         )}
-      </div>
+      </GlassContent>
       {dialog && catalog && (
         <MaterialDialog
           catalog={catalog}
@@ -357,6 +354,6 @@ export function PracticeSetup({
           }}
         />
       )}
-    </div>
+    </ViewScene>
   )
 }

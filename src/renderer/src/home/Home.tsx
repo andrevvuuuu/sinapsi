@@ -10,6 +10,8 @@ import { NotebookPanel } from './NotebookPanel'
 import { clampLayout, LIMITS, loadLayout, saveLayout, type Layout } from './layout'
 import { Splitter } from './Splitter'
 import { GraphView } from '../graph/GraphView'
+import { GlassContent } from '@glass-sdk/liquid-glass'
+import { ViewScene } from '../components/glass'
 import './home.css'
 
 function applyTheme(theme: Settings['theme']): void {
@@ -190,7 +192,8 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
         sessionsHeight={layout.sessions}
         onSessionsHeight={(v) => setLayout({ sessions: v })}
       />
-      <main className="center">
+      {/* The centre is a glass scene: the graph (or its placeholder) is the live content under the composer and the graph controls. */}
+      <ViewScene className="center" role="main">
         <div className="topbar drag" />
         <div className="reopen l">
           <button type="button" className="icon-btn" aria-label="Apri il pannello laterale" onClick={() => setLeft(true)}>
@@ -235,7 +238,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
             onStudy={study}
           />
         ) : (
-          <div className="placeholder">
+          <GlassContent className="placeholder">
             <div>
               <div className="orb" aria-hidden="true">
                 <i />
@@ -247,7 +250,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
                 {index && 'notes' in index ? `${index.notes.length} note lette dal tuo vault. ` : ''}Scrivi qui sotto cosa vuoi imparare.
               </p>
             </div>
-          </div>
+          </GlassContent>
         )}
         {toast && (
           <div className="toast" role="status">
@@ -266,7 +269,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
             onOpenSession?.(id)
           }}
         />
-      </main>
+      </ViewScene>
       <NotebookPanel
         onClose={() => setRight(false)}
         onOpen={(id) => onOpenNotebook?.(id)}

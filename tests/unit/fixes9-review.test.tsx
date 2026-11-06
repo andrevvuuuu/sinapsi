@@ -67,7 +67,7 @@ describe('the due badge', () => {
       review: { memory: vi.fn(async () => Object.fromEntries(Array.from({ length: due }, (_, i) => [`c${i}`, { due: 1 }]))), sessions: vi.fn(async () => []) }
     } as never
     render(<Home />)
-    await screen.findByRole('group', { name: 'Tipo di sessione' })
+    await screen.findByRole('tablist', { name: 'Tipo di sessione' })
     due = 3
     await act(async () => void window.dispatchEvent(new Event('focus')))
     expect((await screen.findByText('3')).className).toBe('due')

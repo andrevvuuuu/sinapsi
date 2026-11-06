@@ -14,7 +14,7 @@ test('a review of freshly extracted concepts updates their memory in the graph',
   await makeNotaViva(win, 'Teorema di Rolle')
 
   // composer → Ripasso, no text
-  await win.getByRole('group', { name: 'Tipo di sessione' }).getByRole('button', { name: /^Ripasso/ }).click()
+  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: /^Ripasso/ }).click()
   await win.getByRole('button', { name: 'Inizia' }).click()
   await expect(win.getByRole('heading', { name: /3 concetti da fissare/ })).toBeVisible()
   await expect(win.getByRole('group', { name: 'Esercizi' }).getByRole('button')).toHaveCount(11)
@@ -48,7 +48,7 @@ test('Spiegalo tu: a spoken explanation, one question from the picky student, th
   await makeNotaViva(win, 'Teorema di Rolle')
   // Only Spiegalo tu, so the first item is one.
   await win.evaluate(() => window.sinapsi.settings.set({ exerciseTypes: ['explain'] }))
-  await win.getByRole('group', { name: 'Tipo di sessione' }).getByRole('button', { name: /^Ripasso/ }).click()
+  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: /^Ripasso/ }).click()
   await win.getByRole('button', { name: 'Inizia' }).click()
   await expect(win.getByRole('heading', { name: /concetti da fissare/ })).toBeVisible()
   await expect(win.getByRole('group', { name: 'Esercizi' }).getByRole('button', { pressed: true })).toHaveText(['Spiegalo tu'])

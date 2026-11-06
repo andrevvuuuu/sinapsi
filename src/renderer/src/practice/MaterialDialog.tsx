@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { GlassSurface } from '@glass-sdk/liquid-glass'
+import { GlassOverlay } from '../components/glass'
 import type { Catalog, CatalogConcept } from '../../../shared/practice-types'
 import { DICTATION_SHORT, useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { summary } from './summary'
+import { focusWhenShown } from '../components/glass-theme'
 
 type Filter = 'weak' | 'due' | 'never' | null
 const norm = (s: string): string => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -88,7 +91,8 @@ export function MaterialDialog({
     onChange: setQ,
     maxSeconds: DICTATION_SHORT
   })
-  useEffect(() => search.current?.focus(), [])
+  // The dialog's glass shell shows a frame after it mounts: the field takes the focus once it can.
+  useEffect(() => focusWhenShown(search.current), [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -132,8 +136,8 @@ export function MaterialDialog({
   const open = !!(q || filter)
 
   return (
-    <div className="pr-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="mt-dlg glass glass-shell" role="dialog" aria-modal="true" aria-labelledby="mt-dt">
+    <GlassOverlay className="pr-overlay" onClose={onClose}>
+      <GlassSurface radius={24} className="mt-dlg glass-shell" role="dialog" aria-modal="true" aria-labelledby="mt-dt">
         <div className="mt-core dlg-core">
           <div className="mt-dh">
             <h2 id="mt-dt">Scegli il materiale</h2>
@@ -331,7 +335,7 @@ export function MaterialDialog({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </GlassSurface>
+    </GlassOverlay>
   )
 }

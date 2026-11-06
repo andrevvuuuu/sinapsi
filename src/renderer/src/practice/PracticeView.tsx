@@ -4,12 +4,14 @@ import { hintBlocked, MODE_IT, OUTCOME_IT, type Submission } from '../../../shar
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { useDockHeight } from '../components/useDockHeight'
-import { useScrollEdges } from '../components/useScrollEdges'
+import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
+import { GlassShell, ScrollEdges, ViewScene } from '../components/glass'
 import { RichText } from '../session/RichText'
 import { ExamView } from './ExamView'
 import { snippet } from './exam-format'
 import { PhotoButton } from './PhotoButton'
 import './practice.css'
+import { focusWhenShown } from '../components/glass-theme'
 
 const PHASE_IT = { warmup: 'Riscaldamento', body: 'Corpo', retest: 'Ritest', done: 'Fine' } as const
 const OUTCOME_CHIP = {
@@ -40,7 +42,6 @@ function ProblemDock({
   const dictation = useDictation({ target: area, value: text, onChange: setText })
   const dictating = dictation.state !== 'idle'
   const middle = useRef<HTMLDivElement>(null)
-  useScrollEdges(middle)
   // One request at a time: a double click must not cost a second hint.
   const once = async (sub: Submission): Promise<boolean> => {
     if (sending.current) return false
@@ -56,7 +57,8 @@ function ProblemDock({
       setBusy(false)
     }
   }
-  useEffect(() => area.current?.focus(), [problem.id])
+  // Once the dock's glass shell shows (a frame after it mounts).
+  useEffect(() => focusWhenShown(area.current), [problem.id])
   const ready = !!text.trim() || !!photoText || line !== undefined
   const send = async (): Promise<void> => {
     if (!ready || dictating) return
@@ -72,14 +74,16 @@ function ProblemDock({
     setLine(undefined)
   }
   return (
-    <section className="shell glass" aria-label="Problema">
+    <GlassShell render={<section />} aria-label="Problema">
+      {/* Says there is more where the lines and the work scroll: the library's scroll edge, only where content is hidden. */}
+      <ScrollEdges target={middle} size={18} blur={6} />
       {/* The statement and the send row stay in view; in a tall dock the lines and the work scroll between them. */}
       <div className="inner has-scroll">
         <div className="lab">Problema</div>
         <div className="st">
           <RichText md={problem.statement} />
         </div>
-        <div className="dock-scroll scroll-edge" ref={middle}>
+        <div className="dock-scroll" ref={middle}>
           {problem.lines && (
             <div className="lines" role="group" aria-label="Righe della dimostrazione">
               {problem.lines.map((l, i) => (
@@ -167,7 +171,7 @@ function ProblemDock({
           </button>
         </div>
       </div>
-    </section>
+    </GlassShell>
   )
 }
 
@@ -277,8 +281,8 @@ export function PracticeView({
   }, [])
 
   return (
-    <div className="pr">
-      <header className="pr-top drag glass glass-bar glass-text">
+    <ViewScene className="pr">
+      <GlassSurface render={<header />} radius={0} className="pr-top drag glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
@@ -301,9 +305,11 @@ export function PracticeView({
             Termina
           </button>
         )}
-      </header>
+      </GlassSurface>
       <div className="pr-body">
-        <div className="pr-scroll scroll-edge" ref={scroller}>
+        {/* The conversation is the scene's live content; the library's scroll edge where it passes under the bar and the dock. */}
+        <ScrollEdges target={scroller} size={72} />
+        <GlassContent layout="scroll" className="pr-scroll edge-fade" ref={scroller}>
           <div className="pr-col" aria-live="polite">
             {s.items.map((it, i) => {
               if (it.kind === 'learner') {
@@ -413,7 +419,7 @@ export function PracticeView({
             )}
             <div ref={end} className="pr-end" />
           </div>
-        </div>
+        </GlassContent>
         {/* Floats over the bottom of the conversation, which reserves its height (--dock-h). */}
         <div className="dockwrap" ref={dockwrap}>
           <div className="dock">
@@ -426,7 +432,7 @@ export function PracticeView({
               <ProblemDock key={active.id} problem={active} sessionId={id} onSend={send} />
             )}
             {learner && !active && (
-              <div className="shell glass">
+              <GlassShell>
                 <form
                   className="inner pr-ask"
                   onSubmit={(e) => {
@@ -458,7 +464,7 @@ export function PracticeView({
                   </button>
                 </form>
                 <DictationError dictation={askMic} />
-              </div>
+              </GlassShell>
             )}
             {s.phase === 'done' && (
               <div className="row">
@@ -472,6 +478,6 @@ export function PracticeView({
         </div>
         <Arc state={s} />
       </div>
-    </div>
+    </ViewScene>
   )
 }

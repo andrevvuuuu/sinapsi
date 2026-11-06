@@ -1,4 +1,4 @@
-import { _electron as electron, expect, test } from '@playwright/test'
+import { _electron as electron, expect, test, type Locator } from '@playwright/test'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -70,6 +70,20 @@ test('a full learning session with the scripted tutor', async () => {
   await app.close()
 })
 
+/**
+ * The edges of a scroller that the library's scroll edges (GlassScrollEdges) blur now: each blurred edge is a ramp in the
+ * SVG filter it puts on the scroller (a white flood along that edge), so its place says which edge it is.
+ */
+async function blurredEdges(scroller: Locator): Promise<string[]> {
+  return scroller.evaluate((el) => {
+    const id = (el as HTMLElement).style.filter.match(/url\(["']?#([^"')]+)/)?.[1]
+    const filter = id ? document.getElementById(id) : null
+    if (!filter) return []
+    const h = el.clientHeight
+    return [...filter.querySelectorAll('feFlood[result$="step"]')].map((f) => (Number(f.getAttribute('y')) < h / 2 ? 'top' : 'bottom')).sort()
+  })
+}
+
 test('long measure question in a 720px-high window', async () => {
   const app = await electron.launch({
     args: ['.'],
@@ -94,10 +108,9 @@ test('long measure question in a 720px-high window', async () => {
   const tutor = win.locator('.sess .msg').filter({ hasText: 'Buon Ordinamento' }).last()
   const barBottom = (await win.locator('.sess .top').boundingBox())!.y + (await win.locator('.sess .top').boundingBox())!.height
   expect((await tutor.boundingBox())!.y).toBeGreaterThanOrEqual(barBottom - 1)
-  // The options area inside the dock says there is more below, and only there.
+  // The options area inside the dock says there is more below, and only there (the library's scroll edge).
   const middle = win.locator('.dock .dock-scroll')
-  await expect(middle).toHaveAttribute('data-more-below', '')
-  await expect(middle).not.toHaveAttribute('data-more-above', '')
+  await expect.poll(() => blurredEdges(middle)).toEqual(['bottom'])
   await win.screenshot({ path: 'test-results/session-measure-long.png' })
   // The keyboard reaches a hidden option: focus scrolls it into view inside the dock.
   await win.getByRole('button', { name: /^D:/ }).focus()
@@ -108,10 +121,9 @@ test('long measure question in a 720px-high window', async () => {
   expect(idkBox.y).toBeGreaterThanOrEqual(area.y)
   expect(idkBox.y + idkBox.height).toBeLessThanOrEqual(area.y + area.height)
   await middle.evaluate((el) => el.scrollTo({ top: el.scrollHeight }))
-  await expect(middle).not.toHaveAttribute('data-more-below', '')
-  await expect(middle).toHaveAttribute('data-more-above', '')
+  await expect.poll(() => blurredEdges(middle)).toEqual(['top'])
   await middle.evaluate((el) => el.scrollTo({ top: 0 }))
-  await expect(middle).toHaveAttribute('data-more-below', '')
+  await expect.poll(() => blurredEdges(middle)).toEqual(['bottom'])
   // Scrolled to the end, the last tutor message ends above the dock.
   await win.evaluate(() => {
     const el = document.querySelector('.sess .scroll')!

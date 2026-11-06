@@ -6,7 +6,8 @@ import type { ExtractorStatus, GraphData } from '../../../shared/graph-types'
 import type { VaultIndex } from '../../../shared/vault-types'
 import { DICTATION_SHORT, useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
-import { SegLens } from '../components/SegLens'
+import { GlassButton, GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
+import { SceneBoundary, Seg } from '../components/glass'
 import { RichText } from '../session/RichText'
 import { draw, radiusOf, type Colors, type Lens, type Sel } from './draw'
 import { createLayout, type Layout, type LayoutMode, type SimNode } from './layout'
@@ -55,7 +56,16 @@ const title = (index: VaultIndex, path: string): string =>
   index.notes.find((n) => n.path === path)?.title ?? path.split('/').pop()!.replace(/\.md$/, '')
 
 /** The union graph: Obsidian notes and Learn Harness concepts in one picture (approved prototype grafo-v2). */
-export function GraphView({
+/** The graph in the Home's scene (its own when mounted alone, as in the unit tests). */
+export function GraphView(props: Parameters<typeof GraphBody>[0]): React.JSX.Element {
+  return (
+    <SceneBoundary>
+      <GraphBody {...props} />
+    </SceneBoundary>
+  )
+}
+
+function GraphBody({
   index,
   onStudy,
   onOpenNote,
@@ -450,30 +460,33 @@ export function GraphView({
 
   return (
     <div className="graph" ref={wrapRef}>
-      <canvas
-        ref={canvasRef}
-        aria-label="Grafo unito: materie, note e concetti. Usa la ricerca per selezionare."
-        role="img"
-        onPointerMove={(e) => {
-          const r = e.currentTarget.getBoundingClientRect()
-          const h = pick(e.clientX - r.left, e.clientY - r.top)
-          if (JSON.stringify(h) !== JSON.stringify(hov.current)) {
-            hov.current = h
-            dirty.current = true
-            e.currentTarget.classList.toggle('hov', !!h)
-          }
-        }}
-        onPointerDown={(e) => (down.current = [e.clientX, e.clientY])}
-        onClick={(e) => {
-          if (
-            down.current &&
-            Math.hypot(e.clientX - down.current[0], e.clientY - down.current[1]) > 4
-          )
-            return
-          const r = e.currentTarget.getBoundingClientRect()
-          choose(pick(e.clientX - r.left, e.clientY - r.top))
-        }}
-      />
+      {/* The live layer the glass controls refract. */}
+      <GlassContent className="gcanvas">
+        <canvas
+          ref={canvasRef}
+          aria-label="Grafo unito: materie, note e concetti. Usa la ricerca per selezionare."
+          role="img"
+          onPointerMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            const h = pick(e.clientX - r.left, e.clientY - r.top)
+            if (JSON.stringify(h) !== JSON.stringify(hov.current)) {
+              hov.current = h
+              dirty.current = true
+              e.currentTarget.classList.toggle('hov', !!h)
+            }
+          }}
+          onPointerDown={(e) => (down.current = [e.clientX, e.clientY])}
+          onClick={(e) => {
+            if (
+              down.current &&
+              Math.hypot(e.clientX - down.current[0], e.clientY - down.current[1]) > 4
+            )
+              return
+            const r = e.currentTarget.getBoundingClientRect()
+            choose(pick(e.clientX - r.left, e.clientY - r.top))
+          }}
+        />
+      </GlassContent>
       {livePaths && livePaths.length === 0 && (
         <div className="glive-empty">
           <p>
@@ -482,10 +495,11 @@ export function GraphView({
           </p>
         </div>
       )}
-      <button
+      <GlassButton
         ref={menuBtn}
         type="button"
-        className={'gmenu-btn glass' + (menu === 'open' ? ' on' : '')}
+        size="icon"
+        className={'gmenu-btn' + (menu === 'open' ? ' on' : '')}
         aria-label="Vista del grafo"
         aria-expanded={menu === 'open'}
         aria-controls="graph-menu"
@@ -510,17 +524,19 @@ export function GraphView({
           <circle cx="8" cy="13" r="2" />
           <path d="M6.8 5.6 11 5.9M6 6.8l1.4 4.3M12 7.8l-2.7 3.6" />
         </svg>
-      </button>
+      </GlassButton>
       {menu === 'closed' && (
         <div className="gstatus-mini">
           <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
         </div>
       )}
       {menu !== 'closed' && (
-        <section
+        <GlassSurface
+          render={<section />}
           ref={panelRef}
+          radius={22}
           id="graph-menu"
-          className={'gpanel glass glass-shell' + (menu === 'closing' ? ' closing' : '')}
+          className={'gpanel glass-shell' + (menu === 'closing' ? ' closing' : '')}
           aria-label="Controlli del grafo"
           onKeyDown={(e) => {
             if (e.key === 'Escape' && !e.defaultPrevented) {
@@ -583,30 +599,22 @@ export function GraphView({
             </div>
             <div className="gsec">
               <h3>Evidenzia</h3>
-              <div
-                className="gseg glens seg-track"
-                role="group"
-                aria-label="Evidenzia"
-              >
-                {(
+              <Seg
+                label="Evidenzia"
+                track="plain"
+                className="gseg glens"
+                radius={12}
+                value={lens}
+                onChange={setLens}
+                options={(
                   [
                     ['all', 'Tutto'],
                     ['due', `Da ripassare (${counts.due})`],
                     ['never', `Mai visti (${counts.never})`],
                     ['fragile', `Basi fragili (${counts.fragile})`]
                   ] as [Lens, string][]
-                ).map(([l, label]) => (
-                  <button
-                    key={l}
-                    type="button"
-                    aria-pressed={lens === l}
-                    onClick={() => setLens(l)}
-                  >
-                    {label}
-                  </button>
-                ))}
-                <SegLens />
-              </div>
+                ).map(([l, label]) => ({ value: l, label }))}
+              />
             </div>
             <button
               type="button"
@@ -621,23 +629,15 @@ export function GraphView({
               <>
                 <div className="gsec">
                   <h3>Disposizione</h3>
-                  <div
-                    className="gseg seg-track"
-                    role="group"
-                    aria-label="Disposizione"
-                  >
-                    {MODES.map(([m, label]) => (
-                      <button
-                        key={m}
-                        type="button"
-                        aria-pressed={mode === m}
-                        onClick={() => changeMode(m)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                    <SegLens />
-                  </div>
+                  <Seg
+                    label="Disposizione"
+                    track="plain"
+                    className="gseg"
+                    radius={12}
+                    value={mode}
+                    onChange={changeMode}
+                    options={MODES.map(([m, label]) => ({ value: m, label }))}
+                  />
                   <p className="hint">{MODES.find((m) => m[0] === mode)![2]}</p>
                 </div>
                 <div className="gsec gtoggles">
@@ -662,10 +662,10 @@ export function GraphView({
             )}
             <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
           </div>
-        </section>
+        </GlassSurface>
       )}
       {model && !(livePaths && livePaths.length === 0) && (
-        <div className="gzoom glass" role="group" aria-label="Zoom">
+        <GlassSurface radius={18} className="gzoom" role="group" aria-label="Zoom">
           <button
             type="button"
             aria-label="Avvicina"
@@ -701,7 +701,7 @@ export function GraphView({
           >
             ⤢
           </button>
-        </div>
+        </GlassSurface>
       )}
       {sel && model && (
         <Card

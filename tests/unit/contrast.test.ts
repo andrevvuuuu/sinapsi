@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { materials } from '@glass-sdk/liquid-glass/core'
 
 /** WCAG 2.2 AA contrast of the theme tokens in tokens.css, both themes. */
 
@@ -62,6 +63,24 @@ function ratio(fg: RGBA, bg: RGBA): number {
 
 const GROUNDS = ['--bg', '--surface', '--panel'] as const
 
+/**
+ * What @glass-sdk/liquid-glass's Regular material shows of a uniform ground, from the library's own constants: the
+ * frost and fill blurs keep a uniform colour as it is, then the tone curve (a quadratic per channel, mixed with the
+ * input by 0.9 dark / 0.8 light, as the library's filter does in sRGB) and a light saturation.
+ */
+function regular(c: RGBA, appearance: 'dark' | 'light'): RGBA {
+  const [a, b, q, sat] = materials.regular[appearance].tone
+  const mix = appearance === 'dark' ? 0.9 : 0.8
+  const toned = [0, 1, 2].map((i) => {
+    const s = c[i] / 255
+    return (mix * (a + b * s + q * s * s) + (1 - mix) * s) * 255
+  })
+  const l = 0.2126 * toned[0] + 0.7152 * toned[1] + 0.0722 * toned[2]
+  return toned.map((v) => Math.min(255, Math.max(0, l + (v - l) * sat))).concat(1) as RGBA
+}
+/** At the labels of a bar the scroll edge band (.edge-fade, opaque --bg down to 60 % of the bar's depth, then fading) leaves at most this much of the content under it visible. */
+const UNDER_BAR = 0.3
+
 describe.each<Theme>(['lavagna', 'trattato'])('contrast in %s', (theme) => {
   const t = tokens(theme)
   const c = (n: string): RGBA => color(t, n)
@@ -79,22 +98,33 @@ describe.each<Theme>(['lavagna', 'trattato'])('contrast in %s', (theme) => {
     expect(ratio(c('--accent'), c('--bg'))).toBeGreaterThanOrEqual(3)
   })
 
-  it('text on glass, worst case: the tint over --bg or over --surface', () => {
-    const worst = Math.min(...['--bg', '--surface'].map((g) => ratio(c('--glass-ink'), over(c('--glass-tint'), c(g)))))
+  // Text and icons on Liquid Glass: the library's foreground (--lg-foreground) is the theme's --glass-ink; secondary text
+  // --glass-ink-2; accent and pen labels (session phase, score, «Dalla tua nota») --glass-accent / --glass-pen. AA over what
+  // the Regular material makes of the app's grounds and of the content under a bar, worst case the most contrasting app
+  // colour (--ink) at the share the scroll edge band leaves visible.
+  const appearance = theme === 'lavagna' ? 'dark' : 'light'
+  const glassGrounds = (): RGBA[] => {
+    const [ink, bg] = [c('--ink'), c('--bg')]
+    const content: RGBA = [ink[0], ink[1], ink[2], UNDER_BAR]
+    return [...GROUNDS.map((g) => c(g)), over(content, bg)].map((g) => regular(g, appearance))
+  }
+  it('the library foreground is the theme ink, and the scroll edge band is the one the model assumes', () => {
+    expect(t['--lg-foreground']).toBe('var(--glass-ink)')
+    expect(css).toMatch(/\.edge-fade::before\{[^}]*linear-gradient\(var\(--bg\) var\(--scroll-edge-solid,60%\),transparent\)/)
+  })
+  it.each(['--glass-ink', '--glass-ink-2', '--glass-accent', '--glass-pen'])('%s stays AA on the glass, worst case', (name) => {
+    const worst = Math.min(...glassGrounds().map((g) => ratio(c(name), g)))
     expect(worst).toBeGreaterThanOrEqual(4.5)
   })
 
-  // Accent and pen labels on the glass session bar (phase, score, «Dalla tua nota»): AA over the tint whatever scrolls
-  // under it. Mask-aware worst case: the conversation under the bar is masked by the scroll edge (it fades in across the
-  // bar's height), so at the labels it is at most 65 % visible. Grounds: the tint over --bg, over --surface, and over
-  // the most contrasting app colour (--ink) at 65 % on --bg.
-  const MASKED = 0.65
-  it.each(['--glass-accent', '--glass-pen'])('%s stays AA on the glass bar, mask-aware worst case', (name) => {
-    const [ink, bg] = [c('--ink'), c('--bg')]
-    const content: RGBA = [ink[0], ink[1], ink[2], MASKED]
-    const grounds = [bg, c('--surface'), over(content, bg)]
-    const worst = Math.min(...grounds.map((g) => ratio(c(name), over(c('--glass-tint'), g))))
-    expect(worst).toBeGreaterThanOrEqual(4.5)
+  // The chosen option of a segmented control is told from the others by its selection's ring (--seg-edge), 3:1 on the
+  // track it slides over: the glass track (the material over the app's grounds) or the faint track of a solid core. Under
+  // the ring the selection's fill is the full lens (--lens-fill) or, on glass, whatever the track shows through.
+  it('the selection of a segmented control: its ring is 3:1 on every track', () => {
+    const tracks = [...GROUNDS.map((g) => regular(c(g), appearance)), over(c('--faint'), c('--surface')), over(c('--faint'), c('--panel'))]
+    const fills = [c('--lens-fill'), ...tracks]
+    const worst = Math.min(...tracks.flatMap((track) => fills.map((fill) => ratio(over(c('--seg-edge'), fill), track))))
+    expect(worst).toBeGreaterThanOrEqual(3)
   })
 
   it.each(GROUNDS)('control edges (--ctl-edge, disabled outline, focus ring) on %s', (g) => {

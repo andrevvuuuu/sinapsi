@@ -118,6 +118,23 @@ describe('NotebookLM link', () => {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Salva link' })))
     expect(api.notebook.update).toHaveBeenCalledWith(NB, { link: 'https://notebooklm.google.com/notebook/abc' })
   })
+  it('opens the NotebookLM popover in the view (the glass bar clips what it holds), under its button, following the window', async () => {
+    mount(nb())
+    const btn = await screen.findByRole('button', { name: 'Collega NotebookLM' })
+    const link = btn.closest('.nb-link') as HTMLElement
+    const host = btn.closest('.nb') as HTMLElement
+    let right = 900
+    link.getBoundingClientRect = () => ({ top: 14, right }) as DOMRect
+    host.getBoundingClientRect = () => ({ top: 0, right: 1280 }) as DOMRect
+    fireEvent.click(btn)
+    const pop = screen.getByLabelText('Link del notebook su NotebookLM').closest('form') as HTMLElement
+    expect(pop.closest('header')).toBeNull()
+    expect(pop.parentElement).toBe(host)
+    expect([pop.style.top, pop.style.right]).toEqual(['66px', '380px'])
+    right = 1000
+    act(() => void window.dispatchEvent(new Event('resize')))
+    expect(pop.style.right).toBe('280px')
+  })
   it('opens the linked notebook', async () => {
     const api = mount(nb({ link: 'https://notebooklm.google.com/notebook/abc' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Apri in NotebookLM' }))

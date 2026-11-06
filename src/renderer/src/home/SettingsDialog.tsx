@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_ENGINES, TASKS, type Settings, type Task } from '../../../shared/settings-schema'
-import { SegLens } from '../components/SegLens'
+import { GlassSurface } from '@glass-sdk/liquid-glass'
+import { GlassOverlay, Seg } from '../components/glass'
+import { focusWhenShown } from '../components/glass-theme'
 
 const THEMES: [Settings['theme'], string][] = [
   ['lavagna', 'Lavagna'],
@@ -31,9 +33,9 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
   useEffect(() => {
     close.current = onClose
   }, [onClose])
-  // Focus the dialog once when it opens; Esc closes it from anywhere inside.
+  // Focus the dialog once when it opens, on the chosen theme (focus never selects); Esc closes it from anywhere inside.
   useEffect(() => {
-    first.current?.focus()
+    const unfocus = focusWhenShown(first.current)
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         // Handled here: the graph must not also treat this Esc as "deselect".
@@ -42,7 +44,10 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
       }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      unfocus()
+      window.removeEventListener('keydown', onKey)
+    }
   }, [])
 
   const save = async (): Promise<void> => {
@@ -62,16 +67,17 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
   }
 
   return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div
-        className="settings-dlg glass glass-shell"
+    <GlassOverlay className="overlay" onClose={onClose}>
+      <GlassSurface
+        radius={24}
+        className="settings-dlg glass-shell"
         role="dialog"
         aria-modal="true"
         aria-labelledby="st-title"
         onKeyDown={(e) => {
-          // Tab stays inside the dialog.
+          // Tab stays inside the dialog, on what Tab reaches: not the options of a segmented control that are not chosen (tabindex -1, reached with the arrows).
           if (e.key !== 'Tab') return
-          const items = [...e.currentTarget.querySelectorAll<HTMLElement>('button, input, select, textarea')].filter((x) => !x.hasAttribute('disabled'))
+          const items = [...e.currentTarget.querySelectorAll<HTMLElement>('button, input, select, textarea')].filter((x) => !x.hasAttribute('disabled') && x.getAttribute('tabindex') !== '-1')
           if (!items.length) return
           const i = items.indexOf(document.activeElement as HTMLElement)
           const next = e.shiftKey ? (i <= 0 ? items.length - 1 : i - 1) : i === items.length - 1 ? 0 : i + 1
@@ -89,14 +95,14 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
           <div className="sd-body">
             <section>
               <h3>Tema</h3>
-              <div className="seg seg-track" role="group" aria-label="Tema">
-                {THEMES.map(([id, label], i) => (
-                  <button key={id} ref={i === 0 ? first : undefined} type="button" aria-pressed={settings.theme === id} onClick={() => onTheme(id)}>
-                    {label}
-                  </button>
-                ))}
-                <SegLens />
-              </div>
+              <Seg
+                label="Tema"
+                track="plain"
+                className="seg"
+                value={settings.theme}
+                onChange={onTheme}
+                options={THEMES.map(([id, label]) => ({ value: id, label, ref: id === settings.theme ? first : undefined }))}
+              />
             </section>
             <section>
               <h3>Motori AI</h3>
@@ -173,7 +179,7 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </GlassSurface>
+    </GlassOverlay>
   )
 }
