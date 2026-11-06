@@ -5,6 +5,8 @@
 .msel>button:not(:disabled):active{background-image:linear-gradient(var(--btn-secondary-bg-pressed),var(--btn-secondary-bg-pressed))}
 .msel>button:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-sm)}
 .msel[data-state="ok"]>button{border-color:var(--good)}.msel[data-state="no"]>button{border-color:var(--bad)}
+/* Deliberate exception to the muted disabled label: once locked, the select shows its result (the ok / no border on the
+   answer given), so the chosen formula stays --ink and readable, like the review's locked right answer and wrong pick. */
 .msel>button:disabled{color:var(--ink);cursor:default}
 /* The list: a menu on a solid surface; 40 px rows (a multiple of 4), 8 px corners 4 px inside its 12 px ones. */
 .msel-list{position:absolute;left:0;top:calc(100% + var(--s-1));z-index:20;min-width:100%;display:flex;flex-direction:column;padding:var(--s-1);border-radius:var(--r-md);background:var(--surface);border:1px solid var(--hair);box-shadow:0 20px 40px -20px rgba(0,0,0,.5)}

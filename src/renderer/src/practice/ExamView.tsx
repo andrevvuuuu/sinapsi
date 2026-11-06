@@ -89,9 +89,15 @@ export function ExamView({
   // (at most TIME_UP_WAIT) for its words to land in the answer.
   useEffect(() => {
     if (!running || left > 0) return
-    if (paper) return hand()
+    if (paper) {
+      hand()
+      return
+    }
     stopRecording()
-    if (!dictating.any) return deliver()
+    if (!dictating.any) {
+      deliver()
+      return
+    }
     const t = setTimeout(deliver, TIME_UP_WAIT)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps

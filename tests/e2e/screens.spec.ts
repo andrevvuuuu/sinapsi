@@ -255,6 +255,18 @@ test('practice: training and exam', async () => {
   const overlay = await win.locator('.pr-overlay').boundingBox()
   expect([overlay!.x, overlay!.y, overlay!.width, overlay!.height]).toEqual([0, 0, 1280, 820])
   await screen(win, 'pratica-foto')
+  // At 1280×720 the photo dialog's actions are on screen at rest, below the (capped) camera preview.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 720))
+  await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(720)
+  for (const action of [win.locator('.pr-photo label.pr-file'), win.getByRole('button', { name: 'Scatta' })]) {
+    const r = (await action.boundingBox())!
+    expect(r.y, 'photo dialog at 720: action top on screen').toBeGreaterThanOrEqual(0)
+    expect(r.y + r.height, 'photo dialog at 720: action bottom on screen').toBeLessThanOrEqual(720)
+    const hit = await win.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.pr-file, button')?.textContent?.trim(), [r.x + r.width / 2, r.y + r.height / 2])
+    expect(hit, 'photo dialog at 720: action not covered').toBeTruthy()
+  }
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 820))
+  await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(820)
   await win.getByRole('button', { name: 'Chiudi' }).click()
   await win.getByRole('button', { name: '← Home' }).click()
 
@@ -266,6 +278,13 @@ test('practice: training and exam', async () => {
   await win.getByRole('button', { name: 'Inizia simulazione · 30 min' }).click()
   await expect(win.getByRole('timer')).toBeVisible()
   await screen(win, 'pratica-esame')
+  // The photo dialog from an exercise of the exam: the same portal, the overlay covers the window.
+  await win.getByRole('region', { name: 'Esercizio 1' }).getByRole('button', { name: 'Foto del foglio' }).click()
+  await expect(win.getByRole('dialog', { name: 'Foto del foglio' })).toBeVisible()
+  const examOverlay = await win.locator('.pr-overlay').boundingBox()
+  expect([examOverlay!.x, examOverlay!.y, examOverlay!.width, examOverlay!.height]).toEqual([0, 0, 1280, 820])
+  await screen(win, 'pratica-esame-foto')
+  await win.getByRole('button', { name: 'Chiudi' }).click()
   await app.close()
 })
 
@@ -276,6 +295,10 @@ test('notebook', async () => {
   await panel.getByLabel('Nome del notebook').fill('Analisi 1')
   await panel.getByRole('button', { name: 'Crea' }).click()
   await expect(win.getByLabel('Nome del notebook')).toHaveValue('Analisi 1')
+  // The three starter questions share one row, as before.
+  await expect(win.locator('.nb-starters button')).toHaveCount(3)
+  const tops = await win.locator('.nb-starters button').evaluateAll((bs) => bs.map((b) => (b as HTMLElement).offsetTop))
+  expect(new Set(tops).size, 'notebook starters on one row').toBe(1)
   await win.getByRole('button', { name: 'Nota del vault' }).click()
   await win.getByLabel('Cerca una nota').fill('Rolle')
   await win.getByRole('button', { name: 'Teorema di Rolle', exact: true }).click()

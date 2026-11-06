@@ -91,7 +91,8 @@
 .nb-hello h2{font:var(--fw-regular) 40px/1.05 var(--serif);margin:0 0 var(--s-3)}
 .nb-hello p{color:var(--muted);max-width:52ch;margin:0 auto var(--s-5)}
 .nb-starters{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--s-2)}
-.nb-starters button{background:var(--surface)}
+/* 12 px in, so the three starters keep one row in the 720 px chat column, as before. */
+.nb-starters button{background:var(--surface);padding:0 var(--s-3)}
 .nb-q{align-self:flex-end;max-width:80%;padding:var(--s-3) var(--s-4);border-radius:var(--r-lg) var(--r-lg) var(--s-1) var(--r-lg);background:var(--surface);border:1px solid var(--hair);white-space:pre-wrap}
 .nb-a{display:flex;flex-direction:column;gap:var(--s-3);font-size:var(--fs-callout);line-height:1.65}
 .nb-claim .rich,.nb-claim .rich p{display:inline;margin:0}
