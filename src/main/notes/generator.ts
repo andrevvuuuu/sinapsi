@@ -3,7 +3,8 @@ import { mkdir } from 'node:fs/promises'
 import type { Bridge } from '../ai/bridge'
 import { AiTimeoutError, AuthRequiredError, EngineMissingError } from '../ai/errors'
 import type { SessionState } from '../session/events'
-import { NotaWriteSchema } from '../../shared/nota-math'
+import { NotaWriteSchema, notaMathIssues } from '../../shared/nota-math'
+import { NotaSchema } from '../../shared/nota-schema'
 import type { VaultIndex } from '../../shared/vault-types'
 import { bodyHash } from '../vault/body-hash'
 import { buildNotePrompt } from './prompt'
@@ -70,10 +71,14 @@ export function createNoteGenerator(deps: {
       task: 'note',
       prompt: buildNotePrompt({ noteTitle: n.sourceTitle, noteText: text, session, sources }),
       schema: NotaWriteSchema,
+      // Math formatting never costs a note: after the retry, the renderer's normalizer and cloze balancer cover it.
+      fallback: NotaSchema,
       timeoutMs: NOTE_TIMEOUT,
       cwd: deps.workDir
     })
     const { nota, dropped } = r.data as { nota: StoredNote['nota']; dropped: number }
+    const math = nota ? notaMathIssues(nota) : []
+    if (math.length) console.warn(`[notes] «${n.sourceTitle}» salvata con ${math.length} formule da sistemare: ${math.slice(0, 5).join('; ')}`)
     return { ...n, status: 'ready', error: undefined, nota, dropped, engine: r.engine, sourceHash: hash(text), updatedAt: Date.now() }
   }
 

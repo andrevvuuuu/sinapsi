@@ -21,6 +21,11 @@ export interface AskRequest<T> {
   prompt: string
   schema?: z.ZodType<T>
   schemaName?: string
+  /**
+   * Accepted when the retry still fails `schema`: a looser schema for checks that only ask for a cleaner answer
+   * (the note writer's math formatting), so they can never cost a reply that is otherwise valid.
+   */
+  fallback?: z.ZodType<T>
   cache?: boolean
   timeoutMs?: number
   cwd?: string
@@ -167,8 +172,14 @@ export function createBridge(deps: {
         const first = validate(req.schema, text)
         if (first.ok) return first.value
         const retryPrompt = `${req.prompt}\n\nLa risposta precedente non era valida: ${first.error}. Rispondi solo con JSON valido.`
-        const second = validate(req.schema, (await callOnce(req.task, engine, retryPrompt, timeoutMs, { model, cwd: req.cwd, noTools: req.noTools, readOnly: req.readOnly })).text)
+        const secondText = (await callOnce(req.task, engine, retryPrompt, timeoutMs, { model, cwd: req.cwd, noTools: req.noTools, readOnly: req.readOnly })).text
+        const second = validate(req.schema, secondText)
         if (second.ok) return second.value
+        const loose = req.fallback ? validate(req.fallback, secondText) : null
+        if (loose?.ok) {
+          console.warn(`[ai] ${req.task}: risposta accettata senza i controlli facoltativi (${second.error})`)
+          return loose.value
+        }
         throw new AiSchemaError(second.error)
       })
       if (req.cache) {
