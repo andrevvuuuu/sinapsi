@@ -77,7 +77,17 @@ export function prepareMermaid(code: string): string {
       .replace(/([A-Za-z])_\{?([A-Za-z0-9]+)\}?/g, '$1<sub>$2</sub>')
       .replace(/([A-Za-z0-9)])\^\{?([A-Za-z0-9+-]+)\}?/g, '$1<sup>$2</sup>')
       .replace(/(?<=[\w)\]])\s*\*\s*(?=[\w([])/g, '·')
-  return code.replace(/"([^"\n]*)"/g, (_m, t: string) => `"${label(t)}"`).replace(/\[([^\]"\n]+)\]/g, (_m, t: string) => `[${label(t)}]`)
+  const line = (l: string): string =>
+    l
+      .replace(/"([^"\n]*)"/g, (_m, t: string) => `"${label(t)}"`)
+      .replace(/\[([^\]"\n]+)\]/g, (_m, t: string) => `[${label(t)}]`)
+      // Edge labels: A -->|y_sec| B.
+      .replace(/\|([^|"\n]+)\|/g, (_m, t: string) => `|${label(t)}|`)
+  // %%{init}%% directives and %% comments are configuration, never labels.
+  return code
+    .split('\n')
+    .map((l) => (l.trimStart().startsWith('%%') ? l : line(l)))
+    .join('\n')
 }
 
 /** The SVG with nothing but drawing and the HTML of the labels: no scripts, no handlers, no links out. */
