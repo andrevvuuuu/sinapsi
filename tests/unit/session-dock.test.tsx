@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QuestionDock } from '../../src/renderer/src/session/QuestionDock'
 import { SessionView } from '../../src/renderer/src/session/SessionView'
@@ -26,9 +26,11 @@ const state: SessionState = {
   pendingQuestion: question
 }
 
-let resize: ResizeObserverCallback = () => undefined
+const unobserved: ResizeObserverCallback = () => undefined
+let resize: ResizeObserverCallback = unobserved
 const scrollIntoView = vi.fn()
 beforeEach(() => {
+  resize = unobserved
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -52,6 +54,8 @@ describe('the question dock and the conversation above it', () => {
   it('sets --dock-h from the dock height', async () => {
     const { container } = render(<SessionView id={ID} onBack={vi.fn()} />)
     await screen.findByText('Quale ragionamento è corretto?')
+    // The text can be on screen before the effects that observe the dock have run (a slow, loaded machine).
+    await waitFor(() => expect(resize).not.toBe(unobserved))
     const dock = container.querySelector('.dockwrap') as HTMLElement
     const scroller = container.querySelector('.scroll') as HTMLElement
     dock.getBoundingClientRect = () => ({ height: 412.4 }) as DOMRect
@@ -62,7 +66,8 @@ describe('the question dock and the conversation above it', () => {
   it('scrolls the start of the new tutor message into view when a question arrives', async () => {
     render(<SessionView id={ID} onBack={vi.fn()} />)
     const msg = (await screen.findByText('Ecco il messaggio che porta alla domanda.')).closest('.msg')
-    expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' }))
+    // The scroll is an effect of the render that shows the message: wait for it, not only for the text.
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' })))
     const target = scrollIntoView.mock.contexts[scrollIntoView.mock.contexts.length - 1]
     expect(target).toBe(msg)
   })
