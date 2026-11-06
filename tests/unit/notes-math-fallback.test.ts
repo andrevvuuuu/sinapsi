@@ -64,8 +64,16 @@ describe('math formatting never costs a note', () => {
     expect(prompts).toHaveLength(2)
   })
 
-  it('still fails a note whose retry is invalid for any other reason', async () => {
-    const { g } = setup([JSON.stringify(lagrange), JSON.stringify({ title: 'senza sezioni' })])
+  it('keeps the first note when the retry comes back invalid for another reason: a valid note is never thrown away', async () => {
+    const { g, prompts } = setup([JSON.stringify(lagrange), JSON.stringify({ title: 'senza sezioni' })])
+    const n = await done(g, await g.create({ sourcePath: SOURCE }))
+    expect(prompts).toHaveLength(2)
+    expect(n).toMatchObject({ status: 'ready', nota: { title: 'Teorema di Lagrange' } })
+    expect(warn.mock.calls.flat().join(' ')).toMatch(/prima risposta accettata/)
+  })
+
+  it('still fails a note when neither answer is a valid note', async () => {
+    const { g } = setup([JSON.stringify({ title: 'senza sezioni' }), 'non è JSON'])
     const n = await done(g, await g.create({ sourcePath: SOURCE }))
     expect(n.status).toBe('error')
     expect(n.nota).toBeUndefined()

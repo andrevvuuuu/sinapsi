@@ -23,7 +23,8 @@ export interface AskRequest<T> {
   schemaName?: string
   /**
    * Accepted when the retry still fails `schema`: a looser schema for checks that only ask for a cleaner answer
-   * (the note writer's math formatting), so they can never cost a reply that is otherwise valid.
+   * (the note writer's math formatting), so they can never cost a reply that is otherwise valid. The retry is
+   * preferred; if it fails even this, a first answer that passed it is kept.
    */
   fallback?: z.ZodType<T>
   cache?: boolean
@@ -171,14 +172,17 @@ export function createBridge(deps: {
         if (!req.schema) return text
         const first = validate(req.schema, text)
         if (first.ok) return first.value
+        // Kept aside: if the retry comes back worse, a first answer that only failed the optional checks still counts.
+        const firstLoose = req.fallback ? validate(req.fallback, text) : null
         const retryPrompt = `${req.prompt}\n\nLa risposta precedente non era valida: ${first.error}. Rispondi solo con JSON valido.`
         const secondText = (await callOnce(req.task, engine, retryPrompt, timeoutMs, { model, cwd: req.cwd, noTools: req.noTools, readOnly: req.readOnly })).text
         const second = validate(req.schema, secondText)
         if (second.ok) return second.value
         const loose = req.fallback ? validate(req.fallback, secondText) : null
-        if (loose?.ok) {
-          console.warn(`[ai] ${req.task}: risposta accettata senza i controlli facoltativi (${second.error})`)
-          return loose.value
+        const kept = loose?.ok ? loose : firstLoose?.ok ? firstLoose : null
+        if (kept) {
+          console.warn(`[ai] ${req.task}: ${loose?.ok ? 'seconda' : 'prima'} risposta accettata senza i controlli facoltativi (${second.error})`)
+          return kept.value
         }
         throw new AiSchemaError(second.error)
       })
