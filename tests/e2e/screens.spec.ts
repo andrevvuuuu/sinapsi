@@ -185,7 +185,7 @@ test('session: Misura, then with the plan', async () => {
 test('review: setup, exercise, verdict, summary', async () => {
   const { app, win } = await launch()
   await makeNotaViva(win, 'Teorema di Rolle')
-  await win.getByRole('group', { name: 'Tipo di sessione' }).getByRole('button', { name: /^Ripasso/ }).click()
+  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: /^Ripasso/ }).click()
   await win.getByRole('button', { name: 'Inizia' }).click()
   // Setup: the concepts to review and the exercise-type selector.
   await expect(win.getByRole('heading', { name: /concetti da fissare/ })).toBeVisible()
@@ -223,7 +223,7 @@ test('review: setup, exercise, verdict, summary', async () => {
 test('practice: training and exam', async () => {
   const { app, win } = await launch()
   await makeNotaViva(win, 'Teorema di Rolle')
-  await win.getByRole('group', { name: 'Tipo di sessione' }).getByRole('button', { name: 'Pratica', exact: true }).click()
+  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: 'Pratica', exact: true }).click()
   await win.getByLabel('Cosa vuoi studiare?').fill('rolle')
   await win.getByRole('button', { name: 'Inizia' }).click()
   // The setup, in exam mode: material, the two modes, the duration and the place.
@@ -273,11 +273,11 @@ test('practice: training and exam', async () => {
   await win.getByRole('button', { name: 'Chiudi' }).click()
   await win.getByRole('button', { name: '← Home' }).click()
 
-  await win.getByRole('group', { name: 'Tipo di sessione' }).getByRole('button', { name: 'Pratica', exact: true }).click()
+  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: 'Pratica', exact: true }).click()
   await win.getByLabel('Cosa vuoi studiare?').fill('limiti notevoli')
   await win.getByRole('button', { name: 'Inizia' }).click()
   await win.getByRole('radio', { name: /Simulazione d'esame/ }).click()
-  await win.getByRole('button', { name: '30 min' }).click()
+  await win.getByRole('tab', { name: '30 min' }).click()
   await win.getByRole('button', { name: 'Inizia simulazione · 30 min' }).click()
   await expect(win.getByRole('timer')).toBeVisible()
   await screen(win, 'pratica-esame')

@@ -14,7 +14,7 @@ test('home opens with the vault explorer and theme switch', async () => {
   await expect(win.getByText('Teorema di Rolle')).toBeVisible()
   await expect(win.getByText('prompt')).toHaveCount(0)
   await win.getByRole('button', { name: 'Impostazioni', exact: true }).click()
-  await win.getByRole('dialog', { name: 'Impostazioni' }).getByRole('button', { name: 'Trattato' }).click()
+  await win.getByRole('dialog', { name: 'Impostazioni' }).getByRole('tab', { name: 'Trattato' }).click()
   await expect(win.locator('html')).toHaveAttribute('data-theme', 'trattato')
   await win.keyboard.press('Escape')
   await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toHaveCount(0)
