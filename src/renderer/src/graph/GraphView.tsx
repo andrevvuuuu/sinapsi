@@ -603,6 +603,7 @@ function GraphBody({
                 label="Evidenzia"
                 track="plain"
                 className="gseg glens"
+                radius={12}
                 value={lens}
                 onChange={setLens}
                 options={(
@@ -632,6 +633,7 @@ function GraphBody({
                     label="Disposizione"
                     track="plain"
                     className="gseg"
+                    radius={12}
                     value={mode}
                     onChange={changeMode}
                     options={MODES.map(([m, label]) => ({ value: m, label }))}

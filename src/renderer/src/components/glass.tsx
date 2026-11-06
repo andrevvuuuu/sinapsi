@@ -4,6 +4,7 @@ import {
   GlassContent,
   GlassScene,
   GlassScrollEdges,
+  GlassShapeContainer,
   GlassSlider,
   GlassSurface,
   GlassTabsIndicator,
@@ -158,6 +159,7 @@ export function Seg<T extends string>({
   onChange,
   className = '',
   track = 'glass',
+  radius = 'capsule',
   ground
 }: {
   label: string
@@ -166,6 +168,8 @@ export function Seg<T extends string>({
   onChange: (v: T) => void
   className?: string
   track?: 'glass' | 'plain'
+  /** The track's corners, for a plain track that is not a capsule. */
+  radius?: number | 'capsule'
   /** Over a flat surface that is not a scene's content (a panel, a card inside scrolling content): a small scene of its own, whose content is a ground of that colour. */
   ground?: 'surface' | 'panel'
 }): React.JSX.Element {
@@ -184,16 +188,22 @@ export function Seg<T extends string>({
       {list}
     </GlassTabsRoot>
   )
+  // The library's tabs follow their track's outline (concentric corners): the plain track declares it, as a glass one does.
   if (track === 'plain')
     return root(
-      <Tabs.List
-        activateOnFocus={false}
-        aria-label={label}
-        className={`lg-tabs-list seg-track seg-plain ${className}`}
+      <GlassShapeContainer
+        radius={radius}
+        render={
+          <Tabs.List
+            activateOnFocus={false}
+            aria-label={label}
+            className={`lg-tabs-list seg-track seg-plain ${className}`}
+          />
+        }
       >
         <Tabs.Indicator className="lg-tab-indicator seg-lens" />
         {triggers}
-      </Tabs.List>
+      </GlassShapeContainer>
     )
   // In the light appearance the clear selection over the light track is tinted white, as the old white pill was.
   const tabs = root(
