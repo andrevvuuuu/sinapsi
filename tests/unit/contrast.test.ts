@@ -117,6 +117,16 @@ describe.each<Theme>(['lavagna', 'trattato'])('contrast in %s', (theme) => {
     expect(worst).toBeGreaterThanOrEqual(4.5)
   })
 
+  // The chosen option of a segmented control is told from the others by its selection's ring (--seg-edge), 3:1 on the
+  // track it slides over: the glass track (the material over the app's grounds) or the faint track of a solid core. Under
+  // the ring the selection's fill is the full lens (--lens-fill) or, on glass, whatever the track shows through.
+  it('the selection of a segmented control: its ring is 3:1 on every track', () => {
+    const tracks = [...GROUNDS.map((g) => regular(c(g), appearance)), over(c('--faint'), c('--surface')), over(c('--faint'), c('--panel'))]
+    const fills = [c('--lens-fill'), ...tracks]
+    const worst = Math.min(...tracks.flatMap((track) => fills.map((fill) => ratio(over(c('--seg-edge'), fill), track))))
+    expect(worst).toBeGreaterThanOrEqual(3)
+  })
+
   it.each(GROUNDS)('control edges (--ctl-edge, disabled outline, focus ring) on %s', (g) => {
     expect(ratio(c('--ctl-edge'), c(g)), '--ctl-edge').toBeGreaterThanOrEqual(3)
     expect(ratio(c('--btn-disabled-border'), c(g)), '--btn-disabled-border').toBeGreaterThanOrEqual(3)

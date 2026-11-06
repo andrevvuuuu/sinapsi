@@ -65,7 +65,9 @@ async function expectSolid(win: Page, selectors: string[]): Promise<void> {
  */
 async function expectNoNestedGlass(win: Page): Promise<void> {
   const nested = await win.evaluate(() => {
-    const lens = (el: Element): boolean => el.matches('.lg-tab-indicator, .lg-control-lens')
+    // The library's tab indicator inside its own glass track, and a slider's pressed lens: nothing else.
+    const lens = (el: Element): boolean =>
+      (el.matches('.lg-tab-indicator') && !!el.parentElement?.closest('.lg-surface')?.matches('.lg-tabs-list')) || el.matches('.lg-control-lens')
     const glassy = (el: Element): boolean => !el.matches('.overlay-scrim') && getComputedStyle(el).backdropFilter !== 'none'
     const out: string[] = []
     for (const el of document.querySelectorAll('body *')) {
@@ -86,6 +88,14 @@ async function expectNoNestedGlass(win: Page): Promise<void> {
     return out
   })
   expect(nested, 'glass inside glass').toEqual([])
+}
+
+/** A selection drawn as a full lens (a segmented control on glass or on a solid core): visible, opaque, not a glass surface. */
+async function expectLens(win: Page, selector: string): Promise<void> {
+  const lens = win.locator(selector)
+  await expect(lens).toBeVisible()
+  expect(await lens.evaluate((el) => el.classList.contains('lg-surface')), `${selector} is not glass`).toBe(false)
+  expect((await looks(win, [selector]))[selector].alpha, `${selector} is a full lens`).toBe(1)
 }
 
 /** The theme in the settings too: the Home applies the stored theme again whenever it reloads them. */
@@ -152,14 +162,47 @@ test('Liquid Glass on the controls, solid surfaces under the text, content scrol
     await expect.poll(() => lensGap(group)).toBeLessThanOrEqual(1)
   }
 
+  // A tab's keyboard focus ring sits inside the tab, rounded as its capsule: the tab is clipped to it.
+  await win.keyboard.press('Shift')
+  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { selected: true }).focus()
+  const tabRing = await win.evaluate(() => {
+    const el = document.activeElement as HTMLElement
+    const cs = getComputedStyle(el)
+    return { visible: el.matches(':focus-visible') && cs.outlineStyle !== 'none', inside: parseFloat(cs.outlineOffset) + parseFloat(cs.outlineWidth) <= 0, round: parseFloat(cs.borderTopLeftRadius) > 0 }
+  })
+  expect(tabRing).toEqual({ visible: true, inside: true, round: true })
+
   // Settings dialog: a glass outer shell, the form on a solid core.
   await win.getByRole('button', { name: 'Impostazioni', exact: true }).click()
   await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toBeVisible()
   await win.waitForTimeout(300) // the dialog's entrance
-  await expectGlass(win, ['.settings-dlg', '.settings-dlg [aria-label="Tema"] .lg-tab-indicator'])
+  await expectGlass(win, ['.settings-dlg'])
   await expectSolid(win, ['.settings-dlg .sd-core'])
+  // On the solid core the theme's selection is a full lens, not a second glass.
+  await expectLens(win, '.settings-dlg [aria-label="Tema"] .lg-tab-indicator')
   await expectNoNestedGlass(win)
   await shoot(win, 'settings')
+  await win.keyboard.press('Escape')
+  await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toHaveCount(0)
+
+  // Opening the settings, and walking them with Tab, never changes the theme: the picker takes the focus, focus never selects.
+  // Trattato chosen in the dialog itself, as Andrea does, then the dialog opened again.
+  await win.getByRole('button', { name: 'Impostazioni', exact: true }).click()
+  await win.getByRole('dialog', { name: 'Impostazioni' }).getByRole('tab', { name: 'Trattato' }).click()
+  await win.keyboard.press('Escape')
+  await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toHaveCount(0)
+  await win.getByRole('button', { name: 'Impostazioni', exact: true }).click()
+  await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toBeVisible()
+  await expect(win.getByRole('tab', { name: 'Trattato' })).toBeFocused()
+  for (let i = 0; i < 12; i++) await win.keyboard.press('Tab')
+  for (let i = 0; i < 6; i++) await win.keyboard.press('Shift+Tab')
+  const theme = (): Promise<string> => win.evaluate(async () => `${document.documentElement.dataset.theme} ${(await window.sinapsi.settings.get()).theme}`)
+  expect(await theme()).toBe('trattato trattato')
+  // The arrows move the focus along the picker: still no change, until a choice.
+  await win.getByRole('tab', { name: 'Trattato' }).focus()
+  await win.keyboard.press('ArrowLeft')
+  expect(await theme()).toBe('trattato trattato')
+  await win.getByRole('dialog', { name: 'Impostazioni' }).getByRole('tab', { name: 'Lavagna' }).click()
   await win.keyboard.press('Escape')
   await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toHaveCount(0)
 
@@ -168,7 +211,8 @@ test('Liquid Glass on the controls, solid surfaces under the text, content scrol
   await win.getByRole('button', { name: 'Teorema di Rolle' }).click()
   await win.getByRole('button', { name: 'Crea la nota viva' }).click()
   await expect(win.getByRole('heading', { level: 1, name: /Teorema di Rolle/ })).toBeVisible()
-  await expectGlass(win, ['.nota .island', '.nota .island .lg-tab-indicator'])
+  await expectGlass(win, ['.nota .island'])
+  await expectLens(win, '.nota .island .lg-tab-indicator')
   await expectNoNestedGlass(win)
   await shoot(win, 'nota')
   await win.getByRole('button', { name: '← Home' }).click()
@@ -181,6 +225,14 @@ test('Liquid Glass on the controls, solid surfaces under the text, content scrol
   await win.getByRole('button', { name: 'Vista del grafo' }).click()
   await expect(win.getByRole('heading', { name: 'Il tuo grafo' })).toBeVisible()
   await expectGlass(win, ['.graph .gmenu-btn', '.graph .gpanel', '.graph .gzoom'])
+  // The round button is clipped to its circle: its keyboard focus ring is drawn inside it, so it shows whole.
+  await win.keyboard.press('Shift')
+  await win.locator('.graph .gmenu-btn').focus()
+  const ringIn = await win.locator('.graph .gmenu-btn').evaluate((el) => {
+    const cs = getComputedStyle(el)
+    return el.matches(':focus-visible') && cs.outlineStyle !== 'none' && parseFloat(cs.outlineOffset) + parseFloat(cs.outlineWidth) <= 0
+  })
+  expect(ringIn, 'the focus ring of the round button is inside its clip').toBe(true)
   await expectNoNestedGlass(win)
   await win.waitForTimeout(600)
   await shoot(win, 'graph')
@@ -193,10 +245,29 @@ test('Liquid Glass on the controls, solid surfaces under the text, content scrol
   await win.getByLabel('La tua risposta').fill("passare l'esame")
   await win.getByRole('button', { name: 'Invia risposta' }).click()
   await expect(win.getByRole('button', { name: /^A:/ })).toBeVisible()
+  // The new question takes the focus even though its glass shell shows a frame after it mounts.
+  await expect(win.locator('.dock .q-head')).toBeFocused()
   await expectGlass(win, ['.sess .top', '.sess .shell'])
   await expectSolid(win, ['.sess .inner'])
   const opt = await looks(win, ['.opt'])
   expect(opt['.opt'].backdrop).toBe('none')
+  // Fiducia from the keyboard: its thumb shows the focus ring, and says the value as a percentage.
+  const fiducia = win.getByRole('slider', { name: 'Fiducia' })
+  await win.getByRole('button', { name: 'Non lo so' }).focus()
+  await win.keyboard.press('Tab')
+  await expect(fiducia).toBeFocused()
+  expect(await fiducia.getAttribute('aria-valuetext')).toBe('50%')
+  const ring = await win.locator('.sess .conf .lg-slider-thumb').evaluate((el) => getComputedStyle(el).boxShadow)
+  const accent = await win.evaluate(() => {
+    const probe = document.createElement('i')
+    probe.style.color = 'var(--btn-focus)'
+    document.body.append(probe)
+    const c = getComputedStyle(probe).color
+    probe.remove()
+    return c
+  })
+  expect(ring, 'the focused thumb has the accent ring').toContain(accent)
+  await shoot(win, 'slider-focus')
   // The conversation is the live content the bar and the dock refract.
   expect(await win.locator('.sess .scroll').evaluate((el) => el.classList.contains('lg-content'))).toBe(true)
   await expectNoNestedGlass(win)

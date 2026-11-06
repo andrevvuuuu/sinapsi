@@ -44,21 +44,35 @@ describe('segmented control', () => {
     expect(selected()).toEqual(['c'])
   })
 
-  it('moves with the arrow keys too', async () => {
+  it('moves the focus with the arrow keys, and chooses only on purpose (focus never selects)', async () => {
     render(<Prova />)
     const a = screen.getByRole('tab', { name: 'a' })
     a.focus()
     await act(async () => fireEvent.keyDown(a, { key: 'ArrowRight' }))
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'b' }))
+    expect(selected()).toEqual(['a'])
+    await act(async () => fireEvent.click(screen.getByRole('tab', { name: 'b' })))
     expect(selected()).toEqual(['b'])
   })
 
-  it('is a glass track with a glass selection, or on glass only the selection is glass', () => {
+  it('does not choose the option that takes the focus, on either track', async () => {
+    for (const track of ['glass', 'plain'] as const) {
+      const v = render(<Prova track={track} />)
+      await act(async () => screen.getByRole('tab', { name: 'c' }).focus())
+      expect(selected()).toEqual(['a'])
+      v.unmount()
+    }
+  })
+
+  it('is a glass track with a glass selection, or on glass a plain track with a full lens', () => {
     const glass = render(<Prova />)
     expect(screen.getByRole('tablist').classList.contains('lg-surface')).toBe(true)
     expect(indicator().classList.contains('lg-surface')).toBe(true)
     glass.unmount()
+    // On glass or on a solid core neither is glass: the selection is the same moving indicator, drawn as a full lens.
     render(<Prova track="plain" />)
     expect(screen.getByRole('tablist').classList.contains('lg-surface')).toBe(false)
-    expect(indicator().classList.contains('lg-surface')).toBe(true)
+    expect(indicator().classList.contains('lg-surface')).toBe(false)
+    expect(indicator().classList.contains('seg-lens')).toBe(true)
   })
 })

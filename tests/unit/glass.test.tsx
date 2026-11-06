@@ -116,4 +116,20 @@ describe('the glass scene of a view', () => {
     expect(String(warn.mock.calls[0][0])).toContain('no WebGPU adapter')
     warn.mockRestore()
   })
+
+  it('turns solid when the material does not arrive, and back when it does (a library failing without a word)', async () => {
+    vi.useFakeTimers()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { container } = render(<ViewScene className="sess">x</ViewScene>)
+    const root = container.querySelector<HTMLElement>('.lg-scene.sess')!
+    await act(async () => void (root.dataset.glassReady = 'false'))
+    await act(async () => void vi.advanceTimersByTime(3000))
+    expect(root.hasAttribute('data-glass-failed')).toBe(false)
+    await act(async () => void vi.advanceTimersByTime(1500))
+    expect(root.hasAttribute('data-glass-failed')).toBe(true)
+    await act(async () => void (root.dataset.glassReady = 'true'))
+    expect(root.hasAttribute('data-glass-failed')).toBe(false)
+    warn.mockRestore()
+    vi.useRealTimers()
+  })
 })
