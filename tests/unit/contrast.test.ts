@@ -105,6 +105,19 @@ describe.each<Theme>(['lavagna', 'trattato'])('contrast in %s', (theme) => {
 
   // --hair is a deliberate decorative separator (WCAG 1.4.11 asks 3:1 only of what identifies a control: that is
   // --ctl-edge). Pinned between the 8a values, so it never fades back, and 3:1, so it never turns into an outline.
+  // The range knob (Fiducia, the figures' sliders) is a bright glass lens: on the light surface it would vanish, so
+  // its ring (--knob-edge, in --knob-shadow) carries the 3:1 of a control's edge against the surface it sits on
+  // and against both tracks under it (--faint in the session, --hair in the nota viva).
+  it.each(['--surface', '--panel'])('the range knob has a 3:1 edge on %s and on its tracks', (g) => {
+    const ground = c(g)
+    expect(t['--knob-shadow']).toContain('var(--knob-edge)')
+    expect(ratio(c('--knob-edge'), ground), 'on the surface').toBeGreaterThanOrEqual(3)
+    for (const track of ['--faint', '--hair']) {
+      const under = over(c(track), ground)
+      expect(ratio(c('--knob-edge'), under), `on ${track}`).toBeGreaterThanOrEqual(3)
+    }
+  })
+
   it.each(GROUNDS)('the separator (--hair) stays quiet but visible on %s', (g) => {
     const alpha = { lavagna: 0.14, trattato: 0.16 }[theme]
     expect(c('--hair')[3]).toBeGreaterThanOrEqual(alpha)

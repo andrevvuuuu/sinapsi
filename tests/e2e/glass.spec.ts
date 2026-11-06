@@ -36,6 +36,27 @@ async function expectSolid(win: Page, selectors: string[]): Promise<void> {
   }
 }
 
+/**
+ * Never glass in glass: no element with a backdrop sits inside another one with a backdrop. The modal scrim
+ * (.overlay, a dimming blur behind dialogs since before the glass) is not part of the control layer: left out.
+ */
+async function expectNoNestedGlass(win: Page): Promise<void> {
+  const nested = await win.evaluate(() => {
+    const glassy = (el: Element): boolean => !el.matches('.overlay') && getComputedStyle(el).backdropFilter !== 'none'
+    const out: string[] = []
+    for (const el of document.querySelectorAll('body *')) {
+      if (!glassy(el)) continue
+      for (let up = el.parentElement; up; up = up.parentElement)
+        if (glassy(up)) {
+          out.push(`${el.className} in ${up.className}`)
+          break
+        }
+    }
+    return out
+  })
+  expect(nested, 'glass inside glass').toEqual([])
+}
+
 /** The theme in the settings too: the Home applies the stored theme again whenever it reloads them. */
 async function setTheme(win: Page, theme: string): Promise<void> {
   await win.evaluate(async (t) => {
@@ -105,6 +126,7 @@ test('Liquid Glass on the controls, solid surfaces under the text, content scrol
   await win.waitForTimeout(300) // the dialog's entrance
   await expectGlass(win, ['.settings-dlg'])
   await expectSolid(win, ['.settings-dlg .sd-core'])
+  await expectNoNestedGlass(win)
   await shoot(win, 'settings')
   await win.keyboard.press('Escape')
   await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toHaveCount(0)
@@ -126,6 +148,7 @@ test('Liquid Glass on the controls, solid surfaces under the text, content scrol
   await win.getByRole('button', { name: 'Vista del grafo' }).click()
   await expect(win.getByRole('heading', { name: 'Il tuo grafo' })).toBeVisible()
   await expectGlass(win, ['.graph .gmenu-btn', '.graph .gpanel', '.graph .gzoom'])
+  await expectNoNestedGlass(win)
   await win.waitForTimeout(600)
   await shoot(win, 'graph')
   await win.keyboard.press('Escape')

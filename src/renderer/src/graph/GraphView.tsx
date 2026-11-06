@@ -584,7 +584,7 @@ export function GraphView({
             <div className="gsec">
               <h3>Evidenzia</h3>
               <div
-                className="gseg glens seg-track glass glass-text"
+                className="gseg glens seg-track"
                 role="group"
                 aria-label="Evidenzia"
               >
@@ -622,7 +622,7 @@ export function GraphView({
                 <div className="gsec">
                   <h3>Disposizione</h3>
                   <div
-                    className="gseg seg-track glass glass-text"
+                    className="gseg seg-track"
                     role="group"
                     aria-label="Disposizione"
                   >

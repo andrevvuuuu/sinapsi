@@ -19,10 +19,10 @@
 [data-theme="trattato"]{--placeholder:#6b6559;--ctl-edge:rgba(36,32,27,.52);--btn-primary-bg:var(--ink);--btn-primary-bg-hover:#3a352e;--btn-primary-bg-pressed:#4d473f;--btn-primary-ink:var(--bg);--btn-secondary-bg:rgba(36,32,27,0);--btn-secondary-bg-hover:rgba(36,32,27,.06);--btn-secondary-bg-pressed:rgba(36,32,27,.1);--btn-secondary-ink:var(--ink);--btn-secondary-border:var(--ctl-edge);--btn-text-bg:rgba(36,32,27,0);--btn-text-bg-hover:rgba(36,32,27,.04);--btn-text-bg-pressed:rgba(36,32,27,.06);--btn-text-ink:var(--accent)}
 :root{--btn-focus:var(--accent);--btn-focus-ring:2px solid var(--btn-focus);--btn-focus-offset:2px;--btn-disabled-bg:transparent;--btn-disabled-ink:var(--muted);--btn-disabled-border:var(--ctl-edge);--btn-transition:background-color .15s var(--ease-out),border-color .15s var(--ease-out),color .15s var(--ease-out)}
 /* Liquid Glass, only for the floating layer of controls (bars, menus, dialog shells), never under text to read. Regular variant: tint ~2/3 opaque, blur, saturation; rim, top highlight and soft shadow. --glass-ink stays AA over the brightest app colour; --glass-ink-2 is the secondary text on glass, still AA there (4.6:1 lavagna, 4.8:1 trattato over the most contrasting app colour). */
-[data-theme="lavagna"]{--glass-tint:rgba(26,27,23,.68);--glass-blur:24px;--glass-sat:1.6;--glass-rim:rgba(236,233,223,.12);--glass-spec:rgba(255,255,255,.14);--glass-shadow:0 1px 1px rgba(0,0,0,.24),0 12px 32px -8px rgba(0,0,0,.55);--glass-ink:#ece9df;--glass-ink-2:#d6d3c9;--lens-tint:rgba(236,233,223,.16);--knob-tint:#e4e1d7}
+[data-theme="lavagna"]{--glass-tint:rgba(26,27,23,.68);--glass-blur:24px;--glass-sat:1.6;--glass-rim:rgba(236,233,223,.12);--glass-spec:rgba(255,255,255,.14);--glass-shadow:0 1px 1px rgba(0,0,0,.24),0 12px 32px -8px rgba(0,0,0,.55);--glass-ink:#ece9df;--glass-ink-2:#d6d3c9;--lens-tint:rgba(236,233,223,.16);--knob-tint:#e4e1d7;--knob-edge:rgba(236,233,223,.46)}
 /* Accent and pen labels on glass (session phase, score, «Dalla tua nota»): the theme's hue, lightness moved until it is AA over the tint over --bg, --surface and the content that can scroll under the bar. That content is masked by the scroll edge (it fades in across the bar's height): at the labels it is at most 65 % visible, so the worst case is --ink at 65 % over --bg. Accent: lavagna 4.62:1, trattato 4.66:1. Pen (kept at the stricter unmasked value): lavagna 4.61:1, trattato 4.66:1. */
 [data-theme="lavagna"]{--glass-accent:#f39e76;--glass-pen:#c2d8ff}
-[data-theme="trattato"]{--glass-tint:rgba(251,248,242,.66);--glass-blur:24px;--glass-sat:1.4;--glass-rim:rgba(36,32,27,.1);--glass-spec:rgba(255,255,255,.85);--glass-shadow:0 1px 1px rgba(36,32,27,.06),0 12px 32px -8px rgba(36,32,27,.2);--glass-ink:#221e19;--glass-ink-2:#3f3a33;--lens-tint:rgba(255,255,255,.9);--knob-tint:#fff}
+[data-theme="trattato"]{--glass-tint:rgba(251,248,242,.66);--glass-blur:24px;--glass-sat:1.4;--glass-rim:rgba(36,32,27,.1);--glass-spec:rgba(255,255,255,.85);--glass-shadow:0 1px 1px rgba(36,32,27,.06),0 12px 32px -8px rgba(36,32,27,.2);--glass-ink:#221e19;--glass-ink-2:#3f3a33;--lens-tint:rgba(255,255,255,.9);--knob-tint:#fff;--knob-edge:rgba(36,32,27,.58)}
 [data-theme="trattato"]{--glass-accent:#8f341d;--glass-pen:#223e7a}
 *{box-sizing:border-box}
 html,body,#root{height:100%}
@@ -35,11 +35,13 @@ button{font:inherit;color:inherit}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 /* "← Home": the same size and weight in every view (repeated class: it wins over the views' own .pill rules). */
-button.back-btn.back-btn.back-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--hair);background:color-mix(in srgb,var(--surface) 82%,transparent);color:var(--ink);font:500 14px/1 var(--sans);white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s}
-button.back-btn.back-btn.back-btn:hover{background:var(--surface);border-color:color-mix(in srgb,var(--ink) 22%,transparent)}
+button.back-btn.back-btn.back-btn{display:inline-flex;align-items:center;gap:var(--s-2);min-height:var(--ctl);padding:0 var(--s-4);border-radius:var(--r-pill);border:1px solid var(--ctl-edge);background:color-mix(in srgb,var(--surface) 82%,transparent);color:var(--ink);font:var(--fw-medium) var(--fs-body)/1 var(--sans);white-space:nowrap;cursor:pointer;transition:var(--btn-transition)}
+button.back-btn.back-btn.back-btn:hover{background:var(--surface)}
+button.back-btn.back-btn.back-btn:active{background:linear-gradient(var(--btn-secondary-bg-pressed),var(--btn-secondary-bg-pressed)) var(--surface)}
 /* On a glass bar the button is part of the bar: a light fill of the bar's ink, no solid pill on the glass. */
 .glass button.back-btn.back-btn.back-btn{background:color-mix(in srgb,var(--glass-ink) 6%,transparent)}
-.glass button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--glass-ink) 12%,transparent);border-color:color-mix(in srgb,var(--glass-ink) 22%,transparent)}
+.glass button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--glass-ink) 12%,transparent)}
+.glass button.back-btn.back-btn.back-btn:active{background:color-mix(in srgb,var(--glass-ink) 18%,transparent)}
 .island button.back-btn.back-btn.back-btn{border-color:transparent;background:transparent}
 
 /* The material. Rim and highlight are inset shadows: no border, so it never changes an element's size. Repeated class: it wins over a view's own one-class background (e.g. .seg). */
@@ -62,8 +64,8 @@ button.back-btn.back-btn.back-btn:hover{background:var(--surface);border-color:c
 :root:not([data-glass="on"]) .seg-track.glass{background:var(--faint)}
 :root:not([data-glass="on"]) .seg-lens{background:var(--surface)}
 @media (prefers-reduced-motion:reduce){.seg-lens{transition:none}}
-/* Range thumbs are a small bright glass knob (session.css, nota.css): --knob-tint with a top highlight, rim and soft shadow. */
-:root{--knob:linear-gradient(to bottom,rgba(255,255,255,.9),transparent 70%) var(--knob-tint);--knob-shadow:inset 0 0 0 .5px var(--glass-rim),0 1px 3px rgba(0,0,0,.35)}
+/* Range thumbs are a small bright glass knob (session.css, nota.css): --knob-tint with a top highlight, a ring and soft shadow. The ring (--knob-edge, outside the knob, per theme) is the control's outline, a little firmer than --ctl-edge so it stays 3:1 on the surface and on both tracks too (3.4:1 at worst): the white knob alone all but vanishes on the light surface. */
+:root{--knob:linear-gradient(to bottom,rgba(255,255,255,.9),transparent 70%) var(--knob-tint);--knob-shadow:0 0 0 1px var(--knob-edge),0 1px 3px rgba(0,0,0,.35)}
 .dlg-core{flex:1;min-height:0;border-radius:18px;background:var(--surface);box-shadow:var(--inner)}
 /* Text on glass: secondary labels use --glass-ink-2, never --muted (not AA over bright content). */
 .glass-text{--muted:var(--glass-ink-2)}

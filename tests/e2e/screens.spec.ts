@@ -229,6 +229,9 @@ test('practice: training and exam', async () => {
   // The setup, in exam mode: material, the two modes, the duration and the place.
   await win.getByRole('radio', { name: /Simulazione d'esame/ }).click()
   await screen(win, 'pratica-setup')
+  // The long placeholder of the free topic stays on its one line: nothing wraps into a clipped second line.
+  const free = win.getByLabel('Argomento libero')
+  expect(await free.evaluate((t) => t.scrollHeight - t.clientHeight), 'free topic: placeholder clipped').toBeLessThanOrEqual(0)
   // The material dialog, whole inside the window at 1280×820 and 1280×720.
   await win.getByRole('button', { name: 'Scegli…' }).click()
   await expect(win.getByRole('dialog', { name: 'Scegli il materiale' })).toBeVisible()

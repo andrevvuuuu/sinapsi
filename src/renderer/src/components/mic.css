@@ -25,8 +25,8 @@
 }
 .mic {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: var(--s-1);
+  right: var(--s-1);
   display: inline-flex;
   align-items: center;
   justify-content: center;

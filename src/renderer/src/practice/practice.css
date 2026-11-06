@@ -189,8 +189,10 @@ button.mt-chip:active{background:var(--btn-secondary-bg-pressed)}
 .pr .custom:focus-within{box-shadow:0 0 0 1px var(--accent)}
 .pr .rules{display:flex;gap:var(--s-4);flex-wrap:wrap;font-size:var(--fs-footnote);color:var(--muted)}
 .pr .startrow{display:flex;align-items:center;gap:var(--s-3);margin-top:var(--space-group);border-top:1px solid var(--hair);padding-top:var(--s-3)}
-.pr .startrow textarea{resize:vertical;flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-size:var(--fs-callout);outline:none;min-height:var(--ctl);padding:0 var(--s-1)}
-.pr .startrow textarea::placeholder{color:var(--muted)}
+/* One line centred on its 44 px, level with the in-field microphone. The long placeholder stays on that line, cut with an ellipsis, instead of wrapping into a clipped second line. */
+.pr .startrow textarea{resize:vertical;flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-size:var(--fs-callout);outline:none;min-height:var(--ctl);padding:calc((var(--ctl) - 1lh) / 2) var(--s-1)}
+.pr .startrow textarea::placeholder{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr .startrow textarea:placeholder-shown{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pr .startrow .pri{white-space:nowrap}
 .pr .timer{display:inline-flex;align-items:center;gap:var(--s-2);font:var(--fw-medium) var(--fs-body) var(--mono);padding:6px var(--s-3);border-radius:var(--r-pill);background:var(--faint);color:var(--ink)}
 .pr .timer::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent)}

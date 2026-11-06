@@ -89,7 +89,7 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
           <div className="sd-body">
             <section>
               <h3>Tema</h3>
-              <div className="seg seg-track glass glass-text" role="group" aria-label="Tema">
+              <div className="seg seg-track" role="group" aria-label="Tema">
                 {THEMES.map(([id, label], i) => (
                   <button key={id} ref={i === 0 ? first : undefined} type="button" aria-pressed={settings.theme === id} onClick={() => onTheme(id)}>
                     {label}

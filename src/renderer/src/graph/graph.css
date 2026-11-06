@@ -120,12 +120,14 @@
   color: var(--muted);
   margin: 0 var(--s-1) var(--s-2);
 }
-/* The lens selector: a segmented track with 9 px option corners, concentric with its 12 px track 3 px out. */
+/* The lens selector: a segmented track with 9 px option corners, concentric with its 12 px track 3 px out. It sits in the
+   glass menu, so the track is a faint fill, not a second glass (the lens still slides over it). */
 .graph .gseg {
   display: flex;
   gap: 2px;
   padding: 3px;
   border-radius: var(--r-md);
+  background: var(--faint);
   --lens-r: 9px;
 }
 .graph .gseg button {
