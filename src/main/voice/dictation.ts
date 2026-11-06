@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
+import { StringDecoder } from 'node:string_decoder'
 import { toolPath } from '../ai/engines'
 import { extOf, VOICE_MAX } from '../memory/voice'
 import { MISSING_WHISPER } from '../notebook/media'
@@ -66,6 +67,8 @@ export function createDictation(opts: {
   let server: Server | null = null
   let starting: Promise<Server | null> | null = null
   let idle: ReturnType<typeof setTimeout> | null = null
+  /** Recordings between arriving and their answer, the ones still being written to disk included. */
+  let active = 0
 
   const stop = (s: Server | null, reason: string): void => {
     if (!s || s.closed) return
@@ -106,8 +109,10 @@ export function createDictation(opts: {
       cap: null
     }
     let buf = ''
+    // A character split across two chunks (è, à) is held until its last byte arrives.
+    const utf8 = new StringDecoder('utf8')
     s.proc.stdout.on('data', (chunk) => {
-      buf += String(chunk)
+      buf += typeof chunk === 'string' ? chunk : utf8.write(chunk)
       const lines = buf.split('\n')
       buf = lines.pop() ?? ''
       for (const line of lines) onLine(s, line)
@@ -177,9 +182,27 @@ export function createDictation(opts: {
   const armIdle = (): void => {
     if (idle) clearTimeout(idle)
     idle = null
-    if (server && server.pending.size === 0) {
+    if (server && active === 0 && server.pending.size === 0) {
       const s = server
       idle = setTimeout(() => stop(s, 'Trascrizione interrotta'), idleMs)
+    }
+  }
+
+  /** One recording to the server, written to a file it can read and deleted afterwards. */
+  const send = async (bytes: Uint8Array, ext: string, onStage?: (st: Stage) => void): Promise<string> => {
+    let s = await ready()
+    if (!s) return opts.fallback(bytes)
+    const dir = join(opts.dir, `voce-${randomBytes(6).toString('hex')}`)
+    try {
+      await mkdir(dir, { recursive: true })
+      const file = join(dir, `registrazione.${ext}`)
+      await writeFile(file, bytes)
+      // The process may have closed while the file was being written.
+      if (s.closed) s = await ready()
+      if (!s) return await opts.fallback(bytes)
+      return await ask(s, file, onStage)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
     }
   }
 
@@ -190,19 +213,11 @@ export function createDictation(opts: {
       if (!ext) throw new Error('Registrazione non valida')
       if (idle) clearTimeout(idle)
       idle = null
-      let s = await ready()
-      if (!s) return opts.fallback(bytes)
-      const dir = join(opts.dir, `voce-${randomBytes(6).toString('hex')}`)
+      active++
       try {
-        await mkdir(dir, { recursive: true })
-        const file = join(dir, `registrazione.${ext}`)
-        await writeFile(file, bytes)
-        // The process may have closed while the file was being written.
-        if (s.closed) s = await ready()
-        if (!s) return await opts.fallback(bytes)
-        return await ask(s, file, onStage)
+        return await send(bytes, ext, onStage)
       } finally {
-        await rm(dir, { recursive: true, force: true })
+        active--
         armIdle()
       }
     },

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeReviewHandlers } from '../../src/main/ipc-handlers'
+import { CH } from '../../src/shared/api'
 import { buildExplainPrompt, explainReplySchema, MAX_QUESTIONS, type ExplainTurn } from '../../src/main/memory/explain'
 import { createReviewService, type ReviewService } from '../../src/main/memory/review'
 import { memoryStore, type MemoryStore } from '../../src/main/memory/store'
@@ -171,14 +172,17 @@ describe('voice', () => {
 
 describe('handlers', () => {
   const svc = { explain: vi.fn(async () => ({ kind: 'question' as const, question: 'q' })) } as unknown as ReviewService
-  const voice = vi.fn(async () => 'detto')
-  const h = makeReviewHandlers(svc, { voice, microphone: async () => true })
-  it('validates the dialogue and the recording', async () => {
+  const h = makeReviewHandlers(svc)
+  it('validates the dialogue', async () => {
     await expect(h.explain({ conceptId: 'a1', exercise: explain, turns: [], confidence: 50 })).rejects.toThrow()
     await expect(h.explain({ conceptId: 'a1', exercise: explain, turns: [{ by: 'tutor', text: 'x' }], confidence: 50 })).rejects.toThrow()
     await expect(h.explain({ conceptId: 'a1', exercise: explain, turns: [turn('andrea', 'x')], confidence: 50 })).resolves.toEqual({ kind: 'question', question: 'q' })
-    await expect(h.voice('non audio')).rejects.toThrow()
-    await expect(h.voice(new Uint8Array([1]))).resolves.toBe('detto')
+  })
+  it('has no voice channel of its own: Spiegalo tu dictates through voice:transcribe', () => {
+    expect(Object.keys(h)).not.toContain('voice')
+    expect(Object.keys(h)).not.toContain('microphone')
+    expect(Object.values(CH)).not.toContain('review:voice')
+    expect(Object.values(CH)).not.toContain('review:microphone')
   })
 })
 

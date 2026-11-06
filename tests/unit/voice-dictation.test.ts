@@ -15,6 +15,19 @@ import {
   type ServerProcess
 } from '../../src/main/voice/dictation'
 
+/** A gate on writing the recording file: while set, every writeFile waits for it. */
+const io = vi.hoisted(() => ({ gate: null as Promise<void> | null }))
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const fs = await importOriginal<typeof import('node:fs/promises')>()
+  return {
+    ...fs,
+    writeFile: (async (...args: Parameters<typeof fs.writeFile>) => {
+      if (io.gate) await io.gate
+      return fs.writeFile(...args)
+    }) as typeof fs.writeFile
+  }
+})
+
 const webm = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 1, 2, 3])
 let dir: string
 
@@ -295,6 +308,41 @@ describe('dictation', () => {
     expect(procs[0].kill).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
     expect(procs[0].kill).toHaveBeenCalledTimes(1)
+    d.dispose()
+  })
+
+  it('keeps the process alive for a recording still being written when another one ends', async () => {
+    const held: Request[] = []
+    const { spawn, procs } = fakeServer((req) => held.push(req))
+    const d = base(spawn, { idleMs: 30 })
+    const first = d.transcribe(webm)
+    await sent(() => held.length === 1)
+    // The second recording is still being written to disk when the first answer comes back.
+    let open!: () => void
+    io.gate = new Promise<void>((r) => (open = r))
+    const second = d.transcribe(webm)
+    procs[0].say({ id: held[0].id, text: 'primo' })
+    expect(await first).toBe('primo')
+    io.gate = null
+    open()
+    await sent(() => held.length === 2)
+    await new Promise((r) => setTimeout(r, 80))
+    expect(procs[0].kill).not.toHaveBeenCalled()
+    procs[0].say({ id: held[1].id, text: 'secondo' })
+    expect(await second).toBe('secondo')
+    d.dispose()
+  })
+
+  it('reads accented words split across two stdout chunks', async () => {
+    const { spawn } = fakeServer((req, p) => {
+      const line = Buffer.from(JSON.stringify({ id: req.id, text: 'perché è così' }) + '\n')
+      // Cut inside the two bytes of «é».
+      const cut = line.indexOf(Buffer.from('é')) + 1
+      p.stdout.emit('data', line.subarray(0, cut))
+      p.stdout.emit('data', line.subarray(cut))
+    })
+    const d = base(spawn)
+    expect(await d.transcribe(webm)).toBe('perché è così')
     d.dispose()
   })
 

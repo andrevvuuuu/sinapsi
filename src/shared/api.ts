@@ -50,8 +50,6 @@ export const CH = {
   reviewPlan: 'review:plan',
   reviewGrade: 'review:grade',
   reviewExplain: 'review:explain',
-  reviewVoice: 'review:voice',
-  reviewMicrophone: 'review:microphone',
   voiceTranscribe: 'voice:transcribe',
   voiceMicrophone: 'voice:microphone',
   voiceStage: 'voice:stage',
@@ -150,10 +148,6 @@ export interface SinapsiApi {
     grade(req: { conceptId: string; exercise: import('./exercise-schema').Exercise; answer: string; confidence: number }): Promise<import('../main/memory/review').GradeResult>
     /** "Spiegalo tu": the whole dialogue so far, Andrea's last turn included. */
     explain(req: { conceptId: string; exercise: import('./exercise-schema').Exercise; turns: import('../main/memory/explain').ExplainTurn[]; confidence: number }): Promise<import('../main/memory/review').ExplainResult>
-    /** A spoken answer as text (mlx_whisper). Same service as voice.transcribe. */
-    voice(bytes: Uint8Array): Promise<string>
-    /** Asks macOS for the microphone. */
-    microphone(): Promise<boolean>
     record(r: import('./memory-types').ReviewLine): Promise<{ memory: import('./memory-types').Memory; intervals: Record<import('./memory-types').Grade, string> }>
     memory(): Promise<Record<string, import('./memory-types').Memory>>
     intervals(conceptId: string): Promise<Record<import('./memory-types').Grade, string>>
