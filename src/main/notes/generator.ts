@@ -3,7 +3,7 @@ import { mkdir } from 'node:fs/promises'
 import type { Bridge } from '../ai/bridge'
 import { AiTimeoutError, AuthRequiredError, EngineMissingError } from '../ai/errors'
 import type { SessionState } from '../session/events'
-import { NotaSchema } from '../../shared/nota-schema'
+import { NotaWriteSchema } from '../../shared/nota-math'
 import type { VaultIndex } from '../../shared/vault-types'
 import { bodyHash } from '../vault/body-hash'
 import { buildNotePrompt } from './prompt'
@@ -69,7 +69,7 @@ export function createNoteGenerator(deps: {
     const r = await deps.bridge.ask({
       task: 'note',
       prompt: buildNotePrompt({ noteTitle: n.sourceTitle, noteText: text, session, sources }),
-      schema: NotaSchema,
+      schema: NotaWriteSchema,
       timeoutMs: NOTE_TIMEOUT,
       cwd: deps.workDir
     })
