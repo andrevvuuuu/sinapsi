@@ -98,12 +98,16 @@ const NoteRequest = z
   .strict()
   .refine((r) => r.sourcePath || r.sessionId, 'serve una nota o una sessione')
 
-export function makeNoteHandlers(gen: NoteGenerator) {
+const Attempt = z.object({ noteId: Id, prompt: z.string().max(4000), text: z.string().max(20_000), skipped: z.boolean() }).strict()
+export type NoteAttempt = z.infer<typeof Attempt>
+
+export function makeNoteHandlers(gen: NoteGenerator, recordAttempt: (a: NoteAttempt) => Promise<void>) {
   return {
     create: async (req: unknown) => gen.create(NoteRequest.parse(req)),
     list: () => gen.list(),
     get: async (id: unknown) => gen.get(Id.parse(id)),
-    retry: async (id: unknown) => gen.retry(Id.parse(id))
+    retry: async (id: unknown) => gen.retry(Id.parse(id)),
+    attempt: async (a: unknown) => recordAttempt(Attempt.parse(a))
   }
 }
 

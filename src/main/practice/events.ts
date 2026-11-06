@@ -25,6 +25,8 @@ export type PracticeProblem = PublicProblem & {
   phase: PracticeTurn['phase']
   hints: number
   maxRung: number | null
+  /** Reasoning Andrea sent on this problem: until the first one, hints stop at the first rung. */
+  attempts: number
   outcome?: NonNullable<PracticeTurn['conclude']>['outcome']
   verdict?: string
   miss?: NonNullable<PracticeTurn['conclude']>['miss']
@@ -91,6 +93,10 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
       case 'learner':
         s.items.push({ kind: 'learner', submission: e.submission, text: e.text })
         if (e.submission.kind === 'next') s.paused = false
+        if (e.submission.kind === 'thinking') {
+          const p = s.problems.find((x) => x.id === s.active)
+          if (p) p.attempts++
+        }
         s.lastLearnerText = e.text
         s.awaiting = 'tutor'
         break
@@ -103,7 +109,7 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
         if (e.conversationId) s.conversationId = e.conversationId
         if (problem && publicProblem) {
           solutions.set(problem.id, problem.modelSolution)
-          s.problems.push({ ...publicProblem, status: 'active', phase: e.turn.phase, hints: 0, maxRung: null })
+          s.problems.push({ ...publicProblem, status: 'active', phase: e.turn.phase, hints: 0, maxRung: null, attempts: 0 })
           s.active = problem.id
           s.paused = false
         }

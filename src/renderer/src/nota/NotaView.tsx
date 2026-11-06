@@ -147,7 +147,7 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
     )
 
   return (
-    <NotaContext.Provider value={{ layers }}>
+    <NotaContext.Provider value={{ layers, noteId: id }}>
       <div className="nota">
         {bar}
         <Page nota={n.nota} stored={n} mode={mode} fade={known ? (section) => fadeOf(sectionConcepts(known.graph, n.sourcePath, section), known.memory) : undefined} />

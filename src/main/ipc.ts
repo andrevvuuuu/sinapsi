@@ -34,6 +34,7 @@ import { fakeTeacher } from './session/fake-teacher'
 import { createSessionRunner } from './session/runner'
 import { memoryBrief } from './session/memory-brief'
 import { createSuggester } from './suggest/suggest'
+import { appendJsonl } from './store/jsonl'
 import { dataDir } from './store/paths'
 import { loadSettings, saveSettings } from './store/settings'
 import { scanVault } from './vault/scan'
@@ -214,11 +215,12 @@ export function registerIpc(): { bridge: Bridge } {
       if (m.status === 'ready') void extractor.request(m.sourcePath, 'study').catch(() => undefined)
     }
   })
-  const nh = makeNoteHandlers(notes)
+  const nh = makeNoteHandlers(notes, (a) => appendJsonl(join(dataDir(), 'attempts.jsonl'), { ...a, at: Date.now() }))
   ipcMain.handle(CH.notesCreate, (_e, req) => nh.create(req))
   ipcMain.handle(CH.notesList, () => nh.list())
   ipcMain.handle(CH.notesGet, (_e, id) => nh.get(id))
   ipcMain.handle(CH.notesRetry, (_e, id) => nh.retry(id))
+  ipcMain.handle(CH.notesAttempt, (_e, a) => nh.attempt(a))
 
   const store = graphStoreForMoves
   const vaultOrNull = async (): Promise<import('../shared/vault-types').VaultIndex | null> => {

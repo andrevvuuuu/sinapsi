@@ -40,7 +40,7 @@ describe('a training interrupted mid-turn', () => {
     expect(api.practice.submit).toHaveBeenCalledWith(ID, { kind: 'next' })
   })
   it('a double click on "Dammi un indizio" sends one request', async () => {
-    const open: PracticeState = { ...base, awaiting: 'learner', hasTutorTurn: true, problems: [{ ...problem, modelSolution: undefined, status: 'active', phase: 'warmup', hints: 0, maxRung: null }], active: 'p1' }
+    const open: PracticeState = { ...base, awaiting: 'learner', hasTutorTurn: true, problems: [{ ...problem, modelSolution: undefined, status: 'active', phase: 'warmup', hints: 0, maxRung: null, attempts: 0 }], active: 'p1' }
     const api = mountView(open)
     const hint = await screen.findByRole('button', { name: 'Dammi un indizio' })
     fireEvent.click(hint)
@@ -206,7 +206,7 @@ describe('camera', () => {
       return s
     })
     Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia, enumerateDevices: async () => [{ kind: 'videoinput', deviceId: 'iphone', label: 'Fotocamera di iPhone' }] } })
-    const open: PracticeState = { ...base, awaiting: 'learner', hasTutorTurn: true, problems: [{ ...problem, modelSolution: undefined, status: 'active', phase: 'warmup', hints: 0, maxRung: null }], active: 'p1' }
+    const open: PracticeState = { ...base, awaiting: 'learner', hasTutorTurn: true, problems: [{ ...problem, modelSolution: undefined, status: 'active', phase: 'warmup', hints: 0, maxRung: null, attempts: 0 }], active: 'p1' }
     const api = mountView(open) as unknown as { practice: Record<string, ReturnType<typeof vi.fn>> }
     api.practice.camera = vi.fn(async () => true)
     api.practice.photo = vi.fn(async () => 'testo letto')

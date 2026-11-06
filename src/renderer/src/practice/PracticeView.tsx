@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PracticeProblem, PracticeState } from '../../../main/practice/events'
-import { MODE_IT, OUTCOME_IT, type Submission } from '../../../shared/practice-protocol'
+import { hintBlocked, MODE_IT, OUTCOME_IT, type Submission } from '../../../shared/practice-protocol'
 import { RichText } from '../session/RichText'
 import { ExamView } from './ExamView'
 import { snippet } from './exam-format'
@@ -87,8 +87,14 @@ function ProblemDock({ problem, sessionId, onSend }: { problem: PracticeProblem;
         </div>
         <div className="row">
           <PhotoButton sessionId={sessionId} onText={(t) => setPhotoText((p) => [p, t].filter(Boolean).join('\n\n'))} />
-          <button type="button" className="ghost warn" disabled={busy} onClick={() => void once({ kind: 'hint' })}>
-            Dammi un indizio
+          <button
+            type="button"
+            className="ghost warn"
+            disabled={busy || hintBlocked(problem)}
+            title={hintBlocked(problem) ? 'Prima scrivi un tentativo, anche solo un pezzo' : undefined}
+            onClick={() => void once({ kind: 'hint' })}
+          >
+            {hintBlocked(problem) ? 'Prima un tentativo' : 'Dammi un indizio'}
           </button>
           <button
             type="button"

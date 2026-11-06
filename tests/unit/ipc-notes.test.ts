@@ -11,7 +11,8 @@ function setup() {
     list: vi.fn(async () => []),
     get: vi.fn(async () => ({}) as never)
   }
-  return { gen, h: makeNoteHandlers(gen) }
+  const record = vi.fn(async () => undefined)
+  return { gen, record, h: makeNoteHandlers(gen, record) }
 }
 
 describe('note handlers', () => {
@@ -35,5 +36,12 @@ describe('note handlers', () => {
   })
   it('rejects an overlong path', async () => {
     await expect(setup().h.create({ sourcePath: 'a'.repeat(1025) })).rejects.toThrow()
+  })
+  it('records a "Prima prova tu" attempt, validated', async () => {
+    const { h, record } = setup()
+    await h.attempt({ noteId: ID, prompt: 'Calcola.', text: 'zero', skipped: false })
+    expect(record).toHaveBeenCalledWith({ noteId: ID, prompt: 'Calcola.', text: 'zero', skipped: false })
+    await expect(h.attempt({ noteId: 'x', prompt: '', text: '', skipped: true })).rejects.toThrow()
+    await expect(h.attempt({ noteId: ID, prompt: '', text: '', skipped: true, extra: 1 })).rejects.toThrow()
   })
 })

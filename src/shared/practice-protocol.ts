@@ -40,14 +40,25 @@ export const PracticeTurnSchema = TurnShape.superRefine((t, ctx) => {
   if (t.problem?.lines && t.problem.lines.length < 2) ctx.addIssue({ code: 'custom', message: '"lines" ha almeno due righe' })
 })
 
+/** Whether Andrea has sent any reasoning on the open problem. */
+export function hasAttempt(state: { active?: string; problems?: { id: string; attempts?: number }[] }): boolean {
+  return (state.problems?.find((p) => p.id === state.active)?.attempts ?? 0) > 0
+}
+
+/** Attempt first: with nothing written yet, one rung-0 hint is free; the next waits for a try. */
+export function hintBlocked(p: { hints: number; attempts: number }): boolean {
+  return p.attempts === 0 && p.hints > 0
+}
+
 /** The rules a turn must also satisfy against the session so far and what Andrea just asked. null when fine. */
-export function checkTurnAgainst(state: { active?: string; problems?: { id: string }[] }, t: PracticeTurn, asked?: Submission['kind']): string | null {
+export function checkTurnAgainst(state: { active?: string; problems?: { id: string; attempts?: number }[] }, t: PracticeTurn, asked?: Submission['kind']): string | null {
   if (t.problem && state.active) return `c'è già un problema aperto (${state.active}): concludilo prima di proporne un altro`
   if (t.problem && state.problems?.some((p) => p.id === t.problem!.id)) return `l'id "${t.problem.id}" è già stato usato: dai al problema un id nuovo`
   if ((t.conclude || t.hint) && !state.active) return 'non c\'è nessun problema aperto: proponi un problema con "problem"'
   if (asked === 'dismiss' && !t.conclude) return 'Andrea ha lasciato il problema: concludi con "conclude" e outcome "surrendered"'
   if ((asked === 'start' || asked === 'next') && !t.problem && t.phase !== 'done') return 'Andrea aspetta il prossimo problema: proponilo con "problem" (oppure chiudi con "done")'
   if (asked === 'end' && t.phase !== 'done') return 'Andrea ha chiuso la sessione: rispondi con phase "done" e "summary"'
+  if (t.hint && t.hint.rung > 0 && !hasAttempt(state)) return 'Andrea non ha ancora scritto un tentativo: l\'indizio resta al gradino 0 (attenzione o chiarimento del testo)'
   return null
 }
 
@@ -66,10 +77,10 @@ export const SubmissionSchema = z.object({
 export type Submission = z.infer<typeof SubmissionSchema>
 
 /** What Andrea sent, as the tutor reads it. */
-export function formatSubmission(s: Submission, problem?: Pick<Problem, 'lines'>): string {
+export function formatSubmission(s: Submission, problem?: Pick<Problem, 'lines'> & { attempts?: number }): string {
   switch (s.kind) {
     case 'hint':
-      return 'Mi serve un indizio.'
+      return problem?.attempts === 0 ? 'Mi serve un indizio. Non ho ancora scritto un tentativo: solo gradino 0.' : 'Mi serve un indizio.'
     case 'next':
       return 'Prossimo problema.'
     case 'ask':

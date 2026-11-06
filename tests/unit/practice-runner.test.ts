@@ -48,7 +48,7 @@ describe('training', () => {
     ])
     const id = await runner.create(material)
     await runner.retry(id)
-    await runner.submit(id, { kind: 'hint' })
+    await runner.submit(id, { kind: 'thinking', text: 'non so da dove partire' })
     await runner.submit(id, { kind: 'thinking', text: 'uso il valor medio' })
     expect((converse.mock.calls[2][0] as unknown as { prompt: string; resume: boolean })).toMatchObject({ prompt: 'Il mio ragionamento: uso il valor medio', resume: true })
     const reviews = await mem.read()
@@ -70,7 +70,7 @@ describe('training', () => {
     const { runner } = setup(turns)
     const id = await runner.create(material)
     await runner.retry(id)
-    if (rung !== undefined) await runner.submit(id, { kind: 'hint' })
+    if (rung !== undefined) await runner.submit(id, { kind: 'thinking', text: 'boh' })
     await runner.submit(id, outcome === 'surrendered' ? { kind: 'dismiss' } : { kind: 'thinking', text: 'x' })
     expect((await mem.read())[0]).toMatchObject({ grade, correct: outcome !== 'surrendered' })
   })
@@ -85,6 +85,32 @@ describe('training', () => {
     const id2 = await r2.create(material)
     await r2.retry(id2)
     expect((await r2.get(id2)).awaiting).toBe('retry')
+  })
+  it('attempt first: one rung-0 hint is free, the next waits for a try', async () => {
+    const { runner, converse } = setup([
+      { phase: 'warmup', blocks: [], problem },
+      { phase: 'warmup', blocks: [], hint: { rung: 0, md: 'Rileggi il secondo dato.' } },
+      { phase: 'warmup', blocks: [], hint: { rung: 2, md: 'Teoremi sulle derivabili.' } }
+    ])
+    const id = await runner.create(material)
+    await runner.retry(id)
+    await runner.submit(id, { kind: 'hint' })
+    expect((converse.mock.calls[1][0] as unknown as { prompt: string }).prompt).toMatch(/Non ho ancora scritto un tentativo: solo gradino 0/)
+    await expect(runner.submit(id, { kind: 'hint' })).rejects.toThrow(/prima scrivi un tentativo/)
+    await runner.submit(id, { kind: 'thinking', text: 'parto dalla definizione' })
+    expect((await runner.get(id)).problems[0]).toMatchObject({ hints: 2, maxRung: 2, attempts: 1 })
+  })
+  it('sends back a hint above rung 0 when nothing has been tried yet', async () => {
+    const { runner, converse } = setup([
+      { phase: 'warmup', blocks: [], problem },
+      { phase: 'warmup', blocks: [], hint: { rung: 3, md: 'Il valor medio.' } },
+      { phase: 'warmup', blocks: [], hint: { rung: 0, md: 'Rileggi il testo.' } }
+    ])
+    const id = await runner.create(material)
+    await runner.retry(id)
+    await runner.submit(id, { kind: 'hint' })
+    expect((converse.mock.calls[2][0] as unknown as { prompt: string }).prompt).toMatch(/non va bene: .*gradino 0/)
+    expect((await runner.get(id)).problems[0]).toMatchObject({ hints: 1, maxRung: 0 })
   })
   it('refuses submissions that do not fit the moment', async () => {
     const { runner } = setup([{ phase: 'warmup', blocks: [], problem }])

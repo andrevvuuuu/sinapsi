@@ -6,7 +6,7 @@ import type { Bridge } from '../ai/bridge'
 import { AuthRequiredError, EngineMissingError } from '../ai/errors'
 import { appendJsonl, readJsonl } from '../store/jsonl'
 import type { Grade } from '../../shared/memory-types'
-import { checkTurnAgainst, formatSubmission, practiceJsonSchema, PracticeTurnSchema, type PracticeTurn, type Submission } from '../../shared/practice-protocol'
+import { checkTurnAgainst, formatSubmission, hintBlocked, practiceJsonSchema, PracticeTurnSchema, type PracticeTurn, type Submission } from '../../shared/practice-protocol'
 import type { Material } from '../../shared/practice-types'
 import type { MemoryStore } from '../memory/store'
 import { reducePractice, type PracticeEvent, type PracticeState, type PracticeSummary } from './events'
@@ -128,6 +128,8 @@ export function createPracticeRunner(deps: PracticeDeps) {
     const needsActive = sub.kind === 'thinking' || sub.kind === 'hint' || sub.kind === 'dismiss'
     if (needsActive && !s.active) return 'non c\'è nessun problema aperto'
     if ((sub.kind === 'next' || sub.kind === 'ask') && s.active) return 'c\'è ancora un problema aperto'
+    const p = s.problems.find((x) => x.id === s.active)
+    if (sub.kind === 'hint' && p && hintBlocked(p)) return 'prima scrivi un tentativo, anche solo un pezzo di ragionamento'
     if (sub.kind === 'thinking' && !sub.text?.trim() && !sub.photoText?.trim() && sub.line === undefined) return 'scrivi il tuo ragionamento'
     return null
   }

@@ -36,6 +36,7 @@ const api: SinapsiApi = {
     list: () => ipcRenderer.invoke(CH.notesList),
     get: (id) => ipcRenderer.invoke(CH.notesGet, id),
     retry: (id) => ipcRenderer.invoke(CH.notesRetry, id),
+    attempt: (a) => ipcRenderer.invoke(CH.notesAttempt, a),
     onUpdate: (cb) => subscribe(CH.notesUpdated, cb)
   },
   graph: {

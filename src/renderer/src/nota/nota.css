@@ -133,6 +133,9 @@
 .nota .nv-try.revealed{border:0;background:transparent;padding:0;max-width:none}
 .nota .nv-try p{margin:0 0 8px;font-size:16px}
 .nota .nv-try p b{color:var(--pen);font-weight:500}
+.nota .nv-try .acts{display:flex;align-items:center;gap:14px}
+.nota .nv-try .btn:disabled{opacity:.45;cursor:default}
+.nota .nv-try .linkish{border:0;background:none;padding:0;color:var(--muted,var(--ink));font:500 14px var(--sans);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .nota .nv-try .mine{margin-bottom:12px;padding:10px 14px;border-left:2px solid var(--pen)}
 .nota .nv-try .mine span{display:block;font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--pen)}
 .nota .nv-try .mine p{margin:0;font:500 22px/1.25 var(--hand);color:var(--pen);white-space:pre-wrap}

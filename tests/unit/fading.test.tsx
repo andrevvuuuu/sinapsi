@@ -134,6 +134,7 @@ describe('backward fading', () => {
     expect(screen.queryByText('g = f − sec.')).toBeNull()
     expect(screen.getByText(/Gli ultimi 2 passi sono nascosti/).textContent).toContain("«Teorema di Rolle» l'hai già ripassato")
     expect(screen.getByText('Che retta?')).toBeTruthy()
+    fireEvent.change(screen.getAllByLabelText('La tua risposta')[1], { target: { value: 'la secante' } })
     fireEvent.click(screen.getAllByRole('button', { name: 'Scopri il passo' })[1])
     expect(screen.getByText('g = f − sec.')).toBeTruthy()
     expect(screen.queryByText('La retta.')).toBeNull()

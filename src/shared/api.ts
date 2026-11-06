@@ -41,6 +41,7 @@ export const CH = {
   notesGet: 'notes:get',
   notesRetry: 'notes:retry',
   notesUpdated: 'notes:updated',
+  notesAttempt: 'notes:attempt',
   graphGet: 'graph:get',
   graphExtract: 'graph:extract',
   graphStatus: 'graph:status',
@@ -120,6 +121,8 @@ export interface SinapsiApi {
     list(): Promise<NoteMeta[]>
     get(id: string): Promise<StoredNote>
     retry(id: string): Promise<void>
+    /** "Prima prova tu": what he wrote before revealing (or that he had nothing). */
+    attempt(a: { noteId: string; prompt: string; text: string; skipped: boolean }): Promise<void>
     onUpdate(cb: (m: NoteMeta) => void): () => void
   }
   graph: {

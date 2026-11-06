@@ -126,7 +126,7 @@ const problem = { id: 'p1', statement: 'Mostra che $|\\sin a - \\sin b| \\le |a-
 const open: PracticeState = {
   ...base,
   items: [{ kind: 'learner', submission: { kind: 'start' }, text: 'MATERIALE…' }, { kind: 'tutor', turn: { phase: 'warmup', blocks: [{ type: 'text', md: 'Si parte.' }], problem } }],
-  problems: [{ ...problem, status: 'active', phase: 'warmup', hints: 0, maxRung: null }],
+  problems: [{ ...problem, status: 'active', phase: 'warmup', hints: 0, maxRung: null, attempts: 0 }],
   active: 'p1'
 }
 

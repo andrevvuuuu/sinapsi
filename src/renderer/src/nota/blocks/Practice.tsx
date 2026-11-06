@@ -3,16 +3,22 @@ import { blankSpans } from '../../../../shared/exercise-schema'
 import { MathSelect } from '../../components/MathSelect'
 import type { LeafBlock } from '../../../../shared/nota-schema'
 import { RichText } from '../../session/RichText'
-import { FadeContext, type Mode } from '../context'
+import { FadeContext, NotaContext, type Mode } from '../context'
 
-/** "Prima prova tu": the answer stays covered until he has written his own attempt. */
+/** "Prima prova tu": the answer stays covered until he has written his own attempt, or says honestly he has none. */
 export function TryCover({ prompt, children, label = 'Ho provato, mostra' }: { prompt?: string; children: React.ReactNode; label?: string }): React.JSX.Element {
+  const { noteId } = useContext(NotaContext)
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
+  const reveal = (skipped: boolean): void => {
+    setOpen(true)
+    // The attempt is kept: what he wrote before seeing the answer is the signal the reliance metrics read.
+    if (noteId) void window.sinapsi?.notes.attempt({ noteId, prompt: prompt ?? '', text: skipped ? '' : text.trim(), skipped }).catch(() => undefined)
+  }
   if (open)
     return (
       <div className="nv-try revealed">
-        {text && (
+        {text.trim() && (
           <div className="mine">
             <span>Il tuo tentativo</span>
             <p>{text}</p>
@@ -27,9 +33,14 @@ export function TryCover({ prompt, children, label = 'Ho provato, mostra' }: { p
         <b>Prima prova tu.</b> {prompt && <RichText md={prompt} className="inline" />}
       </p>
       <textarea aria-label="La tua risposta" placeholder="Scrivi il passo come lo faresti all'esame…" value={text} onChange={(e) => setText(e.target.value)} />
-      <button type="button" className="btn" onClick={() => setOpen(true)}>
-        {label}
-      </button>
+      <div className="acts">
+        <button type="button" className="btn" disabled={!text.trim()} onClick={() => reveal(false)}>
+          {label}
+        </button>
+        <button type="button" className="linkish" onClick={() => reveal(true)}>
+          Non lo so, mostra
+        </button>
+      </div>
     </div>
   )
 }
