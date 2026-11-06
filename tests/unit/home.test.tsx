@@ -88,7 +88,7 @@ describe('Home', () => {
     window.sinapsi = { ...mockApi(idx), review: { memory: vi.fn(async () => ({ a: { due: 1 }, b: { due: Date.now() + 1e9 } })) } } as never
     const onOpenReview = vi.fn()
     render(<Home onOpenReview={onOpenReview} />)
-    const seg = within(await screen.findByRole('group', { name: 'Tipo di sessione' })).getByRole('button', { name: /Ripasso/ })
+    const seg = within(await screen.findByRole('tablist', { name: 'Tipo di sessione' })).getByRole('tab', { name: /Ripasso/ })
     await vi.waitFor(() => expect(seg.textContent).toContain('1'))
     fireEvent.click(seg)
     fireEvent.click(screen.getByRole('button', { name: 'Inizia' }))

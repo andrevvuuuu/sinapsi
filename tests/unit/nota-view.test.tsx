@@ -38,7 +38,7 @@ describe('NotaView', () => {
   it('covers solutions in "Prova da solo"', async () => {
     mountNota(ready)
     expect(await screen.findByText(/Vale/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Prova da solo' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Prova da solo' }))
     expect(screen.queryByText(/Vale/)).toBeNull()
   })
   it('hides quizzes when the Quiz layer is switched off', async () => {

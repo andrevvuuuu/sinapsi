@@ -34,12 +34,12 @@ function mount(over: Record<string, unknown> = {}) {
 describe('left panel', () => {
   it('filters past sessions by kind, Ripasso included, and opens them', async () => {
     const { props } = mount()
-    const kinds = await screen.findByRole('group', { name: 'Sessioni da mostrare' })
-    expect(within(kinds).getAllByRole('button').map((b) => b.textContent)).toEqual(['Tutte', 'Apprendimento', 'Pratica', 'Ripasso'])
+    const kinds = await screen.findByRole('tablist', { name: 'Sessioni da mostrare' })
+    expect(within(kinds).getAllByRole('tab').map((b) => b.textContent)).toEqual(['Tutte', 'Apprendimento', 'Pratica', 'Ripasso'])
     const list = await screen.findByRole('list', { name: 'Sessioni passate' })
     expect(await within(list).findByText('Teorema di Lagrange')).toBeTruthy()
     expect(within(list).getAllByRole('button')).toHaveLength(3)
-    fireEvent.click(within(kinds).getByRole('button', { name: 'Ripasso' }))
+    fireEvent.click(within(kinds).getByRole('tab', { name: 'Ripasso' }))
     fireEvent.click(within(list).getByRole('button', { name: /Teorema di Lagrange/ }))
     expect(props.onOpenReview).toHaveBeenCalledWith('', ['n_l'])
   })
@@ -74,7 +74,7 @@ describe('settings dialog', () => {
     mount()
     fireEvent.click(await screen.findByRole('button', { name: 'Impostazioni' }))
     const dlg = screen.getByRole('dialog', { name: 'Impostazioni' })
-    const trattato = within(dlg).getByRole('button', { name: 'Trattato' })
+    const trattato = within(dlg).getByRole('tab', { name: 'Trattato' })
     trattato.focus()
     await act(async () => fireEvent.click(trattato))
     expect(document.activeElement).toBe(trattato)
@@ -112,7 +112,7 @@ describe('right panel', () => {
 describe('centre', () => {
   it('keeps the mode slider detached above the field', async () => {
     mount()
-    const modes = await screen.findByRole('group', { name: 'Tipo di sessione' })
+    const modes = await screen.findByRole('tablist', { name: 'Tipo di sessione' })
     const field = screen.getByLabelText('Cosa vuoi studiare?')
     expect(modes.closest('.shell')).toBeNull()
     expect(field.closest('.shell')).toBeTruthy()
