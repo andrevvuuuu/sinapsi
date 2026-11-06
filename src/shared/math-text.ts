@@ -9,14 +9,25 @@
  * code, cloze blanks, URLs and HTML tags are left exactly as they are.
  */
 
+/**
+ * Inline $…$ as renderMd reads it: the formula opens before a non-space and closes after one, or has spaces on
+ * both sides ("$ \frac12 $"). A closing $ right before a digit is money ("costa $5 e $10"), unless the content
+ * is clearly LaTeX ("$\frac12$5"). Group 1 is the formula, group 2 the digit after it.
+ */
+export const INLINE_MATH = String.raw`(?<![\\$])\$([^\s$][^$\n]*?(?<=\S)|[ \t]+[^$\n]*?\S[ \t]+)\$(?=(\d)?)`
+/** Whether an INLINE_MATH match really is a formula (see the money rule above). */
+export const isFormula = (tex: string, digitAfter: string | undefined): boolean => !digitAfter || /[\\^_{]/.test(tex)
+
 /** What renderMd treats as math, plus code, blanks, links and tags: never normalized. */
-const PROTECTED = /```[\s\S]*?(?:```|$)|`[^`\n]*`|\$\$[\s\S]+?\$\$|(?<![\\$])\$(?=\S)[^$\n]+?(?<=\S)\$(?!\d)|\{\{[\s\S]*?\}\}|https?:\/\/\S+|\]\([^)\n]*\)|<\/?[A-Za-z][^>\n]*>/g
+const PROTECTED = new RegExp(String.raw`\`\`\`[\s\S]*?(?:\`\`\`|$)|\`[^\`\n]*\`|\$\$[\s\S]+?\$\$|${INLINE_MATH}|\{\{[\s\S]*?\}\}|https?:\/\/\S+|\]\([^)\n]*\)|<\/?[A-Za-z][^>\n]*>`, 'g')
 
 /** Applies fn to the text outside the protected spans. */
 function outside(text: string, fn: (s: string) => string): string {
   let out = ''
   let last = 0
   for (const m of text.matchAll(PROTECTED)) {
+    // Money, not a formula: left to fn like the text around it.
+    if (m[1] !== undefined && !isFormula(m[1], m[2])) continue
     out += fn(text.slice(last, m.index)) + m[0]
     last = m.index + m[0].length
   }
@@ -27,6 +38,9 @@ const FNS = ['arcsin', 'arccos', 'arctan', 'sinh', 'cosh', 'tanh', 'sqrt', 'sin'
 const SUP: Record<string, string> = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁺': '+', '⁻': '-', ⁿ: 'n' }
 const RELS = ['<=', '>=', '=', '<', '>', '≤', '≥', '≠', '∈', '≈', '≡', '→']
 const OPS = [...RELS, '+', '-', '−', '*', '/', '·', '×', '±', '∪', '∩']
+/** LaTeX commands written between two terms: relations, then operators. */
+const REL_CMDS = ['in', 'notin', 'le', 'leq', 'ge', 'geq', 'ne', 'neq', 'to', 'approx', 'equiv', 'implies', 'iff', 'subseteq', 'subset', 'Rightarrow', 'rightarrow', 'Leftrightarrow', 'mapsto', 'sim']
+const OP_CMDS = ['cdot', 'times', 'pm', 'mp', 'cup', 'cap', 'setminus', 'circ', 'div']
 
 const isLetter = (c: string | undefined): boolean => !!c && /\p{L}/u.test(c)
 const isAscii = (c: string | undefined): boolean => !!c && /[A-Za-z]/.test(c)
@@ -71,6 +85,38 @@ class Scanner {
     return closers.includes(this.s[j]) ? j : -1
   }
 
+  /** A subscript: _sec, _12, _{…}. Returns the index after it, j if there is none, -1 if it is malformed. */
+  private sub(j: number, f: Flags): number {
+    const s = this.s
+    if (s[j] !== '_') return j
+    let k = j + 1
+    if (isAscii(s[k])) while (isAscii(s[k])) k++
+    else if (isDigit(s[k])) while (isDigit(s[k])) k++
+    else if (s[k] === '{') k = this.braces(k)
+    else return -1
+    if (k < 0) return -1
+    f.mark = true
+    return k
+  }
+
+  /** The LaTeX command at i (\alpha, \frac{…}{…}, \sqrt{…}), with its brace groups; -1 if it is an operator. */
+  private command(i: number, f: Flags): number {
+    const m = /^\\([A-Za-z]+)/.exec(this.s.slice(i, i + 40))
+    if (!m || REL_CMDS.includes(m[1]) || OP_CMDS.includes(m[1])) return -1
+    let j = i + m[0].length
+    if (this.s[j] === '[') {
+      const k = this.s.indexOf(']', j)
+      if (k < 0) return -1
+      j = k + 1
+    }
+    while (this.s[j] === '{') {
+      j = this.braces(j)
+      if (j < 0) return -1
+    }
+    f.mark = true
+    return j
+  }
+
   /** Exponents after an atom: ^2, ^{n+1}, ^(x), x², and a call right after a name: f(x). */
   private post(j: number, f: Flags, call: boolean): number {
     if (call && this.s[j] === '(') {
@@ -109,9 +155,21 @@ class Scanner {
     return j
   }
 
+  /** Whether the last atom read was a LaTeX command (\int, \alpha…): a space may follow it inside a formula. */
+  private cmd = false
+
   private atom(i: number, f: Flags): number {
     const s = this.s
     const c = s[i]
+    this.cmd = false
+    if (c === '\\') {
+      let j = this.command(i, f)
+      if (j < 0) return -1
+      j = this.sub(j, f)
+      if (j < 0) return -1
+      this.cmd = true
+      return this.post(j, f, false)
+    }
     if (isDigit(c)) return this.post(this.number(i), f, false)
     if (c === '∞') return this.post(i + 1, f, false)
     if (c === '(' || c === '[') {
@@ -128,19 +186,13 @@ class Scanner {
     }
     if (s.startsWith('pi', i) && !isLetter(s[i + 2])) return this.post(i + 2, f, false)
     if (isLetter(s[i + 1])) return -1
+    // Q1, H2O, A4: a capital with a number is a label, not a product.
+    if (/[A-Z]/.test(c) && isDigit(s[i + 1])) return -1
     let j = i + 1
     while (s[j] === "'") j++
     if (j > i + 1 && isLetter(s[j])) return -1 // l'intervallo
-    if (s[j] === '_') {
-      let k = j + 1
-      if (isAscii(s[k])) while (isAscii(s[k])) k++
-      else if (isDigit(s[k])) while (isDigit(s[k])) k++
-      else if (s[k] === '{') k = this.braces(k)
-      else return -1
-      if (k < 0) return -1
-      f.mark = true
-      j = k
-    }
+    j = this.sub(j, f)
+    if (j < 0) return -1
     return this.post(j, f, true)
   }
 
@@ -151,10 +203,20 @@ class Scanner {
     j = this.atom(j, f)
     if (j < 0) return -1
     for (;;) {
-      const c = this.s[j]
-      if (!(isDigit(c) || isAscii(c) || c === '(' || c === '[' || c === '∞')) return j
+      let at = j
+      // Inside LaTeX: a space after a command (\int_a^b f(x)) and the thin spaces \, \; \! join two atoms.
+      if (this.cmd && this.s[at] === ' ') at++
+      const joiner = /^\\[,;!]/.test(this.s.slice(at, at + 2))
+      if (joiner) at += 2
+      const c = this.s[at]
+      if (!(isDigit(c) || isAscii(c) || c === '(' || c === '[' || c === '∞' || c === '\\')) return j
+      // dx after a thin space: the differential.
+      if (joiner && c === 'd' && isAscii(this.s[at + 1]) && !isLetter(this.s[at + 2])) {
+        j = at + 2
+        continue
+      }
       const g: Flags = { ...f }
-      const k = this.atom(j, g)
+      const k = this.atom(at, g)
       if (k < 0) return j
       Object.assign(f, g)
       j = k
@@ -165,6 +227,8 @@ class Scanner {
     const s = this.s
     // "(1, 2) U (3, 4)": a capital U between two intervals is a union.
     if (s[i] === 'U' && s[i - 1] === ' ' && s[i + 1] === ' ' && '(['.includes(s[i + 2])) return 'U'
+    const m = /^\\([A-Za-z]+)(?![A-Za-z])/.exec(s.slice(i, i + 20))
+    if (m) return REL_CMDS.includes(m[1]) || OP_CMDS.includes(m[1]) ? m[0] : null
     return OPS.find((o) => s.startsWith(o, i)) ?? null
   }
 
@@ -178,7 +242,7 @@ class Scanner {
       const g: Flags = { ...f }
       const t = this.term(this.spaces(k + op.length), g)
       if (t < 0) return j
-      if (RELS.includes(op)) g.rel = true
+      if (RELS.includes(op) || REL_CMDS.includes(op.slice(1))) g.rel = true
       Object.assign(f, g)
       j = t
     }
@@ -193,13 +257,18 @@ class Scanner {
   }
 }
 
-const NO_START = /[\p{L}\p{N}\\_'^]/u
-const STARTS = /[A-Za-z0-9([|∞\-−±]/
+const NO_START = /[\p{L}\p{N}\\_'^{]/u
+const STARTS = /[A-Za-z0-9([|∞\-−±\\]/
+/** Generated delimiters, turned into $ at the end: they can merge with a formula that touches them. */
+const D = '\u0001'
 
 /** The LaTeX of a span the scanner accepted: subscripts in roman, superscripts, functions, symbols. */
 export function toTex(span: string): string {
-  return span
+  return groupParens(span)
     .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿ]+/g, (m) => `^{${[...m].map((c) => SUP[c]).join('')}}`)
+    // 2^10, x^-1, a_12: more than one character goes in braces.
+    .replace(/\^(-?\d+(?:\.\d+)?)/g, (m, e: string) => (e.length > 1 ? `^{${e}}` : m))
+    .replace(/_(\d{2,})/g, '_{$1}')
     .replace(/([A-Za-z])_([A-Za-z]{2,})/g, '$1_{\\mathrm{$2}}')
     .replace(/(?<![\\{A-Za-z])sqrt\(([^()]*)\)/g, '\\sqrt{$1}')
     .replace(new RegExp(`(?<![\\\\{A-Za-z])(${FNS.filter((f) => f !== 'sqrt').join('|')})(?![A-Za-z])`, 'g'), '\\$1')
@@ -212,7 +281,33 @@ export function toTex(span: string): string {
     .replace(/ +$/, '')
 }
 
+/** e^(x), x^(n+1): an exponent in parentheses becomes a brace group, as LaTeX wants. */
+function groupParens(s: string): string {
+  let out = ''
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '^' && s[i + 1] === '(') {
+      let depth = 0
+      let j = i + 1
+      for (; j < s.length; j++) {
+        if (s[j] === '(') depth++
+        else if (s[j] === ')' && --depth === 0) break
+      }
+      if (j < s.length) {
+        out += `^{${s.slice(i + 2, j)}}`
+        i = j
+        continue
+      }
+    }
+    out += s[i]
+  }
+  return out
+}
+
 const AFTER_EQ = /^( +(?:su|in|per|di|sull'intervallo|nell'intervallo)? *)/
+/** Spans that parse but are prose: «pagina 5 > 3», «versione 2.0 → 3.0» (two bare numbers compared). */
+const NUMBERS_ONLY = /^-?\d+(?:\.\d+)?\s*(?:<=|>=|=|<|>|≤|≥|≠|→|≈)\s*-?\d+(?:\.\d+)?$/
+/** «20 m²», «m² di superficie»: a unit, not a formula. */
+const isUnit = (span: string, before: string, after: string): boolean => /^(?:[kcdm]?m|s)[²³]$/.test(span) && (/\d\s*$/.test(before) || /^ di\b/.test(after))
 
 function normalizePlain(s: string): string {
   const sc = new Scanner(s)
@@ -223,13 +318,14 @@ function normalizePlain(s: string): string {
     if (STARTS.test(c) && !(i > 0 && NO_START.test(s[i - 1]))) {
       const f: Flags = { rel: false, mark: false }
       const e = sc.expr(i, f)
-      if (e > i && (f.rel || f.mark) && !NO_START.test(s[e] ?? '') && s[e] !== '$') {
-        out += `$${toTex(s.slice(i, e))}$`
+      const span = s.slice(i, Math.max(i, e))
+      if (e > i && (f.rel || f.mark) && !NO_START.test(s[e] ?? '') && !NUMBERS_ONLY.test(span) && !isUnit(span, s.slice(0, i), s.slice(e))) {
+        out += D + toTex(span) + D
         i = e
         const gap = f.rel ? AFTER_EQ.exec(s.slice(i)) : null
         const k = gap ? sc.interval(i + gap[1].length) : -1
         if (gap && k > 0 && !NO_START.test(s[k] ?? '')) {
-          out += gap[1] + `$${toTex(s.slice(i + gap[1].length, k))}$`
+          out += gap[1] + D + toTex(s.slice(i + gap[1].length, k)) + D
           i = k
         }
         continue
@@ -249,14 +345,23 @@ function normalizePlain(s: string): string {
 }
 
 /**
- * Wraps the clear plain-text formulas of a model text in $…$; everything else stays as it was. A $ left
- * alone outside any formula (one the model never closed) is dropped rather than shown.
+ * Wraps the clear plain-text formulas of a model text in $…$; everything else stays as it was. A formula
+ * written flush against an existing one («$f$(x) = 2x^2») joins it instead of making «$$». The one $ of a
+ * text with a single unmatched $ opening a formula («il punto $c = 3») is dropped; money keeps its $.
  */
 export function normalizeMath(text: string): string {
   if (!text) return text
   // «R\{0}»: a number set minus a set, the one LaTeX-ish form the model writes bare.
   const sets = outside(text, (s) => s.replace(/(?<![\p{L}\\])([RNZQC])\\\{([^{}\n]*)\}/gu, (_m, set: string, out: string) => `$\\mathbb{${set}} \\setminus \\{${out}\\}$`))
-  return outside(sets, (s) => normalizePlain(s.replace(/(?<!\\)\$/g, '')))
+  let loose = 0
+  outside(sets, (s) => ((loose += (s.match(/(?<!\\)\$/g) ?? []).length), s))
+  const out = outside(sets, (s) => normalizePlain(loose === 1 ? s.replace(/(?<!\\)\$(?=[^\s\d$])/, '') : s))
+  return out
+    .replace(new RegExp(`(?<![$\\\\])\\$${D}`, 'g'), '')
+    .replace(new RegExp(`${D}\\$(?!\\$)`, 'g'), '')
+    .replace(new RegExp(`${D}(?=\\$)`, 'g'), '$ ')
+    .replace(new RegExp(`(?<=\\$)${D}`, 'g'), ' $')
+    .replaceAll(D, '$')
 }
 
 /** Single $ delimiters, after code, escaped \$ and $$…$$ are set aside. */
@@ -277,7 +382,14 @@ export function plainMathIssues(text: string): string[] {
   if (dollars(text) % 2 === 1) issues.push('un $ senza chiusura')
   const markers: string[] = []
   outside(text, (s) => {
-    for (const m of s.matchAll(/[A-Za-z]+_[A-Za-z0-9{]+|[A-Za-z0-9)]\^[A-Za-z0-9({-]+|\S*[⁰¹²³⁴⁵⁶⁷⁸⁹ⁿ]\S*/g)) markers.push(m[0])
+    // A subscript on a one-letter name (y_sec, x_0; not snake_case or nota_finale.md), an exponent not on a
+    // unit (x^2, 2^10; not km^2), a unicode superscript not on a unit (x²; not 20 m²), a LaTeX command.
+    const re = /(?<![A-Za-z0-9])[A-Za-z]_[A-Za-z0-9{]+|(?<![A-Za-z])[A-Za-z0-9)]\^[A-Za-z0-9({-]+|\S*[⁰¹²³⁴⁵⁶⁷⁸⁹ⁿ]\S*|\\[A-Za-z]+/g
+    for (const m of s.matchAll(re)) {
+      const before = s.slice(0, m.index)
+      if (/^[kcdm]?m[²³]$/.test(m[0]) && (/\d\s*$/.test(before) || /^ di\b/.test(s.slice(m.index + m[0].length)))) continue
+      markers.push(m[0])
+    }
     return s
   })
   if (markers.length) issues.push(`matematica fuori da $…$ («${markers.slice(0, 3).join('», «')}»)`)
