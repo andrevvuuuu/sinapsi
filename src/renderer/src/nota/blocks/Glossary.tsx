@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import type { LeafBlock } from '../../../../shared/nota-schema'
-import { RichText } from '../../session/RichText'
-import { asMath } from '../math'
-
-const plain = (s: string): string => s.replace(/\$/g, '').replace(/\\text\{([^}]*)\}/g, '$1').trim()
+import { Inline } from '../Md'
+import { asMath, plainText } from '../math'
 
 export function Glossary({ block }: { block: Extract<LeafBlock, { type: 'glossary' }> }): React.JSX.Element {
   const [covered, setCovered] = useState(false)
@@ -36,18 +34,18 @@ export function Glossary({ block }: { block: Extract<LeafBlock, { type: 'glossar
           {block.rows.map((r, i) => (
             <tr key={i}>
               <td>
-                <RichText md={asMath(r.symbol)} className="inline" />
+                <Inline md={asMath(r.symbol)} />
               </td>
               <td>
-                <RichText md={r.read} className="inline" />
+                <Inline md={r.read} />
               </td>
               <td>
                 {covered && !shown.has(i) ? (
-                  <button type="button" className="nv-hide" aria-label={`Mostra il significato di ${plain(r.symbol)}`} onClick={() => setShown(new Set(shown).add(i))}>
+                  <button type="button" className="nv-hide" aria-label={`Mostra il significato di ${plainText(r.symbol)}`} onClick={() => setShown(new Set(shown).add(i))}>
                     Mostra
                   </button>
                 ) : (
-                  <RichText md={r.meaning} className="inline" />
+                  <Inline md={r.meaning} />
                 )}
               </td>
             </tr>

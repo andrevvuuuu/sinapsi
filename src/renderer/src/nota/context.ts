@@ -9,3 +9,6 @@ export const NotaContext = createContext<{ layers: Layers; noteId?: string }>({ 
 
 /** How far the section's proofs fade, from the memory of its concepts (fading.ts); null before it loads. */
 export const FadeContext = createContext<Fade | null>(null)
+
+/** The title of the section a block sits in: the accessible name of its diagrams. */
+export const SectionContext = createContext<string>('')

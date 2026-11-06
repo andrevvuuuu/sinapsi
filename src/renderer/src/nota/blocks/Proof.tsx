@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import type { LeafBlock } from '../../../../shared/nota-schema'
-import { RichText } from '../../session/RichText'
+import { Inline, Md } from '../Md'
 import { FadeContext, type Mode } from '../context'
 import { hiddenSteps } from '../fading'
 import { FigureView } from '../figure/FigureView'
@@ -55,20 +55,24 @@ export function Proof({ block, mode, observe = intersection }: { block: ProofBlo
             }}
             className={'pstep' + (i === active ? ' on' : '')}
           >
-            {s.kicker && <div className="nv-kick">{s.kicker}</div>}
+            {s.kicker && (
+              <div className="nv-kick">
+                <Inline md={s.kicker} />
+              </div>
+            )}
             <h3>
-              <RichText md={s.title} className="inline" />
+              <Inline md={s.title} />
             </h3>
             {i >= first ? (
               <TryCover prompt={s.tryPrompt ?? 'Ricostruisci questo passo.'} label="Scopri il passo">
-                <RichText md={s.md} />
+                <Md md={s.md} />
               </TryCover>
             ) : mode === 'prova' && s.tryPrompt ? (
               <TryCover prompt={s.tryPrompt}>
-                <RichText md={s.md} />
+                <Md md={s.md} />
               </TryCover>
             ) : (
-              <RichText md={s.md} />
+              <Md md={s.md} />
             )}
           </article>
         ))}
@@ -79,7 +83,7 @@ export function Proof({ block, mode, observe = intersection }: { block: ProofBlo
           {block.steps.map((s, i) => (
             <li key={i}>
               <button type="button" aria-current={i === active ? 'step' : undefined} onClick={() => jump(i)}>
-                {s.title.replace(/\$/g, '')}
+                <Inline md={s.title} />
               </button>
             </li>
           ))}

@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from 'react'
+import { Inline } from '../Md'
 
 /** ARIA tabs with roving focus: arrows, Home and End move between tabs. */
 export function TabSet({ label, tabs }: { label: string; tabs: { label: string; content: React.ReactNode }[] }): React.JSX.Element {
@@ -36,7 +37,7 @@ export function TabSet({ label, tabs }: { label: string; tabs: { label: string; 
               e.preventDefault()
             }}
           >
-            {t.label}
+            <Inline md={t.label} />
           </button>
         ))}
       </div>

@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { FigElement, Figure } from '../../../../shared/nota-schema'
-import { RichText } from '../../session/RichText'
+import { Inline } from '../Md'
+import { plainText } from '../math'
 import { evalIn, findRoots, fmt, makeScope, samplePath, vanishes } from './plot'
 import './figure.css'
 
@@ -8,7 +9,7 @@ const W = 640
 const H = 300
 const PAD = 28
 
-const plain = (s: string): string => s.replace(/\$/g, '').replace(/\\([A-Za-z]+)/g, '$1').trim()
+const plain = plainText
 const reducedMotion = (): boolean => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v))
 const round6 = (v: number): number => Number(v.toFixed(6))
@@ -138,7 +139,7 @@ export function FigureView({ fig, step, onParams }: { fig: Figure; step?: number
         const [px, py] = toPx(x, y)
         return (
           <text key={key} data-testid={key} className={cls + ' lbl'} x={px} y={py}>
-            {el.text}
+            {plain(el.text)}
           </text>
         )
       }
@@ -154,7 +155,7 @@ export function FigureView({ fig, step, onParams }: { fig: Figure; step?: number
             <circle className="dot" cx={px} cy={py} r={6} />
             {el.label && (
               <text className="lbl" x={px + 10} y={py - 12}>
-                {el.label}
+                {plain(el.label)}
               </text>
             )}
           </>
@@ -205,7 +206,9 @@ export function FigureView({ fig, step, onParams }: { fig: Figure; step?: number
     <figure className="bezel fig">
       <div className="core">
         <div className="fighead">
-          <span className="t">{fig.title}</span>
+          <span className="t">
+            <Inline md={fig.title} />
+          </span>
         </div>
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={plain(fig.title)} className="plot">
           <defs>
@@ -234,7 +237,7 @@ export function FigureView({ fig, step, onParams }: { fig: Figure; step?: number
             {fig.params.map((p) => (
               <div className="ctl" key={p.id}>
                 <label>
-                  <RichText md={p.label} className="inline" />
+                  <Inline md={p.label} />
                   <span className="out" aria-hidden="true">{fmt(params[p.id])}</span>
                 </label>
                 <input type="range" aria-label={plain(p.label)} min={p.min} max={p.max} step={p.step} value={params[p.id]} onChange={(e) => setParam(p.id, Number(e.target.value))} />
@@ -246,7 +249,9 @@ export function FigureView({ fig, step, onParams }: { fig: Figure; step?: number
           <div className="readout">
             {fig.readouts.map((r, i) => (
               <div key={i} data-testid={`readout-${i}`}>
-                <span>{r.label}</span>
+                <span>
+                  <Inline md={r.label} />
+                </span>
                 <b>{fmt(ev(r.expr))}</b>
               </div>
             ))}
@@ -255,7 +260,7 @@ export function FigureView({ fig, step, onParams }: { fig: Figure; step?: number
         {fig.points && (
           <div className="pts">
             <button type="button" className="nv-chip" aria-pressed={showPts} onClick={() => setShowPts(!showPts)}>
-              {fig.points.label}
+              <Inline md={fig.points.label} />
             </button>
             <span data-testid="points" aria-live="polite" className="ptl">
               {showPts &&
@@ -274,7 +279,7 @@ export function FigureView({ fig, step, onParams }: { fig: Figure; step?: number
           </div>
         )}
         <div className="caption" role="status">
-          {fig.caption && <RichText md={fig.caption} className="inline" />}
+          {fig.caption && <Inline md={fig.caption} />}
           {anyGreen && <b className="green-note"> Diventa verde: la condizione è soddisfatta qui.</b>}
         </div>
       </div>

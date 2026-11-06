@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { GraphData, Memory, StoredNote } from '../../../shared/api'
 import type { Nota } from '../../../shared/nota-schema'
-import { RichText } from '../session/RichText'
+import { Inline, Md } from './Md'
 import { BlockView, NotaContext } from './BlockView'
-import { FadeContext, type Layers, type Mode } from './context'
+import { FadeContext, SectionContext, type Layers, type Mode } from './context'
 import { fadeOf, sectionConcepts, type Fade } from './fading'
 import './nota.css'
 import { SegLens } from '../components/SegLens'
@@ -164,7 +164,7 @@ function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mo
     <li key={s.id}>
       <a href={`#${s.id}`}>
         <b>{s.num.replace('§', '')}</b>
-        {s.title}
+        <Inline md={s.title} />
       </a>
     </li>
   ))
@@ -172,18 +172,29 @@ function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mo
     <main>
       <header className="hero">
         <div>
-          {nota.eyebrow && <span className="eyebrow enter">{nota.eyebrow}</span>}
+          {nota.eyebrow && (
+            <span className="eyebrow enter">
+              <Inline md={nota.eyebrow} />
+            </span>
+          )}
           <h1 className="enter">
-            {nota.title} {nota.titleEm && <em>{nota.titleEm}</em>}
+            <Inline md={nota.title} />{' '}
+            {nota.titleEm && (
+              <em>
+                <Inline md={nota.titleEm} />
+              </em>
+            )}
           </h1>
           {nota.aka.length > 0 && (
             <div className="aka" aria-label="Detto anche">
               {nota.aka.map((a, i) => (
-                <span key={i}>{a}</span>
+                <span key={i}>
+                  <Inline md={a} />
+                </span>
               ))}
             </div>
           )}
-          {nota.lede && <RichText md={nota.lede} className="lede" />}
+          {nota.lede && <Md md={nota.lede} className="lede" />}
           <div className="origin">
             <span>Nota Obsidian · {stored.sourceTitle}</span>
             {stored.sessionId && <span>Con la sessione di studio</span>}
@@ -215,15 +226,15 @@ function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mo
         <div className="grid3">
           <div>
             <h3>Dalla tua nota Obsidian</h3>
-            <ul>{nota.provenance.fromNote.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            <ul>{nota.provenance.fromNote.map((x, i) => <li key={i}><Inline md={x} /></li>)}</ul>
           </div>
           <div>
             <h3>{"Aggiunto dall'app"}</h3>
-            <ul>{nota.provenance.added.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            <ul>{nota.provenance.added.map((x, i) => <li key={i}><Inline md={x} /></li>)}</ul>
           </div>
           <div>
             <h3>Segnalato, non cambiato</h3>
-            <ul>{nota.provenance.flagged.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            <ul>{nota.provenance.flagged.map((x, i) => <li key={i}><Inline md={x} /></li>)}</ul>
           </div>
         </div>
         {(stored.dropped ?? 0) > 0 && (
@@ -237,7 +248,7 @@ function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mo
           <ol>
             {nota.tldr.map((t, i) => (
               <li key={i}>
-                <RichText md={t} className="inline" />
+                <Inline md={t} />
               </li>
             ))}
           </ol>
@@ -266,15 +277,22 @@ function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mo
               <header>
                 {s.num && <span className="num">{s.num}</span>}
                 <h2 id={`${s.id}-h`}>
-                  {s.title} {s.titleEm && <em>{s.titleEm}</em>}
+                  <Inline md={s.title} />{' '}
+                  {s.titleEm && (
+                    <em>
+                      <Inline md={s.titleEm} />
+                    </em>
+                  )}
                 </h2>
               </header>
               <FadeContext.Provider value={fade ? fade(s) : null}>
-                <div className="blocks">
-                  {s.blocks.map((b, i) => (
-                    <BlockView key={i} block={b} mode={mode} />
-                  ))}
-                </div>
+                <SectionContext.Provider value={s.titleEm ? `${s.title} ${s.titleEm}` : s.title}>
+                  <div className="blocks">
+                    {s.blocks.map((b, i) => (
+                      <BlockView key={i} block={b} mode={mode} />
+                    ))}
+                  </div>
+                </SectionContext.Provider>
               </FadeContext.Provider>
             </section>
           ))}
@@ -294,7 +312,7 @@ function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mo
                       {nota.recap.ideas.map((x, i) => (
                         <li key={i}>
                           <b>{String(i + 1).padStart(2, '0')}</b>
-                          <RichText md={x} className="inline" />
+                          <Inline md={x} />
                         </li>
                       ))}
                     </ul>
@@ -308,8 +326,10 @@ function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mo
                     <div className="formulario">
                       {nota.recap.formulas.map((f, i) => (
                         <div key={i}>
-                          <span>{f.label}</span>
-                          <RichText md={f.tex.includes('$') ? f.tex : `$${f.tex}$`} className="inline" />
+                          <span>
+                            <Inline md={f.label} />
+                          </span>
+                          <Inline md={f.tex.includes('$') ? f.tex : `$${f.tex}$`} />
                         </div>
                       ))}
                     </div>

@@ -9,8 +9,9 @@
    answer given), so the chosen formula stays --ink and readable, like the review's locked right answer and wrong pick. */
 .msel>button:disabled{color:var(--ink);cursor:default}
 /* The list: a menu on a solid surface; 40 px rows (a multiple of 4), 8 px corners 4 px inside its 12 px ones. */
-.msel-list{position:absolute;left:0;top:calc(100% + var(--s-1));z-index:20;min-width:100%;display:flex;flex-direction:column;padding:var(--s-1);border-radius:var(--r-md);background:var(--surface);border:1px solid var(--hair);box-shadow:0 20px 40px -20px rgba(0,0,0,.5)}
+.msel-list{position:absolute;left:0;top:calc(100% + var(--s-1));z-index:20;min-width:100%;width:max-content;display:flex;flex-direction:column;padding:var(--s-1);border-radius:var(--r-md);background:var(--surface);border:1px solid var(--hair);box-shadow:0 20px 40px -20px rgba(0,0,0,.5)}
 .msel-list [role="option"]{min-height:40px;display:flex;align-items:center;padding:var(--s-1) var(--s-3);border-radius:var(--r-sm);cursor:pointer;white-space:nowrap}
+.msel-list [role="option"] .katex{white-space:nowrap}
 .msel-list [role="option"].hi,.msel-list [role="option"]:hover{background:var(--btn-secondary-bg-hover)}
 .msel-list [role="option"]:active{background:var(--btn-secondary-bg-pressed)}
 .msel-list [role="option"][aria-selected="true"]{font-weight:var(--fw-semibold)}

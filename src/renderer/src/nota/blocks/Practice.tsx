@@ -1,10 +1,11 @@
 import { useContext, useRef, useState } from 'react'
-import { blankSpans } from '../../../../shared/exercise-schema'
+import { clozeParts } from '../../../../shared/exercise-schema'
+import { normalizeMath } from '../../../../shared/math-text'
 import { useDictation } from '../../components/dictation'
 import { DictationError, MicButton } from '../../components/MicButton'
 import { MathSelect } from '../../components/MathSelect'
 import type { LeafBlock } from '../../../../shared/nota-schema'
-import { RichText } from '../../session/RichText'
+import { Inline, Md } from '../Md'
 import { FadeContext, NotaContext, type Mode } from '../context'
 
 /** "Prima prova tu": the answer stays covered until he has written his own attempt, or says honestly he has none. */
@@ -43,7 +44,7 @@ export function TryCover({
   return (
     <div className="nv-try">
       <p>
-        <b>Prima prova tu.</b> {prompt && <RichText md={prompt} className="inline" />}
+        <b>Prima prova tu.</b> {prompt && <Inline md={prompt} />}
       </p>
       <div className="mic-field">
         <textarea
@@ -83,14 +84,14 @@ export function TryIt({
   if (mode === 'prova')
     return (
       <TryCover prompt={block.prompt}>
-        <RichText md={block.solution} />
+        <Md md={block.solution} />
       </TryCover>
     )
   return (
     <div className="nv-tryit">
       <p className="nv-kick">Prova tu</p>
-      <RichText md={block.prompt} />
-      <RichText md={block.solution} className="nv-solution" />
+      <Md md={block.prompt} />
+      <Md md={block.solution} className="nv-solution" />
     </div>
   )
 }
@@ -117,7 +118,7 @@ export function Exercise({
           {block.level === 'completa' ? (
             <ChoiceStep md={s} />
           ) : (
-            <RichText md={s} className="inline" />
+            <Inline md={s} />
           )}
         </li>
       ))}
@@ -128,7 +129,7 @@ export function Exercise({
     <div className={'nv-ex ' + block.level}>
       <div className="h">
         <span className="lvl">{LEVEL[block.level]}</span>
-        <RichText md={block.title} className="inline title" />
+        <Inline md={block.title} className="title" />
       </div>
       {covered ? (
         <TryCover
@@ -145,15 +146,15 @@ export function Exercise({
 }
 
 type Part = { text: string } | { options: string[]; correct: number }
+/** Text and blanks in order, with the math balanced across them (clozeParts): no piece shows a raw $ or \frac. */
 function parseChoices(md: string): Part[] {
+  const { parts: texts, blanks } = clozeParts(md)
   const parts: Part[] = []
-  let last = 0
-  for (const b of blankSpans(md)) {
-    if (b.start > last) parts.push({ text: md.slice(last, b.start) })
-    parts.push({ options: b.options, correct: Math.max(0, b.correct) })
-    last = b.end
-  }
-  if (last < md.length) parts.push({ text: md.slice(last) })
+  texts.forEach((t, i) => {
+    if (t) parts.push({ text: t })
+    const b = blanks[i]
+    if (b) parts.push({ options: b.math ? b.options : b.options.map(normalizeMath), correct: Math.max(0, b.correct) })
+  })
   return parts
 }
 
@@ -164,7 +165,7 @@ function ChoiceStep({ md }: { md: string }): React.JSX.Element {
     <span className="nv-choice">
       {parts.map((p, i) =>
         'text' in p ? (
-          <RichText key={i} md={p.text} className="inline" />
+          <Inline key={i} md={p.text} />
         ) : (
           <span key={i} className="sel">
             <MathSelect

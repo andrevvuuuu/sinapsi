@@ -122,7 +122,7 @@ describe('backward fading', () => {
     steps: [
       { title: 'Strategia', md: 'Ridurre a Rolle.' },
       { title: 'Secante', md: 'La retta.', tryPrompt: 'Che retta?' },
-      { title: 'Scarto', md: 'g = f − sec.' }
+      { title: 'Scarto', md: 'Si toglie la secante.' }
     ]
   }
   const withFade = (fade: Fade | null, el: React.JSX.Element): React.JSX.Element => <FadeContext.Provider value={fade}>{el}</FadeContext.Provider>
@@ -131,12 +131,12 @@ describe('backward fading', () => {
     render(withFade({ stage: 2, names: ['Teorema di Rolle'] }, <Proof block={proof} mode="leggi" observe={() => () => undefined} />))
     expect(screen.getByText('Ridurre a Rolle.')).toBeTruthy()
     expect(screen.queryByText('La retta.')).toBeNull()
-    expect(screen.queryByText('g = f − sec.')).toBeNull()
+    expect(screen.queryByText('Si toglie la secante.')).toBeNull()
     expect(screen.getByText(/Gli ultimi 2 passi sono nascosti/).textContent).toContain("«Teorema di Rolle» l'hai già ripassato")
     expect(screen.getByText('Che retta?')).toBeTruthy()
     fireEvent.change(screen.getAllByLabelText('La tua risposta')[1], { target: { value: 'la secante' } })
     fireEvent.click(screen.getAllByRole('button', { name: 'Scopri il passo' })[1])
-    expect(screen.getByText('g = f − sec.')).toBeTruthy()
+    expect(screen.getByText('Si toglie la secante.')).toBeTruthy()
     expect(screen.queryByText('La retta.')).toBeNull()
   })
   it('shows the whole proof on request', () => {
@@ -145,11 +145,11 @@ describe('backward fading', () => {
     expect(screen.queryByText('Ridurre a Rolle.')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Mostra tutta la dimostrazione' }))
     expect(screen.getByText('Ridurre a Rolle.')).toBeTruthy()
-    expect(screen.getByText('g = f − sec.')).toBeTruthy()
+    expect(screen.getByText('Si toglie la secante.')).toBeTruthy()
   })
   it('leaves a proof of new concepts worked in full', () => {
     render(withFade({ stage: 0, names: [] }, <Proof block={proof} mode="leggi" observe={() => () => undefined} />))
-    expect(screen.getByText('g = f − sec.')).toBeTruthy()
+    expect(screen.getByText('Si toglie la secante.')).toBeTruthy()
     expect(screen.queryByText(/nascost/)).toBeNull()
   })
   it('turns "Prova da solo" on by itself for concepts already seen', () => {

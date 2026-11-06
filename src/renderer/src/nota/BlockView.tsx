@@ -1,6 +1,6 @@
 import type { Block } from '../../../shared/nota-schema'
 import { asMath } from './math'
-import { RichText } from '../session/RichText'
+import { Md } from './Md'
 import { Glossary } from './blocks/Glossary'
 import { Exercise, TryIt } from './blocks/Practice'
 import { Proof } from './blocks/Proof'
@@ -25,9 +25,9 @@ export function BlockView({ block, mode }: { block: Block; mode: Mode }): React.
           <TabSet
             label="Decodifica"
             tabs={[
-              { label: 'Notazione formale', content: <RichText md={asMath(block.formal, true)} /> },
-              { label: 'Come si legge', content: <RichText md={block.read} /> },
-              { label: 'Cosa significa', content: <RichText md={block.meaning} /> }
+              { label: 'Notazione formale', content: <Md md={asMath(block.formal, true)} /> },
+              { label: 'Come si legge', content: <Md md={block.read} /> },
+              { label: 'Cosa significa', content: <Md md={block.meaning} /> }
             ]}
           />
         </div>

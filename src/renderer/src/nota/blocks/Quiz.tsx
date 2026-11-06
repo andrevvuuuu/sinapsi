@@ -1,6 +1,6 @@
 import { useContext, useState } from 'react'
 import type { LeafBlock } from '../../../../shared/nota-schema'
-import { RichText } from '../../session/RichText'
+import { Inline, Md } from '../Md'
 import { NotaContext } from '../context'
 
 const LETTERS = 'ABCDEF'
@@ -19,7 +19,7 @@ export function Quiz({ block }: { block: Extract<LeafBlock, { type: 'quiz' }> })
         </div>
         <fieldset>
           <legend>
-            <RichText md={block.prompt} />
+            <Md md={block.prompt} />
           </legend>
           {block.options.map((o, i) => (
             <button
@@ -31,11 +31,11 @@ export function Quiz({ block }: { block: Extract<LeafBlock, { type: 'quiz' }> })
               onClick={() => setTried([...tried, i])}
             >
               <span className="k">{LETTERS[i]}</span>
-              <RichText md={o} className="inline" />
+              <Inline md={o} />
             </button>
           ))}
           <div role="status" className={'fb' + (last === undefined ? '' : last === block.correct ? ' ok' : ' no')}>
-            {last !== undefined && <RichText md={block.why[last]} className="inline" />}
+            {last !== undefined && <Inline md={block.why[last]} />}
           </div>
         </fieldset>
       </div>
@@ -52,7 +52,7 @@ export function Flashcard({ block }: { block: Extract<LeafBlock, { type: 'flashc
     <div className="nv-flash">
       <div className="q">
         <span className="tag">Flashcard</span>
-        <RichText md={block.q} />
+        <Md md={block.q} />
       </div>
       {!shown ? (
         <button type="button" className="nv-chip" onClick={() => setShown(true)}>
@@ -60,7 +60,7 @@ export function Flashcard({ block }: { block: Extract<LeafBlock, { type: 'flashc
         </button>
       ) : (
         <div className="a">
-          <RichText md={block.a} />
+          <Md md={block.a} />
           <div className="nv-row">
             <button type="button" className="nv-chip" aria-pressed={grade === 'si'} onClick={() => setGrade('si')}>
               Lo sapevo

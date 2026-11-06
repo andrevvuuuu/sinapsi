@@ -304,3 +304,11 @@
 .nota .dot.generating{background:var(--accent)}.nota .dot.error{background:var(--bad)}
 .nota .nv-concepts{display:flex;justify-content:center;align-items:center;gap:var(--s-3);flex-wrap:wrap;color:var(--muted);font-size:var(--fs-body);margin-top:var(--s-5)}
 .nv-empty{color:var(--muted);font-size:var(--fs-footnote)}
+
+/* Diagrams (```mermaid, blocks/Mermaid.tsx): as wide as the column, scrolling sideways only when shrinking would make the labels unreadable. */
+.nota .nv-mmd{margin:var(--s-5) 0;padding:var(--s-4);border:1px solid var(--hair);border-radius:var(--r-md);background:var(--surface);overflow-x:auto;overflow-y:hidden}
+.nota .nv-mmd svg{display:block;width:100%;height:auto;margin:0 auto}
+.nota .nv-mmd:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset)}
+.nota .nv-mmd-wait{margin:var(--s-5) 0;color:var(--muted);font-size:var(--fs-footnote)}
+.nota .nv-mmd-fail pre{margin:var(--s-5) 0 var(--s-2);padding:var(--s-4);border:1px solid var(--hair);border-radius:var(--r-md);background:var(--faint);overflow-x:auto;font:var(--fw-regular) var(--fs-footnote)/1.5 var(--mono);color:var(--ink)}
+.nota .nv-mmd-fail p{margin:0 0 var(--s-5);color:var(--muted);font-size:var(--fs-footnote)}
