@@ -40,7 +40,7 @@
 .tree .kids{padding-left:var(--s-3);border-left:1px solid var(--hair);margin-left:14px}
 .tree .leaf{display:flex;align-items:center;gap:var(--s-2);width:100%;min-height:var(--ctl-sm);padding:0 var(--s-2);border:0;border-radius:var(--r-sm);background:transparent;color:var(--muted);font:inherit;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:var(--btn-transition)}
 .tree .leaf:focus-visible{outline-offset:-2px;border-radius:var(--r-sm)}
-.tree .leaf span{overflow:hidden;text-overflow:ellipsis}
+.tree .leaf>span{overflow:hidden;text-overflow:ellipsis}
 /* A note the vault cannot read now: the tertiary colour, still AA (opacity would drop it below). */
 .tree .leaf.off{color:var(--placeholder)}
 .tree .leaf small{margin-left:auto;font:var(--font-caption)}

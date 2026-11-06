@@ -8,6 +8,7 @@ import { IconChevron, IconGear, IconPanel } from './icons'
 import { SettingsDialog } from './SettingsDialog'
 import { Splitter } from './Splitter'
 import { SegLens } from '../components/SegLens'
+import { Inline } from '../nota/Md'
 
 const KINDS = ['Tutte', 'Apprendimento', 'Pratica', 'Ripasso'] as const
 type Kind = (typeof KINDS)[number]
@@ -216,7 +217,9 @@ export function LeftPanel(p: Props): React.JSX.Element {
                       onClick={() => p.onOpenNota(n.id)}
                     >
                       <i className={'dot nv-' + n.status} aria-hidden="true" />
-                      <span>{n.title}</span>
+                      <span>
+                        <Inline md={n.title} />
+                      </span>
                       {n.status !== 'ready' && (
                         <small>{n.status === 'generating' ? 'in scrittura' : 'da riprovare'}</small>
                       )}

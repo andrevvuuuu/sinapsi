@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
+import { LeftPanel } from '../../src/renderer/src/home/LeftPanel'
 import { Exercise } from '../../src/renderer/src/nota/blocks/Practice'
 import { BlockView } from '../../src/renderer/src/nota/BlockView'
 import { renderMd } from '../../src/renderer/src/session/render-md'
@@ -184,5 +185,15 @@ describe('every text field of a nota goes through the math renderer', () => {
   it('exercise titles', () => {
     const { container } = render(<Exercise block={guided} mode="leggi" />)
     expect(container.querySelector('.h .title .katex')).toBeTruthy()
+  })
+})
+
+describe('nota titles outside the nota', () => {
+  const meta = { id: 'n1', createdAt: 1, updatedAt: 1, status: 'ready' as const, sourcePath: '/v/Lagrange.md', sourceTitle: 'Lagrange', title: 'Lagrange per f(x) = x² - 4x + 3' }
+  it('the Home list of notes vive typesets the title', () => {
+    const { container } = render(<LeftPanel sessions={[]} notes={[meta]} subjectOf={() => 'Matematica'} onOpenSession={() => undefined} onOpenNota={() => undefined} settings={null} onSettings={() => undefined} onTheme={() => undefined} onClose={() => undefined} sessionsHeight={260} onSessionsHeight={() => undefined} />)
+    const leaf = container.querySelector('.nv-leaf')!
+    expect(leaf.querySelector('.katex')).toBeTruthy()
+    expect(visible(leaf)).not.toMatch(/\$|x²|\\/)
   })
 })

@@ -3,6 +3,7 @@ import type { NoteMeta } from '../../../shared/api'
 import type { VaultNote } from '../../../shared/vault-types'
 import { remoteMessage } from './NotaView'
 import './nota.css'
+import { Inline } from './Md'
 
 /** An Obsidian note from the tree: its notes vive, and the way to write a new one. */
 export function NotePicker({
@@ -134,7 +135,9 @@ export function NotePicker({
                   onClick={() => onOpenNota(m.id)}
                 >
                   <i className={'dot ' + m.status} aria-hidden="true" />
-                  <span>{m.title}</span>
+                  <span>
+                    <Inline md={m.title} />
+                  </span>
                   <small>
                     {m.status === 'generating'
                       ? 'in scrittura'
