@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_ENGINES, TASKS, type Settings, type Task } from '../../../shared/settings-schema'
-import { SegLens } from '../components/SegLens'
+import { GlassSurface } from '@glass-sdk/liquid-glass'
+import { GlassGround, GlassOverlay, Seg, ViewScene } from '../components/glass'
 
 const THEMES: [Settings['theme'], string][] = [
   ['lavagna', 'Lavagna'],
@@ -62,9 +63,10 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
   }
 
   return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div
-        className="settings-dlg glass glass-shell"
+    <GlassOverlay className="overlay" onClose={onClose}>
+      <GlassSurface
+        radius={24}
+        className="settings-dlg glass-shell"
         role="dialog"
         aria-modal="true"
         aria-labelledby="st-title"
@@ -79,7 +81,8 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
           items[next].focus()
         }}
       >
-        <div className="sd-core dlg-core">
+        <ViewScene className="sd-core dlg-core">
+          <GlassGround />
           <div className="sd-head">
             <h2 id="st-title">Impostazioni</h2>
             <button type="button" className="icon-btn" aria-label="Chiudi le impostazioni" onClick={onClose}>
@@ -89,14 +92,14 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
           <div className="sd-body">
             <section>
               <h3>Tema</h3>
-              <div className="seg seg-track" role="group" aria-label="Tema">
-                {THEMES.map(([id, label], i) => (
-                  <button key={id} ref={i === 0 ? first : undefined} type="button" aria-pressed={settings.theme === id} onClick={() => onTheme(id)}>
-                    {label}
-                  </button>
-                ))}
-                <SegLens />
-              </div>
+              <Seg
+                label="Tema"
+                track="plain"
+                className="seg"
+                value={settings.theme}
+                onChange={onTheme}
+                options={THEMES.map(([id, label], i) => ({ value: id, label, ref: i === 0 ? first : undefined }))}
+              />
             </section>
             <section>
               <h3>Motori AI</h3>
@@ -172,8 +175,8 @@ export function SettingsDialog({ settings, onTheme, onSaved, onClose }: { settin
               Salva
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+        </ViewScene>
+      </GlassSurface>
+    </GlassOverlay>
   )
 }

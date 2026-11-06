@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PracticeState } from '../../../main/practice/events'
+import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
+import { ScrollEdges, ViewScene } from '../components/glass'
 import { RichText } from '../session/RichText'
 import { PhotoButton } from './PhotoButton'
 import { AnswerBox, CalibrationPanel, PaperReview } from './PaperExam'
@@ -26,6 +28,8 @@ export function ExamView({
   const [now, setNow] = useState(() => Date.now())
   const saved = useRef(JSON.stringify(filled(exam?.answers ?? {})))
   const delivered = useRef(false)
+  // The column under the bar, the scene's live content.
+  const col = useRef<HTMLDivElement>(null)
   const latest = useRef(answers)
   useEffect(() => {
     latest.current = answers
@@ -104,7 +108,7 @@ export function ExamView({
   }, [running, left <= 0, dictating.any])
 
   const header = (
-    <header className="pr-top drag glass glass-bar glass-text">
+    <GlassSurface render={<header />} radius={0} className="pr-top drag glass-bar glass-text">
       <button type="button" className="pill nodrag back-btn" onClick={onBack}>
         ← Home
       </button>
@@ -120,14 +124,15 @@ export function ExamView({
           {fmtClock(left)}
         </span>
       )}
-    </header>
+    </GlassSurface>
   )
 
   if (!exam)
     return (
-      <div className="pr">
+      <ViewScene className="pr">
         {header}
-        <div className="pr-col scroll-edge">
+        <ScrollEdges target={col} size={72} />
+        <GlassContent layout="scroll" className="pr-col edge-fade" ref={col}>
           {state.awaiting === 'retry' ? (
             <div className="pr-err">
               <p>{lastError(state) ?? 'Il compito non è stato preparato.'}</p>
@@ -141,8 +146,8 @@ export function ExamView({
               parte quando è pronto.
             </p>
           )}
-        </div>
-      </div>
+        </GlassContent>
+      </ViewScene>
     )
 
   if (exam.grade) {
@@ -151,9 +156,10 @@ export function ExamView({
       .filter((p, i) => (g.items[i]?.points ?? 0) < p.points)
       .flatMap((p) => p.targets)
     return (
-      <div className="pr">
+      <ViewScene className="pr">
         {header}
-        <div className="pr-col scroll-edge">
+        <ScrollEdges target={col} size={72} />
+        <GlassContent layout="scroll" className="pr-col edge-fade" ref={col}>
           <section className="pr-grade" aria-label="Voto">
             <span className="lab">Voto</span>
             <p className="pr-mark">{g.lode ? '30 e lode' : `${g.total}/30`}</p>
@@ -220,16 +226,17 @@ export function ExamView({
               </button>
             )}
           </div>
-        </div>
-      </div>
+        </GlassContent>
+      </ViewScene>
     )
   }
 
   if (exam.delivered)
     return (
-      <div className="pr">
+      <ViewScene className="pr">
         {header}
-        <div className="pr-col scroll-edge">
+        <ScrollEdges target={col} size={72} />
+        <GlassContent layout="scroll" className="pr-col edge-fade" ref={col}>
           {state.awaiting === 'retry' ? (
             <div className="pr-err">
               <p>La correzione non è riuscita. Le tue risposte sono salve.</p>
@@ -242,15 +249,16 @@ export function ExamView({
               Consegnato. Correggo il compito…
             </p>
           )}
-        </div>
-      </div>
+        </GlassContent>
+      </ViewScene>
     )
 
   if (paper && exam.handed)
     return (
-      <div className="pr">
+      <ViewScene className="pr">
         {header}
-        <div className="pr-col scroll-edge">
+        <ScrollEdges target={col} size={72} />
+        <GlassContent layout="scroll" className="pr-col edge-fade" ref={col}>
           <PaperReview
             state={state}
             answers={answers}
@@ -258,15 +266,16 @@ export function ExamView({
             onDeliver={deliver}
             alert={alert}
           />
-        </div>
-      </div>
+        </GlassContent>
+      </ViewScene>
     )
 
   if (paper)
     return (
-      <div className="pr">
+      <ViewScene className="pr">
         {header}
-        <div className="pr-col pr-paper scroll-edge">
+        <ScrollEdges target={col} size={72} />
+        <GlassContent layout="scroll" className="pr-col pr-paper edge-fade" ref={col}>
           <h2 className="pr-sheet-title">{exam.sheet.title}</h2>
           <p className="mt-hint">
             A macchina spenta: scrivi tutto su carta, senza appunti né aiuti. Allo scadere, o quando
@@ -293,14 +302,15 @@ export function ExamView({
               Ho finito: consegno
             </button>
           </div>
-        </div>
-      </div>
+        </GlassContent>
+      </ViewScene>
     )
 
   return (
-    <div className="pr">
+    <ViewScene className="pr">
       {header}
-      <div className="pr-col scroll-edge">
+      <ScrollEdges target={col} size={72} />
+      <GlassContent layout="scroll" className="pr-col edge-fade" ref={col}>
         <h2 className="pr-sheet-title">{exam.sheet.title}</h2>
         <p className="mt-hint">
           Niente indizi e niente correzione durante: rispondi come all’esame. Le risposte si salvano
@@ -353,7 +363,7 @@ export function ExamView({
             Consegna
           </button>
         </div>
-      </div>
-    </div>
+      </GlassContent>
+    </ViewScene>
   )
 }

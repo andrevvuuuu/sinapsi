@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
+import { ViewScene } from '../components/glass'
 import {
   NOTEBOOKLM_PREFIX,
   type ChatTurn,
@@ -23,6 +26,17 @@ function LinkBox({ notebook }: { notebook: Notebook }): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState(notebook.link ?? '')
   const [err, setErr] = useState<string | null>(null)
+  // The popover leaves the glass bar, which clips what it holds to its shape: it opens in the view, under the button.
+  const anchor = useRef<HTMLDivElement>(null)
+  const [at, setAt] = useState<{ host: Element; top: number; right: number } | null>(null)
+  useLayoutEffect(() => {
+    const a = anchor.current
+    const host = a?.closest('.nb')
+    if (!open || !a || !host) return setAt(null)
+    const r = a.getBoundingClientRect()
+    const h = host.getBoundingClientRect()
+    setAt({ host, top: r.top - h.top + 52, right: h.right - r.right })
+  }, [open])
   const save = async (link: string | null): Promise<void> => {
     if (link !== null && !link.startsWith(NOTEBOOKLM_PREFIX))
       return setErr(`Serve il link di un notebook, che inizia con ${NOTEBOOKLM_PREFIX}`)
@@ -35,7 +49,7 @@ function LinkBox({ notebook }: { notebook: Notebook }): React.JSX.Element {
     }
   }
   return (
-    <div className="nb-link">
+    <div className="nb-link" ref={anchor}>
       {notebook.link ? (
         <>
           <button
@@ -59,50 +73,54 @@ function LinkBox({ notebook }: { notebook: Notebook }): React.JSX.Element {
           Collega NotebookLM
         </button>
       )}
-      {open && (
-        <form
-          className="nb-pop nodrag"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void save(value.trim() || null)
-          }}
-        >
-          <label htmlFor="nb-link-in">Link del notebook su NotebookLM</label>
-          <input
-            id="nb-link-in"
-            autoFocus
-            placeholder={`${NOTEBOOKLM_PREFIX}notebook/…`}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
-          <p className="hint">
-            Apri NotebookLM, entra nel notebook con lo stesso argomento, copia il link dalla barra
-            degli indirizzi e incollalo qui.{' '}
-            <button
-              type="button"
-              className="linkish"
-              onClick={() => void api.app.openExternal(NOTEBOOKLM_PREFIX)}
-            >
-              Apri NotebookLM
-            </button>
-          </p>
-          {err && (
-            <p className="nb-alert" role="alert">
-              {err}
-            </p>
-          )}
-          <div className="row">
-            {notebook.link && (
-              <button type="button" className="ghost" onClick={() => void save(null)}>
-                Scollega
+      {open &&
+        at &&
+        createPortal(
+          <form
+            className="nb-pop nodrag"
+            style={{ top: at.top, right: at.right }}
+            onSubmit={(e) => {
+              e.preventDefault()
+              void save(value.trim() || null)
+            }}
+          >
+            <label htmlFor="nb-link-in">Link del notebook su NotebookLM</label>
+            <input
+              id="nb-link-in"
+              autoFocus
+              placeholder={`${NOTEBOOKLM_PREFIX}notebook/…`}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            />
+            <p className="hint">
+              Apri NotebookLM, entra nel notebook con lo stesso argomento, copia il link dalla barra
+              degli indirizzi e incollalo qui.{' '}
+              <button
+                type="button"
+                className="linkish"
+                onClick={() => void api.app.openExternal(NOTEBOOKLM_PREFIX)}
+              >
+                Apri NotebookLM
               </button>
+            </p>
+            {err && (
+              <p className="nb-alert" role="alert">
+                {err}
+              </p>
             )}
-            <button type="submit" className="pri">
-              Salva link
-            </button>
-          </div>
-        </form>
-      )}
+            <div className="row">
+              {notebook.link && (
+                <button type="button" className="ghost" onClick={() => void save(null)}>
+                  Scollega
+                </button>
+              )}
+              <button type="submit" className="pri">
+                Salva link
+              </button>
+            </div>
+          </form>,
+          at.host
+        )}
     </div>
   )
 }
@@ -203,8 +221,8 @@ export function NotebookView({
   const viewed = viewer && nb.sources.find((s) => s.id === viewer.sourceId)
 
   return (
-    <div className={'nb' + (viewed || viewer?.excerpt ? ' with-viewer' : '')}>
-      <header className="nb-top drag glass glass-bar glass-text">
+    <ViewScene className={'nb' + (viewed || viewer?.excerpt ? ' with-viewer' : '')}>
+      <GlassSurface render={<header />} radius={0} className="nb-top drag glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
@@ -261,14 +279,15 @@ export function NotebookView({
         >
           Elimina notebook
         </button>
-      </header>
+      </GlassSurface>
       <DictationError dictation={nameMic} />
       {message && (
         <p className="nb-alert floating" role="alert">
           {message}
         </p>
       )}
-      <div className="nb-body">
+      {/* The three columns are the scene's live content, reaching under the whole bar (notebook.css). */}
+      <GlassContent layout="flow" className="nb-body">
         <SourceList
           notebook={nb}
           excluded={excluded}
@@ -329,7 +348,7 @@ export function NotebookView({
             </blockquote>
           </aside>
         )}
-      </div>
-    </div>
+      </GlassContent>
+    </ViewScene>
   )
 }

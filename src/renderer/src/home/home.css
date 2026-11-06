@@ -142,13 +142,15 @@
 .nv-leaf .dot.nv-ready{background:var(--good)}.nv-leaf .dot.nv-error{background:var(--bad)}
 /* right panel */
 .imp-wrap{position:relative}
-.imp-menu{position:absolute;right:0;top:50px;z-index:20;min-width:220px;padding:var(--s-2);border-radius:var(--r-lg);display:flex;flex-direction:column;gap:2px;animation:imp-in .18s var(--ease-out);transform-origin:top right}
+/* The import menu is a GlassMenu (Base UI places it under the button, the library draws and animates the glass). */
+.imp-menu{min-width:220px;padding:var(--s-2);display:flex;flex-direction:column;gap:2px}
+.imp-menu [role="group"]{display:flex;flex-direction:column;gap:2px}
 /* Concentric: 10 px rows inside an 18 px menu with 8 px padding. */
 .imp-menu .lab{font:var(--font-caption);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted);padding:var(--s-1) var(--s-2)}
-.imp-menu button{min-height:var(--ctl);border:0;border-radius:10px;background:transparent;text-align:left;padding:0 var(--s-3);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;transition:var(--btn-transition)}
-.imp-menu button:hover,.imp-menu button:focus-visible{background:color-mix(in srgb,var(--glass-ink) 8%,transparent)}
-.imp-menu button:active{background:color-mix(in srgb,var(--glass-ink) 14%,transparent)}
-.imp-menu button:focus-visible{outline-offset:-2px;border-radius:10px}
+.imp-menu [role="menuitem"]{min-height:var(--ctl);border:0;border-radius:10px;background:transparent;text-align:left;padding:0 var(--s-3);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;transition:var(--btn-transition)}
+.imp-menu [role="menuitem"][data-highlighted],.imp-menu [role="menuitem"]:focus-visible{background:color-mix(in srgb,var(--glass-ink) 8%,transparent)}
+.imp-menu [role="menuitem"]:active{background:color-mix(in srgb,var(--glass-ink) 14%,transparent)}
+.imp-menu [role="menuitem"]:focus-visible{outline-offset:-2px;border-radius:10px}
 .imp-menu .new{color:var(--accent)}
 @keyframes imp-in{from{opacity:0;transform:scale(.95)}}
 .nb-sec{padding:var(--s-1) var(--s-3) var(--s-3);display:flex;flex-direction:column;min-height:0;max-height:38vh}
@@ -168,7 +170,9 @@
 .panel-alert{margin:0 var(--s-4) var(--s-2);padding:var(--s-2) var(--s-3);border-radius:var(--r-md);background:color-mix(in srgb,var(--bad) 14%,transparent);font-size:var(--fs-footnote)}
 .app aside.right .pf .row{justify-content:space-between}
 /* settings dialog */
-.overlay{position:fixed;inset:0;z-index:30;-webkit-app-region:no-drag;display:grid;place-items:center;padding:var(--s-6);background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
+.overlay{position:fixed;inset:0;z-index:30;-webkit-app-region:no-drag;display:grid;place-items:center;padding:var(--s-6)}
+/* The scrim is the overlay scene's content (GlassOverlay): the dialog's glass shell refracts it. */
+.overlay .overlay-scrim.overlay-scrim{background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
 .settings-dlg{--glass-shadow:0 40px 100px -30px rgba(0,0,0,.7);width:min(640px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px;animation:imp-in .2s var(--ease-out)}
 /* The 6 px glass ring replaced a 1 px border: the paddings inside are 5 px less, so the content stays where it was. */
 .sd-core{display:flex;flex-direction:column;overflow:hidden}
@@ -222,3 +226,7 @@
 .composer .sg-why{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-footnote);color:var(--muted)}
 /* The dialog's close glyph: a 24 px light ×, which draws about as large as the panel's 18 px icons; the body text size would leave it tiny. */
 .sd-head .icon-btn{font:300 24px/1 var(--sans)}
+
+/* The right panel is a scene for the import menu (NotebookPanel): its header, then its sections as the live content. */
+.aside-scene,.lg-content.aside-body{display:flex;flex-direction:column;flex:1;min-height:0}
+.lg-content.aside-body{background:var(--panel)}

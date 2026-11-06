@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { SceneBoundary, ScrollEdges } from '../components/glass'
 import type { ChatTurn, Excerpt } from '../../../shared/notebook-types'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
@@ -32,6 +33,7 @@ export function ChatPane({
   const [q, setQ] = useState('')
   const end = useRef<HTMLDivElement>(null)
   const field = useRef<HTMLTextAreaElement>(null)
+  const turnsRef = useRef<HTMLDivElement>(null)
   const dictation = useDictation({ target: field, value: q, onChange: setQ })
   const busy = dictation.state !== 'idle'
   // Braces: scrollIntoView may return a promise, and an effect must not return anything but a cleanup.
@@ -47,7 +49,10 @@ export function ChatPane({
 
   return (
     <section className="nb-chat" aria-label="Chat sulle fonti">
-      <div className="nb-turns scroll-edge">
+      {/* The conversation passes under the glass bar: the library's scroll edge (in the notebook's scene, its own when mounted alone). */}
+      <SceneBoundary>
+      <ScrollEdges target={turnsRef} edges={['top']} size={72} />
+      <div className="nb-turns edge-fade" ref={turnsRef}>
         {turns.length === 0 && !pending && (
           <div className="nb-hello">
             <h2>Chiedi alle tue fonti</h2>
@@ -126,6 +131,7 @@ export function ChatPane({
         )}
         <div ref={end} />
       </div>
+      </SceneBoundary>
       <form
         className="nb-ask"
         onSubmit={(e) => {

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { GlassSurface } from '@glass-sdk/liquid-glass'
+import { GlassOverlay } from '../components/glass'
 import { createPortal } from 'react-dom'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
@@ -123,8 +125,8 @@ function PhotoDialog({
   }
 
   return (
-    <div className="pr-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="pr-photo glass glass-shell" role="dialog" aria-modal="true" aria-label="Foto del foglio">
+    <GlassOverlay className="pr-overlay" onClose={onClose}>
+      <GlassSurface radius={24} className="pr-photo glass-shell" role="dialog" aria-modal="true" aria-label="Foto del foglio">
         <div className="pr-photo-core dlg-core">
           <div className="mt-dh">
             <h2>Foto del foglio</h2>
@@ -250,8 +252,8 @@ function PhotoDialog({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </GlassSurface>
+    </GlassOverlay>
   )
 }
 
@@ -264,8 +266,8 @@ export function PhotoButton({
   onText: (text: string) => void
   disabled?: boolean
 }): React.JSX.Element {
-  // The dialog covers the whole practice screen: rendered at the .pr root, since a glass dock (backdrop-filter)
-  // would otherwise hold the fixed overlay inside itself and clip it.
+  // The dialog covers the whole practice screen: rendered at the .pr root, since a glass dock (a library surface:
+  // clipped to its shape, and promoted while it moves) would otherwise hold the fixed overlay inside itself and clip it.
   const [host, setHost] = useState<Element | null>(null)
   return (
     <>

@@ -3,7 +3,8 @@ import type { ChipAction, Suggestions } from '../../../shared/api'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { IconSend } from './icons'
-import { SegLens } from '../components/SegLens'
+import { GlassSurface } from '@glass-sdk/liquid-glass'
+import { SceneBoundary, Seg } from '../components/glass'
 
 const MODES = ['Apprendimento', 'Pratica', 'Ripasso'] as const
 const KEY = { Apprendimento: 'learn', Pratica: 'practice', Ripasso: 'review' } as const
@@ -49,77 +50,86 @@ export function Composer({
   const chips = text ? [] : (suggestions?.[KEY[mode]] ?? [])
   return (
     <div className="composer" ref={box}>
-      <div className="seg modes-pill seg-track glass glass-text" role="group" aria-label="Tipo di sessione">
-        {MODES.map((m) => (
-          <button key={m} type="button" aria-pressed={m === mode} onClick={() => setMode(m)}>
-            {m}
-            {m === 'Ripasso' && due > 0 && <span className="due">{due}</span>}
-          </button>
-        ))}
-        <SegLens />
-      </div>
-      <div className="shell glass">
-        <div className="core">
-          {chips.length > 0 && (
-            <div className="suggest" role="group" aria-label="Consigliati">
-              {chips.map((c, i) => (
-                <button
-                  key={`${i}:${c.label}`}
-                  type="button"
-                  className="sg-chip"
-                  aria-label={`${c.label} — ${c.reason}`}
-                  title={`${c.label} — ${c.reason}`}
-                  onClick={() => onPick?.(c.action)}
-                >
-                  <span className="sg-label">{c.label}</span>
-                  <span className="sg-why">{c.reason}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="inrow">
-            <div className="mic-field mic-fill mic-row">
-              <textarea
-                ref={field}
-                readOnly={busy}
-                rows={1}
-                aria-label="Cosa vuoi studiare?"
-                placeholder={
-                  mode === 'Ripasso'
-                    ? 'Cosa vuoi ripassare? Vuoto: quello che sta sbiadendo'
-                    : mode === 'Pratica'
-                      ? 'Su cosa ti alleni? Vuoto: i suggeriti per oggi'
-                      : 'Cosa vuoi studiare?'
-                }
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    send()
+      {/* In the Home's scene (a scene of its own when mounted alone, as in the unit tests). */}
+      <SceneBoundary>
+        <Seg
+          label="Tipo di sessione"
+          className="seg modes-pill glass-text"
+          value={mode}
+          onChange={setMode}
+          options={MODES.map((m) => ({
+            value: m,
+            label: (
+              <>
+                {m}
+                {m === 'Ripasso' && due > 0 && <span className="due">{due}</span>}
+              </>
+            )
+          }))}
+        />
+        <GlassSurface radius={26} className="shell">
+          <div className="core">
+            {chips.length > 0 && (
+              <div className="suggest" role="group" aria-label="Consigliati">
+                {chips.map((c, i) => (
+                  <button
+                    key={`${i}:${c.label}`}
+                    type="button"
+                    className="sg-chip"
+                    aria-label={`${c.label} — ${c.reason}`}
+                    title={`${c.label} — ${c.reason}`}
+                    onClick={() => onPick?.(c.action)}
+                  >
+                    <span className="sg-label">{c.label}</span>
+                    <span className="sg-why">{c.reason}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="inrow">
+              <div className="mic-field mic-fill mic-row">
+                <textarea
+                  ref={field}
+                  readOnly={busy}
+                  rows={1}
+                  aria-label="Cosa vuoi studiare?"
+                  placeholder={
+                    mode === 'Ripasso'
+                      ? 'Cosa vuoi ripassare? Vuoto: quello che sta sbiadendo'
+                      : mode === 'Pratica'
+                        ? 'Su cosa ti alleni? Vuoto: i suggeriti per oggi'
+                        : 'Cosa vuoi studiare?'
                   }
-                }}
-              />
-              <MicButton dictation={dictation} />
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      send()
+                    }
+                  }}
+                />
+                <MicButton dictation={dictation} />
+              </div>
+              <button
+                type="button"
+                className="send"
+                aria-label="Inizia"
+                disabled={!canSend}
+                onClick={send}
+              >
+                <IconSend />
+              </button>
             </div>
-            <button
-              type="button"
-              className="send"
-              aria-label="Inizia"
-              disabled={!canSend}
-              onClick={send}
-            >
-              <IconSend />
-            </button>
+            <DictationError dictation={dictation} />
+            {tooLong && (
+              <p className="composer-hint" role="alert">
+                Argomento troppo lungo: massimo 500 caratteri (ne hai scritti {text.trim().length}).
+              </p>
+            )}
           </div>
-          <DictationError dictation={dictation} />
-          {tooLong && (
-            <p className="composer-hint" role="alert">
-              Argomento troppo lungo: massimo 500 caratteri (ne hai scritti {text.trim().length}).
-            </p>
-          )}
-        </div>
-      </div>
+        </GlassSurface>
+      </SceneBoundary>
     </div>
   )
 }

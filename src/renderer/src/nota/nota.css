@@ -3,8 +3,10 @@
    Reading text is --fs-callout (17), secondary text --fs-body (15). Control outlines use --btn-secondary-border / --ctl-edge;
    --hair only on non-interactive containers. Page-level sizes (the hero, the section rhythm) are larger than the scales on purpose
    and say so where they are. --warn-ink: --warn with a fifth of --ink, AA on the warn tints in trattato (--warn alone is 4.0–4.1:1). */
-/* The page fades into a band under the island while it scrolls (.scroll-edge-under): down to the island's bottom edge (12 px + 54 px), where the hero starts at rest. */
-.nota{--scroll-edge-top:66px;--scroll-edge-z:29;--shell:color-mix(in srgb,var(--ink) 3.5%,transparent);--shadow:0 40px 80px -48px rgba(0,0,0,.55);--warn-ink:color-mix(in srgb,var(--warn) 80%,var(--ink));position:fixed;inset:0;overflow:auto;background:var(--bg);color:var(--ink);font:var(--fw-regular) var(--fs-callout)/1.7 var(--sans);scroll-padding-top:90px}
+/* The page (.nota-scroll, the scene's live content) keeps the island's room at its top and fades into a band under it while it scrolls (.edge-fade, GlassScrollEdges): down to the island's bottom edge (12 px + 54 px), where the hero starts at rest. */
+.nota-scroll{--scroll-edge-top:66px;--scroll-edge-solid:80%;--scroll-edge-z:29}
+.nota-scroll.edge-fade::before{margin-bottom:0}
+.nota{--shell:color-mix(in srgb,var(--ink) 3.5%,transparent);--shadow:0 40px 80px -48px rgba(0,0,0,.55);--warn-ink:color-mix(in srgb,var(--warn) 80%,var(--ink));position:fixed;inset:0;overflow:hidden;background:var(--bg);color:var(--ink);font:var(--fw-regular) var(--fs-callout)/1.7 var(--sans);scroll-padding-top:90px}
 [data-theme="trattato"] .nota{--shadow:0 40px 80px -50px rgba(80,60,30,.35)}
 .nota .katex{font-size:1.06em}
 .nota .katex-display{margin:var(--s-5) 0;overflow-x:auto;overflow-y:hidden;padding:var(--s-1) 0}
@@ -15,9 +17,9 @@
 .nota h3{font:var(--font-display);margin:36px 0 var(--s-3)}
 
 /* island: the floating glass bar, a dense control (DENSE in screens.spec); 5 px around the 44 px controls in its pill. */
-.nota .island{position:sticky;top:var(--s-3);z-index:30;display:flex;align-items:center;gap:var(--s-1);width:max-content;max-width:calc(100% - 32px);margin:var(--s-3) auto 0;padding:5px;border-radius:var(--r-pill);-webkit-app-region:no-drag;overflow-x:auto}
+.nota .island{position:absolute;top:var(--s-3);left:50%;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:var(--s-1);width:max-content;max-width:calc(100% - 32px);margin:0;padding:5px;border-radius:var(--r-pill);-webkit-app-region:no-drag;overflow-x:auto}
 .nota .island .back{min-height:var(--ctl);padding:0 var(--s-4);border:0;border-radius:var(--r-pill);background:transparent;color:var(--ink);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;white-space:nowrap}
-.nota .nv-seg{display:flex;gap:2px;border-radius:var(--r-pill)}
+.nota .nv-seg{display:flex;gap:2px;padding:0;border-radius:var(--r-pill)}
 .nota .nv-seg button,.nota .layers button{min-height:var(--ctl);border:0;background:transparent;color:var(--muted);padding:0 var(--s-4);border-radius:var(--r-pill);cursor:pointer;white-space:nowrap;font:var(--fw-medium) var(--fs-footnote) var(--sans);transition:color .15s var(--ease-out),background-color .15s var(--ease-out)}
 .nota .nv-seg button:hover,.nota .layers button:hover{color:var(--ink)}
 .nota .layers button:hover{background:color-mix(in srgb,var(--glass-ink) 8%,transparent)}
@@ -136,11 +138,6 @@
 .nota .fig .readout div{flex:1;min-width:130px;padding:var(--s-2) var(--s-3);border-radius:var(--r-md);background:var(--faint);display:flex;justify-content:space-between;gap:var(--s-2)}
 .nota .fig .pts>.nv-chip{color:var(--good);border-color:color-mix(in srgb,var(--good) 80%,transparent)}
 .nota .fig .pts>.nv-chip[aria-pressed="true"]{background:color-mix(in srgb,var(--good) 14%,transparent);border-color:var(--good)}
-.nota input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer}
-.nota input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:6px;background:var(--hair)}
-.nota input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;border-radius:50%;background:var(--knob);border:3px solid var(--knob-tint);box-shadow:var(--knob-shadow)}
-.nota input[type=range]:focus-visible{outline:none}
-.nota input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--accent)}
 
 /* proof: a 44 px gutter beside the figure */
 .nota .nv-proof{display:grid;grid-template-columns:minmax(0,1fr);gap:0 44px;max-width:none!important}

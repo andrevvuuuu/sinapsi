@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ROLE_IT, type LearnerAnswer, type Question } from '../../../shared/teacher-protocol'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
-import { useScrollEdges } from '../components/useScrollEdges'
+import { GlassRange, GlassShell, ScrollEdges } from '../components/glass'
 import { RichText } from './RichText'
 import { GameDock } from './games/GameDock'
 
@@ -38,13 +38,12 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
   const thoughtsBusy = thoughtsMic.state !== 'idle'
   const answerBusy = answerMic.state !== 'idle'
   const middle = useRef<HTMLDivElement>(null)
-  useScrollEdges(middle)
 
   if (q.kind === 'game') return <GameDock question={q} onAnswer={onAnswer} />
 
   if (q.role === 'plan') {
     return (
-      <div className="shell glass">
+      <GlassShell>
         <div className="inner">
           <div className="lab">Il piano</div>
           <div ref={head} tabIndex={-1} className="q-head">
@@ -84,7 +83,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
             </button>
           </div>
         </div>
-      </div>
+      </GlassShell>
     )
   }
 
@@ -109,7 +108,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
           </div>
           <DictationError dictation={thoughtsMic} />
         </div>
-        <div className="shell glass">
+        <GlassShell>
           <div className="inner">
             <button
               type="button"
@@ -125,7 +124,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
               <span className="go">Verifica la tua comprensione</span>
             </button>
           </div>
-        </div>
+        </GlassShell>
       </>
     )
   }
@@ -155,13 +154,15 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
 
   // The question and the send row stay in view; in a tall dock the options and fields scroll between them.
   return (
-    <div className="shell glass">
+    <GlassShell>
+      {/* Says there is more where the options scroll: the library's scroll edge, only where content is hidden. */}
+      <ScrollEdges target={middle} size={18} blur={6} />
       <div className="inner has-scroll">
         <div className="lab">{ROLE_IT[q.role]}</div>
         <div ref={head} tabIndex={-1} className="q-head">
           <RichText md={q.prompt} className="q" />
         </div>
-        <div className="dock-scroll scroll-edge" ref={middle}>
+        <div className="dock-scroll" ref={middle}>
           {isChoice && (
             <>
               <div className="opts" role="group" aria-label="Opzioni">
@@ -191,19 +192,18 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
               </div>
               {pick !== 'idk' && (
                 <div className="conf">
-                  <label className="lab" htmlFor="cf">
+                  <span className="lab" id="cf-l">
                     Fiducia
-                  </label>
-                  <input
-                    id="cf"
-                    type="range"
+                  </span>
+                  <GlassRange
+                    aria-labelledby="cf-l"
                     min={0}
                     max={100}
                     step={10}
                     value={confidence}
-                    onChange={(e) => setConfidence(Number(e.target.value))}
+                    onValueChange={(v) => setConfidence(v)}
                   />
-                  <output htmlFor="cf">{confidence}%</output>
+                  <output aria-hidden="true">{confidence}%</output>
                 </div>
               )}
             </>
@@ -240,6 +240,6 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
           </button>
         </div>
       </div>
-    </div>
+    </GlassShell>
   )
 }

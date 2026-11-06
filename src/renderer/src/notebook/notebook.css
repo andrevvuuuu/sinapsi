@@ -29,7 +29,8 @@
 .nb .pri:disabled,.nb-send:disabled{background:var(--btn-disabled-bg);border-color:var(--btn-disabled-border);color:var(--btn-disabled-ink)}
 .nb-link{position:relative;display:flex;align-items:center;gap:var(--s-1)}
 /* 52 px below the bar's controls: the popover hangs 8 px under the 44 px pill. */
-.nb-pop{position:absolute;right:0;top:52px;width:380px;padding:var(--s-4);border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--hair);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:var(--s-3)}
+/* The popover opens in the view (NotebookView puts it there, under its button), above the glass bar. */
+.nb-pop{position:absolute;z-index:20;right:0;top:52px;width:380px;padding:var(--s-4);border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--hair);box-shadow:var(--inner),0 30px 60px -30px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:var(--s-3)}
 .nb-pop label{font:var(--fw-semibold) var(--fs-footnote) var(--sans)}
 .nb-pop input{min-height:var(--ctl);border-radius:var(--r-md);border:1px solid var(--ctl-edge);background:var(--bg);color:var(--ink);padding:0 var(--s-3);font:var(--fw-regular) var(--fs-footnote) var(--mono)}
 .nb-pop input:focus-visible{outline:none;border-color:var(--accent)}
@@ -41,7 +42,8 @@
 .nb .linkish:active{background:var(--btn-text-bg-pressed)}
 .nb-alert{margin:0;padding:var(--s-3) var(--s-4);border-radius:var(--r-md);background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--ink);font-size:var(--fs-footnote)}
 .nb-alert.floating{position:absolute;left:50%;top:84px;transform:translateX(-50%);z-index:8;max-width:min(640px,90vw);box-shadow:0 20px 40px -20px rgba(0,0,0,.5);background:var(--surface);border:1px solid color-mix(in srgb,var(--bad) 50%,transparent)}
-.nb-body{flex:1;min-height:0;display:grid;grid-template-columns:330px 1fr;transition:grid-template-columns .3s var(--ease-out)}
+/* The body is the scene's live content: it starts under the glass bar (same place on screen, offset by its padding), so the whole bar has content to refract; the chat reaches up into that room and scrolls under the bar. */
+.nb-body{flex:1;min-height:0;display:grid;margin-top:calc(-1 * var(--topbar-full));padding-top:var(--topbar-full);grid-template-columns:330px 1fr;transition:grid-template-columns .3s var(--ease-out)}
 .nb.with-viewer .nb-body{grid-template-columns:330px 1fr 440px}
 .nb-sources{border-right:1px solid var(--hair);background:var(--panel);overflow:auto;padding:var(--s-5) var(--s-4);display:flex;flex-direction:column;gap:var(--s-3)}
 .nb-sources.over{outline:2px dashed var(--accent);outline-offset:-8px}
@@ -85,7 +87,7 @@
 .nb-src-act .x:active{background:var(--btn-text-bg-pressed);color:var(--bad)}
 /* The chat starts under the glass bar (same place on screen, offset by its padding) and fades into it while scrolling. */
 .nb-chat{display:flex;flex-direction:column;min-width:0;min-height:0;margin-top:calc(-1 * var(--topbar-full))}
-.nb-turns{--scroll-edge-top:var(--topbar-full);flex:1;overflow:auto;padding:calc(var(--s-8) + var(--topbar-full)) max(24px,calc((100% - 720px)/2)) var(--s-6);display:flex;flex-direction:column;gap:var(--s-5)}
+.nb-turns{--scroll-edge-top:var(--topbar-full);--scroll-pad-top:calc(var(--s-8) + var(--topbar-full));--scroll-gap:var(--s-5);flex:1;overflow:auto;padding:calc(var(--s-8) + var(--topbar-full)) max(24px,calc((100% - 720px)/2)) var(--s-6);display:flex;flex-direction:column;gap:var(--s-5)}
 /* 40 px around the greeting and its headline: page-level sizes, past the --s-* steps and the type scale on purpose. */
 .nb-hello{margin:auto 0;text-align:center;padding:40px 0}
 .nb-hello h2{font:var(--fw-regular) 40px/1.05 var(--serif);margin:0 0 var(--s-3)}

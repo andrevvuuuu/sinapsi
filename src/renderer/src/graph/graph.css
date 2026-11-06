@@ -19,7 +19,7 @@
 .graph canvas.hov {
   cursor: pointer;
 }
-/* The card holds text to read: a solid-ish surface. The menu, its button and the zoom are glass (.glass in GraphView). */
+/* The card holds text to read: a solid-ish surface. The menu, its button and the zoom are glass (library surfaces in GraphView). */
 .graph .gcard {
   background: color-mix(in srgb, var(--surface) 86%, transparent);
   border: 1px solid var(--hair);

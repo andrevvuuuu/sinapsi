@@ -3,6 +3,8 @@ import type { ExplainTurn } from '../../../main/memory/explain'
 import type { ReviewItem } from '../../../main/memory/review'
 import { proposeGrade, type ExerciseType, type Grade } from '../../../shared/memory-types'
 import { EXERCISE_TYPES } from '../../../shared/memory-types'
+import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
+import { GlassRange, ScrollEdges, ViewScene } from '../components/glass'
 import { RichText } from '../session/RichText'
 import { MODE, TYPE_LABEL } from './labels'
 import { ExerciseView, type ExerciseState } from './ExerciseView'
@@ -68,6 +70,8 @@ export function ReviewView({
   const [typeError, setTypeError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const nextRef = useRef<HTMLButtonElement>(null)
+  // The page under the bar, the scene's live content.
+  const page = useRef<HTMLDivElement>(null)
   const questionRef = useRef<HTMLDivElement>(null)
   const [startedAt] = useState(() => Date.now())
   const [endedAt, setEndedAt] = useState<number | null>(null)
@@ -259,7 +263,7 @@ export function ReviewView({
   }, [i, items])
 
   const top = (
-    <header className="rv-top drag glass glass-bar glass-text">
+    <GlassSurface render={<header />} radius={0} className="rv-top drag glass-bar glass-text">
       <button type="button" className="pill nodrag back-btn" onClick={onBack}>
         ← Home
       </button>
@@ -281,20 +285,23 @@ export function ReviewView({
           </small>
         </span>
       )}
-    </header>
+    </GlassSurface>
   )
 
   if (!items)
     return (
-      <div className="rv scroll-edge-under">
+      <ViewScene className="rv">
         {top}
-        <main className="rv-main">
-          <p className="rv-loading" role="status">
-            Preparo le domande… (la prima volta Gemini scrive le varianti: può servire qualche
-            minuto)
-          </p>
-        </main>
-      </div>
+        <ScrollEdges target={page} size={72} edges={['top']} />
+        <GlassContent layout="scroll" className="rv-scroll edge-fade" ref={page}>
+          <main className="rv-main">
+            <p className="rv-loading" role="status">
+              Preparo le domande… (la prima volta Gemini scrive le varianti: può servire qualche
+              minuto)
+            </p>
+          </main>
+        </GlassContent>
+      </ViewScene>
     )
 
   // Intro
@@ -306,98 +313,101 @@ export function ReviewView({
     })
     const notes = new Set(items.map((x) => x.noteTitle)).size
     return (
-      <div className="rv scroll-edge-under">
+      <ViewScene className="rv">
         {top}
-        <main className="rv-main">
-          <section className="rv-intro">
-            <div className="lab">{today}</div>
-            {items.length === 0 ? (
-              <>
-                <h1>Niente da ripassare oggi.</h1>
-                <p>
-                  {error ??
-                    'Tutto quello che hai studiato è ancora nitido. I concetti arrivano dalle note che apri e studi.'}
-                </p>
-                <div className="rv-acts">
-                  <button
-                    type="button"
-                    className="pri"
-                    onClick={() => void load({ weakest: true })}
-                  >
-                    Ripassa comunque i più deboli
-                  </button>
-                  <button type="button" className="ghost" onClick={onBack}>
-                    Torna alla home
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h1>
-                  {due > 0
-                    ? `${items.length} ${items.length === 1 ? 'cosa sta' : 'cose stanno'} sbiadendo.`
-                    : `${items.length} ${items.length === 1 ? 'concetto' : 'concetti'} da fissare.`}
-                </h1>
-                <p>
-                  Le ho scelte perché stai per dimenticarle (la percentuale è la probabilità stimata
-                  che te le ricordi oggi). Ogni domanda è nuova: non la stessa carta
-                  dell&apos;ultima volta.
-                </p>
-                <div className="rv-plan">
-                  <div>
-                    <b>~{Math.max(1, Math.round(items.length * 1.5))} min</b>
-                    <span>durata stimata</span>
+        <ScrollEdges target={page} size={72} edges={['top']} />
+        <GlassContent layout="scroll" className="rv-scroll edge-fade" ref={page}>
+          <main className="rv-main">
+            <section className="rv-intro">
+              <div className="lab">{today}</div>
+              {items.length === 0 ? (
+                <>
+                  <h1>Niente da ripassare oggi.</h1>
+                  <p>
+                    {error ??
+                      'Tutto quello che hai studiato è ancora nitido. I concetti arrivano dalle note che apri e studi.'}
+                  </p>
+                  <div className="rv-acts">
+                    <button
+                      type="button"
+                      className="pri"
+                      onClick={() => void load({ weakest: true })}
+                    >
+                      Ripassa comunque i più deboli
+                    </button>
+                    <button type="button" className="ghost" onClick={onBack}>
+                      Torna alla home
+                    </button>
                   </div>
-                  <div>
-                    <b>
-                      {notes} {notes === 1 ? 'nota' : 'note'}
-                    </b>
-                    <span>mescolate apposta</span>
+                </>
+              ) : (
+                <>
+                  <h1>
+                    {due > 0
+                      ? `${items.length} ${items.length === 1 ? 'cosa sta' : 'cose stanno'} sbiadendo.`
+                      : `${items.length} ${items.length === 1 ? 'concetto' : 'concetti'} da fissare.`}
+                  </h1>
+                  <p>
+                    Le ho scelte perché stai per dimenticarle (la percentuale è la probabilità
+                    stimata che te le ricordi oggi). Ogni domanda è nuova: non la stessa carta
+                    dell&apos;ultima volta.
+                  </p>
+                  <div className="rv-plan">
+                    <div>
+                      <b>~{Math.max(1, Math.round(items.length * 1.5))} min</b>
+                      <span>durata stimata</span>
+                    </div>
+                    <div>
+                      <b>
+                        {notes} {notes === 1 ? 'nota' : 'note'}
+                      </b>
+                      <span>mescolate apposta</span>
+                    </div>
                   </div>
-                </div>
-                <ul className="rv-list" aria-label="Da ripassare">
-                  {items.map((it) => (
-                    <li key={it.conceptId}>
-                      <span>
-                        <span>{it.name}</span>
-                        <small>
-                          {it.noteTitle} · {MODE[it.exercise.type].toLowerCase()}
-                        </small>
-                      </span>
-                      <span className="r">{pct(it.R)}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="rv-types">
-                  <div className="lab">Esercizi</div>
-                  {typeError && (
-                    <p role="alert" className="rv-err">
-                      {typeError}
-                    </p>
-                  )}
-                  <div className="rv-chips" role="group" aria-label="Esercizi">
-                    {EXERCISE_TYPES.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        aria-pressed={types.includes(t)}
-                        onClick={() => toggleType(t)}
-                      >
-                        {TYPE_LABEL[t]}
-                      </button>
+                  <ul className="rv-list" aria-label="Da ripassare">
+                    {items.map((it) => (
+                      <li key={it.conceptId}>
+                        <span>
+                          <span>{it.name}</span>
+                          <small>
+                            {it.noteTitle} · {MODE[it.exercise.type].toLowerCase()}
+                          </small>
+                        </span>
+                        <span className="r">{pct(it.R)}</span>
+                      </li>
                     ))}
+                  </ul>
+                  <div className="rv-types">
+                    <div className="lab">Esercizi</div>
+                    {typeError && (
+                      <p role="alert" className="rv-err">
+                        {typeError}
+                      </p>
+                    )}
+                    <div className="rv-chips" role="group" aria-label="Esercizi">
+                      {EXERCISE_TYPES.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          aria-pressed={types.includes(t)}
+                          onClick={() => toggleType(t)}
+                        >
+                          {TYPE_LABEL[t]}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <div className="rv-go">
-                  <button type="button" className="pri" onClick={next}>
-                    Inizia ripasso
-                  </button>
-                </div>
-              </>
-            )}
-          </section>
-        </main>
-      </div>
+                  <div className="rv-go">
+                    <button type="button" className="pri" onClick={next}>
+                      Inizia ripasso
+                    </button>
+                  </div>
+                </>
+              )}
+            </section>
+          </main>
+        </GlassContent>
+      </ViewScene>
     )
   }
 
@@ -407,77 +417,80 @@ export function ReviewView({
     const mis = results.filter((r) => r.misconception)
     const minutes = Math.max(1, Math.round(((endedAt ?? startedAt) - startedAt) / 60_000))
     return (
-      <div className="rv scroll-edge-under">
+      <ViewScene className="rv">
         {top}
-        <main className="rv-main">
-          <section className="rv-sum">
-            <div className="lab">Ripasso completato · {minutes} min</div>
-            <h1>{misses.length ? 'Quasi tutto di nuovo nitido.' : 'Tutto di nuovo nitido.'}</h1>
-            <p className="lede">
-              Barra chiara: quanto lo ricordavi prima. Barra piena: subito dopo.
-            </p>
-            {mis.map((r) => (
-              <div key={r.item.conceptId} className="rv-callout bad">
-                <div>
-                  <b>Possibile misconcezione su {r.item.name}.</b> Eri molto sicuro ma hai
-                  sbagliato: conviene ristudiarlo con il tutor, non solo ripassarlo.
-                </div>
-                <button type="button" className="ghost" onClick={() => onStudy(r.item.name)}>
-                  Studia questo concetto
-                </button>
-              </div>
-            ))}
-            {misses.length > 0 && (
-              <div className="rv-callout">
-                <div>
-                  <b>
-                    {misses.length} {misses.length === 1 ? 'cosa torna' : 'cose tornano'} tra pochi
-                    minuti
-                  </b>{' '}
-                  con una domanda diversa.
-                </div>
-              </div>
-            )}
-            <div className="rv-rows">
-              {results.map((r) => (
-                <div key={r.item.conceptId} className="rv-row">
-                  <span>
-                    {r.item.name}
-                    <small>{r.item.noteTitle}</small>
-                  </span>
-                  <span
-                    className="bars"
-                    aria-label={`Prima ${pct(r.before)}, dopo ${pct(r.after)}`}
-                  >
-                    <i
-                      className="before"
-                      style={{ width: `${Math.round((r.before ?? 0) * 100)}%` }}
-                    />
-                    <i
-                      className="after"
-                      style={{ width: `${Math.round((r.after ?? 0) * 100)}%` }}
-                    />
-                  </span>
+        <ScrollEdges target={page} size={72} edges={['top']} />
+        <GlassContent layout="scroll" className="rv-scroll edge-fade" ref={page}>
+          <main className="rv-main">
+            <section className="rv-sum">
+              <div className="lab">Ripasso completato · {minutes} min</div>
+              <h1>{misses.length ? 'Quasi tutto di nuovo nitido.' : 'Tutto di nuovo nitido.'}</h1>
+              <p className="lede">
+                Barra chiara: quanto lo ricordavi prima. Barra piena: subito dopo.
+              </p>
+              {mis.map((r) => (
+                <div key={r.item.conceptId} className="rv-callout bad">
+                  <div>
+                    <b>Possibile misconcezione su {r.item.name}.</b> Eri molto sicuro ma hai
+                    sbagliato: conviene ristudiarlo con il tutor, non solo ripassarlo.
+                  </div>
+                  <button type="button" className="ghost" onClick={() => onStudy(r.item.name)}>
+                    Studia questo concetto
+                  </button>
                 </div>
               ))}
-            </div>
-            <div className="rv-acts">
-              <button type="button" className="pri" onClick={onBack}>
-                Torna alla home
-              </button>
               {misses.length > 0 && (
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() => void load({ conceptIds: misses.map((r) => r.item.conceptId) })}
-                >
-                  Rifai subito gli errori
-                </button>
+                <div className="rv-callout">
+                  <div>
+                    <b>
+                      {misses.length} {misses.length === 1 ? 'cosa torna' : 'cose tornano'} tra
+                      pochi minuti
+                    </b>{' '}
+                    con una domanda diversa.
+                  </div>
+                </div>
               )}
-            </div>
-          </section>
-        </main>
-      </div>
+              <div className="rv-rows">
+                {results.map((r) => (
+                  <div key={r.item.conceptId} className="rv-row">
+                    <span>
+                      {r.item.name}
+                      <small>{r.item.noteTitle}</small>
+                    </span>
+                    <span
+                      className="bars"
+                      aria-label={`Prima ${pct(r.before)}, dopo ${pct(r.after)}`}
+                    >
+                      <i
+                        className="before"
+                        style={{ width: `${Math.round((r.before ?? 0) * 100)}%` }}
+                      />
+                      <i
+                        className="after"
+                        style={{ width: `${Math.round((r.after ?? 0) * 100)}%` }}
+                      />
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="rv-acts">
+                <button type="button" className="pri" onClick={onBack}>
+                  Torna alla home
+                </button>
+                {misses.length > 0 && (
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => void load({ conceptIds: misses.map((r) => r.item.conceptId) })}
+                  >
+                    Rifai subito gli errori
+                  </button>
+                )}
+              </div>
+            </section>
+          </main>
+        </GlassContent>
+      </ViewScene>
     )
   }
 
@@ -491,135 +504,138 @@ export function ReviewView({
     idk: 'Va bene non saperlo'
   }
   return (
-    <div className="rv scroll-edge-under">
+    <ViewScene className="rv">
       {top}
-      <main className="rv-main">
-        <article className="rv-item" aria-labelledby="rv-q">
-          <div className="rv-head">
-            <span className="chip">{item.noteTitle}</span>
-            <span className="chip">{MODE[item.exercise.type]}</span>
-            <span className="chip">{TYPE_LABEL[item.exercise.type]}</span>
-          </div>
-          <div id="rv-q" className="rv-q" ref={questionRef} tabIndex={-1}>
-            <RichText md={item.exercise.prompt} />
-          </div>
-          {item.exercise.type === 'explain' && (
-            <p className="rv-hint">
-              Spiegalo come a un compagno pignolo, a voce o per iscritto: ti fermerà al primo
-              passaggio che non torna, con al massimo un paio di domande.
-            </p>
-          )}
-          {turns.length > 0 && (
-            <ol className="rv-dialog" aria-label="Dialogo">
-              {turns.map((t, k) => (
-                <li key={k} className={t.by}>
-                  <span className="lab">{t.by === 'andrea' ? 'Tu' : 'Studente pignolo'}</span>
-                  <RichText md={t.text} />
-                </li>
-              ))}
-            </ol>
-          )}
-          <div
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && state.ready && !verdict)
-                void check()
-            }}
-          >
-            {!(verdict && item.exercise.type === 'explain') && (
-              <ExerciseView
-                key={`${item.conceptId}-${i}-${turns.length}`}
-                exercise={item.exercise}
-                locked={!!verdict}
-                followUp={turns.length > 0}
-                onChange={setState}
-              />
-            )}
-          </div>
-          {!verdict && (
-            <>
-              {turns.length === 0 && (
-                <div className="rv-conf">
-                  <label className="lab" htmlFor="rv-cf">
-                    Quanto sei sicuro?
-                  </label>
-                  <input
-                    id="rv-cf"
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={10}
-                    value={confidence}
-                    onChange={(e) => setConfidence(Number(e.target.value))}
-                  />
-                  <output htmlFor="rv-cf">{confidence}%</output>
-                </div>
-              )}
-              <div className="rv-acts">
-                <button
-                  type="button"
-                  className="ghost"
-                  disabled={checking}
-                  onClick={() => void check(true)}
-                >
-                  {turns.length ? 'Non saprei' : 'Non lo so'}
-                </button>
-                <button
-                  type="button"
-                  className="pri"
-                  disabled={!state.ready || checking}
-                  onClick={() => void check()}
-                >
-                  {checking ? 'Correggo…' : turns.length ? 'Rispondi' : 'Verifica'}
-                </button>
-              </div>
-            </>
-          )}
-          {verdict && (
-            <div className="rv-reveal">
-              <div className={`rv-verdict ${verdict.kind}`} role="status">
-                <b>{TITLE[verdict.kind]}</b>
-                <RichText md={verdict.feedback} />
-              </div>
-              <div className="rv-model">
-                <span className="lab">Risposta di riferimento</span>
-                <RichText md={item.exercise.answer} />
-              </div>
-              <div className="lab" id="rv-gl">
-                Quanto ti è costato ricordarlo?
-              </div>
-              <div className="rv-grade" role="group" aria-labelledby="rv-gl">
-                {GRADES.map(([g, label]) => (
-                  <button
-                    key={g}
-                    type="button"
-                    aria-pressed={grade === g}
-                    onClick={() => setGrade(g)}
-                  >
-                    {g === verdict.proposed && <span className="sug">proposta</span>}
-                    {label}
-                    <small>{intervals?.[g] ?? ''}</small>
-                  </button>
-                ))}
-              </div>
-              {error && <p role="alert">{error}</p>}
-              <div className="rv-foot">
-                <button type="button" className="link" onClick={() => onOpenNote(item.notePath)}>
-                  Apri nella nota
-                </button>
-                <button
-                  type="button"
-                  className="pri"
-                  ref={nextRef}
-                  disabled={saving}
-                  onClick={() => void advance()}
-                >
-                  {i === items.length - 1 ? 'Vedi riepilogo' : 'Prossima'}
-                </button>
-              </div>
+      <ScrollEdges target={page} size={72} edges={['top']} />
+      <GlassContent layout="scroll" className="rv-scroll edge-fade" ref={page}>
+        <main className="rv-main">
+          <article className="rv-item" aria-labelledby="rv-q">
+            <div className="rv-head">
+              <span className="chip">{item.noteTitle}</span>
+              <span className="chip">{MODE[item.exercise.type]}</span>
+              <span className="chip">{TYPE_LABEL[item.exercise.type]}</span>
             </div>
-          )}
-        </article>
-      </main>
-    </div>
+            <div id="rv-q" className="rv-q" ref={questionRef} tabIndex={-1}>
+              <RichText md={item.exercise.prompt} />
+            </div>
+            {item.exercise.type === 'explain' && (
+              <p className="rv-hint">
+                Spiegalo come a un compagno pignolo, a voce o per iscritto: ti fermerà al primo
+                passaggio che non torna, con al massimo un paio di domande.
+              </p>
+            )}
+            {turns.length > 0 && (
+              <ol className="rv-dialog" aria-label="Dialogo">
+                {turns.map((t, k) => (
+                  <li key={k} className={t.by}>
+                    <span className="lab">{t.by === 'andrea' ? 'Tu' : 'Studente pignolo'}</span>
+                    <RichText md={t.text} />
+                  </li>
+                ))}
+              </ol>
+            )}
+            <div
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && state.ready && !verdict)
+                  void check()
+              }}
+            >
+              {!(verdict && item.exercise.type === 'explain') && (
+                <ExerciseView
+                  key={`${item.conceptId}-${i}-${turns.length}`}
+                  exercise={item.exercise}
+                  locked={!!verdict}
+                  followUp={turns.length > 0}
+                  onChange={setState}
+                />
+              )}
+            </div>
+            {!verdict && (
+              <>
+                {turns.length === 0 && (
+                  <div className="rv-conf">
+                    <span className="lab" id="rv-cf-l">
+                      Quanto sei sicuro?
+                    </span>
+                    <GlassRange
+                      ground="bg"
+                      aria-labelledby="rv-cf-l"
+                      min={0}
+                      max={100}
+                      step={10}
+                      value={confidence}
+                      onValueChange={(v) => setConfidence(v)}
+                    />
+                    <output aria-hidden="true">{confidence}%</output>
+                  </div>
+                )}
+                <div className="rv-acts">
+                  <button
+                    type="button"
+                    className="ghost"
+                    disabled={checking}
+                    onClick={() => void check(true)}
+                  >
+                    {turns.length ? 'Non saprei' : 'Non lo so'}
+                  </button>
+                  <button
+                    type="button"
+                    className="pri"
+                    disabled={!state.ready || checking}
+                    onClick={() => void check()}
+                  >
+                    {checking ? 'Correggo…' : turns.length ? 'Rispondi' : 'Verifica'}
+                  </button>
+                </div>
+              </>
+            )}
+            {verdict && (
+              <div className="rv-reveal">
+                <div className={`rv-verdict ${verdict.kind}`} role="status">
+                  <b>{TITLE[verdict.kind]}</b>
+                  <RichText md={verdict.feedback} />
+                </div>
+                <div className="rv-model">
+                  <span className="lab">Risposta di riferimento</span>
+                  <RichText md={item.exercise.answer} />
+                </div>
+                <div className="lab" id="rv-gl">
+                  Quanto ti è costato ricordarlo?
+                </div>
+                <div className="rv-grade" role="group" aria-labelledby="rv-gl">
+                  {GRADES.map(([g, label]) => (
+                    <button
+                      key={g}
+                      type="button"
+                      aria-pressed={grade === g}
+                      onClick={() => setGrade(g)}
+                    >
+                      {g === verdict.proposed && <span className="sug">proposta</span>}
+                      {label}
+                      <small>{intervals?.[g] ?? ''}</small>
+                    </button>
+                  ))}
+                </div>
+                {error && <p role="alert">{error}</p>}
+                <div className="rv-foot">
+                  <button type="button" className="link" onClick={() => onOpenNote(item.notePath)}>
+                    Apri nella nota
+                  </button>
+                  <button
+                    type="button"
+                    className="pri"
+                    ref={nextRef}
+                    disabled={saving}
+                    onClick={() => void advance()}
+                  >
+                    {i === items.length - 1 ? 'Vedi riepilogo' : 'Prossima'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </article>
+        </main>
+      </GlassContent>
+    </ViewScene>
   )
 }

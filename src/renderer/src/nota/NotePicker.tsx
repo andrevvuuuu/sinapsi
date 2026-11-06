@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { NoteMeta } from '../../../shared/api'
 import type { VaultNote } from '../../../shared/vault-types'
-import { remoteMessage } from './NotaView'
+import { GlassSurface } from '@glass-sdk/liquid-glass'
+import { NotaFrame, remoteMessage } from './NotaView'
 import './nota.css'
 
 /** An Obsidian note from the tree: its notes vive, and the way to write a new one. */
@@ -74,12 +75,15 @@ export function NotePicker({
   }
 
   return (
-    <div className="nota scroll-edge-under">
-      <nav className="island glass glass-text" aria-label="Controlli">
-        <button type="button" className="back back-btn" onClick={onBack}>
-          ← Home
-        </button>
-      </nav>
+    <NotaFrame
+      bar={
+        <GlassSurface render={<nav />} radius="capsule" className="island glass-text" aria-label="Controlli">
+          <button type="button" className="back back-btn" onClick={onBack}>
+            ← Home
+          </button>
+        </GlassSurface>
+      }
+    >
       <div className="state picker">
         <h1>{title}</h1>
         <p>
@@ -151,6 +155,6 @@ export function NotePicker({
           </ul>
         )}
       </div>
-    </div>
+    </NotaFrame>
   )
 }
