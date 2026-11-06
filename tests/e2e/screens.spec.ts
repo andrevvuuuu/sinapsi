@@ -18,30 +18,9 @@ const THEMES = ['lavagna', 'trattato'] as const
  * - `.mic.mic-sm`: the in-field microphone of size sm, inside short fields.
  * - `.graph .gpanel button`: the graph menu panel (lens selector, «Disposizione e strati»), graph controls too.
  * - `.tree .leaf`: the note rows of the Home's side panels (vault tree, notes vive), dense macOS sidebar rows (36 px).
+ * - `.nb-cite`: the notebook's inline citation marks, footnote marks inside the running text (24 px, hit area 32).
  */
-const DENSE = ['.nota .island button', '.graph .gzoom button', '.mic.mic-sm', '.graph .gpanel button', '.tree .leaf']
-
-/**
- * Known failures that later areas of Task 8 fix (8b Home/left panel/settings, 8c session and games, 8d review,
- * 8e practice and exam, 8f nota viva, figures, graph, notebook). Each entry is `<vista>: <finding>` exactly as
- * the check reports it; the area that fixes the finding removes its entries. A listed finding that no longer
- * occurs fails the test too, so the list never goes stale.
- */
-const KNOWN: Record<string, string[]> = {
-  // 8f: the notebook's source bar, source rows and starter questions.
-  notebook: [
-    'button «File…» 56×36 (div.nb-add > button)',
-    'button «YouTube» 77×36 (div.nb-add > button)',
-    'button «Nota del vault» 111×36 (div.nb-add > button)',
-    'button «VaultTeorema di Rolle» 253×19 (div.nb-src-main > button.nb-src-title)',
-    'button «Aggiorna Teorema di Rolle» 80×36 (div.nb-src-act > button)',
-    'button «Rimuovi Teorema di Rolle» 36×36 (div.nb-src-act > button.x)',
-    'button «Riassumi le fonti selezionate» 204×36 (div.nb-starters > button)',
-    'button «Quali sono i concetti chiave?» 202×36 (div.nb-starters > button)',
-    'button «Che domande d’esame potrebbero uscire?» 286×36 (div.nb-starters > button)',
-    'text «Vault» 10px (button.nb-src-title > span.nb-kind)'
-  ]
-}
+const DENSE = ['.nota .island button', '.graph .gzoom button', '.mic.mic-sm', '.graph .gpanel button', '.tree .leaf', '.nb-cite']
 
 type Finding = string
 
@@ -95,7 +74,7 @@ async function setTheme(win: Page, theme: (typeof THEMES)[number]): Promise<void
   }, theme)
 }
 
-/** Shoots the view in both themes, then checks it against the known failures of `vista`. */
+/** Shoots the view in both themes and checks it: no button under 44×44 outside DENSE, no text under 11 px. */
 async function screen(win: Page, vista: string): Promise<void> {
   const found = new Set<Finding>()
   for (const theme of THEMES) {
@@ -104,12 +83,8 @@ async function screen(win: Page, vista: string): Promise<void> {
     await win.screenshot({ path: `test-results/screens/${vista}-${theme}.png` })
     for (const f of await audit(win)) found.add(f)
   }
-  const known = new Set(KNOWN[vista] ?? [])
-  const fresh = [...found].filter((f) => !known.has(f))
-  const fixed = [...known].filter((f) => !found.has(f))
   // Soft: every view of the test is shot and checked even when an earlier one fails.
-  expect.soft(fresh, `${vista}: new buttons under 44×44 or text under 11 px`).toEqual([])
-  expect.soft(fixed, `${vista}: known failures that no longer occur, remove them from KNOWN`).toEqual([])
+  expect.soft([...found], `${vista}: buttons under 44×44 or text under 11 px`).toEqual([])
 }
 
 async function launch(extra: Record<string, string> = {}): Promise<{ app: ElectronApplication; win: Page }> {
@@ -160,6 +135,13 @@ test('home, settings, nota viva, graph', async () => {
   await expect(win.locator('.graph .gzoom')).toBeVisible()
   await win.waitForTimeout(600) // the layout settles
   await screen(win, 'grafo')
+  // The detail card of a concept, reached from the menu's search.
+  if (!(await win.getByRole('combobox', { name: 'Cerca nel grafo' }).isVisible())) await win.locator('.graph .gmenu-btn').click()
+  await win.getByRole('combobox', { name: 'Cerca nel grafo' }).fill('Teorema di Rolle')
+  await win.getByRole('option', { name: /Teorema di Rolle.*concetto/ }).click()
+  await expect(win.getByRole('dialog', { name: 'Dettagli' })).toBeVisible()
+  await win.waitForTimeout(300)
+  await screen(win, 'grafo-scheda')
   await app.close()
 })
 
@@ -299,5 +281,13 @@ test('notebook', async () => {
   await win.getByRole('button', { name: 'Teorema di Rolle', exact: true }).click()
   await expect(win.getByRole('list', { name: 'Fonti' }).getByText('Teorema di Rolle')).toBeVisible()
   await screen(win, 'notebook')
+  // An answer with its citation, then the cited source open beside the chat.
+  await win.getByLabel('Chiedi alle tue fonti').fill('Come si chiama Rolle nel corso?')
+  await win.getByRole('button', { name: 'Chiedi' }).click()
+  await expect(win.getByText('Le fonti non dicono chi lo ha dimostrato.')).toBeVisible()
+  await screen(win, 'notebook-risposta')
+  await win.locator('.nb-cite').first().click()
+  await expect(win.locator('.nb-viewer')).toBeVisible()
+  await screen(win, 'notebook-fonte')
   await app.close()
 })

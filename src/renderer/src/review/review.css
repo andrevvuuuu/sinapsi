@@ -232,9 +232,11 @@
   color: var(--btn-disabled-ink);
   cursor: not-allowed;
 }
+/* Its label lines up with the text above: the 12 px padding hangs out to the left. */
 .rv .link {
   min-height: var(--ctl);
   padding: 0 var(--s-3);
+  margin-left: calc(-1 * var(--s-3));
   border: 0;
   border-radius: var(--r-pill);
   background: var(--btn-text-bg);
@@ -677,11 +679,6 @@
   border-color: var(--ink);
   background: var(--faint);
 }
-.rv-grade button:disabled {
-  border-color: var(--btn-disabled-border);
-  color: var(--btn-disabled-ink);
-  cursor: not-allowed;
-}
 .rv-grade .sug {
   position: absolute;
   top: calc(-1 * var(--s-2));
@@ -783,4 +780,15 @@
   bottom: 0;
   padding: var(--s-4) 0 var(--s-6);
   background: var(--bg);
+}
+/* A short fade above the sticky start bar, like the other scroll edges: the list dissolves into it instead of being cut. */
+.rv-go::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: var(--s-6);
+  background: linear-gradient(to top, var(--bg), color-mix(in srgb, var(--bg) 60%, transparent) 50%, transparent);
+  pointer-events: none;
 }
