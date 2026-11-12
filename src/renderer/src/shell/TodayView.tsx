@@ -313,8 +313,12 @@ export function TodayView(p: Props): React.JSX.Element {
             <strong>
               {lessons.filter((x) => x.pending != null).length} <small>lezioni</small>
             </strong>
-            <div className="sh-streak" aria-hidden="true">
-              <i />
+            <div className="sh-spark-bars" aria-hidden="true">
+              <i style={{ height: '30%' }} />
+              <i style={{ height: '50%' }} />
+              <i style={{ height: '45%' }} />
+              <i style={{ height: '70%' }} />
+              <i style={{ height: '95%' }} />
             </div>
           </div>
           <small className="sh-metric-note">
@@ -328,17 +332,13 @@ export function TodayView(p: Props): React.JSX.Element {
               {examScore == null ? '—' : examScore}
               {examScore != null && <small>%</small>}
             </strong>
-            {examScore != null && (
-              <div
-                className="sh-ring"
-                aria-hidden="true"
-                style={{
-                  background: `conic-gradient(var(--sh-amber) 0 ${examScore}%, color-mix(in srgb, var(--muted) 20%, transparent) ${examScore}% 100%)`
-                }}
-              >
-                <i>{examScore}%</i>
-              </div>
-            )}
+            <div className="sh-spark-bars" aria-hidden="true">
+              <i style={{ height: '30%' }} />
+              <i style={{ height: '48%' }} />
+              <i style={{ height: '42%' }} />
+              <i style={{ height: '65%' }} />
+              <i style={{ height: '90%' }} />
+            </div>
           </div>
           {examScore == null ? (
             <div className="sh-exam-empty">

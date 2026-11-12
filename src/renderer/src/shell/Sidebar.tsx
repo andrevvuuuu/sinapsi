@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from 'react'
+import { useEffect, useState, type DragEvent } from 'react'
 import type { VaultIndex } from '../../../shared/vault-types'
 import type { EngineStatus as Status, LessonEntry } from '../../../shared/api'
 import { NoteTree } from '../home/NoteTree'
@@ -15,6 +15,9 @@ import {
   IconReview,
   IconSettings,
   IconStudy,
+  IconTree,
+  IconToday,
+  IconRegister,
   IconSwap
 } from './icons'
 import {
@@ -33,7 +36,7 @@ export function Sidebar(p: {
   due: number
   lessons: LessonEntry[]
   status: Record<import('../../../shared/settings-schema').Engine, Status> | null
-  current: 'review' | 'practice' | 'lessons' | null
+  current: 'home' | 'review' | 'practice' | 'lessons' | null
   onHome: () => void
   onReview: () => void
   onPractice: () => void
@@ -71,6 +74,20 @@ export function Sidebar(p: {
     : []
   const [arranging, setArranging] = useState(false)
   const [dragged, setDragged] = useState<string | null>(null)
+  const [treeOpen, setTreeOpen] = useState(() => {
+    try {
+      return window.localStorage.getItem('sinapsi.sidebar.tree') !== 'false'
+    } catch {
+      return true
+    }
+  })
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('sinapsi.sidebar.tree', String(treeOpen))
+    } catch {
+      // Sidebar state remains usable when storage is unavailable.
+    }
+  }, [treeOpen])
   const byName = new Map(nodes.map((n) => [n.name, n]))
   const groups = arrangeSubjects(
     nodes.map((n) => n.name),
@@ -150,24 +167,26 @@ export function Sidebar(p: {
   )
 
   return (
-    <aside className="sh-sidebar" aria-label="Navigazione laterale">
-      <div className="sh-sidebar-top">
+    <aside className={`sh-sidebar ${treeOpen ? 'tree-open' : 'tree-closed'}`} aria-label="Navigazione laterale">
+      <div className="sh-icon-rail">
         <button
           type="button"
           className="sh-brand"
           onClick={p.onHome}
           aria-label="Sinapsi: torna a Oggi"
+          title="Sinapsi: torna a Oggi"
         >
           <LogoMark />
-          <strong>Sinapsi</strong>
-          <span className="sh-brand-tag">STUDIO</span>
         </button>
         <nav className="sh-side-actions" aria-label="Azioni rapide">
+          <button className={`sh-side-action ${p.current === 'home' ? 'is-current' : ''}`} aria-current={p.current === 'home' ? 'page' : undefined} type="button" onClick={p.onHome} aria-label="Oggi" title="Oggi"><IconToday /><span>Oggi</span></button>
           <button
             className={`sh-side-action ${p.current === 'review' ? 'is-current' : ''}`}
             aria-current={p.current === 'review' ? 'page' : undefined}
             type="button"
             onClick={p.onReview}
+            aria-label="Ripassa"
+            title="Ripassa"
           >
             <IconReview />
             <span>Ripassa</span>
@@ -178,11 +197,22 @@ export function Sidebar(p: {
             aria-current={p.current === 'practice' ? 'page' : undefined}
             type="button"
             onClick={p.onPractice}
+            aria-label="Esercitati"
+            title="Esercitati"
           >
             <IconStudy />
             <span>Esercitati</span>
           </button>
+          <button className={`sh-side-action ${p.current === 'lessons' ? 'is-current' : ''}`} aria-current={p.current === 'lessons' ? 'page' : undefined} type="button" onClick={p.onLessons} aria-label="Registro" title="Registro"><IconRegister /><span>Registro</span></button>
         </nav>
+        <button className="sh-side-action sh-tree-trigger" type="button" aria-label={treeOpen ? 'Chiudi pannello materie' : 'Apri pannello materie'} title={treeOpen ? 'Chiudi pannello materie' : 'Apri pannello materie'} aria-expanded={treeOpen} onClick={() => setTreeOpen((v) => !v)}><IconTree /><span>Materie</span></button>
+        <div className="sh-rail-spacer" />
+        <EngineStatus status={p.status} />
+        <button type="button" className="sh-settings" onClick={p.onSettings} aria-label="Impostazioni" title="Impostazioni"><IconSettings /><span>Impostazioni</span></button>
+      </div>
+      <div className="sh-tree-panel" aria-hidden={!treeOpen} inert={!treeOpen}>
+      <div className="sh-sidebar-top">
+        <button type="button" className="sh-tree-close" aria-label="Chiudi pannello materie" title="Chiudi pannello materie" onClick={() => setTreeOpen(false)}><IconMinus /></button>
       </div>
       <div className="sh-sidebar-scroll">
         <section className="sh-side-section sh-register" aria-label="Registro lezioni">
@@ -293,17 +323,6 @@ export function Sidebar(p: {
           )}
         </section>
       </div>
-      <div className="sh-sidebar-bottom">
-        <EngineStatus status={p.status} />
-        <button
-          type="button"
-          className="sh-settings"
-          onClick={p.onSettings}
-          aria-label="Impostazioni"
-          title="Impostazioni"
-        >
-          <IconSettings />
-        </button>
       </div>
     </aside>
   )

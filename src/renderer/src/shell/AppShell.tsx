@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Settings, Engine } from '../../../shared/settings-schema'
 import type { VaultResult, EngineStatus as Status, NoteMeta } from '../../../shared/api'
 import type { LessonEntry } from '../../../shared/lesson-types'
@@ -87,9 +87,13 @@ export function AppShell({
     }
   }, [])
 
-  // Only the three dock destinations light the dock; the sidebar marks the others.
-  const destination: Destination | null =
-    view === 'home' ? 'Oggi' : view === 'map' ? 'Mappa' : view === 'plan' ? 'Piano' : null
+  // The dock stays identical and persistent across all views, remembering the last destination.
+  const lastDockRef = useRef<Destination>('Oggi')
+  if (view === 'home') lastDockRef.current = 'Oggi'
+  else if (view === 'map') lastDockRef.current = 'Mappa'
+  else if (view === 'plan') lastDockRef.current = 'Piano'
+  const destination: Destination = lastDockRef.current
+
   const current =
     view === 'review'
       ? 'review'
@@ -97,14 +101,21 @@ export function AppShell({
         ? 'practice'
         : view.startsWith('lesson')
           ? 'lessons'
-          : null
+          : view === 'home'
+            ? 'home'
+            : null
   const setTheme = (t: Settings['theme']): void => {
+    // Optimistic: apply theme immediately, persist asynchronously
+    setSettings((s) => (s ? { ...s, theme: t } : s))
+    void import('./theme').then((m) => m.applyTheme(t))
     if (!settings) return
-    void window.sinapsi.settings.set({ theme: t }).then((s) => {
-      setSettings(s)
-      onSettingsChanged(s)
-      import('./theme').then((m) => m.applyTheme(t))
-    })
+    void window.sinapsi.settings
+      .set({ theme: t })
+      .then((s) => {
+        setSettings(s)
+        onSettingsChanged(s)
+      })
+      .catch(() => undefined)
   }
 
   const dockColor =

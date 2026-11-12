@@ -71,3 +71,11 @@
 @media (prefers-reduced-motion:reduce){
 .settings-dlg,.settings-dlg *{animation:none!important;transition:none!important}
 }
+/* Settings groups and controls share the shell's double-surface tokens */
+.settings-dlg{border:0;border-radius:var(--sh-r-shell);background:var(--sh-shell-bg);color:var(--sh-text);box-shadow:var(--sh-spec),var(--sh-shell-shadow);backdrop-filter:var(--sh-blur);-webkit-backdrop-filter:var(--sh-blur);contain:paint}
+.settings-dlg .sd-card{border:0;border-radius:var(--sh-r-shell);padding:20px 22px;background:var(--sh-shell-bg);box-shadow:var(--sh-spec),var(--sh-shell-shadow);backdrop-filter:var(--sh-blur);-webkit-backdrop-filter:var(--sh-blur);contain:paint}
+.settings-dlg .sd-engine select,.settings-dlg .sd-engine input,.settings-dlg .sd-input-row input[type="number"]{border:0;border-radius:var(--sh-r-inner);background:var(--sh-inner-bg);box-shadow:var(--sh-inner-shadow);color:var(--sh-text)}
+.settings-dlg .sd-engine select:focus-visible,.settings-dlg .sd-engine input:focus-visible,.settings-dlg .sd-input-row input[type="number"]:focus-visible{outline:var(--btn-focus-ring);outline-offset:2px}
+.settings-dlg .sd-head,.settings-dlg .sd-foot{border-color:color-mix(in srgb,var(--sh-text) 8%,transparent)}
+.settings-dlg .sd-foot{background:transparent}
+.settings-dlg .sd-card-head h3,.settings-dlg .sd-theme-info h3,.settings-dlg .sd-hint,.settings-dlg .sd-head-subtitle{color:var(--sh-text-2)}

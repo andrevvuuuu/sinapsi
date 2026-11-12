@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Settings } from '../../../shared/settings-schema'
+import { applyThemeAnimated } from './theme'
 import './signature.css'
 
 /*
@@ -17,7 +18,7 @@ const W = 84
 const H = 44
 const INSET = 4
 const K = H - INSET * 2 // knob side
-const KR = 11 // knob radius
+const KR = K / 2 // round knob radius (18px)
 const TRAVEL = W - INSET * 2 - K
 const GRID = 15 // icon matrix, cells per side
 const ICON = 24 // icon size inside the knob
@@ -122,29 +123,21 @@ function drawIcon(ctx: CanvasRenderingContext2D, u: number, dpr: number): void {
   }
 }
 
-/** The knob outline (offset outward by `o`) as a path that starts at the bottom centre and runs
- *  anticlockwise on screen: right along the bottom, up the right side, left along the top, and back. */
+/** The round knob outline (offset outward by `o`) as a circle path that starts at the bottom centre
+ *  and runs anticlockwise: right -> top -> left -> bottom. */
 function knobPath(o: number): { d: string; len: number } {
-  const x0 = -o
-  const y0 = -o
-  const s = K + o * 2
-  const r = KR + o
-  const h = s / 2
-  const straight = s - r * 2
-  const arc = (Math.PI * r) / 2
+  const r = K / 2 + o
+  const cx = K / 2
+  const cy = K / 2
   const d = [
-    `M${x0 + h} ${y0 + s}`,
-    `L${x0 + s - r} ${y0 + s}`,
-    `A${r} ${r} 0 0 0 ${x0 + s} ${y0 + s - r}`,
-    `L${x0 + s} ${y0 + r}`,
-    `A${r} ${r} 0 0 0 ${x0 + s - r} ${y0}`,
-    `L${x0 + r} ${y0}`,
-    `A${r} ${r} 0 0 0 ${x0} ${y0 + r}`,
-    `L${x0} ${y0 + s - r}`,
-    `A${r} ${r} 0 0 0 ${x0 + r} ${y0 + s}`,
+    `M ${cx} ${cy + r}`,
+    `A ${r} ${r} 0 0 0 ${cx + r} ${cy}`,
+    `A ${r} ${r} 0 0 0 ${cx} ${cy - r}`,
+    `A ${r} ${r} 0 0 0 ${cx - r} ${cy}`,
+    `A ${r} ${r} 0 0 0 ${cx} ${cy + r}`,
     'Z'
   ].join(' ')
-  return { d, len: straight * 4 + arc * 4 }
+  return { d, len: 2 * Math.PI * r }
 }
 
 const STRIP = knobPath(1.5)
@@ -170,6 +163,26 @@ export function ThemeSwitch({
   const raf = useRef(0)
   const canvas = useRef<HTMLCanvasElement>(null)
   const still = useRef(false)
+  const internalBtnRef = useRef<HTMLButtonElement | null>(null)
+
+  const setBtnRef = (el: HTMLButtonElement | null): void => {
+    internalBtnRef.current = el
+    if (typeof buttonRef === 'function') {
+      buttonRef(el)
+    } else if (buttonRef && 'current' in buttonRef) {
+      ;(buttonRef as React.MutableRefObject<HTMLButtonElement | null>).current = el
+    }
+  }
+
+  const getKnobCenter = (posU: number): { x: number; y: number } => {
+    const btn = internalBtnRef.current
+    if (!btn) return { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+    const rect = btn.getBoundingClientRect()
+    return {
+      x: rect.left + INSET + TRAVEL * clamp(posU) + K / 2,
+      y: rect.top + INSET + K / 2
+    }
+  }
 
   // Spring the knob towards the target; stop when it settles.
   const run = (): void => {
@@ -181,7 +194,7 @@ export function ThemeSwitch({
         setU(target.current)
         return
       }
-      vel.current = (vel.current + (target.current - uRef.current) * 0.03) * 0.84
+      vel.current = (vel.current + (target.current - uRef.current) * 0.035) * 0.82
       uRef.current += vel.current
       if (Math.abs(target.current - uRef.current) < 0.0015 && Math.abs(vel.current) < 0.0015) {
         uRef.current = target.current
@@ -223,9 +236,14 @@ export function ThemeSwitch({
   }, [u])
 
   const commit = (next: 0 | 1): void => {
+    const nextTheme: Settings['theme'] = next === 1 ? 'trattato' : 'lavagna'
     target.current = next
     run()
-    if ((next === 1) !== light) onChange(next === 1 ? 'trattato' : 'lavagna')
+    if ((next === 1) !== light) {
+      const origin = getKnobCenter(uRef.current)
+      applyThemeAnimated(nextTheme, origin)
+      onChange(nextTheme)
+    }
   }
 
   const p = clamp(u)
@@ -241,7 +259,7 @@ export function ThemeSwitch({
     <div className={bare ? 'sg-toggle-bare' : 'sh-theme-row'}>
       {!bare && <span>Tema</span>}
       <button
-        ref={buttonRef}
+        ref={setBtnRef}
         type="button"
         role="switch"
         aria-checked={light}
@@ -251,6 +269,7 @@ export function ThemeSwitch({
           {
             '--p': p,
             '--knob-x': `${INSET + TRAVEL * u}px`,
+            '--knob-tx': `${(TRAVEL * u).toFixed(2)}px`,
             width: W,
             height: H
           } as React.CSSProperties

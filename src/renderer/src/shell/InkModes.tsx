@@ -5,13 +5,12 @@ const MODES = ['Studia', 'Esercitati', 'Ripassa'] as const
 export type Mode = (typeof MODES)[number]
 
 /*
- * Ink chips (reference: «filter navigation bar — pick a chip and it fills with ink from the edge in
- * as it flows into the results bar»). The results bar is a pill of ink: the count, a divider and the
- * chosen mode. The other modes wait outside as outlined chips that wobble under the pointer.
- * Choosing one: ink floods it from the edge nearest the bar (phase A); then it flows into the bar
- * while the previous mode pops out, draining its ink back into the bar, and the count rolls like an
- * odometer (phase B). Shapes are drawn on one SVG layer through a gooey filter, so ink that comes
- * close melts together; labels sit above, sharp.
+ * Ink chips: viscous metaball ink flow between modes.
+ * Picking a chip causes ink to surge from the contact edge (facing the previous selection)
+ * and flood the inside of the clicked chip with an underdamped spring curve, fusing seamlessly
+ * through an SVG metaball filter (feGaussianBlur + feColorMatrix + feComposite atop).
+ * The bar expands and chips translate via hardware-accelerated transform: translate3d and scaleX
+ * with zero React re-renders per frame in a single rAF loop.
  */
 
 const H = 38 // chip and bar height
@@ -19,17 +18,42 @@ const GAP = 8 // between bar and chips
 const PADX = 16 // chip side padding
 const BAR_PADL = 14
 const DIV_GAP = 12
-const PHASE_A = 360
-const PHASE_B = 520
 
 type Geo = { barW: number; chips: Record<Mode, { x: number; fill: number }> }
 type Widths = { count: number; text: Record<Mode, number> }
 
-const clamp = (v: number): number => Math.min(1, Math.max(0, v))
-const easeInOut = (t: number): number => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
-const easeOutBack = (t: number): number => 1 + 1.7 * (t - 1) ** 3 + 0.7 * (t - 1) ** 2
-// Ink starts slow and rushes at the end: the ASMR feel.
-const easeInk = (t: number): number => t ** 2.2
+/** Analytical damped harmonic oscillator over arbitrary time step dt. */
+function solveSpring(
+  current: number,
+  velocity: number,
+  target: number,
+  stiffness: number,
+  damping: number,
+  dt: number
+): [number, number] {
+  const omega0 = Math.sqrt(stiffness)
+  const zeta = damping / (2 * omega0)
+  const x = current - target
+
+  if (zeta < 1) {
+    const omegaD = omega0 * Math.sqrt(1 - zeta * zeta)
+    const decay = Math.exp(-zeta * omega0 * dt)
+    const cosVal = Math.cos(omegaD * dt)
+    const sinVal = Math.sin(omegaD * dt)
+
+    const nextX = decay * (x * cosVal + ((velocity + zeta * omega0 * x) / omegaD) * sinVal)
+    const nextV =
+      decay *
+      (velocity * (cosVal - ((zeta * omega0) / omegaD) * sinVal) -
+        x * ((omega0 * omega0) / omegaD) * sinVal)
+    return [target + nextX, nextV]
+  } else {
+    const decay = Math.exp(-omega0 * dt)
+    const nextX = decay * (x + (velocity + omega0 * x) * dt)
+    const nextV = decay * (velocity * (1 - omega0 * dt) - x * (omega0 * omega0) * dt)
+    return [target + nextX, nextV]
+  }
+}
 
 /** Where everything sits when `mode` is the chosen one. */
 function layoutFor(mode: Mode, w: Widths): Geo {
@@ -142,23 +166,44 @@ export function InkModes({
   const goo = `sg-goo-${useId().replace(/:/g, '')}`
   const measureRef = useRef<HTMLSpanElement>(null)
   const countRef = useRef<HTMLSpanElement>(null)
-  const chipBtn = useRef<Record<string, HTMLButtonElement | null>>({})
+
+  const barRectRef = useRef<SVGRectElement>(null)
+  const dividerLineRef = useRef<SVGLineElement>(null)
+  const inkRectRefs = useRef<Record<Mode, SVGRectElement | null>>({
+    Studia: null,
+    Esercitati: null,
+    Ripassa: null
+  })
+  const outlinePathRefs = useRef<Record<Mode, SVGPathElement | null>>({
+    Studia: null,
+    Esercitati: null,
+    Ripassa: null
+  })
+  const labelInkRefs = useRef<Record<Mode, HTMLSpanElement | null>>({
+    Studia: null,
+    Esercitati: null,
+    Ripassa: null
+  })
+  const chipBtn = useRef<Record<Mode, HTMLButtonElement | null>>({
+    Studia: null,
+    Esercitati: null,
+    Ripassa: null
+  })
+
   const [w, setW] = useState<Widths | null>(null)
   const [geo, setGeo] = useState<Geo | null>(null)
   const geoRef = useRef<Geo | null>(null)
-  const anim = useRef<{ from: Geo; to: Mode; prev: Mode; t0: number } | null>(null)
   const shown = useRef<Mode>(mode)
   const [hover, setHover] = useState<Mode | null>(null)
   const wobRef = useRef({ amp: 0, time: 0 })
-  const [wob, setWob] = useState({ amp: 0, time: 0 })
 
-  // The bar keeps showing the previous mode's count until the new chip flows into it.
+  // The bar displays the count for the current mode
   const [barMode, setBarMode] = useState<Mode>(mode)
   const count = barMode === 'Ripassa' ? due : barMode === 'Esercitati' ? practiceCount : studyCount
   const countText = count == null ? '—' : String(count)
   const label = barMode === 'Ripassa' ? 'dovuti' : 'suggerimenti'
 
-  // Measure the labels with the real font (again once web fonts have loaded).
+  // Measure label widths with real fonts
   useLayoutEffect(() => {
     const measure = (): void => {
       const box = measureRef.current
@@ -174,18 +219,16 @@ export function InkModes({
     void document.fonts?.ready.then(measure)
   }, [countText, label])
 
-  // First layout, and re-layout when sizes change without a mode change.
+  // First layout
   useEffect(() => {
     if (!w) return
-    if (!anim.current) {
+    if (!geoRef.current) {
       const g = layoutFor(shown.current, w)
       geoRef.current = g
       setGeo(g)
     }
   }, [w])
 
-  // The animation loop lives outside the effect that starts it: the count label changes width at
-  // the same moment as the mode, and a re-measure must not cancel the animation under way.
   const wRef = useRef<Widths | null>(null)
   const rafRef = useRef(0)
   useEffect(() => {
@@ -193,51 +236,176 @@ export function InkModes({
   }, [w])
   useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
 
-  // A new mode starts the two-phase animation from wherever things are now.
+  // Ink-flow animation: spring curve from contact edge with direct DOM updates (no React re-render per frame)
   useEffect(() => {
-    if (mode === shown.current || !geoRef.current) return
+    if (mode === shown.current || !geoRef.current || !wRef.current) return
     const still = matchMedia('(prefers-reduced-motion: reduce)').matches
-    const prev = shown.current
+    const prevMode = shown.current
     shown.current = mode
-    anim.current = { from: geoRef.current, to: mode, prev, t0: performance.now() }
+    const ww = wRef.current
+    const startGeo = geoRef.current
+    const endGeo = layoutFor(mode, ww)
+
+    if (still) {
+      geoRef.current = endGeo
+      setGeo(endGeo)
+      setBarMode(mode)
+      return
+    }
+
     cancelAnimationFrame(rafRef.current)
-    const swap = window.setTimeout(() => setBarMode(mode), still ? 0 : PHASE_A)
+
+    // Contact edge: if previous selection is to the left, ink enters from left (0% 50%), otherwise right (100% 50%)
+    const prevIdx = MODES.indexOf(prevMode)
+    const nextIdx = MODES.indexOf(mode)
+    const fromLeft = prevIdx < nextIdx
+    const contactOrigin = fromLeft ? '0% 50%' : '100% 50%'
+
+    let inkP = 0
+    let vInk = 0
+    let slideP = 0
+    let vSlide = 0
+    let lastTime = performance.now()
+    let swappedCount = false
+
+    // Prepare incoming chip styles before animation starts
+    const incomingRect = inkRectRefs.current[mode]
+    if (incomingRect) {
+      incomingRect.style.transformOrigin = contactOrigin
+      incomingRect.style.transform = 'translate3d(0, 0, 0) scaleX(0)'
+      incomingRect.style.opacity = '1'
+    }
+    const incomingOutline = outlinePathRefs.current[mode]
+    if (incomingOutline) {
+      incomingOutline.style.display = 'block'
+      incomingOutline.style.opacity = '1'
+    }
+    const outgoingOutline = outlinePathRefs.current[prevMode]
+    if (outgoingOutline) {
+      outgoingOutline.style.display = 'block'
+      outgoingOutline.style.opacity = '0'
+    }
+
     const tick = (now: number): void => {
-      const a = anim.current
-      const ww = wRef.current
-      if (!a || !ww) return
-      const t = still ? PHASE_A + PHASE_B : now - a.t0
-      const pa = clamp(t / PHASE_A)
-      const pb = clamp((t - PHASE_A) / PHASE_B)
-      const end = layoutFor(a.to, ww)
-      const ease = easeOutBack(pb)
-      const chips = {} as Geo['chips']
+      const dt = Math.min(Math.max((now - lastTime) / 1000, 0.001), 0.04)
+      lastTime = now
+
+      // Solve ink spring: surges from contact edge into clicked chip
+      ;[inkP, vInk] = solveSpring(inkP, vInk, 1.0, 240, 22, dt)
+      // Slide follows smoothly as ink fills
+      const slideTarget = inkP > 0.25 ? 1.0 : 0.0
+      ;[slideP, vSlide] = solveSpring(slideP, vSlide, slideTarget, 210, 23, dt)
+
+      const scaleX = Math.min(1.04, Math.max(0, inkP))
+      const clampedSlide = Math.min(1.0, Math.max(0, slideP))
+
+      // Direct DOM update: bar width
+      const curBarW = startGeo.barW + (endGeo.barW - startGeo.barW) * clampedSlide
+      barRectRef.current?.setAttribute('width', curBarW.toFixed(2))
+
+      // Direct DOM update: divider line
+      const divX = BAR_PADL + (ww?.count ?? 0) + DIV_GAP
+      dividerLineRef.current?.setAttribute('x1', divX.toFixed(2))
+      dividerLineRef.current?.setAttribute('x2', divX.toFixed(2))
+
+      // Direct DOM update: chips translation and ink flow
       for (const m of MODES) {
-        const f = a.from.chips[m]
-        const e = end.chips[m]
-        let fill: number
-        if (m === a.to) fill = Math.max(f.fill, easeInk(pa))
-        else if (m === a.prev) fill = f.fill * (1 - easeInOut(clamp(pb * 1.4)))
-        else fill = f.fill * (1 - pa)
-        // The chosen chip waits in place while the ink floods it, then flows into the bar.
-        const x = m === a.to ? f.x + (e.x - f.x) * ease : f.x + (e.x - f.x) * (pb > 0 ? ease : 0)
-        chips[m] = { x, fill }
+        const startX = startGeo.chips[m].x
+        const endX = endGeo.chips[m].x
+        const transX = (endX - startX) * clampedSlide
+
+        const btn = chipBtn.current[m]
+        if (btn) {
+          btn.style.transform = `translate3d(${transX.toFixed(2)}px, 0, 0)`
+        }
+
+        const outline = outlinePathRefs.current[m]
+        if (outline) {
+          outline.style.transform = `translate(${startX + 1}px, 5px) translate3d(${transX.toFixed(2)}px, 0, 0)`
+          if (m === mode) {
+            outline.style.opacity = Math.max(0, 1 - scaleX * 1.15).toFixed(3)
+          } else if (m === prevMode) {
+            outline.style.opacity = Math.min(1, clampedSlide * 1.3).toFixed(3)
+          }
+        }
+
+        const inkRect = inkRectRefs.current[m]
+        if (inkRect) {
+          if (m === mode) {
+            inkRect.style.transformOrigin = contactOrigin
+            inkRect.style.transform = `translate3d(${transX.toFixed(2)}px, 0, 0) scaleX(${scaleX.toFixed(3)})`
+            inkRect.style.opacity = '1'
+          } else if (m === prevMode) {
+            inkRect.style.transform = `translate3d(${transX.toFixed(2)}px, 0, 0)`
+            inkRect.style.opacity = Math.max(0, 1 - clampedSlide * 1.4).toFixed(3)
+          } else {
+            inkRect.style.transform = `translate3d(${transX.toFixed(2)}px, 0, 0) scaleX(0)`
+            inkRect.style.opacity = '0'
+          }
+        }
+
+        const labelInk = labelInkRefs.current[m]
+        if (labelInk) {
+          if (m === mode) {
+            const clipP = Math.max(0, Math.min(100, (1 - scaleX) * 100))
+            labelInk.style.clipPath = fromLeft
+              ? `inset(0 ${clipP.toFixed(1)}% 0 0)`
+              : `inset(0 0 0 ${clipP.toFixed(1)}%)`
+          } else if (m === prevMode) {
+            const clipP = Math.max(0, Math.min(100, clampedSlide * 100))
+            labelInk.style.clipPath = fromLeft
+              ? `inset(0 0 0 ${clipP.toFixed(1)}%)`
+              : `inset(0 ${clipP.toFixed(1)}% 0 0)`
+          }
+        }
       }
-      const g = { barW: a.from.barW + (end.barW - a.from.barW) * ease, chips }
-      geoRef.current = g
-      setGeo(g)
-      if (t < PHASE_A + PHASE_B) rafRef.current = requestAnimationFrame(tick)
-      else {
-        anim.current = null
-        geoRef.current = end
-        setGeo(end)
+
+      if (!swappedCount && clampedSlide > 0.45) {
+        swappedCount = true
+        setBarMode(mode)
+      }
+
+      const settled =
+        Math.abs(1.0 - inkP) < 0.005 &&
+        Math.abs(vInk) < 0.008 &&
+        Math.abs(1.0 - slideP) < 0.005 &&
+        Math.abs(vSlide) < 0.008
+
+      if (!settled) {
+        rafRef.current = requestAnimationFrame(tick)
+      } else {
+        // Animation finished: clean up inline transforms and sync React state once
+        for (const m of MODES) {
+          const btn = chipBtn.current[m]
+          if (btn) btn.style.transform = ''
+          const outline = outlinePathRefs.current[m]
+          if (outline) {
+            outline.style.transform = `translate(${endGeo.chips[m].x + 1}px, 5px)`
+            outline.style.opacity = m === mode ? '0' : '1'
+            outline.style.display = m === mode ? 'none' : 'block'
+          }
+          const inkRect = inkRectRefs.current[m]
+          if (inkRect) {
+            inkRect.style.transform =
+              m === mode ? 'scaleX(1) translate3d(0, 0, 0)' : 'scaleX(0) translate3d(0, 0, 0)'
+            inkRect.style.opacity = m === mode ? '1' : '0'
+          }
+          const labelInk = labelInkRefs.current[m]
+          if (labelInk) {
+            labelInk.style.clipPath = m === mode ? 'inset(0 0% 0 0)' : 'inset(0 100% 0 0)'
+          }
+        }
+        geoRef.current = endGeo
+        setGeo(endGeo)
+        if (!swappedCount) setBarMode(mode)
+        rafRef.current = 0
       }
     }
+
     rafRef.current = requestAnimationFrame(tick)
-    return () => window.clearTimeout(swap)
   }, [mode])
 
-  // Wobble of the hovered chip's outline.
+  // Outline wobble for hovered chip: direct DOM update without React re-renders
   useEffect(() => {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
     let raf = 0
@@ -248,13 +416,31 @@ export function InkModes({
       const st = wobRef.current
       st.time += dt
       st.amp += ((hover ? 1.8 : 0) - st.amp) * 0.14
-      setWob({ amp: st.amp, time: st.time })
-      if (hover || st.amp > 0.02) raf = requestAnimationFrame(tick)
-      else st.amp = 0
+      if (hover && w) {
+        const path = outlinePathRefs.current[hover]
+        if (path) {
+          path.setAttribute('d', wobblyPill(w.text[hover] + PADX * 2 - 2, st.amp, st.time))
+        }
+      }
+      if (hover || st.amp > 0.02) {
+        raf = requestAnimationFrame(tick)
+      } else {
+        st.amp = 0
+        if (w) {
+          for (const m of MODES) {
+            outlinePathRefs.current[m]?.setAttribute(
+              'd',
+              wobblyPill(w.text[m] + PADX * 2 - 2, 0, 0)
+            )
+          }
+        }
+      }
     }
-    raf = requestAnimationFrame(tick)
+    if (hover) {
+      raf = requestAnimationFrame(tick)
+    }
     return () => cancelAnimationFrame(raf)
-  }, [hover])
+  }, [hover, w])
 
   const chipW = (m: Mode): number => (w ? w.text[m] + PADX * 2 : 0)
   const totalW = geo ? Math.max(geo.barW, ...MODES.map((m) => geo.chips[m].x + chipW(m))) + 4 : 0
@@ -273,58 +459,75 @@ export function InkModes({
       <svg className="sg-ink-shapes" width={totalW} height={H + 8} aria-hidden="true">
         <defs>
           <filter id={goo} x="-20%" y="-50%" width="140%" height="200%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
             <feColorMatrix
-              in="b"
+              in="blur"
               mode="matrix"
-              values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 22 -10"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9"
+              result="goo"
             />
+            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
           </filter>
         </defs>
         {geo && w && (
           <>
             <g filter={`url(#${goo})`} className="sg-ink-fill">
-              <rect x={0} y={4} width={geo.barW} height={H} rx={H / 2} />
+              <rect ref={barRectRef} x={0} y={4} width={geo.barW} height={H} rx={H / 2} />
               {MODES.map((m) => {
                 const c = geo.chips[m]
-                const cw = chipW(m) * c.fill
-                return c.fill > 0.01 ? (
+                const cw = chipW(m)
+                const isChosen = m === shown.current
+                return (
                   <rect
                     key={m}
+                    ref={(el) => {
+                      inkRectRefs.current[m] = el
+                    }}
                     x={c.x}
                     y={4}
-                    width={Math.max(cw, H * 0.6 * Math.min(1, c.fill * 4))}
+                    width={cw}
                     height={H}
                     rx={H / 2}
+                    style={{
+                      transformOrigin: '0% 50%',
+                      transform: isChosen
+                        ? 'scaleX(1) translate3d(0, 0, 0)'
+                        : 'scaleX(0) translate3d(0, 0, 0)',
+                      opacity: isChosen ? 1 : 0
+                    }}
                   />
-                ) : null
+                )
               })}
             </g>
             <g className="sg-ink-outline">
               {MODES.map((m) => {
                 const c = geo.chips[m]
-                let cover = 0
-                if (m !== mode)
-                  for (const o of MODES) {
-                    const oc = geo.chips[o]
-                    if (o === m || (o !== mode && oc.fill < 0.5)) continue
-                    const ov = Math.min(c.x + chipW(m), oc.x + chipW(o)) - Math.max(c.x, oc.x)
-                    if (ov > 0) cover = Math.max(cover, Math.min(1, (ov / chipW(m)) * 1.6))
-                  }
-                const op = (1 - c.fill) * (1 - cover)
-                if (op < 0.02) return null
-                const amp = hover === m ? wob.amp : 0
+                const isCurrent = m === mode
+                const cw = chipW(m)
                 return (
                   <path
                     key={m}
-                    d={wobblyPill(chipW(m) - 2, amp, wob.time)}
-                    transform={`translate(${c.x + 1} ${5})`}
-                    style={{ opacity: op }}
+                    ref={(el) => {
+                      outlinePathRefs.current[m] = el
+                    }}
+                    d={wobblyPill(cw - 2, 0, 0)}
+                    transform={`translate(${c.x + 1} 5)`}
+                    style={{
+                      opacity: isCurrent ? 0 : 1,
+                      display: isCurrent ? 'none' : 'block'
+                    }}
                   />
                 )
               })}
             </g>
-            <line className="sg-ink-divider" x1={divX} x2={divX} y1={4 + 11} y2={4 + H - 11} />
+            <line
+              ref={dividerLineRef}
+              className="sg-ink-divider"
+              x1={divX}
+              x2={divX}
+              y1={4 + 11}
+              y2={4 + H - 11}
+            />
           </>
         )}
       </svg>
@@ -352,16 +555,7 @@ export function InkModes({
           MODES.map((m) => {
             const c = geo.chips[m]
             const cw = chipW(m)
-            const inked = Math.min(1, c.fill)
-            // A chip that an inked chip slides over hides under the ink instead of showing through.
-            let cover = 0
-            if (m !== mode)
-              for (const o of MODES) {
-                const oc = geo.chips[o]
-                if (o === m || (o !== mode && oc.fill < 0.5)) continue
-                const ov = Math.min(c.x + cw, oc.x + chipW(o)) - Math.max(c.x, oc.x)
-                if (ov > 0) cover = Math.max(cover, Math.min(1, (ov / cw) * 1.6))
-              }
+            const isChosen = m === mode
             return (
               <button
                 key={m}
@@ -370,16 +564,15 @@ export function InkModes({
                 }}
                 type="button"
                 role="radio"
-                aria-checked={mode === m}
-                tabIndex={mode === m ? 0 : -1}
-                className={`sg-chip ${mode === m ? 'is-active' : ''}`}
+                aria-checked={isChosen}
+                tabIndex={isChosen ? 0 : -1}
+                className={`sg-chip ${isChosen ? 'is-active' : ''}`}
                 style={{
                   left: c.x,
                   width: cw,
                   height: H,
                   top: 4,
-                  opacity: 1 - cover,
-                  zIndex: c.fill > 0.5 ? 2 : 1
+                  zIndex: isChosen ? 2 : 1
                 }}
                 onClick={() => mode !== m && onChange(m)}
                 onPointerEnter={() => mode !== m && setHover(m)}
@@ -387,9 +580,14 @@ export function InkModes({
               >
                 <span className="sg-chip-label">{m}</span>
                 <span
+                  ref={(el) => {
+                    labelInkRefs.current[m] = el
+                  }}
                   className="sg-chip-label sg-chip-label-ink"
                   aria-hidden="true"
-                  style={{ clipPath: `inset(0 ${(1 - inked) * 100}% 0 0)` }}
+                  style={{
+                    clipPath: isChosen ? 'inset(0 0% 0 0)' : 'inset(0 100% 0 0)'
+                  }}
                 >
                   {m}
                 </span>

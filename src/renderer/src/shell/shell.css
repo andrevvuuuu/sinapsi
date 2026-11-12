@@ -1,5 +1,19 @@
 /* Cabina v2: shell colors use tokens or the top --sh-* variables. */
 :root {
+  --sh-canvas: #111318;
+  --sh-shell-bg: rgba(28,31,38,.72);
+  --sh-inner-bg: rgba(40,44,54,.85);
+  --sh-text: #F3F4F6;
+  --sh-text-2: #8E95A5;
+  --sh-spec: inset 0 1px 0 0 rgba(255,255,255,.08);
+  --sh-shell-shadow: 0 12px 32px -16px rgba(0,0,0,.55);
+  --sh-inner-shadow: none;
+  --sh-pill-on-bg: #F3F4F6;
+  --sh-pill-on-ink: #111318;
+  --sh-r-shell: 22px;
+  --sh-r-inner: 14px;
+  --sh-blur: blur(20px) saturate(160%);
+  --sh-spring: linear(0,.009,.035 2.1%,.141,.281 6.7%,.723 12.9%,.938 16.7%,1.017,1.077,1.121,1.149 24.3%,1.159,1.163,1.161,1.154 29.9%,1.129 32.8%,1.051 39.6%,1.017 43.1%,.991,.977 51%,.974 53.8%,.975 57.1%,.997 69.8%,1.003 76.9%,1);
   --sh-amber: #f2b84b;
   --sh-green: #5fd38a;
   --sh-blue: #4c8dff;
@@ -21,6 +35,16 @@
 }
 
 [data-theme='trattato'] {
+  --sh-canvas: #EEF0F6;
+  --sh-shell-bg: rgba(255,255,255,.65);
+  --sh-inner-bg: #FFFFFF;
+  --sh-text: #1d1d1f;
+  --sh-text-2: #5f6573;
+  --sh-spec: inset 0 1px 0 0 rgba(255,255,255,.9);
+  --sh-shell-shadow: 0 1px 2px rgba(15,23,42,.04);
+  --sh-inner-shadow: 0 4px 20px -2px rgba(15,23,42,.05);
+  --sh-pill-on-bg: #111318;
+  --sh-pill-on-ink: #FFFFFF;
   --sh-amber: #845600;
   --sh-green: #237648;
   --sh-blue: #245fc2;
@@ -40,6 +64,19 @@
   --sh-bar-default: #c4c1ba;
 }
 
+[data-theme='lavagna'] {
+  --sh-canvas: #111318;
+  --sh-shell-bg: rgba(28,31,38,.72);
+  --sh-inner-bg: rgba(40,44,54,.85);
+  --sh-text: #F3F4F6;
+  --sh-text-2: #8E95A5;
+  --sh-spec: inset 0 1px 0 0 rgba(255,255,255,.08);
+  --sh-shell-shadow: 0 12px 32px -16px rgba(0,0,0,.55);
+  --sh-inner-shadow: none;
+  --sh-pill-on-bg: #F3F4F6;
+  --sh-pill-on-ink: #111318;
+}
+
 @property --sh-dock-color {
   syntax: '<color>';
   inherits: true;
@@ -54,8 +91,8 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--sh-canvas);
+  color: var(--sh-text);
   font: var(--font-body);
   isolation: isolate;
   transition:
@@ -1381,3 +1418,71 @@ button.sh-brand .sh-brand-tag {
 .sh-sidebar .sh-register-all.is-current{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--ink)}
 .sh-sidebar .sh-register-all:focus-visible{outline:var(--btn-focus-ring);outline-offset:-2px}
 .sh-sidebar .sh-register{margin-bottom:var(--s-3)}
+
+/* Double-shell surfaces and compact two-level navigation */
+.sh-shell .sh-sidebar{position:relative;width:64px;flex:0 0 64px;padding:12px 8px;background:transparent;border:0;overflow:visible;z-index:12;color:var(--sh-text)}
+.sh-shell .sh-sidebar.tree-open{width:304px;flex-basis:304px}
+.sh-shell .sh-sidebar.tree-closed{width:64px;flex-basis:64px}
+.sh-icon-rail{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;width:48px;height:100%;padding:4px 0}
+.sh-icon-rail .sh-brand{justify-content:center;width:40px;height:40px;margin:0 0 8px;padding:0;border-radius:50%;background:transparent}
+.sh-icon-rail .sh-brand strong,.sh-icon-rail .sh-brand-tag{display:none}
+.sh-icon-rail .sh-brand .logo-mark{width:25px;height:25px}
+.sh-icon-rail .sh-side-actions{display:flex;flex-direction:column;gap:8px;margin:0}
+.sh-icon-rail .sh-side-action,.sh-icon-rail .sh-settings{display:grid;place-items:center;flex:none;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--sh-text-2);transition:background-color .18s ease,color .18s ease,transform .18s ease}
+.sh-icon-rail .sh-side-action span,.sh-icon-rail .sh-side-action small,.sh-icon-rail .sh-settings span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.sh-icon-rail .sh-side-action svg,.sh-icon-rail .sh-settings svg{width:19px;height:19px}
+.sh-icon-rail .sh-side-action:hover,.sh-icon-rail .sh-settings:hover,.sh-icon-rail .sh-brand:hover{background:color-mix(in srgb,var(--sh-text) 8%,transparent);color:var(--sh-text)}
+.sh-icon-rail .sh-side-action:active,.sh-icon-rail .sh-settings:active{transform:scale(.95)}
+.sh-icon-rail .sh-side-action.is-current{background:var(--sh-pill-on-bg);color:var(--sh-pill-on-ink)}
+.sh-icon-rail .sh-side-action.is-current svg{color:inherit}
+.sh-icon-rail .sh-tree-trigger{margin-top:4px}
+.sh-rail-spacer{flex:1}
+.sh-tree-panel{position:absolute;z-index:1;left:64px;top:8px;bottom:8px;width:240px;padding:12px 12px 14px;border-radius:var(--sh-r-shell);background:var(--sh-shell-bg);backdrop-filter:var(--sh-blur);-webkit-backdrop-filter:var(--sh-blur);box-shadow:var(--sh-spec),var(--sh-shell-shadow);color:var(--sh-text);transform:translate3d(0,0,0);opacity:1;transition:transform .42s var(--sh-spring),opacity .2s ease;contain:paint;overflow:hidden}
+.sh-sidebar.tree-closed .sh-tree-panel{transform:translate3d(-18px,0,0);opacity:0;pointer-events:none}
+.sh-tree-panel .sh-sidebar-top{position:relative;margin:0;padding:0;border:0}
+.sh-tree-close{position:absolute;right:0;top:0;display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--sh-text-2)}
+.sh-tree-close:hover{background:color-mix(in srgb,var(--sh-text) 8%,transparent);color:var(--sh-text)}
+.sh-tree-close svg{width:14px;height:14px}
+.sh-tree-panel .sh-sidebar-scroll{height:calc(100% - 32px);margin:0;padding:8px 0 48px;overflow-y:auto}
+.sh-tree-panel .sh-sidebar-scroll::after{display:none}
+.sh-tree-panel .sh-side-heading{color:var(--sh-text-2)}
+.sh-tree-panel .sh-register-all,.sh-tree-panel .sh-register-row,.sh-tree-panel .tree details>summary,.sh-tree-panel .tree .leaf,.sh-tree-panel .sh-show-more{color:var(--sh-text-2)}
+.sh-tree-panel .sh-register-all:hover,.sh-tree-panel .sh-register-row:hover,.sh-tree-panel .tree details>summary:hover,.sh-tree-panel .tree .leaf:hover,.sh-tree-panel .sh-show-more:hover{background:color-mix(in srgb,var(--sh-text) 7%,transparent);color:var(--sh-text)}
+.sh-tree-panel .sh-register-all.is-current,.sh-tree-panel .tree .leaf[aria-current="page"]{background:var(--sh-pill-on-bg);color:var(--sh-pill-on-ink)}
+.sh-tree-panel .sh-subjects .sh-side-heading{padding-right:0}
+.sh-tree-panel .sh-side-heading .sh-side-toggle{color:var(--sh-text-2)}
+.sh-tree-panel .sh-side-empty{color:var(--sh-text-2)}
+.sh-tree-panel .sh-sidebar-scroll .tree{display:grid}
+.sh-tree-panel .sh-sidebar-scroll .sh-register{display:grid}
+.sh-icon-rail .status{display:flex;flex-direction:column;gap:10px;width:40px;margin:0 0 4px;align-items:center}
+.sh-icon-rail .status .pill{display:flex;align-items:center;gap:0;width:10px;height:10px;padding:0;border:0;background:transparent;color:transparent;font-size:0}
+.sh-icon-rail .status .pill b,.sh-icon-rail .status .pill small{display:none}
+.sh-icon-rail .status .pill i{width:6px;height:6px;border-radius:50%;background:var(--sh-green);box-shadow:0 0 0 3px rgba(95,211,138,.16),0 0 8px rgba(95,211,138,.55)}
+.sh-icon-rail .status .pill.busy i{background:var(--sh-amber);box-shadow:none}
+.sh-icon-rail .status .pill.auth i,.sh-icon-rail .status .pill.missing i,.sh-icon-rail .status .pill.error i{background:#ed756e;box-shadow:none}
+.sh-sidebar.tree-open .sh-icon-rail>.status{position:absolute;left:64px;bottom:12px;z-index:4;display:grid;width:216px;gap:8px;margin:0;padding:0 12px}
+.sh-sidebar.tree-open .sh-icon-rail>.status .pill{display:flex;align-items:center;gap:8px;width:auto;height:24px;padding:0;border:0;background:transparent;color:var(--sh-text);font-size:12px}
+.sh-sidebar.tree-open .sh-icon-rail>.status .pill b,.sh-sidebar.tree-open .sh-icon-rail>.status .pill small{display:inline;font:var(--font-caption)}
+.sh-sidebar.tree-open .sh-icon-rail>.status .pill small{color:var(--sh-text-2)}
+.sh-sidebar.tree-open .sh-icon-rail>.status .pill i{flex:none}
+.sh-sidebar-bottom{display:none}
+.sh-main{color:var(--sh-text);background:radial-gradient(ellipse 480px 360px at 10% 100%,rgba(174,157,255,.22),transparent 72%),radial-gradient(ellipse 540px 400px at 95% 4%,rgba(132,190,255,.2),transparent 72%),var(--sh-canvas);transition:background-color .3s ease}
+[data-theme='lavagna'] .sh-main{background:radial-gradient(ellipse 460px 320px at 50% 100%,color-mix(in srgb,var(--sh-dock-color,var(--sh-violet)) 14%,transparent),transparent 75%),var(--sh-canvas)}
+.sh-shell .sh-eyebrow,.sh-shell .sh-card-heading p,.sh-shell .sh-label,.sh-shell .sh-metric-note,.sh-shell .sh-duration,.sh-shell .sh-queue-type,.sh-shell .sh-empty,.sh-shell .sh-composer-hint{color:var(--sh-text-2)}
+.sh-card{border:0;background:var(--sh-shell-bg);box-shadow:var(--sh-spec),var(--sh-shell-shadow);border-radius:var(--sh-r-shell);}
+.sh-composer,.sh-queue,.sh-activity{padding:22px 24px;background:var(--sh-shell-bg);backdrop-filter:var(--sh-blur);-webkit-backdrop-filter:var(--sh-blur);box-shadow:var(--sh-spec),var(--sh-shell-shadow);border-radius:var(--sh-r-shell);contain:paint}
+.sh-metric{min-height:110px;padding:16px 18px;border-radius:var(--sh-r-inner);background:var(--sh-inner-bg);box-shadow:var(--sh-inner-shadow)}
+.sh-suggestions button,.sh-queue-row,.sh-recent-row{border:0;border-radius:var(--sh-r-inner);background:var(--sh-inner-bg);box-shadow:var(--sh-inner-shadow)}
+.sh-suggestions button:hover,.sh-queue-row:hover,.sh-recent-row:hover{background:color-mix(in srgb,var(--sh-text) 8%,var(--sh-inner-bg))}
+.sh-suggestions button span,.sh-queue-title,.sh-recent-title,.sh-metric-line strong{color:var(--sh-text)}
+.sh-suggestions button small,.sh-queue-title small,.sh-recent-row small{color:var(--sh-text-2)}
+.sh-composer .mic-field.mic-fill{border:0;border-radius:var(--sh-r-inner);background:var(--sh-inner-bg);box-shadow:var(--sh-inner-shadow);color:var(--sh-text)}
+.sh-composer .mic-field textarea{color:var(--sh-text)}
+.sh-composer .mic-field:focus-within{outline:var(--btn-focus-ring);outline-offset:2px}
+.sh-spark-bars{height:28px;gap:2px}
+.sh-spark-bars i{width:3px;background:color-mix(in srgb,var(--sh-text-2) 54%,transparent)}
+.sh-spark-bars i:last-child{background:var(--sh-amber)}
+.sh-metric-line strong{font-variant-numeric:tabular-nums}
+.sh-brand:focus-visible,.sh-icon-rail .sh-side-action:focus-visible,.sh-icon-rail .sh-settings:focus-visible,.sh-tree-trigger:focus-visible{outline:var(--btn-focus-ring);outline-offset:2px}
+@media(max-width:820px){.sh-shell .sh-sidebar.tree-open,.sh-sidebar{width:64px;flex-basis:64px}.sh-tree-panel{width:min(240px,calc(100vw - 80px))}.sh-tree-panel .sh-side-heading{display:flex}.sh-main > .sh-today-scroll{padding-left:20px;padding-right:20px}}
+@media(prefers-reduced-motion:reduce){.sh-tree-panel,.sh-icon-rail .sh-side-action,.sh-icon-rail .sh-settings{transition:none}}

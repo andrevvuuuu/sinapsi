@@ -10,20 +10,21 @@ test('concepts extracted from two notes join one graph', async () => {
     env: { ...process.env, SINAPSI_FAKE_EXTRACT: '1', SINAPSI_FAKE_NOTE: '1', SINAPSI_VAULT: resolve('tests/fixtures/vault'), SINAPSI_DATA: mkdtempSync(join(tmpdir(), 'sinapsi-e2e-')) }
   })
   const win = await app.firstWindow()
-  await win.getByRole('button', { name: 'Vista del grafo' }).click()
-  await expect(win.getByRole('heading', { name: 'Il tuo grafo' })).toBeVisible()
-  await expect(win.getByText(/^0 concetti da 0 note/)).toBeVisible()
+  // The notch's «Stato del grafo» section carries the counts line.
+  await win.getByRole('button', { name: 'Stato del grafo' }).click()
+  await expect(win.locator('#gnotch-section-status').getByText(/^0 concetti da 0 note/)).toBeVisible()
 
   // a nota viva brings its note's concepts into the graph
   await makeNotaViva(win, 'Teorema di Rolle')
-  await win.getByRole('button', { name: 'Vista del grafo' }).click()
-  await expect(win.getByText('3 concetti da 1 note · 1 catene · 0 in più note')).toBeVisible()
+  await win.getByRole('button', { name: 'Stato del grafo' }).click()
+  await expect(win.locator('#gnotch-section-status').getByText('3 concetti da 1 note · 1 catene · 0 in più note')).toBeVisible()
 
   // Lagrange recognises Rolle's theorem as the same concept
   await win.keyboard.press('Escape')
   await makeNotaViva(win, 'Teorema di Lagrange')
+  await win.getByRole('button', { name: 'Stato del grafo' }).click()
+  await expect(win.locator('#gnotch-section-status').getByText('4 concetti da 2 note · 2 catene · 1 in più note')).toBeVisible()
   await win.getByRole('button', { name: 'Vista del grafo' }).click()
-  await expect(win.getByText('4 concetti da 2 note · 2 catene · 1 in più note')).toBeVisible()
 
   await win.getByRole('combobox', { name: 'Cerca nel grafo' }).fill('Teorema di Rolle')
   await win.getByRole('option', { name: /Teorema di Rolle.*concetto/ }).click()

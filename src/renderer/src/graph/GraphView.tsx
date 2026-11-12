@@ -5,12 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ExtractorStatus, GraphData } from '../../../shared/graph-types'
 import type { VaultIndex } from '../../../shared/vault-types'
 import { DICTATION_SHORT, useDictation } from '../components/dictation'
-import { DictationError, MicButton } from '../components/MicButton'
-import { GlassButton, GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
-import { SceneBoundary, Seg } from '../components/glass'
+import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
+import { SceneBoundary } from '../components/glass'
 import { RichText } from '../session/RichText'
 import { draw, radiusOf, type Colors, type Lens, type Sel } from './draw'
 import { createLayout, type Layout, type LayoutMode, type SimNode } from './layout'
+import { GraphNotchDock } from './GraphNotchDock'
 import {
   buildModel,
   lensCounts,
@@ -98,39 +98,11 @@ function GraphBody({
     onChange: (v) => (setQuery(v), setHi(-1)),
     maxSeconds: DICTATION_SHORT
   })
-  const [options, setOptions] = useState(false)
-  // The graph menu sits behind a round button; it opens and closes with a short scale-and-fade.
-  const [menu, setMenu] = useState<'closed' | 'open' | 'closing'>(menuOpen ? 'open' : 'closed')
-  const menuBtn = useRef<HTMLButtonElement>(null)
-  const menuOpenRef = useRef(menu === 'open')
+  const [dockOpen, setDockOpen] = useState(menuOpen)
+  const menuOpenRef = useRef(menuOpen)
   useEffect(() => {
-    menuOpenRef.current = menu === 'open'
-  }, [menu])
-  const panelRef = useRef<HTMLElement>(null)
-  const closeMenu = useCallback((focus = true) => {
-    setMenu((m) =>
-      m === 'closed'
-        ? m
-        : typeof window.matchMedia !== 'function' || reducedMotion()
-          ? 'closed'
-          : 'closing'
-    )
-    if (focus) menuBtn.current?.focus()
-  }, [])
-  useEffect(() => {
-    if (menu !== 'closing') return
-    const t = setTimeout(() => setMenu('closed'), 160)
-    return () => clearTimeout(t)
-  }, [menu])
-  useEffect(() => {
-    if (menu !== 'open') return
-    const off = (e: PointerEvent): void => {
-      const t = e.target as Node
-      if (!panelRef.current?.contains(t) && !menuBtn.current?.contains(t)) closeMenu(false)
-    }
-    document.addEventListener('pointerdown', off)
-    return () => document.removeEventListener('pointerdown', off)
-  }, [menu, closeMenu])
+    menuOpenRef.current = dockOpen
+  }, [dockOpen])
   const [memory, setMemory] = useState<Record<string, Memory>>({})
   const [lens, setLens] = useState<Lens>('all')
   const [now] = useState(() => Date.now())
@@ -275,7 +247,7 @@ function GraphBody({
       const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
       const { W, H } = size.current
       // Leave room for the graph menu only while it is open.
-      const L0 = menuOpenRef.current ? 330 : 70
+      const L0 = menuOpenRef.current ? 360 : 70
       const cw = Math.max(200, W - L0 - (sel ? 370 : 16))
       const k = Math.min(
         3,
@@ -297,7 +269,7 @@ function GraphBody({
     const s = selRef.current
     if (!n || !z || !s) return
     const { W, H } = size.current
-    const L0 = menuOpenRef.current ? 330 : 70
+    const L0 = menuOpenRef.current ? 360 : 70
     const cw = W - L0 - 370
     s.transition()
       .duration(reducedMotion() ? 0 : 900)
@@ -435,6 +407,7 @@ function GraphBody({
     setQuery('')
     setHi(-1)
     choose({ kind: h.kind, id: h.id })
+    searchField.current?.blur()
     if (h.kind === 'region') {
       const ids = model?.regions.find((r) => r.notePath === h.id)?.concepts
       if (ids) fit(ids)
@@ -495,178 +468,32 @@ function GraphBody({
           </p>
         </div>
       )}
-      <GlassButton
-        ref={menuBtn}
-        type="button"
-        // A rounded square like the theme switch's knob. The glass forces a circle on every "icon" size and
-        // draws its own outline, so this is a small button with an 11 px radius, sized to 36 px in graph.css.
-        size="sm"
-        radius={11}
-        className={'gmenu-btn' + (menu === 'open' ? ' on' : '')}
-        aria-label="Vista del grafo"
-        aria-expanded={menu === 'open'}
-        aria-controls="graph-menu"
-        onClick={() => (menu === 'open' ? closeMenu() : setMenu('open'))}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape' && menu === 'open') {
-            e.preventDefault()
-            closeMenu()
-          }
-        }}
-      >
-        <svg
-          viewBox="0 0 18 18"
-          aria-hidden="true"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-        >
-          <circle cx="5" cy="5" r="2" />
-          <circle cx="13" cy="6" r="2" />
-          <circle cx="8" cy="13" r="2" />
-          <path d="M6.8 5.6 11 5.9M6 6.8l1.4 4.3M12 7.8l-2.7 3.6" />
-        </svg>
-      </GlassButton>
-      {menu === 'closed' && (
-        <div className="gstatus-mini">
-          <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
-        </div>
-      )}
-      {menu !== 'closed' && (
-        <GlassSurface
-          render={<section />}
-          ref={panelRef}
-          radius={22}
-          id="graph-menu"
-          className={'gpanel glass-shell' + (menu === 'closing' ? ' closing' : '')}
-          aria-label="Controlli del grafo"
-          onKeyDown={(e) => {
-            if (e.key === 'Escape' && !e.defaultPrevented) {
-              e.preventDefault()
-              closeMenu()
-            }
-          }}
-        >
-          <div className="gpanel-core dlg-core">
-            <h2>Il tuo grafo</h2>
-            <p className="meta">
-              {model
-                ? `${model.concepts.length} concetti da ${model.regions.length} note · ${new Set(model.arrows.map((a) => a.chain)).size} catene · ${multi} in più note`
-                : 'Carico il grafo…'}
-            </p>
-            <div className="gsearch">
-              <div className="mic-field">
-                <input
-                  ref={searchField}
-                  readOnly={searchMic.state !== 'idle'}
-                  role="combobox"
-                  aria-label="Cerca nel grafo"
-                  aria-expanded={hits.length > 0}
-                  aria-controls="graph-results"
-                  aria-activedescendant={hi >= 0 ? `gr-${hi}` : undefined}
-                  placeholder="Cerca un concetto o una nota"
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value)
-                    setHi(-1)
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowDown') setHi(Math.min(hits.length - 1, hi + 1))
-                    else if (e.key === 'ArrowUp') setHi(Math.max(0, hi - 1))
-                    else if (e.key === 'Enter' && hits.length) go(hits[Math.max(0, hi)])
-                    else if (e.key === 'Escape' && query) setQuery('')
-                    else return
-                    e.preventDefault()
-                  }}
-                />
-                <MicButton dictation={searchMic} size="sm" />
-              </div>
-              <DictationError dictation={searchMic} />
-              {hits.length > 0 && (
-                <ul role="listbox" id="graph-results" className="gresults">
-                  {hits.map((h, i) => (
-                    <li
-                      key={`${h.kind}:${h.id}`}
-                      id={`gr-${i}`}
-                      role="option"
-                      aria-selected={i === hi}
-                      onClick={() => go(h)}
-                    >
-                      <span>{h.label}</span>
-                      <small>{h.kind === 'concept' ? 'concetto' : 'nota'}</small>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="gsec">
-              <h3>Evidenzia</h3>
-              <Seg
-                label="Evidenzia"
-                track="plain"
-                className="gseg glens"
-                radius={12}
-                value={lens}
-                onChange={setLens}
-                options={(
-                  [
-                    ['all', 'Tutto'],
-                    ['due', `Da ripassare (${counts.due})`],
-                    ['never', `Mai visti (${counts.never})`],
-                    ['fragile', `Basi fragili (${counts.fragile})`]
-                  ] as [Lens, string][]
-                ).map(([l, label]) => ({ value: l, label }))}
-              />
-            </div>
-            <button
-              type="button"
-              className="gmore"
-              aria-expanded={options}
-              onClick={() => setOptions(!options)}
-            >
-              Disposizione e strati
-              <span aria-hidden="true">{options ? '−' : '+'}</span>
-            </button>
-            {options && (
-              <>
-                <div className="gsec">
-                  <h3>Disposizione</h3>
-                  <Seg
-                    label="Disposizione"
-                    track="plain"
-                    className="gseg"
-                    radius={12}
-                    value={mode}
-                    onChange={changeMode}
-                    options={MODES.map(([m, label]) => ({ value: m, label }))}
-                  />
-                  <p className="hint">{MODES.find((m) => m[0] === mode)![2]}</p>
-                </div>
-                <div className="gsec gtoggles">
-                  {(
-                    [
-                      ['regions', 'Regioni'],
-                      ['wikilinks', 'Link di Obsidian'],
-                      ['frontier', `Frontiera${model ? ` (${model.frontier.length})` : ''}`]
-                    ] as const
-                  ).map(([key, label]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      aria-pressed={show[key]}
-                      onClick={() => setShow({ ...show, [key]: !show[key] })}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            <StatusLine status={status} index={index} onRetry={extract} error={extractError} />
-          </div>
-        </GlassSurface>
-      )}
+      <GraphNotchDock
+        model={model}
+        counts={counts}
+        multi={multi}
+        query={query}
+        setQuery={setQuery}
+        hits={hits}
+        hi={hi}
+        setHi={setHi}
+        go={go}
+        searchMic={searchMic}
+        searchField={searchField}
+        lens={lens}
+        setLens={setLens}
+        mode={mode}
+        changeMode={changeMode}
+        modes={MODES}
+        show={show}
+        setShow={setShow}
+        status={status}
+        index={index}
+        onRetry={extract}
+        extractError={extractError}
+        initialSection={menuOpen ? 'search' : null}
+        onOpenChange={setDockOpen}
+      />
       {model && !(livePaths && livePaths.length === 0) && (
         <GlassSurface radius={18} className="gzoom" role="group" aria-label="Zoom">
           <button
@@ -731,42 +558,6 @@ function GraphBody({
   )
 }
 
-function StatusLine({
-  status,
-  index,
-  onRetry,
-  error
-}: {
-  status: ExtractorStatus
-  index: VaultIndex
-  onRetry: (path: string) => void
-  error: string | null
-}): React.JSX.Element | null {
-  if (error && !status.running)
-    return (
-      <p className="gstatus err" role="alert">
-        {error}
-      </p>
-    )
-  if (status.running)
-    return (
-      <p className="gstatus" role="status">
-        <span className="pulse" aria-hidden="true" />
-        Sto estraendo «{title(index, status.running)}»…
-        {status.queued.length > 0 ? ` (${status.queued.length} in coda)` : ''}
-      </p>
-    )
-  if (status.lastError)
-    return (
-      <p className="gstatus err" role="alert">
-        «{title(index, status.lastError.notePath)}»: {status.lastError.message}{' '}
-        <button type="button" onClick={() => onRetry(status.lastError!.notePath)}>
-          Riprova
-        </button>
-      </p>
-    )
-  return null
-}
 
 function ancestorsOf(model: GraphModel, id: string): string[] {
   const seen = new Set<string>()

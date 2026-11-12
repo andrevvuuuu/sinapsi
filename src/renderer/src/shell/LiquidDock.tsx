@@ -56,7 +56,7 @@ const H = TOP + BAR // 86px total dock height
 const R = 20 // bar corner radius
 const SIGMA_REST = 26
 const SIGMA_WAVE = 46
-const H_WAVE = 6
+const H_WAVE = DOME * 0.2 // flattened dome height during tab transition (~20% of DOME: 4.8px)
 const H_HOVER = 4
 const SIGMA_HOVER = 22
 
@@ -310,9 +310,9 @@ export function LiquidDock({
       let targetH: number
       let targetSigma: number
       if (tIdx >= 0) {
-        // As the dome departs from an item, smoothstep into a traveling wave;
-        // as it approaches target, swell back into the dome.
-        const travelT = Math.max(0, Math.min(1, (dist - 6) / 16))
+        // While traveling between tabs, flatten the dome to ~20% of DOME (H_WAVE);
+        // as cx approaches destination, swell back into the dome with underdamped spring bounce.
+        const travelT = Math.max(0, Math.min(1, (dist - 6) / 20))
         const smoothT = travelT * travelT * (3 - 2 * travelT)
         targetH = DOME * (1 - smoothT) + H_WAVE * smoothT
         targetSigma = SIGMA_REST * (1 - smoothT) + SIGMA_WAVE * smoothT
@@ -321,10 +321,10 @@ export function LiquidDock({
         targetSigma = SIGMA_REST
       }
 
-      // 1. Solve dome motion springs
+      // 1. Solve dome motion springs: cx translates horizontally; h rises with underdamped spring (~1 rebound)
       ;[st.cx, st.vx] = solveSpring(st.cx, st.vx, targetCx, 240, 25, dt)
-      const hStiffness = targetH < st.h ? 320 : 230
-      const hDamping = targetH < st.h ? 28 : 24
+      const hStiffness = targetH < st.h ? 320 : 250
+      const hDamping = targetH < st.h ? 28 : 17
       ;[st.h, st.vh] = solveSpring(st.h, st.vh, targetH, hStiffness, hDamping, dt)
       ;[st.sigma, st.vs] = solveSpring(st.sigma, st.vs, targetSigma, 220, 24, dt)
 

@@ -153,3 +153,17 @@
 @media (max-width:980px){.lessons .lessons-services-grid{grid-template-columns:1fr}}
 @media (max-width:800px){.lessons{padding:var(--s-4) var(--s-3) calc(112px + var(--s-4))}.lessons .lesson-page-header{flex-direction:column;align-items:flex-start}.lessons .lesson-row{grid-template-columns:auto minmax(0,1fr)}.lessons .lesson-row .lesson-launch{grid-column:1/-1;justify-content:flex-start}.lessons .exam-form-grid{grid-template-columns:1fr}.lessons .exam-field-full{grid-column:auto}}
 @media (prefers-reduced-motion:reduce){.lessons,.lessons *{animation:none!important;transition:none!important}}
+/* Registro in the shared shell material system */
+.lessons{background:transparent;color:var(--sh-text)}
+.lessons :is(.st-course,.tc-calendar,.lesson-exams,.lessons-registry-section){padding:20px 22px;border:0;border-radius:var(--sh-r-shell);background:var(--sh-shell-bg);box-shadow:var(--sh-spec),var(--sh-shell-shadow);backdrop-filter:var(--sh-blur);-webkit-backdrop-filter:var(--sh-blur);contain:paint}
+.lessons .st-lesson{padding:14px 16px;border:0;border-radius:var(--sh-r-inner);background:var(--sh-inner-bg);box-shadow:var(--sh-inner-shadow)}
+.lessons .lesson-sticky,.lessons .lesson-empty{border:0;border-radius:var(--sh-r-shell);background:var(--sh-shell-bg);box-shadow:var(--sh-spec),var(--sh-shell-shadow);backdrop-filter:var(--sh-blur);-webkit-backdrop-filter:var(--sh-blur);contain:paint}
+.lessons .lesson-row,.lessons .st-item,.lessons .tc-next-lesson{border:0;border-radius:var(--sh-r-inner);background:var(--sh-inner-bg);box-shadow:var(--sh-inner-shadow)}
+.lessons .lesson-row:hover,.lessons .st-item:hover{background:color-mix(in srgb,var(--sh-text) 7%,var(--sh-inner-bg))}
+.lessons .exam-field input,.lessons .lesson-page-header select,.lessons .lesson-fields fieldset input{border:0;border-radius:var(--sh-r-inner);background:var(--sh-inner-bg);box-shadow:var(--sh-inner-shadow);color:var(--sh-text)}
+.lessons .exam-field input:focus-visible{outline:var(--btn-focus-ring);outline-offset:2px;box-shadow:var(--sh-inner-shadow)}
+.lessons .lesson-page-header select:focus-visible{outline:var(--btn-focus-ring);outline-offset:2px}
+.lessons .lesson-fields fieldset{border:0;border-radius:var(--sh-r-shell);background:var(--sh-shell-bg);box-shadow:var(--sh-spec),var(--sh-shell-shadow)}
+.lessons :is(.st-course-name,.tc-next-datetime,.st-item-state,.lesson-title span,.lesson-row time,.st-lesson-meta){color:var(--sh-text-2)}
+[data-theme="trattato"] .lessons :is(.st-course,.tc-calendar,.lesson-exams,.lessons-registry-section){background:var(--sh-shell-bg);box-shadow:var(--sh-spec),var(--sh-shell-shadow)}
+[data-theme="trattato"] .lessons .st-lesson{background:var(--sh-inner-bg);box-shadow:var(--sh-inner-shadow)}

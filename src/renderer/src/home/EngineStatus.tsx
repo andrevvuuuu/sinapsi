@@ -13,10 +13,11 @@ export function EngineStatus({ status }: { status: Record<Engine, Status> | null
         <span
           key={e}
           className={'pill ' + status[e]}
-          title={status[e] === 'auth' ? `Apri il Terminale e scrivi: ${CMD[e]}` : undefined}
+          aria-label={`${NAMES[e]} ${LABEL[status[e]]}`}
+          title={status[e] === 'auth' ? `${NAMES[e]} ${LABEL[status[e]]} · Apri il Terminale e scrivi: ${CMD[e]}` : `${NAMES[e]} ${LABEL[status[e]]}`}
         >
           <i aria-hidden="true" />
-          <b>{NAMES[e]}</b> {LABEL[status[e]]}
+          <b>{NAMES[e]}</b><small>{LABEL[status[e]]}</small>
         </span>
       ))}
     </div>

@@ -22,6 +22,22 @@ export const IconToday = (): React.JSX.Element => (
   </Icon>
 )
 
+export const IconRegister = (): React.JSX.Element => (
+  <Icon>
+    <path d="M6 4.5h12a2 2 0 0 1 2 2v13H6a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z" />
+    <path d="M8 8h8M8 12h8M8 16h5M4 7h2" />
+  </Icon>
+)
+
+export const IconTree = (): React.JSX.Element => (
+  <Icon>
+    <circle cx="12" cy="5" r="2" />
+    <circle cx="6" cy="18" r="2" />
+    <circle cx="18" cy="18" r="2" />
+    <path d="M12 7v5m-6 4v-2h12v2" />
+  </Icon>
+)
+
 export const IconStudy = (): React.JSX.Element => (
   <Icon>
     <path d="M4 5.5c3-.7 6-.2 8 1.3v13c-2-1.5-5-2-8-1.3zM20 5.5c-3-.7-6-.2-8 1.3v13c2-1.5 5-2 8-1.3z" />
