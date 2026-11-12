@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { StudyPacer } from '../components/StudyPacer'
 import type { SessionState } from '../../../shared/api'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
@@ -92,6 +93,7 @@ export function SessionView({
 
   return (
     <ViewScene className="sess">
+      <StudyPacer onEnd={onBack} />
       <GlassSurface render={<header />} radius={0} className="top drag glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home

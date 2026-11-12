@@ -99,3 +99,33 @@ export const IconClose = (): React.JSX.Element => (
     <path d="m18 6-12 12m0-12 12 12" />
   </Icon>
 )
+
+export const IconGrip = (): React.JSX.Element => (
+  <Icon>
+    <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" strokeWidth="2.6" />
+  </Icon>
+)
+
+export const IconChevronUp = (): React.JSX.Element => (
+  <Icon>
+    <path d="m6 15 6-6 6 6" />
+  </Icon>
+)
+
+export const IconChevronDown = (): React.JSX.Element => (
+  <Icon>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+)
+
+export const IconArrange = (): React.JSX.Element => (
+  <Icon>
+    <path d="M7 4v16M4 7l3-3 3 3M17 20V4M14 17l3 3 3-3" />
+  </Icon>
+)
+
+export const IconSwap = (): React.JSX.Element => (
+  <Icon>
+    <path d="M4 8h13l-3-3M20 16H7l3 3" />
+  </Icon>
+)

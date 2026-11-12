@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { toTitleCase } from '../../shared/subjects'
 import { mkdir } from 'node:fs/promises'
 import type { Grade } from '../../shared/memory-types'
 import { ExamGradeReplySchema, ExamSheetSchema, type ExamGrade, type ExamSheet, type Material } from '../../shared/practice-types'
@@ -147,7 +148,7 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
       const id = uuid()
       const topic = await deps.topic(material)
       runner.inflight.add(id)
-      await runner.serial(id, () => runner.append(id, { t: 'created', id, mode: 'exam', material, topic, durationMin, ...(paper ? { paper } : {}), at: now() }))
+      await runner.serial(id, () => runner.append(id, { t: 'created', id, mode: 'exam', material, topic: toTitleCase(topic), durationMin, ...(paper ? { paper } : {}), at: now() }))
       return id
     },
     retry: (id: string): Promise<void> =>

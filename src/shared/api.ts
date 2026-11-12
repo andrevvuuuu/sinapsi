@@ -101,6 +101,7 @@ export const CH = {
   lessonsArchive: 'lessons:archive',
   lessonsLaunch: 'lessons:launch',
   tutorCalendar: 'tutor:calendar',
+  tutorReport: 'tutor:report',
   examsList: 'exams:list',
   examsCreate: 'exams:create',
   examsUpdate: 'exams:update',
@@ -258,7 +259,11 @@ export interface SinapsiApi {
       mode?: 'practice' | 'review'
     ): Promise<import('./lesson-types').LaunchDestination>
   }
-  tutor: { calendar(): Promise<TutorCalendar> }
+  tutor: {
+    calendar(): Promise<TutorCalendar>
+    /** Sinapsi's own tutor: lesson coverage and mastery from Sinapsi's sessions only. */
+    report(): Promise<import('./tutor-types').SinapsiTutorReport>
+  }
   exams: {
     list(): Promise<import('./exam-types').ExamEntry[]>
     create(entry: { courseId: string; title?: string; date: string; weight?: number }): Promise<import('./exam-types').ExamEntry>

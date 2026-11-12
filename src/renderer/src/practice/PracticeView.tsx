@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { StudyPacer } from '../components/StudyPacer'
 import type { PracticeProblem, PracticeState } from '../../../main/practice/events'
 import { hintGate, RUNG_IT, MODE_IT, OUTCOME_IT, type Submission } from '../../../shared/practice-protocol'
 import { ConfusionCompassCard } from './ConfusionCompassCard'
@@ -284,6 +285,7 @@ export function PracticeView({
 
   return (
     <ViewScene className="pr">
+      <StudyPacer onEnd={onBack} />
       <GlassSurface render={<header />} radius={0} className="pr-top drag glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home

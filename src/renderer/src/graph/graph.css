@@ -483,31 +483,42 @@
   top: 60px;
   left: var(--s-4);
   z-index: 6;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
   display: grid;
   place-items: center;
-  border: 0;
+  border: 1px solid var(--hair);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--muted);
   cursor: pointer;
-  transition: transform 0.18s var(--ease-out), background-color 0.2s ease, color 0.2s ease;
+  transition: transform 0.18s var(--ease-out), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 .graph .gmenu-btn svg {
-  width: 18px;
-  height: 18px;
-  transition: transform 0.3s var(--ease-out);
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  transition: color 0.2s ease, transform 0.3s var(--ease-out);
 }
 .graph .gmenu-btn:hover {
-  transform: scale(1.05);
+  background: color-mix(in srgb, var(--ink) 8%, var(--surface));
+  border-color: var(--ctl-edge);
+  color: var(--ink);
+  transform: scale(1.04);
+}
+.graph .gmenu-btn:hover svg {
+  color: var(--ink);
 }
 .graph .gmenu-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.96);
 }
 .graph .gmenu-btn.on {
-  background: var(--ink);
-  color: var(--bg);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
 }
 .graph .gmenu-btn.on svg {
+  color: var(--accent);
   transform: rotate(90deg);
 }
 .app.l-off .graph .gmenu-btn {
@@ -559,6 +570,7 @@
 .graph .glive-empty p{max-width:44ch;color:var(--muted);font:var(--fw-medium) var(--fs-display)/1.25 var(--sans);letter-spacing:var(--track-display);margin:0}
 /* The round button is a library surface, clipped to its circle: its focus ring is drawn inside. */
 .graph button.gmenu-btn.gmenu-btn:focus-visible {
-  outline-offset: -4px;
-  border-radius: 50% !important;
+  outline: var(--btn-focus-ring);
+  outline-offset: -2px;
+  border-radius: var(--r-md) !important;
 }

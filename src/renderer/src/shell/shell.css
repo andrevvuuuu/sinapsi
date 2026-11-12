@@ -607,20 +607,21 @@
 /* Prompt row */
 .sh-prompt-row {
   display: flex;
-  gap: 12px;
-  align-items: flex-end;
+  gap: 8px;
+  align-items: center;
   margin-top: 8px;
 }
 
 .sh-prompt-row textarea {
-  resize: vertical;
-  min-height: 56px;
+  resize: none;
+  min-height: 44px;
+  height: 44px;
   border: 0;
   background: transparent;
-  padding: 6px 44px 6px 0;
+  padding: 11px 44px 11px 16px;
   color: var(--ink);
   font: var(--font-body);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .sh-prompt-row textarea::placeholder {
@@ -630,14 +631,16 @@
 .sh-send {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  min-height: 36px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  flex: none;
   border: 0;
-  border-radius: var(--r-md);
+  border-radius: 50%;
   background: var(--sh-send-bg);
   color: rgb(255 255 255);
+  cursor: pointer;
   transition:
     background 0.2s var(--ease-out),
     transform 0.15s var(--ease-out),
@@ -665,10 +668,10 @@
 .sh-composer-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid var(--hair);
-  padding-top: 10px;
-  margin-top: 6px;
+  justify-content: flex-start;
+  border-top: 0;
+  padding-top: 6px;
+  margin-top: 4px;
 }
 
 .sh-exam-empty {
@@ -686,6 +689,7 @@
 .sh-composer-hint {
   font: var(--font-footnote);
   color: var(--muted);
+  padding-left: 16px;
 }
 
 /* Metrics Cards */
@@ -1322,6 +1326,11 @@ button.sh-brand .sh-brand-tag {
 .sh-main .pr-setup {
   padding-bottom: 112px;
 }
+/* The glass scroll host ignores the setup's top padding: the first block starts under the top bar.
+   A margin on it clears the bar and leaves room to breathe. */
+.sh-main .pr-setup > :first-child {
+  margin-top: calc(var(--topbar-full) + var(--s-6));
+}
 /* The main column and the dock that floats over it. */
 .sh-main-wrap {
   position: relative;
@@ -1330,3 +1339,35 @@ button.sh-brand .sh-brand-tag {
   height: 100%;
   display: flex;
 }
+
+/* Subjects: university and personal groups, and the arranging mode */
+.sh-subjects .sh-side-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2);white-space:nowrap;overflow:hidden;height:28px}
+.sh-subjects .sh-side-heading > span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.sh-side-tools{display:flex;align-items:center;gap:2px}
+.sh-side-toggle.is-on{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 38%,transparent)}
+.sh-side-subheading{margin-top:var(--s-3)}
+.sh-side-empty{margin:2px 6px 0;color:var(--muted);font:var(--font-footnote)}
+.sh-arrange{list-style:none;margin:2px 0 0;padding:0;display:grid;gap:2px;min-height:36px}
+.sh-arrange-empty{padding:8px;border:1px dashed var(--hair);border-radius:var(--r-sm);color:var(--muted);font:var(--font-footnote);text-align:center}
+.sh-arrange-row{display:grid;grid-template-columns:18px 1fr repeat(3,26px);align-items:center;gap:2px;min-height:32px;padding:0 4px;border-radius:var(--r-sm);color:var(--ink);font:var(--font-footnote);cursor:grab;transition:background .15s var(--ease-out),opacity .15s var(--ease-out)}
+.sh-arrange-row:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.sh-arrange-row.is-dragging{opacity:.6;background:color-mix(in srgb,var(--accent) 18%,transparent);outline:1px dashed var(--accent);outline-offset:-1px}
+.sh-arrange-grip{display:grid;place-items:center;color:var(--muted)}
+.sh-arrange-grip svg{width:14px;height:14px}
+.sh-arrange-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sh-arrange-btn{display:grid;place-items:center;width:26px;height:26px;padding:0;border:0;border-radius:var(--r-sm);background:transparent;color:var(--muted);cursor:pointer;opacity:.35;transition:opacity .15s var(--ease-out),background-color .15s var(--ease-out),color .15s var(--ease-out)}
+.sh-arrange-row:hover .sh-arrange-btn,.sh-arrange-btn:focus-visible,.sh-arrange-btn:hover{opacity:1}
+.sh-arrange-btn:hover:not(:disabled){background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--ink)}
+.sh-arrange-btn:disabled{opacity:.2;cursor:default}
+.sh-arrange-btn:focus-visible,.sh-arrange-done:focus-visible{outline:var(--btn-focus-ring);outline-offset:1px}
+.sh-arrange-btn svg{width:14px;height:14px}
+.sh-arrange-done{width:calc(100% - 12px);margin:var(--s-3) 6px 0;min-height:32px;padding:0 var(--s-3);border-radius:var(--r-pill);border:1px solid var(--btn-primary-bg);background:var(--btn-primary-bg);color:var(--btn-primary-ink);font:var(--fw-medium) var(--fs-footnote)/1 var(--sans);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--btn-transition)}
+.sh-arrange-done:hover{background:var(--btn-primary-bg-hover);transform:scale(1.01)}
+.sh-arrange-done:active{background:var(--btn-primary-bg-pressed);transform:scale(.99)}
+.sh-composer .mic-field.mic-fill{display:flex;align-items:center;border-radius:var(--r-pill);background:color-mix(in srgb,var(--ink) 4%,var(--surface-raised));border:1px solid var(--hair);box-shadow:inset 0 1px 0 rgba(255,255,255,.05);transition:border-color .15s var(--ease-out)}
+.sh-composer .mic-field:focus-within{border-color:var(--accent);outline:var(--btn-focus-ring);outline-offset:1px}
+.sh-composer .mic-field textarea:focus-visible{outline:none}
+.sh-composer .mic-field > .mic{top:50%;right:4px;transform:translateY(-50%)}
+.sh-composer .mic-field > input ~ .mic{top:50%;transform:translateY(-50%)}
+@media (prefers-reduced-motion:reduce){.sh-arrange-row,.sh-arrange-btn,.sh-arrange-done,.sh-send,.sh-composer .mic-field{transition:none!important;transform:none!important}}
+.sh-subjects .sh-side-heading > span:first-child{letter-spacing:.06em}

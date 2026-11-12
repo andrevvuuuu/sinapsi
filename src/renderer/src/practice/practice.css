@@ -92,7 +92,8 @@
 }
 .pr-scroll,
 .pr > [data-glass-blur-host] > .pr-col,
-.pr-setup {
+.pr-setup,
+.pr > [data-glass-blur-host] > .pr-setup {
   margin-top: calc(-1 * var(--topbar-full));
   --scroll-edge-top: var(--topbar-full);
 }
@@ -129,10 +130,11 @@
   padding-left: max(24px, calc((100% - 712px) / 2));
   padding-right: max(24px, calc((100% - 712px) / 2));
 }
-.pr-setup {
-  --scroll-pad-top: calc(var(--s-7) + var(--topbar-full));
+.pr-setup,
+.pr > [data-glass-blur-host] > .pr-setup {
+  --scroll-pad-top: calc(var(--topbar-full) + var(--s-6));
   overflow: auto;
-  padding: calc(var(--s-7) + var(--topbar-full)) var(--s-6) 40px;
+  padding: calc(var(--topbar-full) + var(--s-6)) var(--s-6) 112px;
   scrollbar-width: thin;
 }
 .pr-setup > * {

@@ -49,7 +49,12 @@ const Patch = z
     exerciseTypes: z.array(z.enum(EXERCISE_TYPES)).min(1),
     gamesInSessions: z.boolean(),
     studyHours: z.array(z.number().min(0).max(16).multipleOf(0.5)).length(7),
-    planBuffer: z.number().min(0.15).max(0.2)
+    planBuffer: z.number().min(0.15).max(0.2),
+    microPauses: z.boolean(),
+    sessionLimit: z.boolean(),
+    sessionLimitMinutes: z.number().int().min(10).max(180),
+    subjectOrder: z.array(z.string().max(300)).max(500),
+    universitySubjects: z.array(z.string().max(300)).max(500).nullable()
   })
   .partial()
   .strict()

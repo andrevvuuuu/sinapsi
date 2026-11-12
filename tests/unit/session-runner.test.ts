@@ -135,7 +135,7 @@ describe('session runner', () => {
     const { runner } = await harness(async () => probeTurn)
     await runner.start('primo')
     const list = await runner.list()
-    expect(list[0]).toMatchObject({ topic: 'primo', phase: 'probe' })
+    expect(list[0]).toMatchObject({ topic: 'Primo', phase: 'probe' })
   })
 })
 

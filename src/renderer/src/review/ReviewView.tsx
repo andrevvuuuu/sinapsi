@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { StudyPacer } from '../components/StudyPacer'
 import type { ExplainTurn } from '../../../main/memory/explain'
 import type { ReviewItem } from '../../../main/memory/review'
 import { proposeGrade, type ExerciseType, type Grade } from '../../../shared/memory-types'
@@ -510,6 +511,7 @@ export function ReviewView({
   }
   return (
     <ViewScene className="rv">
+      <StudyPacer onEnd={onBack} />
       {top}
       <ScrollEdges target={page} size={72} edges={['top']} />
       <GlassContent layout="scroll" className="rv-scroll edge-fade" ref={page}>

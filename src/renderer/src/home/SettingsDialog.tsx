@@ -1,15 +1,26 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { DEFAULT_ENGINES, TASKS, type Settings, type Task } from '../../../shared/settings-schema'
+import { useEffect, useRef, useState } from 'react'
+import {
+  DEFAULT_ENGINES,
+  MICRO_PAUSE_EVERY,
+  MICRO_PAUSE_SECONDS,
+  SESSION_BREAK_MINUTES,
+  TASKS,
+  type Settings,
+  type Task
+} from '../../../shared/settings-schema'
 import { GlassSurface } from '@glass-sdk/liquid-glass'
-import { GlassOverlay, Seg } from '../components/glass'
+import { GlassOverlay } from '../components/glass'
 import { focusWhenShown } from '../components/glass-theme'
+import { ThemeSwitch } from '../shell/ThemeSwitch'
 import './settings.css'
 
-const THEMES: [Settings['theme'], string][] = [
-  ['lavagna', 'Lavagna'],
-  ['trattato', 'Trattato'],
-  ['system', 'Sistema']
-]
+/** The theme on screen: "system" resolves to whatever the window shows now. */
+const shownTheme = (t: Settings['theme']): 'lavagna' | 'trattato' =>
+  t !== 'system'
+    ? t
+    : typeof document !== 'undefined' && document.documentElement.dataset.theme === 'trattato'
+      ? 'trattato'
+      : 'lavagna'
 const TASK_IT: Record<Task, string> = {
   extract: 'Estrazione dei concetti',
   note: 'Note vive',
@@ -23,18 +34,15 @@ const clean = (e: unknown): string =>
     ''
   )
 
-/** App settings: theme at once; engines, background extraction and Ripasso on "Salva". */
+/** App settings: theme at once (the glass light switch); the rest on "Salva". */
 export function SettingsDialog({
   settings,
   onTheme,
   onSaved,
-  onClose,
-  themeControl
+  onClose
 }: {
   settings: Settings
   onTheme: (t: Settings['theme']) => void
-  /** A quick light/dark switch shown next to the theme heading. */
-  themeControl?: ReactNode
   onSaved: (s: Settings) => void
   onClose: () => void
 }): React.JSX.Element {
@@ -43,6 +51,9 @@ export function SettingsDialog({
   const [daily, setDaily] = useState(String(settings.dailyExtractionLimit))
   const [size, setSize] = useState(String(settings.reviewSessionSize))
   const [games, setGames] = useState(settings.gamesInSessions)
+  const [pauses, setPauses] = useState(settings.microPauses ?? false)
+  const [limit, setLimit] = useState(settings.sessionLimit ?? false)
+  const [limitMin, setLimitMin] = useState(String(settings.sessionLimitMinutes ?? 50))
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const first = useRef<HTMLButtonElement>(null)
@@ -76,6 +87,9 @@ export function SettingsDialog({
       return setError('Note al giorno: un numero da 0 a 50.')
     if (!Number.isInteger(n) || n < 1 || n > 20)
       return setError('Domande per Ripasso: un numero da 1 a 20.')
+    const m = Number(limitMin)
+    if (limit && (!limitMin.trim() || !Number.isInteger(m) || m < 10 || m > 180))
+      return setError('Durata massima: un numero di minuti da 10 a 180.')
     try {
       onSaved(
         await window.sinapsi.settings.set({
@@ -83,7 +97,10 @@ export function SettingsDialog({
           backgroundExtraction: bg,
           dailyExtractionLimit: d,
           reviewSessionSize: n,
-          gamesInSessions: games
+          gamesInSessions: games,
+          microPauses: pauses,
+          sessionLimit: limit,
+          ...(Number.isInteger(m) && m >= 10 && m <= 180 ? { sessionLimitMinutes: m } : {})
         })
       )
       setError(null)
@@ -122,7 +139,10 @@ export function SettingsDialog({
       >
         <div className="sd-core dlg-core">
           <div className="sd-head">
-            <h2 id="st-title">Impostazioni</h2>
+            <div className="sd-head-title-group">
+              <h2 id="st-title">Impostazioni</h2>
+              <p className="sd-head-subtitle">Preferenze dell’applicazione, motori AI e ritmo di studio</p>
+            </div>
             <button
               type="button"
               className="icon-btn"
@@ -133,34 +153,39 @@ export function SettingsDialog({
             </button>
           </div>
           <div className="sd-body">
-            <section>
+            {/* 1. Tema */}
+            <section className="sd-card">
               <div className="sd-theme-head">
-                <h3>Tema</h3>
-                {themeControl}
+                <div className="sd-theme-info">
+                  <h3 id="sd-theme-label">Tema</h3>
+                  <p className="sd-hint">
+                    {shownTheme(settings.theme) === 'trattato'
+                      ? 'Trattato, chiaro'
+                      : 'Lavagna, scuro'}
+                  </p>
+                </div>
+                <ThemeSwitch
+                  theme={shownTheme(settings.theme)}
+                  onChange={onTheme}
+                  buttonRef={first}
+                  bare
+                />
               </div>
-              <Seg
-                label="Tema"
-                track="plain"
-                className="seg"
-                value={settings.theme}
-                onChange={onTheme}
-                options={THEMES.map(([id, label]) => ({
-                  value: id,
-                  label,
-                  ref: id === settings.theme ? first : undefined
-                }))}
-              />
             </section>
-            <section>
-              <h3>Motori AI</h3>
-              <p className="sd-hint">
-                Gemini (Antigravity) e Claude (Claude Code) con i tuoi abbonamenti. Il modello si
-                può lasciare com’è.
-              </p>
+
+            {/* 2. Motori AI */}
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h3>Motori AI</h3>
+                <p className="sd-hint">
+                  Gemini (Antigravity) e Claude (Claude Code) con i tuoi abbonamenti. Il modello si
+                  può lasciare com’è.
+                </p>
+              </div>
               <div className="sd-engines">
                 {TASKS.map((t) => (
                   <div key={t} className="sd-engine">
-                    <span>{TASK_IT[t]}</span>
+                    <span className="sd-engine-task">{TASK_IT[t]}</span>
                     <select
                       aria-label={`Motore · ${TASK_IT[t]}`}
                       value={engines[t].engine}
@@ -194,50 +219,131 @@ export function SettingsDialog({
                 ))}
               </div>
             </section>
-            <section>
-              <h3>Estrazione in background</h3>
-              <label className="sd-row">
-                <input
-                  type="checkbox"
-                  checked={bg}
-                  onChange={(e) => (setBg(e.target.checked), setSaved(false))}
-                />
-                Estrai i concetti delle note quando il Mac è inattivo
-              </label>
-              <label className="sd-row">
-                Note al giorno
-                <input
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={daily}
-                  onChange={(e) => (setDaily(e.target.value), setSaved(false))}
-                />
-              </label>
+
+            {/* 3. Estrazione in background */}
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h3>Estrazione in background</h3>
+                <p className="sd-hint">Analisi asincrona del tuo vault per indicizzare nuovi concetti.</p>
+              </div>
+              <div className="sd-card-fields">
+                <label className="sd-toggle-row">
+                  <span className="sd-toggle-copy">
+                    <strong className="sd-toggle-title">Estrazione automatica</strong>
+                    <span className="sd-toggle-desc">Estrai i concetti delle note quando il Mac è inattivo</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="sd-switch"
+                    checked={bg}
+                    onChange={(e) => (setBg(e.target.checked), setSaved(false))}
+                  />
+                </label>
+                <label className="sd-input-row">
+                  <span className="sd-input-label">Note al giorno</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={50}
+                    value={daily}
+                    onChange={(e) => (setDaily(e.target.value), setSaved(false))}
+                  />
+                </label>
+              </div>
             </section>
-            <section>
-              <h3>Apprendimento</h3>
-              <label className="sd-row">
-                <input
-                  type="checkbox"
-                  checked={games}
-                  onChange={(e) => (setGames(e.target.checked), setSaved(false))}
-                />
-                Giochi nelle sessioni (Lampo, Coppie, Ricomponi, Trova l’intruso, Tabù)
-              </label>
+
+            {/* 4. Apprendimento */}
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h3>Apprendimento</h3>
+                <p className="sd-hint">Personalizzazione delle modalità didattiche e ludiche.</p>
+              </div>
+              <div className="sd-card-fields">
+                <label className="sd-toggle-row">
+                  <span className="sd-toggle-copy">
+                    <strong className="sd-toggle-title">Giochi interattivi</strong>
+                    <span className="sd-toggle-desc">
+                      Giochi nelle sessioni (Lampo, Coppie, Ricomponi, Trova l’intruso, Tabù)
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="sd-switch"
+                    checked={games}
+                    onChange={(e) => (setGames(e.target.checked), setSaved(false))}
+                  />
+                </label>
+              </div>
             </section>
-            <section>
-              <h3>Ripasso</h3>
-              <label className="sd-row">
-                Domande per Ripasso
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={size}
-                  onChange={(e) => (setSize(e.target.value), setSaved(false))}
-                />
-              </label>
+
+            {/* 5. Ritmo di studio */}
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h3>Ritmo di studio</h3>
+                <p className="sd-hint">Facoltativi: valgono per Apprendimento, Ripasso e Pratica.</p>
+              </div>
+              <div className="sd-card-fields">
+                <label className="sd-toggle-row">
+                  <span className="sd-toggle-copy">
+                    <strong className="sd-toggle-title">Micro-pause</strong>
+                    <span className="sd-toggle-desc">
+                      {MICRO_PAUSE_SECONDS} secondi di riposo ogni {MICRO_PAUSE_EVERY} minuti di studio
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="sd-switch"
+                    checked={pauses}
+                    onChange={(e) => (setPauses(e.target.checked), setSaved(false))}
+                  />
+                </label>
+                <label className="sd-toggle-row">
+                  <span className="sd-toggle-copy">
+                    <strong className="sd-toggle-title">Limite di durata della sessione</strong>
+                    <span className="sd-toggle-desc">{`Un avviso alla durata scelta, poi ${SESSION_BREAK_MINUTES} minuti di pausa`}</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="sd-switch"
+                    checked={limit}
+                    onChange={(e) => (setLimit(e.target.checked), setSaved(false))}
+                  />
+                </label>
+                <div className={`sd-sub-row ${!limit ? 'is-disabled' : ''}`}>
+                  <label className="sd-input-row">
+                    <span className="sd-input-label">Durata massima (minuti)</span>
+                    <input
+                      type="number"
+                      min={10}
+                      max={180}
+                      step={5}
+                      disabled={!limit}
+                      value={limitMin}
+                      onChange={(e) => (setLimitMin(e.target.value), setSaved(false))}
+                    />
+                  </label>
+                </div>
+              </div>
+            </section>
+
+            {/* 6. Ripasso */}
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h3>Ripasso</h3>
+                <p className="sd-hint">Impostazioni per le sessioni FSRS di ripasso spaziato.</p>
+              </div>
+              <div className="sd-card-fields">
+                <label className="sd-input-row">
+                  <span className="sd-input-label">Domande per Ripasso</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={size}
+                    onChange={(e) => (setSize(e.target.value), setSaved(false))}
+                  />
+                </label>
+              </div>
             </section>
           </div>
           <div className="sd-foot">

@@ -104,7 +104,10 @@ const api: SinapsiApi = {
     archive: (id) => ipcRenderer.invoke(CH.lessonsArchive, id),
     launch: (id, m) => ipcRenderer.invoke(CH.lessonsLaunch, id, m)
   },
-  tutor: { calendar: () => ipcRenderer.invoke(CH.tutorCalendar) },
+  tutor: {
+    calendar: () => ipcRenderer.invoke(CH.tutorCalendar),
+    report: () => ipcRenderer.invoke(CH.tutorReport)
+  },
   exams: {
     list: () => ipcRenderer.invoke(CH.examsList),
     create: (entry) => ipcRenderer.invoke(CH.examsCreate, entry),

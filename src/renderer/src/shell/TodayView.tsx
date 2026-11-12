@@ -259,7 +259,7 @@ export function TodayView(p: Props): React.JSX.Element {
           <div className="mic-field mic-fill">
             <textarea
               ref={field}
-              rows={2}
+              rows={1}
               aria-label="Cosa vuoi studiare?"
               placeholder="Per esempio: aiutami a capire come si trasmette un impulso nervoso…"
               value={text}

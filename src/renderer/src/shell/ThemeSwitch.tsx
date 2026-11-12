@@ -152,12 +152,14 @@ const STRIP = knobPath(1.5)
 export function ThemeSwitch({
   theme,
   onChange,
-  bare = false
+  bare = false,
+  buttonRef
 }: {
   theme: Settings['theme']
   onChange: (theme: Settings['theme']) => void
   /** Only the switch, without the «Tema» row around it. */
   bare?: boolean
+  buttonRef?: React.Ref<HTMLButtonElement>
 }): React.JSX.Element {
   const light = theme === 'trattato'
   const [u, setU] = useState(light ? 1 : 0)
@@ -193,7 +195,7 @@ export function ThemeSwitch({
   }
 
   useEffect(() => {
-    still.current = matchMedia('(prefers-reduced-motion: reduce)').matches
+    still.current = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
     return () => cancelAnimationFrame(raf.current)
   }, [])
 
@@ -239,6 +241,7 @@ export function ThemeSwitch({
     <div className={bare ? 'sg-toggle-bare' : 'sh-theme-row'}>
       {!bare && <span>Tema</span>}
       <button
+        ref={buttonRef}
         type="button"
         role="switch"
         aria-checked={light}
