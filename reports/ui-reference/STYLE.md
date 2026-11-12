@@ -1,7 +1,7 @@
 # Sinapsi: riferimenti di stile (Fase 3, redesign UI)
 
 Queste sono le reference ufficiali per lo stile dell'app. Ogni builder le legge prima di toccare la UI.
-I video originali sono in `~/Documents/ui sinapsi reference/` (troppo pesanti per il repo). Qui ci sono i fotogrammi estratti.
+Le immagini (screenshot di altre app e fotogrammi estratti dai video in `~/Documents/ui sinapsi reference/`) restano solo in locale in questa cartella: non sono pubblicate nel repository.
 
 | File | Cosa prendere |
 |---|---|
