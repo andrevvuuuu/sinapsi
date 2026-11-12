@@ -5,7 +5,6 @@ import { LaunchButton } from './LaunchButton'
 import type { ExamEntry } from '../../../shared/exam-types'
 import type { Readiness } from '../../../shared/plan-types'
 import type { SinapsiTutorReport, TutorItemState } from '../../../shared/tutor-types'
-import { TUTOR_STATES } from '../../../shared/tutor-types'
 
 const STATE_IT: Record<TutorItemState, string> = {
   interiorizzato: 'Interiorizzato',
@@ -120,10 +119,7 @@ export function LessonLogView({
   return (
     <main className="lessons">
       <header className="lesson-page-header">
-        <div className="lesson-page-title-group">
-          <h1>Registro Lezioni</h1>
-          <p className="lesson-page-subtitle">Diario delle lezioni, concetti chiave e padronanza</p>
-        </div>
+        <h1 className="sr-only">Registro Lezioni</h1>
         <div className="lesson-page-controls">
           <div className="lesson-filter-select-group">
             <label htmlFor="lesson-course-filter">Corso</label>
@@ -154,61 +150,44 @@ export function LessonLogView({
 
       {/* 1. In cima: Padronanza delle lezioni come tile metriche */}
       <section className="st-mastery-section" aria-label="Padronanza delle lezioni">
-        <header className="st-mastery-header">
-          <h2>Padronanza delle lezioni</h2>
-          <p>Misurata da Sinapsi sui tuoi ripassi e sulle tue pratiche, non dal tutor di Obsidian.</p>
-        </header>
+        <h2 className="sr-only">Padronanza delle lezioni</h2>
         {!report?.connected ? (
           <p className="st-empty">
             Nessun registro delle lezioni in {vaultPath || '<vault>'}/.antigravity/tutor
           </p>
         ) : (
-          <>
-            <div className="st-courses">
-              {report.courses.map((c) => (
-                <article className="st-course" key={c.id}>
-                  <div className="st-course-top">
-                    <h3 className="st-course-name">{c.name}</h3>
-                    <div className="st-course-mastery-row">
-                      <div className="st-course-mastery">
-                        <strong>{pct(c.stats.mastery)}</strong>
-                        <small>padronanza</small>
-                      </div>
-                      <div
-                        className="st-bar"
-                        role="img"
-                        aria-label={TUTOR_STATES.map(
-                          (st) => `${STATE_IT[st]} ${c.stats.byState[st]}`
-                        ).join(', ')}
-                      >
-                        {TUTOR_STATES.map((st) =>
-                          c.stats.byState[st] ? (
-                            <span
-                              key={st}
-                              className="st-bar-seg"
-                              data-state={st}
-                              style={{ flexGrow: c.stats.byState[st] }}
-                            />
-                          ) : null
-                        )}
-                      </div>
+          <div className="st-courses">
+            {report.courses.map((c) => (
+              <article className="st-course" key={c.id}>
+                <div className="st-course-top">
+                  <h3 className="st-course-name">{c.name}</h3>
+                  <div className="st-course-mastery-row">
+                    <div className="st-course-mastery">
+                      <strong>{pct(c.stats.mastery)}</strong>
+                    </div>
+                    <div
+                      className="st-bar"
+                      role="progressbar"
+                      aria-label={`Padronanza ${c.name}`}
+                      aria-valuenow={c.stats.mastery !== null ? Math.round(c.stats.mastery * 100) : 0}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                      <span
+                        className="st-bar-fill"
+                        style={{
+                          width: c.stats.mastery !== null ? `${Math.round(c.stats.mastery * 100)}%` : '0%'
+                        }}
+                      />
                     </div>
                   </div>
-                  <p className="st-course-meta">
-                    {c.stats.covered}/{c.stats.total} concetti studiati in Sinapsi · {c.lessons} lezioni
-                  </p>
-                </article>
-              ))}
-            </div>
-            <ul className="st-legend">
-              {TUTOR_STATES.map((st) => (
-                <li key={st} data-state={st}>
-                  <span className="st-legend-dot" data-state={st} />
-                  {STATE_IT[st]}
-                </li>
-              ))}
-            </ul>
-          </>
+                </div>
+                <p className="st-course-meta">
+                  {c.stats.covered}/{c.stats.total} concetti
+                </p>
+              </article>
+            ))}
+          </div>
         )}
       </section>
 
