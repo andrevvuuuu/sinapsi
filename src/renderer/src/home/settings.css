@@ -1,0 +1,46 @@
+/* Settings dialog. Kept with the dialog (it used to live in home.css, which only the old Home loaded).
+   Compact like the rest of the repo; buttons are scoped to the dialog. */
+.icon-btn{width:var(--ctl);height:var(--ctl);display:grid;place-items:center;border-radius:var(--r-md);border:0;background:var(--btn-text-bg);color:var(--muted);cursor:pointer;transition:var(--btn-transition),transform .12s var(--ease-out)}
+.icon-btn:hover{background:var(--btn-secondary-bg-hover);color:var(--ink)}
+.icon-btn:active{background:var(--btn-secondary-bg-pressed);color:var(--ink);transform:scale(.95)}
+.icon-btn:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-md)}
+.icon-btn:disabled{color:var(--btn-disabled-ink);background:var(--btn-disabled-bg);cursor:not-allowed;transform:none}
+.icon-btn svg{width:18px;height:18px}
+.sd-body h3{font:var(--fw-semibold) var(--fs-caption)/1.3 var(--sans);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted)}
+.seg{display:flex;padding:3px;border-radius:var(--r-pill);background:var(--faint);gap:2px}
+.seg button{flex:1;min-width:var(--ctl);min-height:38px;border:0;background:transparent;color:var(--muted);border-radius:var(--r-pill);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;padding:0 var(--s-3);white-space:nowrap;transition:background-color .2s var(--ease-out),color .2s var(--ease-out)}
+.seg button:not([data-active]):hover{color:var(--ink)}
+.seg button:focus-visible{outline:var(--btn-focus-ring);outline-offset:-2px;border-radius:var(--r-pill)}
+.settings-dlg{width:min(640px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px;animation:imp-in .2s var(--ease-out)}
+.sd-core{display:flex;flex-direction:column;overflow:hidden}
+.sd-core .sd-head{padding:11px 9px 4px 17px}.sd-core .sd-body{padding:4px 17px 16px}.sd-core .sd-foot{padding:12px 17px 13px}
+.sd-head{display:flex;align-items:center;justify-content:space-between;padding:16px 14px 4px 22px}
+.sd-head h2{font:var(--font-display);margin:0}
+.sd-body{overflow:auto;padding:4px 22px 16px;display:flex;flex-direction:column;gap:var(--space-group)}
+.sd-body .seg button{min-height:var(--ctl)}
+.sd-body h3{margin:0 0 var(--space-label)}
+.sd-hint{font-size:var(--fs-footnote);color:var(--muted);margin:0 0 var(--s-3)}
+.sd-engines{display:flex;flex-direction:column;gap:var(--s-2)}
+.sd-engine{display:grid;grid-template-columns:1fr 110px 212px;gap:var(--s-2);align-items:center;font-size:var(--fs-body)}
+.sd-engine select,.sd-engine input,.sd-row input[type="number"]{min-height:var(--ctl);border-radius:10px;border:1px solid var(--ctl-edge);background:var(--bg);color:var(--ink);padding:0 var(--s-3);font:400 var(--fs-footnote) var(--sans);transition:border-color .15s var(--ease-out)}
+.sd-engine select:hover,.sd-engine input:hover,.sd-row input[type="number"]:hover{border-color:color-mix(in srgb,var(--ink) 60%,transparent)}
+.sd-engine input{font-family:var(--mono)}
+.sd-row{display:flex;align-items:center;gap:var(--s-3);font-size:var(--fs-body);min-height:var(--ctl)}
+.sd-row input[type="number"]{width:80px;margin-left:auto}
+.sd-row input[type="checkbox"]{width:18px;height:18px;accent-color:var(--accent)}
+.sd-foot{display:flex;align-items:center;gap:var(--s-3);padding:12px 22px 18px;border-top:1px solid var(--hair)}
+.sd-foot .sp{flex:1}
+.sd-error{margin:0;font-size:var(--fs-footnote);color:var(--bad)}
+.sd-ok{margin:0;font-size:var(--fs-footnote);color:var(--good)}
+.sd-head .icon-btn{font:300 24px/1 var(--sans)}
+.settings-dlg .btn{min-height:var(--ctl);min-width:var(--ctl);border-radius:var(--r-pill);border:1px solid var(--btn-secondary-border);background:var(--surface);color:var(--btn-secondary-ink);cursor:pointer;padding:0 var(--s-4);font:var(--fw-medium) var(--fs-body) var(--sans);box-shadow:var(--inner);transition:var(--btn-transition)}
+.settings-dlg .btn:not(:disabled):hover{background:color-mix(in srgb,var(--surface),var(--ink) 6%)}
+.settings-dlg .btn:not(:disabled):active{background:color-mix(in srgb,var(--surface),var(--ink) 12%)}
+.settings-dlg .btn.pri{background:var(--btn-primary-bg);color:var(--btn-primary-ink);border-color:var(--btn-primary-bg)}
+.settings-dlg .btn.pri:not(:disabled):hover{background:var(--btn-primary-bg-hover);border-color:var(--btn-primary-bg-hover)}
+.settings-dlg .btn.pri:not(:disabled):active{background:var(--btn-primary-bg-pressed);border-color:var(--btn-primary-bg-pressed)}
+.settings-dlg .btn:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-pill)}
+.settings-dlg .btn:disabled,.settings-dlg .btn.pri:disabled{background:var(--btn-disabled-bg);color:var(--btn-disabled-ink);border-color:var(--btn-disabled-border);box-shadow:none;cursor:not-allowed}
+@keyframes imp-in{from{opacity:0;transform:scale(.95)}}
+.sd-body section{display:flex;flex-direction:column}
+.sd-body .seg{align-self:flex-start}

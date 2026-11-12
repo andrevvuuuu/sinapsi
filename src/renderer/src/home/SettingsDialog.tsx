@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { DEFAULT_ENGINES, TASKS, type Settings, type Task } from '../../../shared/settings-schema'
 import { GlassSurface } from '@glass-sdk/liquid-glass'
 import { GlassOverlay, Seg } from '../components/glass'
 import { focusWhenShown } from '../components/glass-theme'
+import './settings.css'
 
 const THEMES: [Settings['theme'], string][] = [
   ['lavagna', 'Lavagna'],
@@ -27,10 +28,13 @@ export function SettingsDialog({
   settings,
   onTheme,
   onSaved,
-  onClose
+  onClose,
+  themeControl
 }: {
   settings: Settings
   onTheme: (t: Settings['theme']) => void
+  /** A quick light/dark switch shown next to the theme heading. */
+  themeControl?: ReactNode
   onSaved: (s: Settings) => void
   onClose: () => void
 }): React.JSX.Element {
@@ -130,7 +134,10 @@ export function SettingsDialog({
           </div>
           <div className="sd-body">
             <section>
-              <h3>Tema</h3>
+              <div className="sd-theme-head">
+                <h3>Tema</h3>
+                {themeControl}
+              </div>
               <Seg
                 label="Tema"
                 track="plain"

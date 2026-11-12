@@ -203,7 +203,8 @@ export function SessionView({
           </div>
         </GlassContent>
         {/* The library's scroll edge where the conversation passes under the bar and the dock. */}
-        <ScrollEdges target={scroller} size={72} />
+        {/* Top edge only, like every other view: a bottom edge under the question dock refracted the cards' borders into bright bands. */}
+        <ScrollEdges target={scroller} size={72} edges={['top']} />
         {/* Floats over the bottom of the conversation, which reserves its height (--dock-h). */}
         <div className="dockwrap" ref={dockwrap}>
           <div className="dock">

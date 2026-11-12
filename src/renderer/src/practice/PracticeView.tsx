@@ -310,7 +310,7 @@ export function PracticeView({
       </GlassSurface>
       <div className="pr-body">
         {/* The conversation is the scene's live content; the library's scroll edge where it passes under the bar and the dock. */}
-        <ScrollEdges target={scroller} size={72} />
+        <ScrollEdges target={scroller} size={72} edges={['top']} />
         <GlassContent layout="scroll" className="pr-scroll edge-fade" ref={scroller}>
           <div className="pr-col" aria-live="polite">
             {s.items.map((it, i) => {

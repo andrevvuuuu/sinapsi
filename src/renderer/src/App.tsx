@@ -67,28 +67,13 @@ function Views(): React.JSX.Element {
     if (destination === 'Oggi') {
       setFocusStudy(false)
       home()
-    } else if (destination === 'Studia') {
-      setFocusStudy(true)
-      home()
-    } else if (destination === 'Ripassa') setV({ view: 'review' })
-    else if (destination === 'Mappa') setV({ view: 'map' })
+    } else if (destination === 'Mappa') setV({ view: 'map' })
     else setV({ view: 'plan' })
   }
   if (v.view === 'session') return <SessionView id={v.id} onBack={home} onOpenNota={openNota} />
   if (v.view === 'nota') return <NotaView key={v.id} id={v.id} onBack={home} />
   if (v.view === 'practice')
     return <PracticeView key={v.id} id={v.id} onBack={home} onStarted={openPractice} />
-  if (v.view === 'review')
-    return (
-      <ReviewView
-        key={`${v.query}|${v.conceptIds?.join(',')}`}
-        query={v.query}
-        conceptIds={v.conceptIds}
-        onBack={home}
-        onStudy={study}
-        onOpenNote={(path) => setV({ view: 'source', path })}
-      />
-    )
   const shellView = v.view
   let content: React.ReactNode = null
   if (v.view === 'home')
@@ -158,6 +143,17 @@ function Views(): React.JSX.Element {
         onStarted={openPractice}
       />
     )
+  if (v.view === 'review')
+    content = (
+      <ReviewView
+        key={`${v.query}|${v.conceptIds?.join(',')}`}
+        query={v.query}
+        conceptIds={v.conceptIds}
+        onBack={home}
+        onStudy={study}
+        onOpenNote={(path) => setV({ view: 'source', path })}
+      />
+    )
   if (v.view === 'source')
     content = <NotePicker path={v.path} onOpenNota={openNota} onBack={home} />
   const livePaths = [] as string[]
@@ -167,6 +163,10 @@ function Views(): React.JSX.Element {
       index={index}
       livePaths={livePaths}
       onNavigate={onDock}
+      onHome={() => {
+        setFocusStudy(false)
+        home()
+      }}
       onReview={() => setV({ view: 'review' })}
       onPractice={() => setV({ view: 'practice-setup' })}
       onOpenSource={(path) => setV({ view: 'source', path })}

@@ -1,6 +1,6 @@
 /* Pratica: scoped under .pr, aligned to shell design system */
 .pr {
-  position: fixed;
+  position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
@@ -1101,7 +1101,7 @@ button.mt-chip:active {
 .pr-overlay {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 60;
   display: grid;
   place-items: center;
   padding: var(--s-6);

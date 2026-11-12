@@ -1,21 +1,19 @@
 import { useState } from 'react'
 import type { VaultIndex } from '../../../shared/vault-types'
-import type { Settings } from '../../../shared/settings-schema'
 import type { EngineStatus as Status, LessonEntry } from '../../../shared/api'
 import { NoteTree } from '../home/NoteTree'
 import { buildTree } from '../home/build-tree'
 import { EngineStatus } from '../home/EngineStatus'
 import { LogoMark } from '../home/LogoMark'
 import { IconMinus, IconPlus, IconReview, IconSettings, IconStudy } from './icons'
-import { ThemeSwitch } from './ThemeSwitch'
 
 export function Sidebar(p: {
   index: VaultIndex | null
   due: number
   lessons: LessonEntry[]
   status: Record<import('../../../shared/settings-schema').Engine, Status> | null
-  theme: Settings['theme']
-  onTheme: (v: Settings['theme']) => void
+  current: 'review' | 'practice' | 'lessons' | null
+  onHome: () => void
   onReview: () => void
   onPractice: () => void
   onOpenSource: (path: string) => void
@@ -42,18 +40,33 @@ export function Sidebar(p: {
   return (
     <aside className="sh-sidebar" aria-label="Navigazione laterale">
       <div className="sh-sidebar-top">
-        <div className="sh-brand">
+        <button
+          type="button"
+          className="sh-brand"
+          onClick={p.onHome}
+          aria-label="Sinapsi: torna a Oggi"
+        >
           <LogoMark />
           <strong>Sinapsi</strong>
           <span className="sh-brand-tag">STUDIO</span>
-        </div>
+        </button>
         <nav className="sh-side-actions" aria-label="Azioni rapide">
-          <button className="sh-side-action" type="button" onClick={p.onReview}>
+          <button
+            className={`sh-side-action ${p.current === 'review' ? 'is-current' : ''}`}
+            aria-current={p.current === 'review' ? 'page' : undefined}
+            type="button"
+            onClick={p.onReview}
+          >
             <IconReview />
             <span>Ripassa</span>
             <small>{p.due} dovuti</small>
           </button>
-          <button className="sh-side-action" type="button" onClick={p.onPractice}>
+          <button
+            className={`sh-side-action ${p.current === 'practice' ? 'is-current' : ''}`}
+            aria-current={p.current === 'practice' ? 'page' : undefined}
+            type="button"
+            onClick={p.onPractice}
+          >
             <IconStudy />
             <span>Esercitati</span>
           </button>
@@ -108,18 +121,27 @@ export function Sidebar(p: {
               </time>
             </button>
           ))}
-          <button className="sh-all-register" type="button" onClick={p.onLessons}>
+          <button
+            className={`sh-all-register ${p.current === 'lessons' ? 'is-current' : ''}`}
+            aria-current={p.current === 'lessons' ? 'page' : undefined}
+            type="button"
+            onClick={p.onLessons}
+          >
             Tutto il registro
           </button>
         </section>
       </div>
       <div className="sh-sidebar-bottom">
         <EngineStatus status={p.status} />
-        <button type="button" className="sh-settings" onClick={p.onSettings}>
+        <button
+          type="button"
+          className="sh-settings"
+          onClick={p.onSettings}
+          aria-label="Impostazioni"
+          title="Impostazioni"
+        >
           <IconSettings />
-          <span>Impostazioni</span>
         </button>
-        <ThemeSwitch theme={p.theme} onChange={p.onTheme} />
       </div>
     </aside>
   )

@@ -1,6 +1,6 @@
 /* Ripasso: scoped under .rv, aligned to shell design system */
 .rv {
-  position: fixed;
+  position: absolute;
   inset: 0;
   overflow: hidden;
   background: var(--bg);

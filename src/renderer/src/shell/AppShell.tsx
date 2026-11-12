@@ -6,6 +6,7 @@ import { SettingsDialog } from '../home/SettingsDialog'
 import { Sidebar } from './Sidebar'
 import { LiquidDock, type Destination } from './LiquidDock'
 import { MapView } from './MapView'
+import { ThemeSwitch } from './ThemeSwitch'
 import './shell.css'
 
 type ShellView =
@@ -17,12 +18,14 @@ type ShellView =
   | 'lesson-new'
   | 'lesson-edit'
   | 'practice-setup'
+  | 'review'
   | 'source'
 
 export function AppShell({
   view,
   children,
   onNavigate,
+  onHome,
   onReview,
   onPractice,
   onOpenSource,
@@ -37,6 +40,7 @@ export function AppShell({
   view: ShellView
   children: ReactNode
   onNavigate: (destination: Destination) => void
+  onHome: () => void
   onReview: () => void
   onPractice: () => void
   onOpenSource: (path: string) => void
@@ -84,8 +88,25 @@ export function AppShell({
     }
   }, [])
 
-  const destination: Destination =
-    view === 'home' ? 'Oggi' : view === 'map' ? 'Mappa' : view === 'plan' ? 'Piano' : 'Oggi'
+  // Only the three dock destinations light the dock; the sidebar marks the others.
+  const destination: Destination | null =
+    view === 'home' ? 'Oggi' : view === 'map' ? 'Mappa' : view === 'plan' ? 'Piano' : null
+  const current =
+    view === 'review'
+      ? 'review'
+      : view === 'practice-setup'
+        ? 'practice'
+        : view.startsWith('lesson')
+          ? 'lessons'
+          : null
+  const setTheme = (t: Settings['theme']): void => {
+    if (!settings) return
+    void window.sinapsi.settings.set({ theme: t }).then((s) => {
+      setSettings(s)
+      onSettingsChanged(s)
+      import('./theme').then((m) => m.applyTheme(t))
+    })
+  }
 
   const dockColor =
     destination === 'Mappa'
@@ -101,15 +122,8 @@ export function AppShell({
         due={due}
         lessons={lessons}
         status={status}
-        theme={settings?.theme ?? 'lavagna'}
-        onTheme={(t) => {
-          if (settings)
-            void window.sinapsi.settings.set({ theme: t }).then((s) => {
-              setSettings(s)
-              onSettingsChanged(s)
-              import('./theme').then((m) => m.applyTheme(t))
-            })
-        }}
+        current={current}
+        onHome={onHome}
         onReview={onReview}
         onPractice={onPractice}
         onOpenSource={onOpenSource}
@@ -117,39 +131,46 @@ export function AppShell({
         onLessons={onLessons}
         onSettings={() => setSettingsOpen(true)}
       />
-      <main
-        className="sh-main"
-        key={view}
-        style={{ '--sh-dock-color': dockColor } as React.CSSProperties}
-      >
-        {view === 'map' ? (
-          <MapView
-            index={index && 'notes' in index ? index : null}
-            livePaths={[
-              ...new Set([
-                ...livePaths,
-                ...notes.filter((note) => note.status === 'ready').map((note) => note.sourcePath)
-              ])
-            ]}
-            onReview={onMapReview}
-            onOpenNote={onOpenSource}
-            onStudy={onStudy}
-          />
-        ) : (
-          children
-        )}
+      {/* The dock lives beside the keyed <main>: a new screen remounts the content, never the dock,
+          so the dome can travel from the old item to the new one. */}
+      <div className="sh-main-wrap" style={{ '--sh-dock-color': dockColor } as React.CSSProperties}>
+        <main className="sh-main" key={view}>
+          {view === 'map' ? (
+            <MapView
+              index={index && 'notes' in index ? index : null}
+              livePaths={[
+                ...new Set([
+                  ...livePaths,
+                  ...notes.filter((note) => note.status === 'ready').map((note) => note.sourcePath)
+                ])
+              ]}
+              onReview={onMapReview}
+              onOpenNote={onOpenSource}
+              onStudy={onStudy}
+            />
+          ) : (
+            children
+          )}
+        </main>
         <LiquidDock active={destination} onChange={onNavigate} />
-      </main>
+      </div>
       {settingsOpen && settings && (
         <SettingsDialog
           settings={settings}
-          onTheme={(t) => {
-            void window.sinapsi.settings.set({ theme: t }).then((s) => {
-              setSettings(s)
-              onSettingsChanged(s)
-              import('./theme').then((m) => m.applyTheme(t))
-            })
-          }}
+          onTheme={setTheme}
+          themeControl={
+            <ThemeSwitch
+              theme={
+                settings.theme === 'system'
+                  ? document.documentElement.dataset.theme === 'trattato'
+                    ? 'trattato'
+                    : 'lavagna'
+                  : settings.theme
+              }
+              onChange={setTheme}
+              bare
+            />
+          }
           onSaved={(s) => {
             setSettings(s)
             onSettingsChanged(s)

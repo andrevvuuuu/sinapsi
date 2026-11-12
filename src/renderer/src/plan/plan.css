@@ -119,7 +119,7 @@
 .plan-hours label small {
   font: var(--font-caption);
   letter-spacing: var(--track-caption);
-  color: var(--placeholder);
+  color: var(--muted);
   text-transform: lowercase;
 }
 .plan-availability > label[for='plan-buffer'] {

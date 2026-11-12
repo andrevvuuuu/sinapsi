@@ -132,7 +132,7 @@ export function PracticeSetup({
         </button>
         <h1>Pratica</h1>
       </GlassSurface>
-      <ScrollEdges target={page} size={72} />
+      <ScrollEdges target={page} size={72} edges={['top']} />
       <GlassContent layout="scroll" className="pr-setup edge-fade" ref={page}>
         <p className="pr-lead">
           {initial

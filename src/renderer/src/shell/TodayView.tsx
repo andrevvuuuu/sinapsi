@@ -31,7 +31,9 @@ type Props = {
 
 export function TodayView(p: Props): React.JSX.Element {
   const { focusStudy, onFocusDone } = p
-  const [tutor, setTutor] = useState<import('../../../main/tutor/calendar').TutorCalendar | null>(null)
+  const [tutor, setTutor] = useState<import('../../../main/tutor/calendar').TutorCalendar | null>(
+    null
+  )
   const api = window.sinapsi,
     [index, setIndex] = useState<VaultResult | null>(null),
     [status, setStatus] = useState<Record<Engine, Status> | null>(null),
@@ -61,7 +63,10 @@ export function TodayView(p: Props): React.JSX.Element {
   }, [api])
 
   useEffect(() => {
-    void api.tutor?.calendar().then(setTutor).catch(() => undefined)
+    void api.tutor
+      ?.calendar()
+      .then(setTutor)
+      .catch(() => undefined)
     const load = setTimeout(() => void reload(), 0)
     void api.ai.status().then(setStatus)
     void api.session?.list().then(setSessions)
@@ -176,8 +181,20 @@ export function TodayView(p: Props): React.JSX.Element {
   )
 
   const upcomingTutorExam = tutor?.exams[0]
-  const tutorExamDays = upcomingTutorExam ? Math.max(0, Math.ceil((new Date(`${upcomingTutorExam.date}T00:00:00`).getTime() - new Date(new Date().toDateString()).getTime()) / 86400000)) : undefined
-  const tutorReadiness = upcomingTutorExam && (readiness[0] == null || tutorExamDays! <= readiness[0].daysLeft) ? upcomingTutorExam : undefined
+  const tutorExamDays = upcomingTutorExam
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(`${upcomingTutorExam.date}T00:00:00`).getTime() -
+            new Date(new Date().toDateString()).getTime()) /
+            86400000
+        )
+      )
+    : undefined
+  const tutorReadiness =
+    upcomingTutorExam && (readiness[0] == null || tutorExamDays! <= readiness[0].daysLeft)
+      ? upcomingTutorExam
+      : undefined
   const examScore = tutorReadiness ? null : readiness[0]?.score
 
   return (
@@ -195,7 +212,15 @@ export function TodayView(p: Props): React.JSX.Element {
               .toLocaleUpperCase('it-IT')}
           </p>
           <h1>Oggi</h1>
-          {tutor?.nextLesson && <p className="tc-next-lesson">Prossima lezione: {tutor.nextLesson.courseName}, {new Date(`${tutor.nextLesson.date}T12:00:00`).toLocaleDateString('it-IT', { weekday: 'long' })} {tutor.nextLesson.time}</p>}
+          {tutor?.nextLesson && (
+            <p className="tc-next-lesson">
+              Prossima lezione: {tutor.nextLesson.courseName},{' '}
+              {new Date(`${tutor.nextLesson.date}T12:00:00`).toLocaleDateString('it-IT', {
+                weekday: 'long'
+              })}{' '}
+              {tutor.nextLesson.time}
+            </p>
+          )}
         </div>
       </header>
       <section className="sh-composer sh-card" aria-label="Compositore di studio">
@@ -317,13 +342,19 @@ export function TodayView(p: Props): React.JSX.Element {
           </div>
           {examScore == null ? (
             <div className="sh-exam-empty">
-              <small className="sh-metric-note">{tutorReadiness ? `${tutorReadiness.courseName} · ${tutorReadiness.date} · Tutor` : readiness[0]?.courseId ?? 'Nessun esame nel piano'}</small>
+              <small className="sh-metric-note">
+                {tutorReadiness
+                  ? `${tutorReadiness.courseName} · ${tutorReadiness.date} · Tutor`
+                  : (readiness[0]?.courseId ?? 'Nessun esame nel piano')}
+              </small>
               <button type="button" className="sh-link" onClick={p.onPlan}>
                 Aggiungi esame
               </button>
             </div>
           ) : (
-            <small className="sh-metric-note">{readiness[0]?.courseId ?? `${tutorReadiness?.courseName ?? ''} · Tutor`}</small>
+            <small className="sh-metric-note">
+              {readiness[0]?.courseId ?? `${tutorReadiness?.courseName ?? ''} · Tutor`}
+            </small>
           )}
         </article>
       </section>

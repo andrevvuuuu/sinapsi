@@ -21,7 +21,7 @@
 }
 
 [data-theme='trattato'] {
-  --sh-amber: #9b6500;
+  --sh-amber: #845600;
   --sh-green: #237648;
   --sh-blue: #245fc2;
   --sh-coral: #a94d30;
@@ -1226,4 +1226,107 @@
   .sh-ink-layer {
     filter: none !important;
   }
+}
+
+/* --- QA sweep: navigation affordances --- */
+/* The logo is the Home button. */
+button.sh-brand {
+  width: calc(100% + 8px);
+  margin: 0 -4px 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s var(--ease-out);
+}
+button.sh-brand:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+button.sh-brand:active {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+button.sh-brand strong {
+  font-weight: 500;
+}
+button.sh-brand .sh-brand-tag {
+  margin-left: auto;
+}
+/* The screen the sidebar has opened is marked in the sidebar (the dock lights only its own three). */
+.sh-side-action.is-current,
+.sh-all-register.is-current {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--ink);
+}
+.sh-side-action.is-current svg {
+  color: var(--accent);
+}
+/* The amber count stays AA on the tinted row. */
+.sh-side-action.is-current small {
+  color: color-mix(in srgb, var(--sh-amber) 70%, var(--ink));
+}
+/* Bottom of the sidebar: engine status on the left, settings in the bottom-right corner. */
+.sh-sidebar-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sh-sidebar-bottom .status {
+  min-width: 0;
+}
+.sh-sidebar-bottom .sh-settings {
+  flex: none;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 12px;
+  color: var(--muted);
+}
+.sh-sidebar-bottom .sh-settings svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.4s var(--ease-out);
+}
+.sh-sidebar-bottom .sh-settings:hover svg {
+  transform: rotate(45deg);
+}
+/* Settings: the light/dark switch sits beside the «Tema» heading. */
+.sd-theme-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-3);
+}
+.sd-theme-head h3 {
+  margin: 0;
+}
+.sg-toggle-bare {
+  display: inline-flex;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sh-sidebar-bottom .sh-settings:hover svg {
+    transform: none;
+  }
+}
+/* Views hosted in the shell end above the floating dock: the review's sticky start bar keeps its
+   button clear of the dock, and the practice setup scrolls far enough to show its last field. */
+.sh-main .rv-go {
+  padding-bottom: calc(var(--s-6) + 96px);
+}
+.sh-main .pr-setup {
+  padding-bottom: 112px;
+}
+/* The main column and the dock that floats over it. */
+.sh-main-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
 }

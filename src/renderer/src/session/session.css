@@ -1,7 +1,7 @@
 .sess {
   display: grid;
   grid-template-rows: auto 1fr;
-  height: 100vh;
+  height: 100%;
   font-size: var(--fs-callout);
   line-height: 1.65;
 }
@@ -191,7 +191,8 @@
 }
 .chip.no {
   background: color-mix(in srgb, var(--bad) 14%, transparent);
-  color: var(--bad);
+  /* The red label stays AA on its own tint in both themes. */
+  color: color-mix(in srgb, var(--bad) 82%, var(--ink));
 }
 .sess .card .ans {
   font-size: var(--fs-body);
