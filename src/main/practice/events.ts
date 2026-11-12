@@ -27,6 +27,8 @@ export type PracticeProblem = PublicProblem & {
   maxRung: number | null
   /** Reasoning Andrea sent on this problem: until the first one, hints stop at the first rung. */
   attempts: number
+  compass?: { known: string; stuck: string; question: string }
+  needsRestate: boolean
   outcome?: NonNullable<PracticeTurn['conclude']>['outcome']
   verdict?: string
   miss?: NonNullable<PracticeTurn['conclude']>['miss']
@@ -97,6 +99,14 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
           const p = s.problems.find((x) => x.id === s.active)
           if (p) p.attempts++
         }
+        if (e.submission.kind === 'compass') {
+          const p = s.problems.find((x) => x.id === s.active)
+          if (p && e.submission.compass) p.compass = e.submission.compass
+        }
+        if (e.submission.kind === 'restate') {
+          const p = s.problems.find((x) => x.id === s.active)
+          if (p) p.needsRestate = false
+        }
         s.lastLearnerText = e.text
         s.awaiting = 'tutor'
         break
@@ -109,7 +119,7 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
         if (e.conversationId) s.conversationId = e.conversationId
         if (problem && publicProblem) {
           solutions.set(problem.id, problem.modelSolution)
-          s.problems.push({ ...publicProblem, status: 'active', phase: e.turn.phase, hints: 0, maxRung: null, attempts: 0 })
+          s.problems.push({ ...publicProblem, status: 'active', phase: e.turn.phase, hints: 0, maxRung: null, attempts: 0, needsRestate: false })
           s.active = problem.id
           s.paused = false
         }
@@ -117,6 +127,7 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
         if (e.turn.hint && p) {
           p.hints++
           p.maxRung = Math.max(p.maxRung ?? 0, e.turn.hint.rung)
+          if (e.turn.hint.rung >= 3) p.needsRestate = true
         }
         if (e.turn.conclude && p) {
           Object.assign(p, { status: 'done', outcome: e.turn.conclude.outcome, verdict: e.turn.conclude.verdict, miss: e.turn.conclude.miss, retest: e.turn.conclude.retest, modelSolution: solutions.get(p.id) })

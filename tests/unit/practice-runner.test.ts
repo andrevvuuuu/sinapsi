@@ -17,15 +17,15 @@ beforeEach(async () => {
   mem = memoryStore(join(dir, 'm'))
 })
 
-function setup(turns: PracticeTurn[]) {
+function setup(turns: PracticeTurn[], options: { lessonId?: string; onCompass?: (id: string, question: string) => Promise<void>; onSolved?: (id: string, questions: string[]) => Promise<void> } = {}) {
   const converse = vi.fn(async (req: { conversationId: string; schema: { parse(x: unknown): unknown } }) => {
     const t = turns.shift()
     if (!t) throw new Error('nessun turno')
     return { data: req.schema.parse(t), conversationId: req.conversationId, engine: 'claude' as const }
   })
   const onUpdate = vi.fn()
-  const runner = createPracticeRunner({ bridge: { converse, ask: vi.fn() } as never, dir: join(dir, 'p'), material: async () => 'CONCETTI SCELTI\nn_1 | Rolle | …', topic: async () => 'Rolle, Lagrange', memory: mem, onUpdate, now: () => 1000 })
-  return { runner, converse, onUpdate }
+  const runner = createPracticeRunner({ bridge: { converse, ask: vi.fn() } as never, dir: join(dir, 'p'), material: async () => 'CONCETTI SCELTI\nn_1 | Rolle | …', topic: async () => 'Rolle, Lagrange', memory: mem, onUpdate, now: () => 1000, onCompass: options.onCompass, onSolved: options.onSolved })
+  return { runner, converse, onUpdate, material: { ...material, lessonId: options.lessonId } }
 }
 
 describe('training', () => {
@@ -44,13 +44,19 @@ describe('training', () => {
     const { runner, converse } = setup([
       { phase: 'warmup', blocks: [], problem },
       { phase: 'warmup', blocks: [], hint: { rung: 3, md: 'Il teorema del valor medio.' } },
+      { phase: 'warmup', blocks: [{ type: 'text', md: 'La tua riformulazione è corretta.' }] },
       { phase: 'warmup', blocks: [], conclude: { outcome: 'solved_hints', verdict: 'Con aiuti.', retest: true } }
     ])
     const id = await runner.create(material)
     await runner.retry(id)
     await runner.submit(id, { kind: 'thinking', text: 'non so da dove partire' })
+    expect((await runner.get(id)).problems[0].needsRestate).toBe(true)
+    await expect(runner.submit(id, { kind: 'thinking', text: 'vietato ora' })).rejects.toThrow(/Prima riformula/)
+    await expect(runner.submit(id, { kind: 'hint' })).rejects.toThrow(/Prima riformula/)
+    await expect(runner.submit(id, { kind: 'compass', compass: { known: '', stuck: 'x', question: 'y' } })).rejects.toThrow(/Prima riformula/)
+    await runner.submit(id, { kind: 'restate', text: 'applico il teorema alla funzione' })
+    expect((converse.mock.calls[2][0] as unknown as { prompt: string; resume: boolean })).toMatchObject({ prompt: "Riformulo l'indizio con parole mie: applico il teorema alla funzione", resume: true })
     await runner.submit(id, { kind: 'thinking', text: 'uso il valor medio' })
-    expect((converse.mock.calls[2][0] as unknown as { prompt: string; resume: boolean })).toMatchObject({ prompt: 'Il mio ragionamento: uso il valor medio', resume: true })
     const reviews = await mem.read()
     expect(reviews).toMatchObject([
       { conceptId: 'n_1', at: 1000, grade: 1, correct: true, via: 'practice' },
@@ -100,6 +106,30 @@ describe('training', () => {
     await runner.submit(id, { kind: 'thinking', text: 'parto dalla definizione' })
     expect((await runner.get(id)).problems[0]).toMatchObject({ hints: 2, maxRung: 2, attempts: 1 })
   })
+  it('refuses the compass before any attempt on the problem', async () => {
+    const { runner } = setup([{ phase: 'warmup', blocks: [], problem }])
+    const id = await runner.create(material)
+    await runner.retry(id)
+    await expect(runner.submit(id, { kind: 'compass', compass: { known: '', stuck: 'x', question: 'y' } })).rejects.toThrow(/prima scrivi un tentativo/)
+  })
+  it('records compass questions and resolves the same question when solved', async () => {
+    const onCompass = vi.fn(async () => undefined)
+    const onSolved = vi.fn(async () => undefined)
+    const { runner, material: lessonMaterial } = setup([
+      { phase: 'warmup', blocks: [], problem },
+      { phase: 'warmup', blocks: [], hint: { rung: 1, md: 'x' } },
+      { phase: 'warmup', blocks: [], hint: { rung: 1, md: 'mirato' } },
+      { phase: 'warmup', blocks: [], conclude: { outcome: 'solved_hints', verdict: 'ok', retest: false } }
+    ], { lessonId: 'lesson-1', onCompass, onSolved })
+    const id = await runner.create(lessonMaterial)
+    await runner.retry(id)
+    await runner.submit(id, { kind: 'thinking', text: 'ci provo' })
+    await runner.submit(id, { kind: 'compass', compass: { known: 'a', stuck: 'b', question: 'Quale ipotesi serve?' } })
+    expect(onCompass).toHaveBeenCalledWith('lesson-1', 'Quale ipotesi serve?')
+    await runner.submit(id, { kind: 'thinking', text: 'risolto' })
+    expect(onSolved).toHaveBeenCalledWith('lesson-1', ['Quale ipotesi serve?'])
+    expect((await mem.read())[0].rung).toBe(1)
+  })
   it('sends back a hint above rung 0 when nothing has been tried yet', async () => {
     const { runner, converse } = setup([
       { phase: 'warmup', blocks: [], problem },
@@ -118,6 +148,7 @@ describe('training', () => {
     await runner.retry(id)
     await expect(runner.submit(id, { kind: 'next' })).rejects.toThrow(/problema aperto/)
     await expect(runner.submit(id, { kind: 'ask', text: 'perché?' })).rejects.toThrow(/problema aperto/)
+    await expect(runner.submit(id, { kind: 'restate', text: 'parole mie' })).rejects.toThrow(/non serve riformulare/)
   })
   it('writes nothing to memory for a free topic', async () => {
     const { runner } = setup([

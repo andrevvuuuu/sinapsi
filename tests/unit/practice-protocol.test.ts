@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkTurnAgainst, formatSubmission, practiceJsonSchema, PracticeTurnSchema, SubmissionSchema } from '../../src/shared/practice-protocol'
+import { checkTurnAgainst, formatSubmission, hintBlocked, hintGate, practiceJsonSchema, PracticeTurnSchema, SubmissionSchema } from '../../src/shared/practice-protocol'
 
 const problem = { id: 'p1', statement: 'Mostra che $|\\sin a-\\sin b|\\le|a-b|$.', mode: 'recall' as const, targets: ['n_1'], modelSolution: 'Valor medio.' }
 
@@ -51,5 +51,25 @@ describe('submissions', () => {
     expect(formatSubmission({ kind: 'ask', text: 'perché R1?' })).toBe('Domanda sul problema appena concluso: perché R1?')
     expect(formatSubmission({ kind: 'dismiss' })).toBe('Lascio questo problema: mostrami la soluzione.')
     expect(formatSubmission({ kind: 'end' })).toBe('Basta così per oggi: chiudi la sessione.')
+  })
+})
+
+describe('hintGate and compass protocol', () => {
+  it.each([
+    [{ attempts: 0, hints: 0 }, null], [{ attempts: 0, hints: 1 }, 'attempt'],
+    [{ attempts: 2, hints: 0 }, 'compass'], [{ attempts: 1, hints: 1 }, 'compass'],
+    [{ attempts: 1, hints: 1, compass: { question: 'x' } }, null]
+  ] as const)('gates %#', (problem, gate) => expect(hintGate(problem)).toBe(gate))
+  it('keeps hintBlocked as the attempt-only compatibility wrapper', () => {
+    expect(hintBlocked({ attempts: 0, hints: 1 })).toBe(true)
+    expect(hintBlocked({ attempts: 1, hints: 0 })).toBe(false)
+  })
+  it('requires and formats compass values and checks tutor actions', () => {
+    expect(SubmissionSchema.safeParse({ kind: 'compass' }).success).toBe(false)
+    const sub = { kind: 'compass' as const, compass: { known: 'definizione', stuck: 'ipotesi', question: 'quale teorema?' } }
+    expect(formatSubmission(sub)).toContain('La mia domanda: quale teorema?')
+    expect(checkTurnAgainst({ active: 'p1' }, { phase: 'body', blocks: [], hint: { rung: 2, md: 'x' } }, 'compass')).toBeNull()
+    expect(checkTurnAgainst({ active: 'p1' }, { phase: 'body', blocks: [], conclude: { outcome: 'solved', verdict: 'x', retest: false } }, 'compass')).toMatch(/hint/)
+    expect(checkTurnAgainst({ active: 'p1' }, { phase: 'body', blocks: [], hint: { rung: 0, md: 'x' } }, 'restate')).toMatch(/riformulato/)
   })
 })

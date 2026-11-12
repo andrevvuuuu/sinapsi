@@ -10,6 +10,7 @@ import {
   systemPreferences
 } from 'electron'
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
@@ -399,6 +400,17 @@ export function registerIpc(): { bridge: Bridge } {
         await ls.append({ t: 'digest-done', at: new Date().toISOString(), id: lessonId, step })
       }
     },
+    onCompass: async (lessonId: string, question: string): Promise<void> => {
+      await ls.append({ t: 'confusion-added', at: new Date().toISOString(), id: lessonId, qid: randomUUID(), text: question })
+    },
+    onSolved: async (lessonId: string, questions: string[]): Promise<void> => {
+      const entry = reduceLessons(await ls.read()).find((item) => item.id === lessonId)
+      for (const question of questions) {
+        for (const open of entry?.confusionQuestions.filter((q) => q.status === 'open' && q.text === question) ?? []) {
+          await ls.append({ t: 'confusion-resolved', at: new Date().toISOString(), id: lessonId, qid: open.id })
+        }
+      }
+    },
     onUpdate: (s: unknown) => broadcast(CH.practiceUpdated, s)
   }
   const practice = createPracticeRunner(practiceDeps)
@@ -427,6 +439,7 @@ export function registerIpc(): { bridge: Bridge } {
     read: ls.read,
     append: ls.append,
     memory: () => review.memory(),
+    reviews: () => memoryStore(memoryDir).read(),
     readNote: (p) => readFile(p, 'utf8'),
     vaultRoot: async () => (await loadSettings()).vaultPath,
     createPractice: (m) => ph.create(m),

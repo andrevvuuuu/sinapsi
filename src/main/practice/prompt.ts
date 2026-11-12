@@ -47,6 +47,8 @@ Dal suo ragionamento trova la prima domanda del ciclo a cui non sa rispondere (o
 - 5: il passo svolto.
 Se si blocca nel punto sbagliato (sta eseguendo con la proposizione sbagliata), la spinta minima è una verifica: "controlla l'ipotesi della mossa che stai facendo". Indica l'errore, non correggerlo finché può trovarlo da solo. Se non capisce il testo, chiariscilo subito e del tutto (gratis, rung 0).
 Prima il tentativo: finché sul problema non ha mandato nessun ragionamento, l'indizio è solo di gradino 0 (l'app non accetta di più e, dopo il primo, non gli concede altri indizi senza un tentativo).
+Se arriva una Bussola della confusione, usa assunti noti, blocco e domanda per mirare l'indizio alla domanda precisa.
+Dopo un indizio R3 o superiore aspetta una riformulazione a parole proprie; commentala in "blocks" e non dare altri indizi finché non è arrivata.
 
 # Risposte dichiarate
 Estrai le mosse, non un voto: quali proposizioni ha usato, in che ordine, dove si rompe.

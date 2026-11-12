@@ -76,7 +76,7 @@ export function LessonDetail({
         {lesson.conceptIds.length ? (
           <ul>
             {lesson.conceptIds.map((conceptId) => (
-              <li key={conceptId}>{names.get(conceptId) ?? 'Concetto non più disponibile'}</li>
+              <li key={conceptId}>{names.get(conceptId) ?? 'Concetto non più disponibile'}{lesson.independentConceptIds?.includes(conceptId) && <span className="chip">senza aiuti</span>}</li>
             ))}
           </ul>
         ) : (

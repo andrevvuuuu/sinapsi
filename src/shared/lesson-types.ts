@@ -50,7 +50,8 @@ export const LessonEntrySchema = z
     updatedAt: z.string().datetime(),
     nextMode: z.enum(['practice', 'review', 'disabled']).optional(),
     launchReason: z.string().max(500).optional(),
-    pending: DigestStepSchema.nullable().optional()
+    pending: DigestStepSchema.nullable().optional(),
+    independentConceptIds: z.array(z.string()).optional()
   })
   .strict()
 export type LessonEntry = z.infer<typeof LessonEntrySchema>

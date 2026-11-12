@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PracticeProblem, PracticeState } from '../../../main/practice/events'
-import { hintBlocked, MODE_IT, OUTCOME_IT, type Submission } from '../../../shared/practice-protocol'
+import { hintGate, RUNG_IT, MODE_IT, OUTCOME_IT, type Submission } from '../../../shared/practice-protocol'
+import { ConfusionCompassCard } from './ConfusionCompassCard'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { useDockHeight } from '../components/useDockHeight'
@@ -59,11 +60,11 @@ function ProblemDock({
   }
   // Once the dock's glass shell shows (a frame after it mounts).
   useEffect(() => focusWhenShown(area.current), [problem.id])
-  const ready = !!text.trim() || !!photoText || line !== undefined
+  const ready = problem.needsRestate ? !!text.trim() : !!text.trim() || !!photoText || line !== undefined
   const send = async (): Promise<void> => {
     if (!ready || dictating) return
     const sub: Submission = {
-      kind: 'thinking',
+      kind: problem.needsRestate ? 'restate' : 'thinking',
       ...(line !== undefined ? { line } : {}),
       ...(text.trim() ? { text: text.trim() } : {}),
       ...(photoText ? { photoText } : {})
@@ -80,6 +81,7 @@ function ProblemDock({
       {/* The statement and the send row stay in view; in a tall dock the lines and the work scroll between them. */}
       <div className="inner has-scroll">
         <div className="lab">Problema</div>
+        {problem.needsRestate && <div className="compass-banner" role="status">Riformula con parole tue l’idea dell’ultimo indizio prima di continuare</div>}
         <div className="st">
           <RichText md={problem.statement} />
         </div>
@@ -101,14 +103,14 @@ function ProblemDock({
           )}
           <div className="work">
             <label className="lab" htmlFor="pr-wk">
-              Il tuo ragionamento
+              {problem.needsRestate ? 'Riformula con parole tue' : 'Il tuo ragionamento'}
             </label>
             <div className="mic-field">
               <textarea
                 ref={area}
                 readOnly={dictating}
                 id="pr-wk"
-                placeholder="Lavora qui, pensa ad alta voce. Puoi mandare anche solo un pezzo."
+                placeholder={problem.needsRestate ? 'Spiega con parole tue che cosa suggerisce l’indizio.' : 'Lavora qui, pensa ad alta voce. Puoi mandare anche solo un pezzo.'}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
@@ -132,19 +134,19 @@ function ProblemDock({
           </div>
         </div>
         <div className="row">
-          <PhotoButton
+          {!problem.needsRestate && <PhotoButton
             sessionId={sessionId}
             onText={(t) => setPhotoText((p) => [p, t].filter(Boolean).join('\n\n'))}
-          />
-          <button
+          />}
+          {hintGate(problem) === 'compass' ? <ConfusionCompassCard disabled={busy} onSend={once} /> : !problem.needsRestate && <button
             type="button"
             className="ghost warn"
-            disabled={busy || hintBlocked(problem)}
-            title={hintBlocked(problem) ? 'Prima scrivi un tentativo, anche solo un pezzo' : undefined}
+            disabled={busy || hintGate(problem) === 'attempt'}
+            title={hintGate(problem) === 'attempt' ? 'Prima scrivi un tentativo, anche solo un pezzo' : undefined}
             onClick={() => void once({ kind: 'hint' })}
           >
-            {hintBlocked(problem) ? 'Prima un tentativo' : 'Dammi un indizio'}
-          </button>
+            {hintGate(problem) === 'attempt' ? 'Prima un tentativo' : 'Dammi un indizio'}
+          </button>}
           <button
             type="button"
             className="ghost quiet"
@@ -167,7 +169,7 @@ function ProblemDock({
             disabled={!ready || busy || dictating}
             onClick={() => void send()}
           >
-            Invia
+            {problem.needsRestate ? 'Riformula' : 'Invia'}
           </button>
         </div>
       </div>
@@ -360,7 +362,7 @@ export function PracticeView({
                   )}
                   {t.hint && (
                     <div className="hintmsg">
-                      <span className="rung">R{t.hint.rung}</span>
+                      <span className="rung">R{t.hint.rung} · {RUNG_IT[t.hint.rung]}</span>
                       <RichText md={t.hint.md} />
                     </div>
                   )}

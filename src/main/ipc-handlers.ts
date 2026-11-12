@@ -20,6 +20,7 @@ import { SubmissionSchema } from '../shared/practice-protocol'
 import type { Stage } from './voice/dictation'
 import { LessonEntrySchema, type LessonEvent } from '../shared/lesson-types'
 import { pendingDigest, reduceLessons } from './lessons/reduce'
+import { independentConcepts } from './memory/fading'
 import { resolveLessonLaunch } from './lessons/launch'
 import type { Memory } from '../shared/memory-types'
 
@@ -113,6 +114,7 @@ export function makeLessonHandlers(d: {
   now?: () => number
   uuid?: () => string
   memory: () => Promise<Record<string, Memory>>
+  reviews?: () => Promise<import('../shared/memory-types').ReviewLine[]>
   readNote: (path: string) => Promise<string>
   vaultRoot: () => Promise<string>
   createPractice: (m: Material) => Promise<string>
@@ -125,27 +127,32 @@ export function makeLessonHandlers(d: {
     reduceLessons(await d.read())
   const stamp = (): string => new Date(now()).toISOString()
   return {
-    list: async () =>
-      Promise.all(
-        (await entries()).map(async (e) => {
-          const r = resolveLessonLaunch(e, await d.memory(), now())
-          return {
-            ...e,
-            nextMode: r.kind === 'disabled' ? 'disabled' : r.kind,
-            launchReason: r.kind === 'disabled' ? r.reason : undefined,
-            pending: pendingDigest(e, now())
-          }
-        })
-      ),
+    list: async () => {
+      // Memory and the unsupported-mastery set are read once for the whole list.
+      const memory = await d.memory()
+      const independent = independentConcepts((await d.reviews?.()) ?? [])
+      return (await entries()).map((e) => {
+        const r = resolveLessonLaunch(e, memory, now())
+        return {
+          ...e,
+          nextMode: r.kind === 'disabled' ? 'disabled' : r.kind,
+          launchReason: r.kind === 'disabled' ? r.reason : undefined,
+          pending: pendingDigest(e, now()),
+          independentConceptIds: e.conceptIds.filter((id) => independent.has(id))
+        }
+      })
+    },
     get: async (id: unknown) => {
       const e = (await entries()).find((x) => x.id === LessonId.parse(id))
       if (!e) throw new Error('Lezione non trovata')
       const r = resolveLessonLaunch(e, await d.memory(), now())
+      const independent = independentConcepts((await d.reviews?.()) ?? [])
       return {
         ...e,
         nextMode: r.kind === 'disabled' ? 'disabled' : r.kind,
         launchReason: r.kind === 'disabled' ? r.reason : undefined,
-        pending: pendingDigest(e, now())
+        pending: pendingDigest(e, now()),
+        independentConceptIds: e.conceptIds.filter((id) => independent.has(id))
       }
     },
     create: async (input: unknown) => {
