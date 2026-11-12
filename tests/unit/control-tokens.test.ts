@@ -16,13 +16,17 @@ const rule = (css: string, selector: string): string => {
 describe('«← Home»', () => {
   const css = read('styles/tokens.css')
   const base = rule(css, 'button.back-btn.back-btn.back-btn')
-  it('has the control outline, the button transition and a type-scale font', () => {
-    expect(base).toContain('border:1px solid var(--ctl-edge)')
+  it('has no border, a 44 px target, the button transition and a type-scale font', () => {
+    expect(base).toContain('min-height:var(--ctl)')
+    expect(base).toContain('border:0')
+    expect(base).toContain('background:transparent')
     expect(base).toContain('transition:var(--btn-transition)')
     expect(base).toMatch(/font:var\(--fw-medium\) var\(--fs-[a-z]+\)/)
     expect(base).not.toMatch(/\b\d+px\/1\b/)
   })
-  it('has a pressed state', () => {
+  it('has hover fill, pressed and focus ring states', () => {
+    expect(css).toContain('button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)')
+    expect(css).toContain('button.back-btn.back-btn.back-btn:focus-visible{outline:var(--btn-focus-ring)')
     expect(css).toContain('button.back-btn.back-btn.back-btn:active{')
   })
 })

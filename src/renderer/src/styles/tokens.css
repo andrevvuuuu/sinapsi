@@ -11,16 +11,16 @@
 /* Radii. Concentric: a container's radius is the inner radius plus its padding (the 18 px dialog core in a 6 px glass ring makes a 24 px shell). */
 :root{--r-sm:8px;--r-md:12px;--r-lg:18px;--r-pill:999px}
 :root{--ease-out:cubic-bezier(.23,1,.32,1);--serif:'Instrument Serif',Georgia,serif;--sans:'Geist',ui-sans-serif,system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace;--hand:'Caveat',cursive}
-[data-theme="lavagna"]{color-scheme:dark;--bg:#0f100d;--panel:#141511;--surface:#1a1b17;--hair:rgba(236,233,223,.14);--faint:rgba(236,233,223,.05);--inner:inset 0 1px 0 rgba(236,233,223,.05);--ink:#ece9df;--muted:#a19e92;--accent:#ef7a42;--good:#8fd1a6;--warn:#e9b95f;--bad:#f08080;--pen:#8fb8ff}
-[data-theme="trattato"]{color-scheme:light;--bg:#f3eee4;--panel:#ede7db;--surface:#fbf8f2;--hair:rgba(36,32,27,.16);--faint:rgba(36,32,27,.05);--inner:inset 0 1px 0 rgba(255,255,255,.8);--ink:#221e19;--muted:#615a4f;--accent:#a83d22;--good:#2f6e48;--warn:#8f6512;--bad:#a8323f;--pen:#2f55a8}
+[data-theme="lavagna"]{color-scheme:dark;--bg:#1c1d20;--panel:#232428;--surface:#2a2b30;--hair:rgba(236,236,239,.14);--faint:rgba(236,236,239,.04);--inner:inset 0 1px 0 rgba(255,255,255,.04);--ink:#ececef;--muted:#9a9ba3;--accent:#f2b84b;--good:#5fd38a;--warn:#f2b84b;--bad:#f08080;--pen:#4c8dff}
+[data-theme="trattato"]{color-scheme:light;--bg:#ecebe8;--panel:#e3e2de;--surface:#f7f6f3;--hair:rgba(29,29,31,.16);--faint:rgba(29,29,31,.04);--inner:inset 0 1px 0 rgba(255,255,255,.9);--ink:#1d1d1f;--muted:#5c5954;--accent:#a83d22;--good:#237648;--warn:#8f6512;--bad:#a8323f;--pen:#245fc2}
 /* AA colours that are not part of the original palette. --placeholder: tertiary text, lighter than --muted, still 4.5:1 on --bg, --surface and --panel. --ctl-edge: the outline that identifies a control (3:1 on every ground); --hair stays the quiet separator between areas.
    Button states. Primary: an --ink fill with --bg label. Secondary: transparent with a --ctl-edge outline. Text: accent label, no outline. Hover and pressed darken (lavagna) or lighten (trattato) the primary fill; secondary and text buttons add a faint ink tint; focus is the accent ring; disabled keeps a readable --muted label and a --ctl-edge outline, no fill. */
-[data-theme="lavagna"]{--placeholder:#8a877c;--ctl-edge:rgba(236,233,223,.4);--btn-primary-bg:var(--ink);--btn-primary-bg-hover:#dcd9cf;--btn-primary-bg-pressed:#c9c6bc;--btn-primary-ink:var(--bg);--btn-secondary-bg:rgba(236,233,223,0);--btn-secondary-bg-hover:rgba(236,233,223,.08);--btn-secondary-bg-pressed:rgba(236,233,223,.14);--btn-secondary-ink:var(--ink);--btn-secondary-border:var(--ctl-edge);--btn-text-bg:rgba(236,233,223,0);--btn-text-bg-hover:rgba(236,233,223,.06);--btn-text-bg-pressed:rgba(236,233,223,.1);--btn-text-ink:var(--accent)}
-[data-theme="trattato"]{--placeholder:#6b6559;--ctl-edge:rgba(36,32,27,.52);--btn-primary-bg:var(--ink);--btn-primary-bg-hover:#3a352e;--btn-primary-bg-pressed:#4d473f;--btn-primary-ink:var(--bg);--btn-secondary-bg:rgba(36,32,27,0);--btn-secondary-bg-hover:rgba(36,32,27,.06);--btn-secondary-bg-pressed:rgba(36,32,27,.1);--btn-secondary-ink:var(--ink);--btn-secondary-border:var(--ctl-edge);--btn-text-bg:rgba(36,32,27,0);--btn-text-bg-hover:rgba(36,32,27,.04);--btn-text-bg-pressed:rgba(36,32,27,.06);--btn-text-ink:var(--accent)}
+[data-theme="lavagna"]{--placeholder:#95969e;--ctl-edge:rgba(236,236,239,.42);--btn-primary-bg:var(--ink);--btn-primary-bg-hover:#dadadb;--btn-primary-bg-pressed:#c6c6c8;--btn-primary-ink:var(--bg);--btn-secondary-bg:rgba(236,236,239,0);--btn-secondary-bg-hover:rgba(236,236,239,.08);--btn-secondary-bg-pressed:rgba(236,236,239,.14);--btn-secondary-ink:var(--ink);--btn-secondary-border:var(--ctl-edge);--btn-text-bg:rgba(236,236,239,0);--btn-text-bg-hover:rgba(236,236,239,.06);--btn-text-bg-pressed:rgba(236,236,239,.1);--btn-text-ink:var(--accent)}
+[data-theme="trattato"]{--placeholder:#68645e;--ctl-edge:rgba(29,29,31,.50);--btn-primary-bg:var(--ink);--btn-primary-bg-hover:#363538;--btn-primary-bg-pressed:#4a494d;--btn-primary-ink:var(--bg);--btn-secondary-bg:rgba(29,29,31,0);--btn-secondary-bg-hover:rgba(29,29,31,.06);--btn-secondary-bg-pressed:rgba(29,29,31,.1);--btn-secondary-ink:var(--ink);--btn-secondary-border:var(--ctl-edge);--btn-text-bg:rgba(29,29,31,0);--btn-text-bg-hover:rgba(29,29,31,.04);--btn-text-bg-pressed:rgba(29,29,31,.06);--btn-text-ink:#96351f}
 :root{--btn-focus:var(--accent);--btn-focus-ring:2px solid var(--btn-focus);--btn-focus-offset:2px;--btn-disabled-bg:transparent;--btn-disabled-ink:var(--muted);--btn-disabled-border:var(--ctl-edge);--btn-transition:background-color .15s var(--ease-out),border-color .15s var(--ease-out),color .15s var(--ease-out)}
 /* Text on Liquid Glass (@glass-sdk/liquid-glass, Regular material). --glass-ink is the library's foreground (--lg-foreground), --glass-ink-2 the secondary text, --glass-accent / --glass-pen the accent and pen labels (session phase, score, «Dalla tua nota»). All AA over what the material makes of the app's grounds (--bg, --surface, --panel) and of the content that can scroll under a bar, which the scroll edge band (.edge-fade) keeps at most 30 % visible at the labels: the worst case is --ink at 30 % over --bg, through the material's tone curve (tests/unit/contrast.test.ts models it from the library's own constants). --knob-edge rings the slider thumb's white face. The selection of a segmented control is ringed with --seg-edge, 3:1 on its track (glass or faint) in both themes; --lens-fill fills the full lens of a track that is not glass. */
-[data-theme="lavagna"]{--glass-ink:#ece9df;--glass-ink-2:#d6d3c9;--glass-accent:#fac4a8;--glass-pen:#c2d8ff;--knob-edge:rgba(236,233,223,.46);--seg-edge:rgba(236,233,223,.46);--lens-fill:#3d3c38}
-[data-theme="trattato"]{--glass-ink:#221e19;--glass-ink-2:#3f3a33;--glass-accent:#86301a;--glass-pen:#223e7a;--knob-edge:rgba(36,32,27,.58);--seg-edge:rgba(36,32,27,.62);--lens-fill:#ffffff}
+[data-theme="lavagna"]{--glass-ink:#ececef;--glass-ink-2:#e1e1e5;--glass-accent:#ffd7c5;--glass-pen:#d6e3ff;--knob-edge:rgba(236,236,239,.46);--seg-edge:rgba(236,236,239,.46);--lens-fill:#36373d}
+[data-theme="trattato"]{--glass-ink:#1d1d1f;--glass-ink-2:#3a3835;--glass-accent:#86301a;--glass-pen:#223e7a;--knob-edge:rgba(29,29,31,.56);--seg-edge:rgba(29,29,31,.64);--lens-fill:#ffffff}
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:var(--font-body);-webkit-font-smoothing:antialiased;overflow:hidden}
@@ -31,15 +31,18 @@ button{font:inherit;color:inherit}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
-/* "← Home": the same size and weight in every view (repeated class: it wins over the views' own .pill rules). */
-button.back-btn.back-btn.back-btn{display:inline-flex;align-items:center;gap:var(--s-2);min-height:var(--ctl);padding:0 var(--s-4);border-radius:var(--r-pill);border:1px solid var(--ctl-edge);background:color-mix(in srgb,var(--surface) 82%,transparent);color:var(--ink);font:var(--fw-medium) var(--fs-body)/1 var(--sans);white-space:nowrap;cursor:pointer;transition:var(--btn-transition)}
-button.back-btn.back-btn.back-btn:hover{background:var(--surface)}
-button.back-btn.back-btn.back-btn:active{background:linear-gradient(var(--btn-secondary-bg-pressed),var(--btn-secondary-bg-pressed)) var(--surface)}
-/* On a glass bar the button is part of the bar: a light fill of the bar's ink, no solid pill on the glass. */
-.lg-surface button.back-btn.back-btn.back-btn{background:color-mix(in srgb,var(--glass-ink) 6%,transparent)}
-.lg-surface button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--glass-ink) 12%,transparent)}
-.lg-surface button.back-btn.back-btn.back-btn:active{background:color-mix(in srgb,var(--glass-ink) 18%,transparent)}
-.island button.back-btn.back-btn.back-btn{border-color:transparent;background:transparent}
+/* "← Home": discrete macOS-style back button (no border, subtle hover tint, ring focus, same on solid and glass). */
+button.back-btn.back-btn.back-btn{display:inline-flex;align-items:center;gap:var(--s-2);min-height:var(--ctl);padding:0 var(--s-3);border-radius:10px;border:0;background:transparent;color:var(--muted);font:var(--fw-medium) var(--fs-footnote)/1 var(--sans);white-space:nowrap;cursor:pointer;transition:var(--btn-transition)}
+button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+button.back-btn.back-btn.back-btn:active{background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);transform:scale(.99)}
+button.back-btn.back-btn.back-btn:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:10px}
+/* On a glass bar or island the button keeps the same discreet macOS look */
+.lg-surface button.back-btn.back-btn.back-btn{border:0;background:transparent;color:var(--muted)}
+.lg-surface button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+.lg-surface button.back-btn.back-btn.back-btn:active{background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink)}
+.island button.back-btn.back-btn.back-btn{border:0;background:transparent;color:var(--muted)}
+.island button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+.island button.back-btn.back-btn.back-btn:active{background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink)}
 
 /* Liquid Glass is @glass-sdk/liquid-glass (components/glass.tsx): each view is a GlassScene whose GlassContent is the
    live content the glass refracts; bars, shells, menus, segmented controls and slider thumbs are its surfaces, in the

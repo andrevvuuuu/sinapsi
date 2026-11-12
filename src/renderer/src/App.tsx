@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GlassMaterial } from './components/glass'
-import Home from './home/Home'
 import { NotaView } from './nota/NotaView'
 import { NotePicker } from './nota/NotePicker'
 import { PracticeSetup } from './practice/PracticeSetup'
@@ -12,9 +11,14 @@ import { LessonDetail } from './lessons/LessonDetail'
 import { LessonEditor } from './lessons/LessonEditor'
 import { PlanView } from './plan/PlanView'
 import type { LaunchDestination } from '../../shared/lesson-types'
+import type { VaultResult } from '../../shared/api'
+import { AppShell } from './shell/AppShell'
+import { TodayView } from './shell/TodayView'
+import type { Destination } from './shell/LiquidDock'
 
 type View =
   | { view: 'home' }
+  | { view: 'map' }
   | { view: 'session'; id: string }
   | { view: 'nota'; id: string }
   | { view: 'source'; path: string }
@@ -27,7 +31,7 @@ type View =
   | { view: 'lesson-edit'; id: string }
   | { view: 'plan' }
 
-/** «Riduci trasparenza» lives outside the views, which replace each other (each view has its own glass scene). */
+/** «Riduci trasparenza» lives outside the views. */
 export default function App(): React.JSX.Element {
   return (
     <>
@@ -39,73 +43,41 @@ export default function App(): React.JSX.Element {
 
 function Views(): React.JSX.Element {
   const [v, setV] = useState<View>({ view: 'home' })
+  const [index, setIndex] = useState<VaultResult | null>(null)
+  const [focusStudy, setFocusStudy] = useState(false)
+  useEffect(() => {
+    void window.sinapsi.vault
+      .index()
+      .then(setIndex)
+      .catch(() => undefined)
+    return window.sinapsi.vault.onChange(setIndex)
+  }, [])
   const home = (): void => setV({ view: 'home' })
   const openNota = (id: string): void => setV({ view: 'nota', id })
-  if (v.view === 'session') return <SessionView id={v.id} onBack={home} onOpenNota={openNota} />
-  if (v.view === 'nota') return <NotaView key={v.id} id={v.id} onBack={home} />
   const openPractice = (id: string): void => setV({ view: 'practice', id })
   const launched = (result: LaunchDestination): void => {
     if ('view' in result) setV(result)
   }
-  if (v.view === 'plan')
-    return (
-      <PlanView
-        onBack={home}
-        onOpenPracticeSetup={(conceptIds, exam) =>
-          setV({ view: 'practice-setup', initial: { conceptIds, exam } })
-        }
-        onLaunched={launched}
-      />
-    )
-  if (v.view === 'lessons')
-    return (
-      <LessonLogView
-        onOpen={(id) => setV({ view: 'lesson', id })}
-        onNew={() => setV({ view: 'lesson-new' })}
-        onLaunched={launched}
-        onOpenPlan={() => setV({ view: 'plan' })}
-      />
-    )
-  if (v.view === 'lesson')
-    return (
-      <LessonDetail
-        id={v.id}
-        onBack={() => setV({ view: 'lessons' })}
-        onEdit={() => setV({ view: 'lesson-edit', id: v.id })}
-        onLaunched={launched}
-      />
-    )
-  if (v.view === 'lesson-new')
-    return (
-      <LessonEditor
-        onSaved={() => setV({ view: 'lessons' })}
-        onBack={() => setV({ view: 'lessons' })}
-      />
-    )
-  if (v.view === 'lesson-edit')
-    return (
-      <LessonEditor
-        id={v.id}
-        onSaved={() => setV({ view: 'lesson', id: v.id })}
-        onBack={() => setV({ view: 'lesson', id: v.id })}
-      />
-    )
-  if (v.view === 'practice-setup')
-    return (
-      <PracticeSetup
-        initialText={v.text}
-        initial={v.initial}
-        onBack={home}
-        onStarted={openPractice}
-      />
-    )
-  if (v.view === 'practice')
-    return <PracticeView key={v.id} id={v.id} onBack={home} onStarted={openPractice} />
   const study = (topic: string): void =>
     void window.sinapsi.session
       .start(topic)
       .then((id) => setV({ view: 'session', id }))
       .catch(() => setV({ view: 'home' }))
+  const onDock = (destination: Destination): void => {
+    if (destination === 'Oggi') {
+      setFocusStudy(false)
+      home()
+    } else if (destination === 'Studia') {
+      setFocusStudy(true)
+      home()
+    } else if (destination === 'Ripassa') setV({ view: 'review' })
+    else if (destination === 'Mappa') setV({ view: 'map' })
+    else setV({ view: 'plan' })
+  }
+  if (v.view === 'session') return <SessionView id={v.id} onBack={home} onOpenNota={openNota} />
+  if (v.view === 'nota') return <NotaView key={v.id} id={v.id} onBack={home} />
+  if (v.view === 'practice')
+    return <PracticeView key={v.id} id={v.id} onBack={home} onStarted={openPractice} />
   if (v.view === 'review')
     return (
       <ReviewView
@@ -117,20 +89,94 @@ function Views(): React.JSX.Element {
         onOpenNote={(path) => setV({ view: 'source', path })}
       />
     )
-  if (v.view === 'source') return <NotePicker path={v.path} onOpenNota={openNota} onBack={home} />
+  const shellView = v.view
+  let content: React.ReactNode = null
+  if (v.view === 'home')
+    content = (
+      <TodayView
+        focusStudy={focusStudy}
+        onFocusDone={() => setFocusStudy(false)}
+        onStudy={study}
+        onPractice={(text, initial) => setV({ view: 'practice-setup', text, initial })}
+        onReview={(query, conceptIds) => setV({ view: 'review', query, conceptIds })}
+        onLessons={() => setV({ view: 'lessons' })}
+        onPlan={() => setV({ view: 'plan' })}
+        onLaunched={launched}
+        onSession={(id) => setV({ view: 'session', id })}
+        onPracticeSession={openPractice}
+      />
+    )
+  if (v.view === 'plan')
+    content = (
+      <PlanView
+        onBack={home}
+        onOpenPracticeSetup={(conceptIds, exam) =>
+          setV({ view: 'practice-setup', initial: { conceptIds, exam } })
+        }
+        onLaunched={launched}
+      />
+    )
+  if (v.view === 'lessons')
+    content = (
+      <LessonLogView
+        onOpen={(id) => setV({ view: 'lesson', id })}
+        onNew={() => setV({ view: 'lesson-new' })}
+        onLaunched={launched}
+        onOpenPlan={() => setV({ view: 'plan' })}
+      />
+    )
+  if (v.view === 'lesson')
+    content = (
+      <LessonDetail
+        id={v.id}
+        onBack={() => setV({ view: 'lessons' })}
+        onEdit={() => setV({ view: 'lesson-edit', id: v.id })}
+        onLaunched={launched}
+      />
+    )
+  if (v.view === 'lesson-new')
+    content = (
+      <LessonEditor
+        onSaved={() => setV({ view: 'lessons' })}
+        onBack={() => setV({ view: 'lessons' })}
+      />
+    )
+  if (v.view === 'lesson-edit')
+    content = (
+      <LessonEditor
+        id={v.id}
+        onSaved={() => setV({ view: 'lesson', id: v.id })}
+        onBack={() => setV({ view: 'lesson', id: v.id })}
+      />
+    )
+  if (v.view === 'practice-setup')
+    content = (
+      <PracticeSetup
+        initialText={v.text}
+        initial={v.initial}
+        onBack={home}
+        onStarted={openPractice}
+      />
+    )
+  if (v.view === 'source')
+    content = <NotePicker path={v.path} onOpenNota={openNota} onBack={home} />
+  const livePaths = [] as string[]
   return (
-    <Home
-      onOpenSession={(id) => setV({ view: 'session', id })}
-      onOpenNota={openNota}
+    <AppShell
+      view={shellView === 'map' ? 'map' : shellView}
+      index={index}
+      livePaths={livePaths}
+      onNavigate={onDock}
+      onReview={() => setV({ view: 'review' })}
+      onPractice={() => setV({ view: 'practice-setup' })}
       onOpenSource={(path) => setV({ view: 'source', path })}
-      onOpenPractice={(text, initial) => setV({ view: 'practice-setup', text, initial })}
-      onOpenPracticeSession={openPractice}
-      onOpenReview={(query, conceptIds) =>
-        setV({ view: 'review', query: query || undefined, conceptIds })
-      }
-      onOpenLessons={() => setV({ view: 'lessons' })}
-      onOpenPlan={() => setV({ view: 'plan' })}
-      onLaunched={launched}
-    />
+      onLesson={(id) => setV({ view: 'lesson', id })}
+      onLessons={() => setV({ view: 'lessons' })}
+      onSettingsChanged={() => undefined}
+      onStudy={study}
+      onMapReview={(ids) => setV({ view: 'review', conceptIds: ids })}
+    >
+      {content}
+    </AppShell>
   )
 }
