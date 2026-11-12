@@ -45,16 +45,25 @@ export function Sidebar(p: {
   subjectPrefs: SubjectPrefs
   onSubjectPrefs: (prefs: SubjectPrefs) => void
 }): React.JSX.Element {
-  const [subjectsOpen, setSubjectsOpen] = useState(true),
+  // The two groups fold on their own: closing one never hides the other.
+  const [uniOpen, setUniOpen] = useState(true),
+    [personalOpen, setPersonalOpen] = useState(true),
     [showAllSubjects, setShowAllSubjects] = useState(false)
   const countNotes = (node: ReturnType<typeof buildTree>[number]): number =>
     node.children ? node.children.reduce((total, child) => total + countNotes(child), 0) : 1
   const isSystemFolder = (name: string): boolean =>
     name.startsWith('.') || name.startsWith('_') || /^\d{2}\s/.test(name)
+  // System folders ("00 Meta", "01 MOC's", "_x", ".x") are hidden only at the top of the vault:
+  // inside a subject, numbered folders are its chapters ("Algebra Lineare/05 I Gruppi") and stay.
+  // Folders left without notes are dropped, so a subject never opens onto nothing.
+  const pruneEmpty = (nodes: ReturnType<typeof buildTree>): ReturnType<typeof buildTree> =>
+    nodes.flatMap((node) => {
+      if (!node.children) return [node]
+      const children = pruneEmpty(node.children)
+      return children.length ? [{ ...node, children }] : []
+    })
   const visibleNodes = (nodes: ReturnType<typeof buildTree>): ReturnType<typeof buildTree> =>
-    nodes
-      .filter((node) => !node.children || !isSystemFolder(node.name))
-      .map((node) => (node.children ? { ...node, children: visibleNodes(node.children) } : node))
+    pruneEmpty(nodes.filter((node) => !node.children || !isSystemFolder(node.name)))
   const nodes = p.index
     ? visibleNodes(buildTree(p.index.notes))
         .filter((node) => node.children)
@@ -176,75 +185,18 @@ export function Sidebar(p: {
         </nav>
       </div>
       <div className="sh-sidebar-scroll">
-        <section className="sh-side-section sh-subjects" aria-label="Materie">
-          <div className="sh-side-heading">
-            <span>Materie universitarie</span>
-            <span className="sh-side-tools">
-              {subjectsOpen && (
-                <button
-                  type="button"
-                  className={`sh-side-toggle ${arranging ? 'is-on' : ''}`}
-                  aria-pressed={arranging}
-                  aria-label={arranging ? 'Fine ordinamento materie' : 'Ordina le materie'}
-                  title={arranging ? 'Fatto' : 'Ordina le materie'}
-                  onClick={() => setArranging((v) => !v)}
-                >
-                  <IconArrange />
-                </button>
-              )}
-              <button
-                type="button"
-                className="sh-side-toggle"
-                aria-expanded={subjectsOpen}
-                aria-label={subjectsOpen ? 'Nascondi materie' : 'Mostra materie'}
-                onClick={() => setSubjectsOpen((v) => !v)}
-              >
-                {subjectsOpen ? <IconMinus /> : <IconPlus />}
-              </button>
-            </span>
-          </div>
-          {subjectsOpen &&
-            (arranging ? (
-              arrangeList(groups.university, true)
-            ) : groups.university.length ? (
-              <NoteTree nodes={treeOf(groups.university)} onOpen={p.onOpenSource} />
-            ) : (
-              <p className="sh-side-empty">Nessuna. Usa «Ordina» per sceglierle.</p>
-            ))}
-          {subjectsOpen && (
-            <>
-              <div className="sh-side-heading sh-side-subheading">
-                <span>Materie personali</span>
-              </div>
-              {arranging ? (
-                arrangeList(groups.personal, false)
-              ) : (
-                <>
-                  <NoteTree nodes={treeOf(personalShown)} onOpen={p.onOpenSource} />
-                  {groups.personal.length > PERSONAL_SHOWN && (
-                    <button
-                      className="sh-show-more"
-                      type="button"
-                      aria-expanded={showAllSubjects}
-                      onClick={() => setShowAllSubjects((value) => !value)}
-                    >
-                      {showAllSubjects ? 'Mostra meno' : `Mostra tutte (${groups.personal.length})`}
-                    </button>
-                  )}
-                </>
-              )}
-              {arranging && (
-                <button type="button" className="sh-arrange-done" onClick={() => setArranging(false)}>
-                  Fatto
-                </button>
-              )}
-            </>
-          )}
-        </section>
         <section className="sh-side-section sh-register" aria-label="Registro lezioni">
           <div className="sh-side-heading">
             <span>Registro</span>
           </div>
+          <button
+            className={`sh-register-all ${p.current === 'lessons' ? 'is-current' : ''}`}
+            aria-current={p.current === 'lessons' ? 'page' : undefined}
+            type="button"
+            onClick={p.onLessons}
+          >
+            Tutto il registro
+          </button>
           {p.lessons.slice(0, 3).map((x) => (
             <button
               className="sh-register-row"
@@ -261,14 +213,84 @@ export function Sidebar(p: {
               </time>
             </button>
           ))}
-          <button
-            className={`sh-all-register ${p.current === 'lessons' ? 'is-current' : ''}`}
-            aria-current={p.current === 'lessons' ? 'page' : undefined}
-            type="button"
-            onClick={p.onLessons}
-          >
-            Tutto il registro
-          </button>
+        </section>
+        <section className="sh-side-section sh-subjects" aria-label="Materie">
+          <div className="sh-side-heading">
+            <span>Materie universitarie</span>
+            <span className="sh-side-tools">
+              <button
+                type="button"
+                className={`sh-side-toggle ${arranging ? 'is-on' : ''}`}
+                aria-pressed={arranging}
+                aria-label={arranging ? 'Fine ordinamento materie' : 'Ordina le materie'}
+                title={arranging ? 'Fatto' : 'Ordina le materie'}
+                onClick={() => {
+                  // Arranging shows both groups, so a subject can be dropped into either.
+                  if (!arranging) {
+                    setUniOpen(true)
+                    setPersonalOpen(true)
+                  }
+                  setArranging((v) => !v)
+                }}
+              >
+                <IconArrange />
+              </button>
+              <button
+                type="button"
+                className="sh-side-toggle"
+                aria-expanded={uniOpen}
+                aria-label={uniOpen ? 'Nascondi materie universitarie' : 'Mostra materie universitarie'}
+                onClick={() => setUniOpen((v) => !v)}
+              >
+                {uniOpen ? <IconMinus /> : <IconPlus />}
+              </button>
+            </span>
+          </div>
+          {uniOpen &&
+            (arranging ? (
+              arrangeList(groups.university, true)
+            ) : groups.university.length ? (
+              <NoteTree nodes={treeOf(groups.university)} onOpen={p.onOpenSource} />
+            ) : (
+              <p className="sh-side-empty">Nessuna. Usa «Ordina» per sceglierle.</p>
+            ))}
+          <div className="sh-side-heading sh-side-subheading">
+            <span>Materie personali</span>
+            <span className="sh-side-tools">
+              <button
+                type="button"
+                className="sh-side-toggle"
+                aria-expanded={personalOpen}
+                aria-label={personalOpen ? 'Nascondi materie personali' : 'Mostra materie personali'}
+                onClick={() => setPersonalOpen((v) => !v)}
+              >
+                {personalOpen ? <IconMinus /> : <IconPlus />}
+              </button>
+            </span>
+          </div>
+          {personalOpen &&
+            (arranging ? (
+              arrangeList(groups.personal, false)
+            ) : (
+              <>
+                <NoteTree nodes={treeOf(personalShown)} onOpen={p.onOpenSource} />
+                {groups.personal.length > PERSONAL_SHOWN && (
+                  <button
+                    className="sh-show-more"
+                    type="button"
+                    aria-expanded={showAllSubjects}
+                    onClick={() => setShowAllSubjects((value) => !value)}
+                  >
+                    {showAllSubjects ? 'Mostra meno' : `Mostra tutte (${groups.personal.length})`}
+                  </button>
+                )}
+              </>
+            ))}
+          {arranging && (
+            <button type="button" className="sh-arrange-done" onClick={() => setArranging(false)}>
+              Fatto
+            </button>
+          )}
         </section>
       </div>
       <div className="sh-sidebar-bottom">

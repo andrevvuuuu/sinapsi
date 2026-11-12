@@ -1375,3 +1375,9 @@ button.sh-brand .sh-brand-tag {
 .sh-sidebar .sh-subjects .sh-show-more{display:flex;align-items:center;width:100%;min-height:32px;padding:4px 8px 4px 30px;border:0;border-radius:10px;background:transparent;color:var(--muted);font:var(--font-footnote);text-align:left;cursor:pointer;transition:background .15s var(--ease-out),color .15s var(--ease-out)}
 .sh-sidebar .sh-subjects .sh-show-more:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
 .sh-sidebar .sh-subjects .sh-show-more:focus-visible{outline:var(--btn-focus-ring);outline-offset:-2px}
+/* «Tutto il registro»: above the subjects, set like a subject row (same box, type and states), not a button. */
+.sh-sidebar .sh-register-all{display:flex;align-items:center;width:100%;min-height:32px;padding:4px 8px 4px 30px;border:0;border-radius:10px;background:transparent;color:var(--muted);font:var(--font-footnote);text-align:left;cursor:pointer;transition:background .15s var(--ease-out),color .15s var(--ease-out)}
+.sh-sidebar .sh-register-all:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+.sh-sidebar .sh-register-all.is-current{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--ink)}
+.sh-sidebar .sh-register-all:focus-visible{outline:var(--btn-focus-ring);outline-offset:-2px}
+.sh-sidebar .sh-register{margin-bottom:var(--s-3)}

@@ -498,7 +498,10 @@ function GraphBody({
       <GlassButton
         ref={menuBtn}
         type="button"
-        size="icon"
+        // A rounded square like the theme switch's knob. The glass forces a circle on every "icon" size and
+        // draws its own outline, so this is a small button with an 11 px radius, sized to 36 px in graph.css.
+        size="sm"
+        radius={11}
         className={'gmenu-btn' + (menu === 'open' ? ' on' : '')}
         aria-label="Vista del grafo"
         aria-expanded={menu === 'open'}
