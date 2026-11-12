@@ -18,7 +18,9 @@ export const ReviewLineSchema = z.object({
   /** Where the evidence came from: a Ripasso item (default) or a concluded Pratica problem. */
   via: z.enum(['review', 'practice']).optional(),
   /** Where in Pratica it came from ("exam:<id>:<problem>"): grading again never writes it twice. */
-  ref: z.string().max(200).optional()
+  ref: z.string().max(200).optional(),
+  /** The Registro Lezioni lesson that launched the session, if any. */
+  lessonId: z.string().max(64).optional()
 })
 export type ReviewLine = z.infer<typeof ReviewLineSchema>
 

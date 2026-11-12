@@ -19,6 +19,7 @@ export type {
 export type { Catalog, Material } from './practice-types'
 export type { ReviewSession } from '../main/memory/history'
 export type { Chip, ChipAction, Suggestions } from '../main/suggest/suggest'
+export type { LessonEntry, LessonEvent, LaunchDestination, PacerType, MasteryLevel, DigestStep, Ref } from './lesson-types'
 export type GraphPositions = Record<string, [number, number]>
 export type NoteRequest = { sourcePath?: string; sessionId?: string }
 
@@ -88,6 +89,15 @@ export const CH = {
   practicePhoto: 'practice:photo',
   practiceCamera: 'practice:camera',
   practiceUpdated: 'practice:updated',
+  lessonsList: 'lessons:list',
+  lessonsGet: 'lessons:get',
+  lessonsCreate: 'lessons:create',
+  lessonsUpdate: 'lessons:update',
+  lessonsAddConfusion: 'lessons:add-confusion',
+  lessonsResolveConfusion: 'lessons:resolve-confusion',
+  lessonsSetMastery: 'lessons:set-mastery',
+  lessonsArchive: 'lessons:archive',
+  lessonsLaunch: 'lessons:launch',
   suggestGet: 'suggest:get',
   uiTransparency: 'ui:transparency',
   uiTransparencyChanged: 'ui:transparency-changed'
@@ -218,6 +228,25 @@ export interface SinapsiApi {
     /** Asks macOS for the camera (Continuity Camera shows the iPhone among the cameras). */
     camera(): Promise<boolean>
     onUpdate(cb: (s: import('../main/practice/events').PracticeState) => void): () => void
+  }
+  lessons: {
+    list(): Promise<import('./lesson-types').LessonEntry[]>
+    get(id: string): Promise<import('./lesson-types').LessonEntry>
+    create(
+      entry: Omit<
+        import('./lesson-types').LessonEntry,
+        'id' | 'schema' | 'digest' | 'createdAt' | 'updatedAt'
+      >
+    ): Promise<import('./lesson-types').LessonEntry>
+    update(id: string, patch: Partial<import('./lesson-types').LessonEntry>): Promise<boolean>
+    addConfusion(id: string, text: string): Promise<void>
+    resolveConfusion(id: string, qid: string): Promise<void>
+    setMastery(id: string, level: import('./lesson-types').MasteryLevel): Promise<void>
+    archive(id: string): Promise<void>
+    launch(
+      id: string,
+      mode?: 'practice' | 'review'
+    ): Promise<import('./lesson-types').LaunchDestination>
   }
   /** What to study, review or practise next, each with its reason (no AI). */
   suggest: { get(): Promise<import('../main/suggest/suggest').Suggestions> }

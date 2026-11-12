@@ -37,6 +37,7 @@ type HomeProps = {
   onOpenReview?: (query: string, conceptIds?: string[]) => void
   onOpenPractice?: (text: string, initial?: { conceptIds: string[]; exam?: boolean }) => void
   onOpenPracticeSession?: (id: string) => void
+  onOpenLessons?: () => void
 }
 
 export default function Home({
@@ -45,7 +46,8 @@ export default function Home({
   onOpenSource,
   onOpenReview,
   onOpenPractice,
-  onOpenPracticeSession
+  onOpenPracticeSession,
+  onOpenLessons
 }: HomeProps = {}): React.JSX.Element {
   const api = window.sinapsi
   const [index, setIndex] = useState<VaultResult | null>(null)
@@ -59,6 +61,7 @@ export default function Home({
   const [reviews, setReviews] = useState<ReviewSession[]>([])
   const [notes, setNotes] = useState<NoteMeta[]>([])
   const [due, setDue] = useState(0)
+  const [pendingLessons, setPendingLessons] = useState(0)
   const [suggestions, setSuggestions] = useState<Suggestions | null>(null)
   // Sizes Andrea dragged, kept across restarts and clamped to the window.
   const [layout, setLayoutState] = useState<Layout>(() =>
@@ -110,6 +113,10 @@ export default function Home({
     void api.practice
       ?.list()
       .then(setPractices)
+      .catch(() => undefined)
+    void api.lessons
+      ?.list()
+      .then((xs) => setPendingLessons(xs.filter((x) => x.pending != null).length))
       .catch(() => undefined)
     // Several refreshes can overlap (mount, focus, a new nota): only the newest answer counts.
     let asked = 0
@@ -245,6 +252,16 @@ export default function Home({
       {/* The centre is a glass scene: the graph (or its placeholder) is the live content under the composer and the graph controls. */}
       <ViewScene className="center" role="main">
         <div className="topbar drag" />
+        <div className="home-lessons nodrag">
+          <button type="button" className="mini" onClick={onOpenLessons}>
+            Registro Lezioni
+          </button>
+          {pendingLessons > 0 && (
+            <span>
+              {pendingLessons} {pendingLessons === 1 ? 'digestione da fare' : 'digestioni da fare'}
+            </span>
+          )}
+        </div>
         <div className="reopen l">
           <button
             type="button"

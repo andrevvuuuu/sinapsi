@@ -23,6 +23,7 @@ export type PracticeDeps = {
   onUpdate: (s: PracticeState) => void
   now?: () => number
   uuid?: () => string
+  onDone?: (lessonId: string) => Promise<void>
 }
 
 const AnyEvent = z.custom<PracticeEvent>((v) => !!v && typeof v === 'object' && typeof (v as { t?: unknown }).t === 'string')
@@ -60,8 +61,11 @@ export function createPracticeRunner(deps: PracticeDeps) {
     return s
   }
   async function append(id: string, e: PracticeEvent): Promise<void> {
+    const before = await load(id)
     await appendJsonl(file(id), e)
-    deps.onUpdate(await load(id))
+    const after = await load(id)
+    deps.onUpdate(after)
+    if (before.phase !== 'done' && after.phase === 'done' && after.material.lessonId) await deps.onDone?.(after.material.lessonId)
   }
 
   async function record(s: PracticeState, turn: PracticeTurn): Promise<void> {
@@ -70,7 +74,7 @@ export function createPracticeRunner(deps: PracticeDeps) {
     const grade = gradeFor(turn.conclude.outcome, p.maxRung)
     const ref = `train:${s.id}:${p.id}`
     const done = new Set((await deps.memory.read()).filter((r) => r.ref === ref).map((r) => r.conceptId))
-    for (const conceptId of new Set(p.targets)) if (!done.has(conceptId)) await deps.memory.append({ conceptId, at: now(), grade, correct: turn.conclude.outcome !== 'surrendered', via: 'practice', ref })
+    for (const conceptId of new Set(p.targets)) if (!done.has(conceptId)) await deps.memory.append({ conceptId, at: now(), grade, correct: turn.conclude.outcome !== 'surrendered', via: 'practice', ref, lessonId: s.material.lessonId })
   }
 
   async function tutorTurn(id: string): Promise<void> {

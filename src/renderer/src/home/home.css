@@ -202,3 +202,5 @@
 /* The right panel (NotesPanel): its header, then Obsidian notes as the live content. */
 .aside-scene,.lg-content.aside-body{display:flex;flex-direction:column;flex:1;min-height:0}
 .lg-content.aside-body{background:var(--panel)}
+.home-lessons{position:absolute;right:var(--s-4);top:var(--s-3);z-index:2;display:flex;align-items:center;gap:var(--s-2)}
+.home-lessons span{font:var(--font-caption);color:var(--muted)}

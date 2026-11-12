@@ -18,6 +18,10 @@ import type { ExamService } from './practice/exam'
 import { MaterialSchema, type Catalog, type Material } from '../shared/practice-types'
 import { SubmissionSchema } from '../shared/practice-protocol'
 import type { Stage } from './voice/dictation'
+import { LessonEntrySchema, type LessonEvent } from '../shared/lesson-types'
+import { pendingDigest, reduceLessons } from './lessons/reduce'
+import { resolveLessonLaunch } from './lessons/launch'
+import type { Memory } from '../shared/memory-types'
 
 const Choice = z
   .object({ engine: z.enum(['agy', 'claude']), model: z.string().optional() })
@@ -84,6 +88,176 @@ export function makeHandlers(d: HandlerDeps) {
   }
 }
 export type Handlers = ReturnType<typeof makeHandlers>
+
+const LessonId = z.string().uuid()
+const LessonPatch = z
+  .object({
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    courseId: z.string().min(1).max(200).optional(),
+    topic: z.string().min(1).max(500).optional(),
+    sourceNote: z.string().max(1024).optional(),
+    prerequisites: LessonEntrySchema.shape.prerequisites.optional(),
+    core8020: LessonEntrySchema.shape.core8020.optional(),
+    pacerType: LessonEntrySchema.shape.pacerType.optional(),
+    conceptIds: LessonEntrySchema.shape.conceptIds.optional(),
+    highYieldResources: LessonEntrySchema.shape.highYieldResources.optional()
+  })
+  .strict()
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function makeLessonHandlers(d: {
+  read: () => Promise<LessonEvent[]>
+  append: (e: LessonEvent) => Promise<void>
+  now?: () => number
+  uuid?: () => string
+  memory: () => Promise<Record<string, Memory>>
+  readNote: (path: string) => Promise<string>
+  vaultRoot: () => Promise<string>
+  createPractice: (m: Material) => Promise<string>
+  retryPractice: (id: string) => void
+  validConceptIds?: () => Promise<Set<string>>
+}) {
+  const now = d.now ?? Date.now,
+    uuid = d.uuid ?? (() => crypto.randomUUID())
+  const entries = async (): Promise<ReturnType<typeof reduceLessons>> =>
+    reduceLessons(await d.read())
+  const stamp = (): string => new Date(now()).toISOString()
+  return {
+    list: async () =>
+      Promise.all(
+        (await entries()).map(async (e) => {
+          const r = resolveLessonLaunch(e, await d.memory(), now())
+          return {
+            ...e,
+            nextMode: r.kind === 'disabled' ? 'disabled' : r.kind,
+            launchReason: r.kind === 'disabled' ? r.reason : undefined,
+            pending: pendingDigest(e, now())
+          }
+        })
+      ),
+    get: async (id: unknown) => {
+      const e = (await entries()).find((x) => x.id === LessonId.parse(id))
+      if (!e) throw new Error('Lezione non trovata')
+      const r = resolveLessonLaunch(e, await d.memory(), now())
+      return {
+        ...e,
+        nextMode: r.kind === 'disabled' ? 'disabled' : r.kind,
+        launchReason: r.kind === 'disabled' ? r.reason : undefined,
+        pending: pendingDigest(e, now())
+      }
+    },
+    create: async (input: unknown) => {
+      const p = z
+        .object({
+          date: LessonEntrySchema.shape.date,
+          courseId: LessonEntrySchema.shape.courseId,
+          topic: LessonEntrySchema.shape.topic,
+          sourceNote: LessonEntrySchema.shape.sourceNote,
+          prerequisites: LessonEntrySchema.shape.prerequisites,
+          core8020: LessonEntrySchema.shape.core8020,
+          pacerType: LessonEntrySchema.shape.pacerType,
+          conceptIds: LessonEntrySchema.shape.conceptIds,
+          confusionQuestions: LessonEntrySchema.shape.confusionQuestions,
+          activeMisconceptions: LessonEntrySchema.shape.activeMisconceptions,
+          masteryLevel: LessonEntrySchema.shape.masteryLevel,
+          highYieldResources: LessonEntrySchema.shape.highYieldResources,
+          examWeight: LessonEntrySchema.shape.examWeight
+        })
+        .strict()
+        .parse(input)
+      if (d.validConceptIds) {
+        const valid = await d.validConceptIds()
+        if (p.conceptIds.some((conceptId) => !valid.has(conceptId))) {
+          throw new Error('La lezione contiene concetti non presenti nel catalogo')
+        }
+      }
+      const at = stamp()
+      const e = LessonEntrySchema.parse({
+        ...p,
+        id: uuid(),
+        schema: 1,
+        digest: { digest: null, recall24h: null, weekly: null },
+        createdAt: at,
+        updatedAt: at
+      })
+      await d.append({ t: 'lesson-created', at, entry: e })
+      return e
+    },
+    update: async (id: unknown, patch: unknown) => {
+      const eid = LessonId.parse(id),
+        p = LessonPatch.parse(patch),
+        at = stamp()
+      if (!(await entries()).some((e) => e.id === eid)) throw new Error('Lezione non trovata')
+      if (p.conceptIds && d.validConceptIds) {
+        const valid = await d.validConceptIds()
+        if (p.conceptIds.some((conceptId) => !valid.has(conceptId))) {
+          throw new Error('La lezione contiene concetti non presenti nel catalogo')
+        }
+      }
+      await d.append({ t: 'lesson-updated', at, id: eid, patch: { ...p, updatedAt: at } })
+      return true
+    },
+    addConfusion: async (id: unknown, text: unknown) => {
+      const eid = LessonId.parse(id),
+        q = z.string().min(1).max(1000).parse(text),
+        at = stamp()
+      await d.append({ t: 'confusion-added', at, id: eid, qid: uuid(), text: q })
+    },
+    resolveConfusion: async (id: unknown, qid: unknown) => {
+      const eid = LessonId.parse(id),
+        qid2 = LessonId.parse(qid)
+      await d.append({ t: 'confusion-resolved', at: stamp(), id: eid, qid: qid2 })
+    },
+    setMastery: async (id: unknown, level: unknown) =>
+      d.append({
+        t: 'mastery-changed',
+        at: stamp(),
+        id: LessonId.parse(id),
+        level: LessonEntrySchema.shape.masteryLevel.parse(level)
+      }),
+    archive: async (id: unknown) =>
+      d.append({ t: 'lesson-archived', at: stamp(), id: LessonId.parse(id) }),
+    launch: async (id: unknown, mode: unknown) => {
+      const eid = LessonId.parse(id),
+        forced = z.enum(['practice', 'review']).optional().parse(mode),
+        e = (await entries()).find((x) => x.id === eid)
+      if (!e) throw new Error('Lezione non trovata')
+      let text = ''
+      if (e.sourceNote) {
+        const root = await d.vaultRoot()
+        const { resolve, relative, isAbsolute } = await import('node:path')
+        const full = resolve(root, e.sourceNote),
+          rel = relative(resolve(root), full)
+        if (rel && !rel.startsWith('..') && !isAbsolute(rel))
+          try {
+            text = await d.readNote(full)
+          } catch {
+            // An unavailable source note does not prevent launching from linked concepts.
+          }
+      }
+      const result = resolveLessonLaunch(e, await d.memory(), now(), forced, text)
+      if (result.kind === 'disabled') return result
+      if (
+        result.kind === 'practice' &&
+        !result.material.conceptIds.every((x) => e.conceptIds.includes(x))
+      )
+        throw new Error('Filtro concetti non valido')
+      let ref: string, destination: unknown
+      if (result.kind === 'practice') {
+        ref = await d.createPractice(result.material)
+        d.retryPractice(ref)
+        destination = { view: 'practice', id: ref }
+      } else {
+        ref = result.conceptIds.join(',')
+        destination = { view: 'review', conceptIds: result.conceptIds }
+      }
+      await d.append({ t: 'session-launched', at: stamp(), id: eid, mode: result.kind, ref })
+      return destination
+    }
+  }
+}
 
 const Id = z.string().uuid()
 const Topic = z.string().trim().min(1).max(500)

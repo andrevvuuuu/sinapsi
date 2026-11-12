@@ -7,6 +7,10 @@ import { PracticeSetup } from './practice/PracticeSetup'
 import { PracticeView } from './practice/PracticeView'
 import { ReviewView } from './review/ReviewView'
 import { SessionView } from './session/SessionView'
+import { LessonLogView } from './lessons/LessonLogView'
+import { LessonDetail } from './lessons/LessonDetail'
+import { LessonEditor } from './lessons/LessonEditor'
+import type { LaunchDestination } from '../../shared/lesson-types'
 
 type View =
   | { view: 'home' }
@@ -16,6 +20,10 @@ type View =
   | { view: 'review'; query?: string; conceptIds?: string[] }
   | { view: 'practice-setup'; text?: string; initial?: { conceptIds: string[]; exam?: boolean } }
   | { view: 'practice'; id: string }
+  | { view: 'lessons' }
+  | { view: 'lesson'; id: string }
+  | { view: 'lesson-new' }
+  | { view: 'lesson-edit'; id: string }
 
 /** «Riduci trasparenza» lives outside the views, which replace each other (each view has its own glass scene). */
 export default function App(): React.JSX.Element {
@@ -34,6 +42,41 @@ function Views(): React.JSX.Element {
   if (v.view === 'session') return <SessionView id={v.id} onBack={home} onOpenNota={openNota} />
   if (v.view === 'nota') return <NotaView key={v.id} id={v.id} onBack={home} />
   const openPractice = (id: string): void => setV({ view: 'practice', id })
+  const launched = (result: LaunchDestination): void => {
+    if ('view' in result) setV(result)
+  }
+  if (v.view === 'lessons')
+    return (
+      <LessonLogView
+        onOpen={(id) => setV({ view: 'lesson', id })}
+        onNew={() => setV({ view: 'lesson-new' })}
+        onLaunched={launched}
+      />
+    )
+  if (v.view === 'lesson')
+    return (
+      <LessonDetail
+        id={v.id}
+        onBack={() => setV({ view: 'lessons' })}
+        onEdit={() => setV({ view: 'lesson-edit', id: v.id })}
+        onLaunched={launched}
+      />
+    )
+  if (v.view === 'lesson-new')
+    return (
+      <LessonEditor
+        onSaved={() => setV({ view: 'lessons' })}
+        onBack={() => setV({ view: 'lessons' })}
+      />
+    )
+  if (v.view === 'lesson-edit')
+    return (
+      <LessonEditor
+        id={v.id}
+        onSaved={() => setV({ view: 'lesson', id: v.id })}
+        onBack={() => setV({ view: 'lesson', id: v.id })}
+      />
+    )
   if (v.view === 'practice-setup')
     return (
       <PracticeSetup
@@ -72,6 +115,7 @@ function Views(): React.JSX.Element {
       onOpenReview={(query, conceptIds) =>
         setV({ view: 'review', query: query || undefined, conceptIds })
       }
+      onOpenLessons={() => setV({ view: 'lessons' })}
     />
   )
 }

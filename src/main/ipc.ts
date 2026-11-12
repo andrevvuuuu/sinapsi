@@ -23,6 +23,7 @@ import {
   makeReviewHandlers,
   makeSessionHandlers,
   makeVoiceHandlers,
+  makeLessonHandlers,
   practiceTopic
 } from './ipc-handlers'
 import { createExamService } from './practice/exam'
@@ -56,6 +57,8 @@ import { memoryBrief } from './session/memory-brief'
 import { createSuggester } from './suggest/suggest'
 import { appendJsonl } from './store/jsonl'
 import { dataDir } from './store/paths'
+import { lessonStore } from './lessons/store'
+import { pendingDigest, reduceLessons } from './lessons/reduce'
 import { loadSettings, saveSettings } from './store/settings'
 import { scanVault } from './vault/scan'
 import { createRewatcher, watchVault } from './vault/watch'
@@ -388,6 +391,14 @@ export function registerIpc(): { bridge: Bridge } {
     topic: async (m: import('../shared/practice-types').Material) =>
       practiceTopic(m, await conceptNames()),
     memory: memoryStore(memoryDir),
+    onDone: async (lessonId: string): Promise<void> => {
+      const entry = reduceLessons(await ls.read()).find((item) => item.id === lessonId)
+      if (!entry) return
+      const step = pendingDigest(entry, Date.now())
+      if (step) {
+        await ls.append({ t: 'digest-done', at: new Date().toISOString(), id: lessonId, step })
+      }
+    },
     onUpdate: (s: unknown) => broadcast(CH.practiceUpdated, s)
   }
   const practice = createPracticeRunner(practiceDeps)
@@ -411,6 +422,33 @@ export function registerIpc(): { bridge: Bridge } {
       process.platform === 'darwin' ? systemPreferences.askForMediaAccess('camera') : true
   })
   const bg = (p: Promise<unknown>): void => void p.catch((e) => console.warn('[practice]', e))
+  const ls = lessonStore(dataDir())
+  const lh = makeLessonHandlers({
+    read: ls.read,
+    append: ls.append,
+    memory: () => review.memory(),
+    readNote: (p) => readFile(p, 'utf8'),
+    vaultRoot: async () => (await loadSettings()).vaultPath,
+    createPractice: (m) => ph.create(m),
+    retryPractice: (id) => bg(ph.retry(id)),
+    validConceptIds: async () => {
+      const catalog = await ph.catalog()
+      return new Set(
+        catalog.subjects.flatMap((subject) =>
+          subject.notes.flatMap((note) => note.concepts.map((concept) => concept.id))
+        )
+      )
+    }
+  })
+  ipcMain.handle(CH.lessonsList, () => lh.list())
+  ipcMain.handle(CH.lessonsGet, (_e, id) => lh.get(id))
+  ipcMain.handle(CH.lessonsCreate, (_e, p) => lh.create(p))
+  ipcMain.handle(CH.lessonsUpdate, (_e, id, p) => lh.update(id, p))
+  ipcMain.handle(CH.lessonsAddConfusion, (_e, id, t) => lh.addConfusion(id, t))
+  ipcMain.handle(CH.lessonsResolveConfusion, (_e, id, q) => lh.resolveConfusion(id, q))
+  ipcMain.handle(CH.lessonsSetMastery, (_e, id, l) => lh.setMastery(id, l))
+  ipcMain.handle(CH.lessonsArchive, (_e, id) => lh.archive(id))
+  ipcMain.handle(CH.lessonsLaunch, (_e, id, m) => lh.launch(id, m))
   ipcMain.handle(CH.practiceCatalog, () => ph.catalog())
   ipcMain.handle(CH.practiceCreate, async (_e, m) => {
     const id = await ph.create(m)

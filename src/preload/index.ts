@@ -92,6 +92,17 @@ const api: SinapsiApi = {
     camera: () => ipcRenderer.invoke(CH.practiceCamera),
     onUpdate: (cb) => subscribe(CH.practiceUpdated, cb)
   },
+  lessons: {
+    list: () => ipcRenderer.invoke(CH.lessonsList),
+    get: (id) => ipcRenderer.invoke(CH.lessonsGet, id),
+    create: (e) => ipcRenderer.invoke(CH.lessonsCreate, e),
+    update: (id, p) => ipcRenderer.invoke(CH.lessonsUpdate, id, p),
+    addConfusion: (id, t) => ipcRenderer.invoke(CH.lessonsAddConfusion, id, t),
+    resolveConfusion: (id, q) => ipcRenderer.invoke(CH.lessonsResolveConfusion, id, q),
+    setMastery: (id, l) => ipcRenderer.invoke(CH.lessonsSetMastery, id, l),
+    archive: (id) => ipcRenderer.invoke(CH.lessonsArchive, id),
+    launch: (id, m) => ipcRenderer.invoke(CH.lessonsLaunch, id, m)
+  },
   suggest: { get: () => ipcRenderer.invoke(CH.suggestGet) },
   ui: {
     reducedTransparency: () => ipcRenderer.invoke(CH.uiTransparency),

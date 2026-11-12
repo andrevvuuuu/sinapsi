@@ -151,4 +151,61 @@ describe('fake tutor', () => {
     await runner.submit(id, { kind: 'next' })
     expect((await runner.get(id)).phase).toBe('done')
   })
+  it('keeps lessonId on review lines and calls onDone once at the transition to done', async () => {
+    const onDone = vi.fn(async () => undefined)
+    let turnNumber = 0
+    const practice = createPracticeRunner({
+      bridge: {
+        converse: vi.fn(
+          async (req: { conversationId: string; schema: { parse(x: unknown): unknown } }) => {
+            const index = turnNumber++
+            const turn: PracticeTurn =
+              index === 0
+                ? { phase: 'body', blocks: [], problem }
+                : index === 1
+                  ? {
+                      phase: 'body',
+                      blocks: [],
+                      conclude: { outcome: 'solved', verdict: 'Risolto', retest: false }
+                    }
+                  : {
+                      phase: 'done',
+                      blocks: [],
+                      summary: { learned: ['x'], shaky: [], misconceptions: [] }
+                    }
+            return {
+              data: req.schema.parse(turn),
+              conversationId: req.conversationId,
+              engine: 'claude' as const
+            }
+          }
+        ),
+        ask: vi.fn()
+      } as never,
+      dir: join(dir, 'lesson'),
+      material: async () => 'text',
+      topic: async () => 'topic',
+      memory: mem,
+      onUpdate: vi.fn(),
+      onDone
+    })
+    const id = await practice.create({ ...material, lessonId: 'lesson-id' })
+    await practice.retry(id)
+    await practice.submit(id, { kind: 'thinking', text: 'answer' })
+    const lines = await mem.read()
+    expect(lines[0]).toMatchObject({ lessonId: 'lesson-id' })
+    await practice.append(id, {
+      t: 'tutor',
+      turn: {
+        phase: 'done',
+        blocks: [],
+        summary: { learned: ['x'], shaky: [], misconceptions: [] }
+      },
+      conversationId: 'done-conversation',
+      at: 2000
+    })
+    expect(onDone).toHaveBeenCalledTimes(1)
+    await practice.get(id)
+    expect(onDone).toHaveBeenCalledTimes(1)
+  })
 })
