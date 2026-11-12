@@ -11,11 +11,11 @@ import {
   IconChevronUp,
   IconGrip,
   IconMinus,
+  IconNotes,
   IconPlus,
   IconReview,
   IconSettings,
   IconStudy,
-  IconTree,
   IconToday,
   IconRegister,
   IconSwap
@@ -178,6 +178,7 @@ export function Sidebar(p: {
         >
           <LogoMark />
         </button>
+        <div className="sh-rail-spacer" />
         <nav className="sh-side-actions" aria-label="Azioni rapide">
           <button className={`sh-side-action ${p.current === 'home' ? 'is-current' : ''}`} aria-current={p.current === 'home' ? 'page' : undefined} type="button" onClick={p.onHome} aria-label="Oggi" title="Oggi"><IconToday /><span>Oggi</span></button>
           <button
@@ -204,16 +205,24 @@ export function Sidebar(p: {
             <span>Esercitati</span>
           </button>
           <button className={`sh-side-action ${p.current === 'lessons' ? 'is-current' : ''}`} aria-current={p.current === 'lessons' ? 'page' : undefined} type="button" onClick={p.onLessons} aria-label="Registro" title="Registro"><IconRegister /><span>Registro</span></button>
+          <button
+            className={`sh-side-action ${treeOpen ? 'is-current' : ''}`}
+            type="button"
+            onClick={() => setTreeOpen((v) => !v)}
+            aria-label="Note"
+            aria-expanded={treeOpen}
+            aria-controls="sh-tree-panel"
+            title="Note"
+          >
+            <IconNotes />
+            <span>Note</span>
+          </button>
         </nav>
-        <button className="sh-side-action sh-tree-trigger" type="button" aria-label={treeOpen ? 'Chiudi pannello materie' : 'Apri pannello materie'} title={treeOpen ? 'Chiudi pannello materie' : 'Apri pannello materie'} aria-expanded={treeOpen} onClick={() => setTreeOpen((v) => !v)}><IconTree /><span>Materie</span></button>
         <div className="sh-rail-spacer" />
         <EngineStatus status={p.status} />
         <button type="button" className="sh-settings" onClick={p.onSettings} aria-label="Impostazioni" title="Impostazioni"><IconSettings /><span>Impostazioni</span></button>
       </div>
-      <div className="sh-tree-panel" aria-hidden={!treeOpen} inert={!treeOpen}>
-      <div className="sh-sidebar-top">
-        <button type="button" className="sh-tree-close" aria-label="Chiudi pannello materie" title="Chiudi pannello materie" onClick={() => setTreeOpen(false)}><IconMinus /></button>
-      </div>
+      <div id="sh-tree-panel" className="sh-tree-panel" aria-hidden={!treeOpen} inert={!treeOpen}>
       <div className="sh-sidebar-scroll">
         <section className="sh-side-section sh-register" aria-label="Registro lezioni">
           <div className="sh-side-heading">
@@ -287,6 +296,22 @@ export function Sidebar(p: {
           <div className="sh-side-heading sh-side-subheading">
             <span>Materie personali</span>
             <span className="sh-side-tools">
+              <button
+                type="button"
+                className={`sh-side-toggle ${arranging ? 'is-on' : ''}`}
+                aria-pressed={arranging}
+                aria-label={arranging ? 'Fine ordinamento materie' : 'Ordina le materie'}
+                title={arranging ? 'Fatto' : 'Ordina le materie'}
+                onClick={() => {
+                  if (!arranging) {
+                    setUniOpen(true)
+                    setPersonalOpen(true)
+                  }
+                  setArranging((v) => !v)
+                }}
+              >
+                <IconArrange />
+              </button>
               <button
                 type="button"
                 className="sh-side-toggle"

@@ -5,6 +5,10 @@ import type { NoteMeta } from '../notes/store'
 import type { SessionSummary } from '../session/events'
 import { matchNote } from '../session/note-match'
 import { isMoc } from '../../shared/moc'
+import type { LessonEntry } from '../../shared/lesson-types'
+
+/** The lesson fields the study chips read. */
+type LessonLite = Pick<LessonEntry, 'id' | 'date' | 'topic' | 'courseId'>
 
 export type ChipAction =
   | { kind: 'learn'; topic: string }
@@ -22,6 +26,8 @@ export type SuggestInput = {
   memory: Record<string, Memory>
   graph: GraphData
   now: number
+  lessons?: LessonLite[]
+  studiedLessons?: Set<string>
 }
 
 const MAX = 3
@@ -45,6 +51,22 @@ export function suggest(input: SuggestInput): Suggestions {
 }
 
 function learn(input: SuggestInput, all: VaultNote[], byPath: Map<string, VaultNote>, studied: Set<string>): Chip[] {
+  const lessonSuggestions = (input.lessons ?? [])
+    .filter((lesson) => !input.studiedLessons?.has(lesson.id))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, MAX)
+    .map((lesson): Chip => ({
+      label: lesson.topic,
+      reason: `${lesson.courseId} · ${lesson.date}`,
+      action: { kind: 'learn', topic: lesson.topic }
+    }))
+  if (lessonSuggestions.length >= MAX) return lessonSuggestions
+  const fallback = learnFromVault(input, all, byPath, studied)
+  const seen = new Set(lessonSuggestions.map((chip) => chip.label))
+  return [...lessonSuggestions, ...fallback.filter((chip) => !seen.has(chip.label))].slice(0, MAX)
+}
+
+function learnFromVault(input: SuggestInput, all: VaultNote[], byPath: Map<string, VaultNote>, studied: Set<string>): Chip[] {
   const out: Chip[] = []
   const taken = new Set<string>()
   const push = (c: Chip, path?: string): void => {
@@ -195,10 +217,12 @@ export function createSuggester(deps: {
   practiced: () => Promise<Set<string>>
   memory: () => Promise<Record<string, Memory>>
   graph: () => Promise<GraphData>
+  lessons?: () => Promise<LessonLite[]>
+  studiedLessons?: () => Promise<Set<string>>
   now: () => number
 }): () => Promise<Suggestions> {
   return async () => {
-    const [index, notes, sessions, practiced, memory, graph] = await Promise.all([deps.cachedIndex() ?? deps.scan(), deps.notes(), deps.sessions(), deps.practiced(), deps.memory(), deps.graph()])
-    return suggest({ index, notes, sessions, practiced, memory, graph, now: deps.now() })
+    const [index, notes, sessions, practiced, memory, graph, lessons, studiedLessons] = await Promise.all([deps.cachedIndex() ?? deps.scan(), deps.notes(), deps.sessions(), deps.practiced(), deps.memory(), deps.graph(), deps.lessons?.() ?? Promise.resolve([]), deps.studiedLessons?.() ?? Promise.resolve(new Set<string>())])
+    return suggest({ index, notes, sessions, practiced, memory, graph, lessons, studiedLessons, now: deps.now() })
   }
 }

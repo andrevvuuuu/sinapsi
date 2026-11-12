@@ -1103,7 +1103,7 @@ button.mt-chip:active {
 .pr-overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 80;
   display: grid;
   place-items: center;
   padding: var(--s-6);
@@ -1724,3 +1724,6 @@ button.mt-chip:active {
 .pr .mt-hit{display:inline-grid;place-items:center;flex:none;width:var(--hit-min);height:var(--hit-min);margin:calc((18px - var(--hit-min)) / 2);cursor:pointer}
 .pr .dock{max-width:712px;margin:0 auto}
 @media (max-height:760px){.pr .inner{padding:12px 14px}.pr .dockwrap{padding-bottom:12px}}
+
+/* The material dialog is portalled to <body> (out of the shell's paint containment): this wrapper keeps the .pr scope without adding a box. */
+.pr.pr-portal{position:static;inset:auto;display:contents;background:none}

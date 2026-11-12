@@ -54,6 +54,32 @@ describe('final review fixes', () => {
     const labels = suggest(input(notes, { sessions })).learn.map((c) => c.label)
     expect(labels.filter((l) => l === 'Insiemi')).toEqual([])
   })
+  it('offers up to three unstudied registry lessons from oldest date and fills the rest from vault suggestions', () => {
+    const lessons = ['2026-03-03', '2026-01-01', '2026-02-02', '2026-04-04'].map((date, i) => ({
+      id: `lesson-${i}`,
+      schema: 1 as const,
+      date,
+      courseId: 'Educazione Civica',
+      topic: `Lezione ${i}`,
+      prerequisites: [],
+      core8020: [],
+      pacerType: 'R' as const,
+      conceptIds: [],
+      confusionQuestions: [],
+      activeMisconceptions: [],
+      masteryLevel: 'unknown' as const,
+      highYieldResources: [],
+      digest: {},
+      createdAt: `${date}T09:00:00.000Z`,
+      updatedAt: `${date}T09:00:00.000Z`
+    }))
+    const learn = suggest(input([moc, note('Insiemi')], {
+      lessons,
+      studiedLessons: new Set(['lesson-3'])
+    })).learn
+    expect(learn.map((chip) => chip.label)).toEqual(['Lezione 1', 'Lezione 2', 'Lezione 0'])
+    expect(learn[0].reason).toBe('Educazione Civica · 2026-01-01')
+  })
   it('uses the index the vault watcher already holds instead of scanning the vault again', async () => {
     const idx = input([moc]).index!
     const scan = vi.fn(async () => idx)

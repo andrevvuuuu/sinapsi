@@ -1,0 +1,6 @@
+.sh-switch-row,.sh-switch-bare{display:inline-flex;align-items:center;gap:10px}
+.sh-switch{width:40px;height:24px;padding:2px;border:0;border-radius:999px;background:color-mix(in srgb,var(--ink) 18%,transparent);cursor:pointer;display:inline-flex;align-items:center;text-align:left}
+.sh-switch[aria-checked="true"]{background:var(--sh-send-bg,#7664c2)}
+.sh-switch-knob{width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transform:translate3d(0,0,0);transition:transform 150ms ease}
+.sh-switch[aria-checked="true"] .sh-switch-knob{transform:translate3d(16px,0,0)}
+.sh-switch:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset)}

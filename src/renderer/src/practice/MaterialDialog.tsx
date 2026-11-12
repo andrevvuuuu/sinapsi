@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { GlassSurface } from '@glass-sdk/liquid-glass'
 import { GlassOverlay } from '../components/glass'
 import type { Catalog, CatalogConcept } from '../../../shared/practice-types'
@@ -6,6 +7,7 @@ import { DICTATION_SHORT, useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { summary } from './summary'
 import { focusWhenShown } from '../components/glass-theme'
+import { displaySubject } from '../../../shared/subject-name'
 
 type Filter = 'weak' | 'due' | 'never' | null
 const norm = (s: string): string => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -94,6 +96,19 @@ export function MaterialDialog({
   const [filter, setFilter] = useState<Filter>(null)
   const [subject, setSubject] = useState('')
   const activeSubject = subject || liveCatalog.subjects[0]?.name || ''
+  // The vault's subject names ("Educazione Civica"): the catalogue's folder names are shown as these.
+  const [knownSubjects, setKnownSubjects] = useState<string[]>([])
+  useEffect(() => {
+    void window.sinapsi.vault
+      .index()
+      // The vault's top folders carry the readable names the sidebar shows ("Educazione Civica").
+      .then((r) =>
+        setKnownSubjects(
+          'notes' in r ? [...new Set(r.notes.map((n) => n.path.slice(r.root.length + 1).split('/')[0]).filter(Boolean))] : []
+        )
+      )
+      .catch(() => undefined)
+  }, [])
   const [actionError, setActionError] = useState<string | null>(null)
   const [addingFiles, setAddingFiles] = useState(false)
   const [ytOpen, setYtOpen] = useState(false)
@@ -212,7 +227,8 @@ export function MaterialDialog({
     })
   const open = !!(q || filter)
 
-  return (
+  return createPortal((
+    <div className="pr pr-portal">
     <GlassOverlay className="pr-overlay" onClose={onClose}>
       <GlassSurface
         radius={24}
@@ -298,10 +314,10 @@ export function MaterialDialog({
                         <GroupBox
                           ids={sub.notes.flatMap((n) => n.concepts.map((x) => x.id))}
                           chosen={c}
-                          label={sub.name}
+                          label={displaySubject(sub.name, knownSubjects)}
                           onSet={setMany}
                         />
-                        {sub.name}
+                        {displaySubject(sub.name, knownSubjects)}
                         <span className="cnt">
                           {sub.notes.reduce((a, n) => a + n.concepts.length, 0)}
                         </span>
@@ -391,7 +407,7 @@ export function MaterialDialog({
                 >
                   {liveCatalog.subjects.map((sub) => (
                     <option key={sub.name} value={sub.name}>
-                      {sub.name}
+                      {displaySubject(sub.name, knownSubjects)}
                     </option>
                   ))}
                 </select>
@@ -467,7 +483,7 @@ export function MaterialDialog({
                     <span>
                       <b>{x.title}</b>
                       <br />
-                      <span className="mt-sub">{materia}</span>
+                    <span className="mt-sub">{displaySubject(materia, knownSubjects)}</span>
                     </span>
                     <span className="pp">{x.info}</span>
                   </label>
@@ -495,5 +511,6 @@ export function MaterialDialog({
         </div>
       </GlassSurface>
     </GlassOverlay>
-  )
+    </div>
+  ), document.body)
 }

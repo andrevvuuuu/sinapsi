@@ -246,9 +246,10 @@ function GraphBody({
       const ys = ns.map((n) => n.y!)
       const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
       const { W, H } = size.current
-      // Leave room for the graph menu only while it is open.
-      const L0 = menuOpenRef.current ? 360 : 70
-      const cw = Math.max(200, W - L0 - (sel ? 370 : 16))
+      // Leave room for zoom controls on the left, and notch dock/card on the right.
+      const L0 = 70
+      const R0 = Math.max(menuOpenRef.current ? 310 : 70, sel ? 370 : 70)
+      const cw = Math.max(200, W - L0 - R0)
       const k = Math.min(
         3,
         0.88 * Math.min((cw - 60) / Math.max(60, x1 - x0), (H - 140) / Math.max(60, y1 - y0))
@@ -269,8 +270,9 @@ function GraphBody({
     const s = selRef.current
     if (!n || !z || !s) return
     const { W, H } = size.current
-    const L0 = menuOpenRef.current ? 360 : 70
-    const cw = W - L0 - 370
+    const L0 = 70
+    const R0 = Math.max(menuOpenRef.current ? 310 : 70, 370)
+    const cw = Math.max(200, W - L0 - R0)
     s.transition()
       .duration(reducedMotion() ? 0 : 900)
       .call(z.transform, zoomIdentity.translate(L0 + cw / 2 - k * n.x!, H / 2 - k * n.y!).scale(k))
@@ -495,7 +497,7 @@ function GraphBody({
         onOpenChange={setDockOpen}
       />
       {model && !(livePaths && livePaths.length === 0) && (
-        <GlassSurface radius={18} className="gzoom" role="group" aria-label="Zoom">
+        <GlassSurface radius={999} className="gzoom" role="group" aria-label="Zoom">
           <button
             type="button"
             aria-label="Avvicina"
@@ -505,7 +507,20 @@ function GraphBody({
               selRef.current.transition().duration(300).call(zoomRef.current.scaleBy, 1.5)
             }
           >
-            +
+            <svg
+              viewBox="0 0 20 20"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="10" y1="4" x2="10" y2="16" />
+              <line x1="4" y1="10" x2="16" y2="10" />
+            </svg>
           </button>
           <button
             type="button"
@@ -519,7 +534,19 @@ function GraphBody({
                 .call(zoomRef.current.scaleBy, 1 / 1.5)
             }
           >
-            −
+            <svg
+              viewBox="0 0 20 20"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="4" y1="10" x2="16" y2="10" />
+            </svg>
           </button>
           <button
             type="button"
@@ -529,7 +556,19 @@ function GraphBody({
               fit()
             }}
           >
-            ⤢
+            <svg
+              viewBox="0 0 20 20"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4" />
+            </svg>
           </button>
         </GlassSurface>
       )}

@@ -3,7 +3,6 @@ import type { ExtractorStatus } from '../../../shared/graph-types'
 import type { VaultIndex } from '../../../shared/vault-types'
 import { DictationError, MicButton } from '../components/MicButton'
 import { useDictation } from '../components/dictation'
-import { Seg } from '../components/glass'
 import type { Lens } from './draw'
 import type { LayoutMode } from './layout'
 import type { GraphModel, SearchHit } from './model'
@@ -43,10 +42,9 @@ export type GraphNotchDockProps = {
 }
 
 const CLOSED_WIDTH = 58
-const MIN_OPEN_WIDTH = 300
-const MAX_OPEN_WIDTH = 380
-const DEFAULT_OPEN_WIDTH = 340
-const CLOSED_HEIGHT = 348
+const MAX_OPEN_WIDTH = 300
+const DEFAULT_OPEN_WIDTH = 260
+const CLOSED_HEIGHT = 296
 const RF = 18
 const R = 22
 
@@ -90,7 +88,7 @@ export function GraphNotchDock({
   const railRef = useRef<HTMLElement>(null)
 
   const [contentDims, setContentDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 })
-  const [railH, setRailH] = useState(304)
+  const [railH, setRailH] = useState(260)
 
   useEffect(() => {
     onOpenChange?.(activeSection !== null)
@@ -189,22 +187,25 @@ export function GraphNotchDock({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [activeSection, query, setQuery, setHi])
 
-  const closedHeight = Math.max(CLOSED_HEIGHT, railH + 32)
+  const closedHeight = Math.max(CLOSED_HEIGHT, railH + 20)
 
-  // Expanded width adapts to content within [MIN_OPEN_WIDTH, MAX_OPEN_WIDTH] (300px - 380px)
+  // Expanded width adapts to content up to MAX_OPEN_WIDTH (300px)
   const targetW = activeSection
     ? Math.min(
         MAX_OPEN_WIDTH,
-        Math.max(MIN_OPEN_WIDTH, contentDims.w > 0 ? contentDims.w + 76 : DEFAULT_OPEN_WIDTH)
+        Math.max(
+          CLOSED_WIDTH,
+          contentDims.w > 0 ? contentDims.w + CLOSED_WIDTH + 16 : DEFAULT_OPEN_WIDTH
+        )
       )
     : CLOSED_WIDTH
 
-  // Expanded height: max(closed icon column height, real section content height + 16px padding)
+  // Expanded height: max(closed icon column height, real section content height + padding)
   const fallbackH =
     activeSection === 'search' && hits.length > 0
-      ? closedHeight + Math.min(240, hits.length * 38)
+      ? closedHeight + Math.min(220, hits.length * 36)
       : closedHeight
-  const targetContentH = contentDims.h > 0 ? contentDims.h + 32 : fallbackH
+  const targetContentH = contentDims.h > 0 ? contentDims.h + 24 : fallbackH
   const maxH = typeof window !== 'undefined' ? Math.max(closedHeight, window.innerHeight - 48) : 720
   const targetH = activeSection ? Math.min(maxH, Math.max(closedHeight, targetContentH)) : closedHeight
 
@@ -292,8 +293,10 @@ export function GraphNotchDock({
   const H = Math.max(1, dims.h)
 
   const { pathD, strokeD } = useMemo(() => {
-    const p = `M 0 0 A ${RF} ${RF} 0 0 0 ${RF} ${RF} L ${W - R} ${RF} A ${R} ${R} 0 0 1 ${W} ${RF + R} L ${W} ${RF + H - R} A ${R} ${R} 0 0 1 ${W - R} ${RF + H} L ${RF} ${RF + H} A ${RF} ${RF} 0 0 0 0 ${H + 2 * RF} Z`
-    const s = `M 0 0 A ${RF} ${RF} 0 0 0 ${RF} ${RF} L ${W - R} ${RF} A ${R} ${R} 0 0 1 ${W} ${RF + R} L ${W} ${RF + H - R} A ${R} ${R} 0 0 1 ${W - R} ${RF + H} L ${RF} ${RF + H} A ${RF} ${RF} 0 0 0 0 ${H + 2 * RF}`
+    // Mirrored notch docked on the right border (x = W)
+    // Fillets above and below fuse with right edge, rounded corners (r=22) on the left side
+    const p = `M ${W} 0 A ${RF} ${RF} 0 0 1 ${W - RF} ${RF} L ${R} ${RF} A ${R} ${R} 0 0 0 0 ${RF + R} L 0 ${RF + H - R} A ${R} ${R} 0 0 0 ${R} ${RF + H} L ${W - RF} ${RF + H} A ${RF} ${RF} 0 0 1 ${W} ${H + 2 * RF} Z`
+    const s = `M ${W} 0 A ${RF} ${RF} 0 0 1 ${W - RF} ${RF} L ${R} ${RF} A ${R} ${R} 0 0 0 0 ${RF + R} L 0 ${RF + H - R} A ${R} ${R} 0 0 0 ${R} ${RF + H} L ${W - RF} ${RF + H} A ${RF} ${RF} 0 0 1 ${W} ${H + 2 * RF}`
     return { pathD: p, strokeD: s }
   }, [W, H])
 
@@ -349,7 +352,7 @@ export function GraphNotchDock({
         <path d={strokeD} fill="none" stroke="rgba(255, 255, 255, 0.09)" strokeWidth="1" />
       </svg>
 
-      {/* Left rail: 4 compact icon buttons (36px, white stroke 1.6) */}
+      {/* Right rail: 4 compact icon buttons (36px, white stroke 1.6) */}
       <nav ref={railRef} className="gnotch-rail" aria-label="Controlli del grafo">
         {/* a) Ricerca */}
         <button
@@ -584,10 +587,10 @@ export function GraphNotchDock({
           className={`gnotch-content${dims.isHalfway ? ' enter' : ''}`}
           role="region"
           id={`gnotch-section-${activeSection}`}
-          aria-label={sectionLabel}
+          aria-label={activeSection === 'status' ? metaString : sectionLabel}
           style={{
             opacity: dims.isHalfway ? 1 : 0,
-            transform: dims.isHalfway ? 'translateX(0)' : 'translateX(6px)',
+            transform: dims.isHalfway ? 'translateX(0)' : 'translateX(-6px)',
             pointerEvents: dims.isHalfway ? 'auto' : 'none'
           }}
         >
@@ -656,18 +659,28 @@ export function GraphNotchDock({
             <div className="gnotch-section-body">
               <div className="gsec">
                 <h3>Evidenzia</h3>
-                <Seg
-                  label="Evidenzia"
-                  track="plain"
-                  className="gseg glens gnotch-lens"
-                  radius={12}
-                  value={lens}
-                  onChange={(newLens) => {
-                    setLens(newLens)
-                    setActiveSection('lens')
-                  }}
-                  options={lensOptions}
-                />
+                <div className="gnotch-menu-list" role="tablist" aria-label="Evidenzia">
+                  {lensOptions.map((opt) => {
+                    const isSelected = lens === opt.value
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        role="tab"
+                        aria-selected={isSelected}
+                        aria-checked={isSelected}
+                        className={`gnotch-menu-row${isSelected ? ' active' : ''}`}
+                        onClick={() => {
+                          setLens(opt.value)
+                          setActiveSection('lens')
+                        }}
+                      >
+                        <span className="gnotch-menu-label">{opt.label}</span>
+                        {isSelected && <span className="gnotch-menu-dot" aria-hidden="true" />}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -676,34 +689,65 @@ export function GraphNotchDock({
             <div className="gnotch-section-body">
               <div className="gsec">
                 <h3>Disposizione</h3>
-                <Seg
-                  label="Disposizione"
-                  track="plain"
-                  className="gseg"
-                  radius={12}
-                  value={mode}
-                  onChange={changeMode}
-                  options={modes.map(([m, label]) => ({ value: m, label }))}
-                />
+                <div className="gnotch-menu-list" role="tablist" aria-label="Disposizione">
+                  {modes.map(([m, label]) => {
+                    const isSelected = mode === m
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        role="tab"
+                        aria-selected={isSelected}
+                        aria-checked={isSelected}
+                        className={`gnotch-menu-row${isSelected ? ' active' : ''}`}
+                        onClick={() => changeMode(m)}
+                      >
+                        <span className="gnotch-menu-label">{label}</span>
+                        {isSelected && <span className="gnotch-menu-dot" aria-hidden="true" />}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="gnotch-sr-only" role="radiogroup" aria-label="Disposizione">
+                  {modes.map(([m, label]) => (
+                    <input
+                      key={m}
+                      type="radio"
+                      name="gnotch-layout-mode"
+                      value={m}
+                      checked={mode === m}
+                      onChange={() => changeMode(m)}
+                      aria-label={label}
+                    />
+                  ))}
+                </div>
                 <p className="hint">{modes.find((m) => m[0] === mode)?.[2]}</p>
               </div>
               <div className="gsec gtoggles">
-                {(
-                  [
-                    ['regions', 'Regioni'],
-                    ['wikilinks', 'Link di Obsidian'],
-                    ['frontier', `Frontiera${model ? ` (${model.frontier.length})` : ''}`]
-                  ] as const
-                ).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={show[key]}
-                    onClick={() => setShow({ ...show, [key]: !show[key] })}
-                  >
-                    {label}
-                  </button>
-                ))}
+                <h3>Strati</h3>
+                <div className="gnotch-menu-list">
+                  {(
+                    [
+                      ['regions', 'Regioni'],
+                      ['wikilinks', 'Link di Obsidian'],
+                      ['frontier', `Frontiera${model ? ` (${model.frontier.length})` : ''}`]
+                    ] as const
+                  ).map(([key, label]) => {
+                    const isPressed = show[key]
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        aria-pressed={isPressed}
+                        className={`gnotch-menu-row${isPressed ? ' active' : ''}`}
+                        onClick={() => setShow({ ...show, [key]: !show[key] })}
+                      >
+                        <span className="gnotch-menu-label">{label}</span>
+                        {isPressed && <span className="gnotch-menu-dot" aria-hidden="true" />}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -712,7 +756,22 @@ export function GraphNotchDock({
             <div className="gnotch-section-body">
               <div className="gsec">
                 <h3>Stato del grafo</h3>
-                <p className="meta">{metaString}</p>
+                <div className="gnotch-status-rows">
+                  {model ? (
+                    <>
+                      <div className="gnotch-status-row">
+                        {totalConcepts} concetti da {model.regions.length} note
+                      </div>
+                      <div className="gnotch-status-row">{chainsCount} catene</div>
+                      <div className="gnotch-status-row">{multi} in più note</div>
+                    </>
+                  ) : (
+                    <div className="gnotch-status-row">Carico il grafo…</div>
+                  )}
+                </div>
+                {model && totalConcepts > 0 && (
+                  <span className="gnotch-sr-only">{metaString}</span>
+                )}
                 <StatusLine
                   status={status}
                   index={index}
@@ -735,16 +794,19 @@ export function GraphNotchDock({
           <div className="gnotch-section-body">
             <div className="gsec">
               <h3>Evidenzia</h3>
-              <Seg
-                label="Evidenzia"
-                track="plain"
-                className="gseg glens gnotch-lens"
-                radius={12}
-                value={lens}
-                // Keyboard and screen-reader users switch the lens here without the panel opening and stealing focus.
-                onChange={setLens}
-                options={lensOptions}
-              />
+              <div role="tablist" aria-label="Evidenzia">
+                {lensOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={lens === opt.value}
+                    onClick={() => setLens(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -629,7 +629,8 @@ export function LiquidDock({
               role="menuitem"
               className={`sg-dock-item ${on ? 'is-active' : ''}`}
               aria-current={on ? 'page' : undefined}
-              aria-label={it.id}
+              aria-label={it.id === 'Mappa' ? 'Grafo' : it.id}
+              title={it.id === 'Mappa' ? 'Grafo' : it.id}
               tabIndex={on || (index < 0 && i === 0) ? 0 : -1}
               style={
                 {
@@ -649,7 +650,7 @@ export function LiquidDock({
               onClick={() => handleItemClick(it.id, i)}
             >
               <span className="sg-dock-icon">{it.icon}</span>
-              <small aria-hidden="true">{it.id}</small>
+              <small aria-hidden="true">{it.id === 'Mappa' ? 'Grafo' : it.id}</small>
             </button>
           )
         })}

@@ -29,6 +29,13 @@ export const IconRegister = (): React.JSX.Element => (
   </Icon>
 )
 
+export const IconNotes = (): React.JSX.Element => (
+  <Icon>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <path d="M14 2v6h6M8 13h8M8 17h6M8 9h2" />
+  </Icon>
+)
+
 export const IconTree = (): React.JSX.Element => (
   <Icon>
     <circle cx="12" cy="5" r="2" />

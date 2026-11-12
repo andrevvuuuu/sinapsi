@@ -58,7 +58,7 @@ function solveSpring(
 /** Where everything sits when `mode` is the chosen one. */
 function layoutFor(mode: Mode, w: Widths): Geo {
   const chipW = (m: Mode): number => w.text[m] + PADX * 2
-  const inX = BAR_PADL + w.count + DIV_GAP + 1 + DIV_GAP - PADX
+  const inX = BAR_PADL + w.count + DIV_GAP + 1 + DIV_GAP
   const barW = inX + chipW(mode)
   let x = barW + GAP
   const chips = {} as Geo['chips']
@@ -70,61 +70,6 @@ function layoutFor(mode: Mode, w: Widths): Geo {
     }
   }
   return { barW, chips }
-}
-
-/** A pill outline whose edge wobbles: points round the perimeter pushed along their normal. */
-function wobblyPill(w: number, amp: number, time: number): string {
-  const r = H / 2
-  const n = 44
-  const pts: [number, number][] = []
-  const per = 2 * (w - 2 * r) + 2 * Math.PI * r
-  for (let i = 0; i < n; i++) {
-    let s = (i / n) * per
-    let x: number
-    let y: number
-    let nx: number
-    let ny: number
-    const top = w - 2 * r
-    if (s < top) {
-      x = r + s
-      y = 0
-      nx = 0
-      ny = -1
-    } else if ((s -= top) < Math.PI * r) {
-      const a = -Math.PI / 2 + s / r
-      x = w - r + Math.cos(a) * r
-      y = r + Math.sin(a) * r
-      nx = Math.cos(a)
-      ny = Math.sin(a)
-    } else if ((s -= Math.PI * r) < top) {
-      x = w - r - s
-      y = H
-      nx = 0
-      ny = 1
-    } else {
-      s -= top
-      const a = Math.PI / 2 + s / r
-      x = r + Math.cos(a) * r
-      y = r + Math.sin(a) * r
-      nx = Math.cos(a)
-      ny = Math.sin(a)
-    }
-    const k = (i / n) * Math.PI * 2
-    const off = amp * (Math.sin(k * 3 + time * 5.2) * 0.6 + Math.sin(k * 5 - time * 3.7) * 0.4)
-    pts.push([x + nx * off, y + ny * off])
-  }
-  // Closed Catmull-Rom spline through the points.
-  let d = `M${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`
-  for (let i = 0; i < n; i++) {
-    const p0 = pts[(i - 1 + n) % n]
-    const p1 = pts[i]
-    const p2 = pts[(i + 1) % n]
-    const p3 = pts[(i + 2) % n]
-    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6]
-    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6]
-    d += ` C${c1[0].toFixed(2)} ${c1[1].toFixed(2)} ${c2[0].toFixed(2)} ${c2[1].toFixed(2)} ${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`
-  }
-  return `${d} Z`
 }
 
 /** Digits that roll vertically, one column each, like an odometer. */
@@ -174,7 +119,7 @@ export function InkModes({
     Esercitati: null,
     Ripassa: null
   })
-  const outlinePathRefs = useRef<Record<Mode, SVGPathElement | null>>({
+  const outlineRectRefs = useRef<Record<Mode, SVGRectElement | null>>({
     Studia: null,
     Esercitati: null,
     Ripassa: null
@@ -194,8 +139,6 @@ export function InkModes({
   const [geo, setGeo] = useState<Geo | null>(null)
   const geoRef = useRef<Geo | null>(null)
   const shown = useRef<Mode>(mode)
-  const [hover, setHover] = useState<Mode | null>(null)
-  const wobRef = useRef({ amp: 0, time: 0 })
 
   // The bar displays the count for the current mode
   const [barMode, setBarMode] = useState<Mode>(mode)
@@ -203,30 +146,65 @@ export function InkModes({
   const countText = count == null ? '—' : String(count)
   const label = barMode === 'Ripassa' ? 'dovuti' : 'suggerimenti'
 
-  // Measure label widths with real fonts
+  // Measure label widths with real fonts and ResizeObserver
   useLayoutEffect(() => {
+    let ro: ResizeObserver | null = null
+    let mounted = true
+
     const measure = (): void => {
+      if (!mounted) return
       const box = measureRef.current
       const c = countRef.current
       if (!box || !c) return
       const text = {} as Widths['text']
       box.querySelectorAll<HTMLElement>('[data-m]').forEach((el) => {
-        text[el.dataset.m as Mode] = el.getBoundingClientRect().width
+        text[el.dataset.m as Mode] = Math.ceil(el.getBoundingClientRect().width)
       })
-      setW({ count: c.getBoundingClientRect().width, text })
+      const countWidth = Math.ceil(c.getBoundingClientRect().width)
+      if (countWidth > 0 && text.Studia && text.Esercitati && text.Ripassa) {
+        setW((prev) => {
+          if (
+            prev &&
+            prev.count === countWidth &&
+            prev.text.Studia === text.Studia &&
+            prev.text.Esercitati === text.Esercitati &&
+            prev.text.Ripassa === text.Ripassa
+          ) {
+            return prev
+          }
+          return { count: countWidth, text }
+        })
+      }
     }
+
     measure()
-    void document.fonts?.ready.then(measure)
+
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      document.fonts.ready.then(() => {
+        if (mounted) measure()
+      })
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => {
+        measure()
+      })
+      if (countRef.current) ro.observe(countRef.current)
+      if (measureRef.current) ro.observe(measureRef.current)
+    }
+
+    return () => {
+      mounted = false
+      if (ro) ro.disconnect()
+    }
   }, [countText, label])
 
-  // First layout
+  // Recalculate layout whenever widths change
   useEffect(() => {
     if (!w) return
-    if (!geoRef.current) {
-      const g = layoutFor(shown.current, w)
-      geoRef.current = g
-      setGeo(g)
-    }
+    const g = layoutFor(shown.current, w)
+    geoRef.current = g
+    setGeo(g)
   }, [w])
 
   const wRef = useRef<Widths | null>(null)
@@ -275,12 +253,12 @@ export function InkModes({
       incomingRect.style.transform = 'translate3d(0, 0, 0) scaleX(0)'
       incomingRect.style.opacity = '1'
     }
-    const incomingOutline = outlinePathRefs.current[mode]
+    const incomingOutline = outlineRectRefs.current[mode]
     if (incomingOutline) {
       incomingOutline.style.display = 'block'
       incomingOutline.style.opacity = '1'
     }
-    const outgoingOutline = outlinePathRefs.current[prevMode]
+    const outgoingOutline = outlineRectRefs.current[prevMode]
     if (outgoingOutline) {
       outgoingOutline.style.display = 'block'
       outgoingOutline.style.opacity = '0'
@@ -319,9 +297,9 @@ export function InkModes({
           btn.style.transform = `translate3d(${transX.toFixed(2)}px, 0, 0)`
         }
 
-        const outline = outlinePathRefs.current[m]
+        const outline = outlineRectRefs.current[m]
         if (outline) {
-          outline.style.transform = `translate(${startX + 1}px, 5px) translate3d(${transX.toFixed(2)}px, 0, 0)`
+          outline.style.transform = `translate3d(${transX.toFixed(2)}px, 0, 0)`
           if (m === mode) {
             outline.style.opacity = Math.max(0, 1 - scaleX * 1.15).toFixed(3)
           } else if (m === prevMode) {
@@ -378,9 +356,10 @@ export function InkModes({
         for (const m of MODES) {
           const btn = chipBtn.current[m]
           if (btn) btn.style.transform = ''
-          const outline = outlinePathRefs.current[m]
+          const outline = outlineRectRefs.current[m]
           if (outline) {
-            outline.style.transform = `translate(${endGeo.chips[m].x + 1}px, 5px)`
+            outline.style.transform = ''
+            outline.setAttribute('x', String(endGeo.chips[m].x + 0.75))
             outline.style.opacity = m === mode ? '0' : '1'
             outline.style.display = m === mode ? 'none' : 'block'
           }
@@ -404,43 +383,6 @@ export function InkModes({
 
     rafRef.current = requestAnimationFrame(tick)
   }, [mode])
-
-  // Outline wobble for hovered chip: direct DOM update without React re-renders
-  useEffect(() => {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    let raf = 0
-    let last = performance.now()
-    const tick = (now: number): void => {
-      const dt = Math.min(0.05, (now - last) / 1000)
-      last = now
-      const st = wobRef.current
-      st.time += dt
-      st.amp += ((hover ? 1.8 : 0) - st.amp) * 0.14
-      if (hover && w) {
-        const path = outlinePathRefs.current[hover]
-        if (path) {
-          path.setAttribute('d', wobblyPill(w.text[hover] + PADX * 2 - 2, st.amp, st.time))
-        }
-      }
-      if (hover || st.amp > 0.02) {
-        raf = requestAnimationFrame(tick)
-      } else {
-        st.amp = 0
-        if (w) {
-          for (const m of MODES) {
-            outlinePathRefs.current[m]?.setAttribute(
-              'd',
-              wobblyPill(w.text[m] + PADX * 2 - 2, 0, 0)
-            )
-          }
-        }
-      }
-    }
-    if (hover) {
-      raf = requestAnimationFrame(tick)
-    }
-    return () => cancelAnimationFrame(raf)
-  }, [hover, w])
 
   const chipW = (m: Mode): number => (w ? w.text[m] + PADX * 2 : 0)
   const totalW = geo ? Math.max(geo.barW, ...MODES.map((m) => geo.chips[m].x + chipW(m))) + 4 : 0
@@ -505,13 +447,16 @@ export function InkModes({
                 const isCurrent = m === mode
                 const cw = chipW(m)
                 return (
-                  <path
+                  <rect
                     key={m}
                     ref={(el) => {
-                      outlinePathRefs.current[m] = el
+                      outlineRectRefs.current[m] = el
                     }}
-                    d={wobblyPill(cw - 2, 0, 0)}
-                    transform={`translate(${c.x + 1} 5)`}
+                    x={c.x + 0.75}
+                    y={4.75}
+                    width={Math.max(0, cw - 1.5)}
+                    height={H - 1.5}
+                    rx={(H - 1.5) / 2}
                     style={{
                       opacity: isCurrent ? 0 : 1,
                       display: isCurrent ? 'none' : 'block'
@@ -575,8 +520,6 @@ export function InkModes({
                   zIndex: isChosen ? 2 : 1
                 }}
                 onClick={() => mode !== m && onChange(m)}
-                onPointerEnter={() => mode !== m && setHover(m)}
-                onPointerLeave={() => setHover((h) => (h === m ? null : h))}
               >
                 <span className="sg-chip-label">{m}</span>
                 <span

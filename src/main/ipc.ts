@@ -584,6 +584,24 @@ export function registerIpc(): { bridge: Bridge } {
     practiced: () => practice.practiced(),
     memory: () => review.memory(),
     graph: () => extractor.graph(),
+    // The Registro's lessons: Sinapsi's own plus the Obsidian lesson tutor's (never practised = not studied yet).
+    lessons: async () => [
+      ...(await lh.list()),
+      ...(await sinapsiTutor.report().catch(() => null))?.lessons
+        .filter((lesson) => lesson.stats.covered === 0 && lesson.lastStudiedAt === null)
+        .map((lesson) => ({
+          id: `tutor:${lesson.course}:${lesson.date}:${lesson.number ?? ''}`,
+          date: lesson.date,
+          topic: lesson.items[0]?.label ?? lesson.text.slice(0, 80),
+          courseId: lesson.number ? `${lesson.courseName} · lezione ${lesson.number}` : lesson.courseName
+        })) ?? []
+    ],
+    studiedLessons: async () =>
+      new Set(
+        (await ls.read())
+          .filter((event) => event.t === 'session-launched')
+          .map((event) => event.id)
+      ),
     now: Date.now
   })
   ipcMain.handle(CH.suggestGet, () => suggestions())
