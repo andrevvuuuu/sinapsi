@@ -4,115 +4,135 @@
 
 # Sinapsi
 
-**Un'app di studio per macOS che trasforma le tue note di Obsidian in ripasso attivo, pratica socratica e un piano verso l'esame.**
+**English** · [Italiano](README.it.md)
+
+**A macOS study app that turns your Obsidian notes into active recall, Socratic practice and a plan towards the exam.**
 
 Electron · React 19 · TypeScript · FSRS-5 · macOS
 
 </div>
 
+> The app's interface is in Italian. The code, comments and this README are in English.
+
 ---
 
-## Che cos'è
+## What it is
 
-Rileggere gli appunti dà una sensazione di familiarità che sparisce davanti a un esercizio nuovo. Sinapsi parte dalle note che hai già scritto nel tuo vault Obsidian e ti fa lavorare su di esse: ti chiede di ricordare invece di riconoscere, ti guida con domande invece di darti la soluzione e programma i ripassi quando stai per dimenticare.
+Rereading notes feels like knowing them, until a new problem shows otherwise. Sinapsi starts from the notes you already keep in your Obsidian vault and makes you work with them: it asks you to recall instead of recognise, guides you with questions instead of handing you the solution, and schedules reviews for when you are about to forget.
 
-Tre principi reggono tutta l'app:
+Three principles hold the whole app together:
 
-- **Il vault è in sola lettura.** Sinapsi legge le note ma non scrive mai nei tuoi file Markdown. Tutto quello che produce sta nella sua cartella dati.
-- **Prima il tentativo, poi l'aiuto.** Il tutor non dà la soluzione: sale una scala di indizi solo dopo che hai provato.
-- **La memoria si misura, non si dichiara.** La padronanza di un concetto è la probabilità di ricordarlo stimata da FSRS sulle tue risposte, non una spunta che metti tu.
+- **The vault is read-only.** Sinapsi reads your notes and never writes to your Markdown files. Everything it produces lives in its own data folder.
+- **Attempt first, help second.** The tutor never gives away the solution: hints unlock one rung at a time, and only after you have tried.
+- **Mastery is measured, not declared.** How well you know a concept is the recall probability FSRS estimates from your answers, not a box you tick.
 
-## Cosa fa
+## What it does
 
-### Oggi, Mappa, Piano
+### Today, Map, Plan
 
-L'interfaccia è una «cabina» con una barra laterale e un dock liquido in basso, con tre destinazioni.
+The interface is a "cockpit" with a sidebar and a liquid dock at the bottom, with three destinations:
 
-- **Oggi.** Cosa studiare adesso: suggerimenti, concetti in scadenza, lezioni da rielaborare, prontezza per il prossimo esame. Il compositore «Cosa vuoi studiare?» avvia una sessione su qualsiasi argomento.
-- **Mappa.** Il grafo dei concetti delle tue note vive. I nodi sono enunciati e gli archi sono catene di deduzione (premesse → conclusione). Si colora per stato di memoria e si può filtrare su ciò che va ripassato, su ciò che non hai mai visto e sulle basi fragili.
-- **Piano.** Gli esami con le date, il piano settimanale sulle tue ore di studio e un indice di prontezza per ogni esame.
+- **Oggi (Today).** What to study now: suggestions, concepts due for review, lessons to digest, readiness for the next exam. The "Cosa vuoi studiare?" composer starts a session on any topic.
+- **Mappa (Map).** The concept graph of your living notes. Nodes are statements and edges are deduction chains (premises → conclusion). It is coloured by memory state and can be filtered to what is due, never seen, or resting on weak foundations.
+- **Piano (Plan).** Exams with their dates, a weekly plan built on your study hours, and a readiness index for each exam.
 
-La barra laterale divide le materie (le cartelle di primo livello del vault) in **universitarie** e **personali**. L'ordine si cambia trascinando o con le frecce, e la scelta resta salvata.
+The sidebar splits subjects (the top-level folders of the vault) into **university** and **personal**. You can reorder them by dragging or with the arrow buttons, and the order is saved.
 
-### Studio socratico
+### Socratic study sessions
 
-Una sessione di studio su una nota o su un argomento libero. Il tutor parte da ciò che sai già (la memoria dei concetti di quella nota), fa domande, chiede spiegazioni e propone giochi brevi (Lampo, Coppie, Ricomponi, Trova l'intruso, Tabù). I nomi delle sessioni si salvano con le iniziali maiuscole.
+A study session on a note or on any topic. The tutor starts from what you already know (the memory of that note's concepts), asks questions, asks you to explain, and offers short games (Lampo, Coppie, Ricomponi, Trova l'intruso, Tabù). Session names are saved in Title Case.
 
-### Note vive
+### Living notes (note vive)
 
-Da una nota di Obsidian, Sinapsi scrive una dispensa interattiva a blocchi validati: definizioni e teoremi, la decodifica su tre livelli (formula, lettura in italiano, intuizione), dimostrazioni passo per passo e figure SVG con cursori e punti trascinabili. Le formule sono rese con KaTeX e i diagrammi con Mermaid. Dimostrazioni ed esercizi restano coperti finché non hai provato. Se la nota contiene un errore, la nota viva lo segnala e prepara la correzione da copiare in Obsidian.
+From an Obsidian note, Sinapsi writes an interactive handout made of validated blocks:
 
-### Ripasso con FSRS-5
+- definitions and theorems;
+- a three-level decoding (formula, plain-language reading, intuition);
+- step-by-step proofs;
+- SVG figures with sliders and draggable points.
 
-Ripasso spaziato con `ts-fsrs`. La probabilità di ricordo è calcolata con tempo frazionario, così cambia nel corso della giornata. Per ogni concetto l'AI prepara diverse varianti di domanda: risposta aperta, scelta multipla, vero/falso, riordino dei passaggi, completamento, accoppiamento, controesempio, stima, trova l'errore, grafico, «Spiegalo tu». Prima di rispondere dichiari quanto sei sicuro: una risposta sbagliata data con molta sicurezza segnala una possibile misconcezione.
+Formulas are rendered with KaTeX and diagrams with Mermaid. Proofs and exercises stay hidden until you have made an attempt. If the note contains a mistake, the living note flags it and prepares the fix for you to paste into Obsidian.
 
-### Pratica e simulazione d'esame
+### Review with FSRS-5
 
-- **Allenamento.** Esercizi su al massimo quattro concetti, con una scala di sei indizi (dall'attenzione alla soluzione) che si sblocca solo dopo un tentativo.
-- **Simulazione d'esame.** A tempo, senza aiuti, con voto in trentesimi. Si può svolgere anche su carta: fotografi il foglio con l'iPhone (Continuity Camera), la correzione legge le formule e tu ti autovaluti.
+Spaced repetition with `ts-fsrs`. Recall probability uses fractional days, so it changes over the day. For each concept the AI prepares several question variants:
 
-### Registro lezioni e tutor di Sinapsi
+- open answer, multiple choice, true/false;
+- step ordering, cloze, matching;
+- counterexample, estimate, spot the error, graph;
+- "Spiegalo tu" (explain it yourself).
 
-Il Registro raccoglie le lezioni del corso. Le lezioni e i concetti di ciascuna arrivano dal tutor delle lezioni del vault (`.antigravity/tutor`, letto e mai modificato). La copertura e la padronanza invece le calcola Sinapsi, solo dai tuoi ripassi e dalle tue pratiche. Ogni concetto della lezione risulta in uno di questi stati:
+Before answering you state how sure you are, and a confident wrong answer flags a possible misconception.
 
-- interiorizzato;
-- in corso;
+### Practice and exam simulation
+
+- **Training.** Problems on up to four concepts, with a six-rung hint ladder (from "attention" to "worked step"). Hints unlock only after an attempt and after you say where you are stuck.
+- **Exam simulation.** Timed, no help, graded out of 30. It can also be done on paper: photograph your sheet with your iPhone (Continuity Camera), the grader reads the formulas, and you self-assess.
+
+### Lesson log and Sinapsi's own tutor
+
+The Registro (lesson log) collects your course lessons. The lessons and the concepts each one introduced come from the lesson tutor in the vault (`.antigravity/tutor`, read and never modified). Coverage and mastery, however, are computed by Sinapsi alone, from your reviews and practice.
+
+Each lesson concept is in one of these states:
+
+- internalised;
+- in progress;
 - fragile;
-- mai studiato;
-- da estrarre (con un bottone per estrarre i concetti della nota);
-- senza nota.
+- never studied;
+- to extract (with a button to extract the note's concepts);
+- no note.
 
-### Ritmo di studio
+### Study pacing
 
-Due opzioni facoltative, spente per impostazione predefinita:
+Two optional settings, both off by default:
 
-- micro-pause di 15 secondi ogni 10 minuti di studio;
-- un limite di durata della sessione (50 minuti, poi 10 di pausa).
+- micro-pauses of 15 seconds every 10 minutes of study;
+- a session length limit (50 minutes, then a 10-minute break).
 
-Valgono per studio, ripasso e pratica e contano solo il tempo con la finestra visibile.
+They apply to study, review and practice, and only count time while the window is visible.
 
-### Dettatura
+### Dictation
 
-In ogni campo di testo si può dettare (anche con ⌥ Spazio). La trascrizione avviene in locale con `mlx_whisper` su Apple Silicon, tramite un piccolo server che tiene il modello caricato.
+You can dictate into any text field (also with ⌥ Space). Transcription runs locally with `mlx_whisper` on Apple Silicon, through a small server that keeps the model loaded.
 
-### Temi
+### Themes
 
-Due temi, **Lavagna** (scuro) e **Trattato** (chiaro), con un interruttore di vetro nelle Impostazioni. Il materiale visivo è Liquid Glass (`@glass-sdk/liquid-glass`) e i contrasti del testo rispettano il livello AA.
+Two themes, **Lavagna** (dark) and **Trattato** (light), with a glass switch in the settings. The visual material is Liquid Glass (`@glass-sdk/liquid-glass`), and text contrast meets WCAG AA.
 
-## Come funziona
+## How it works
 
 ```
-Vault Obsidian (sola lettura) ──► indice delle note ──► estrazione dei concetti (AI)
-                                                              │
-                                    registri JSONL in sola aggiunta (cartella dati)
-                                    proposizioni · catene · ripassi · lezioni · sessioni
-                                                              │
-                       Main process (Node) ◄── IPC tipizzato (src/shared/api.ts) ──► Renderer (React)
+Obsidian vault (read-only) ──► note index ──► concept extraction (AI)
+                                                      │
+                          append-only JSONL ledgers (data folder)
+                          propositions · chains · reviews · lessons · sessions
+                                                      │
+              Main process (Node) ◄── typed IPC (src/shared/api.ts) ──► Renderer (React)
 ```
 
-- **Main process** (`src/main`): vault e watcher, grafo, memoria FSRS, sessioni, pratica, esami, piano, tutor delle lezioni, dettatura, ponte verso i motori AI.
-- **Preload** (`src/preload`): espone al renderer solo i canali dichiarati in `src/shared/api.ts`.
-- **Renderer** (`src/renderer/src`): la shell (`shell/`) e le viste (`lessons/`, `review/`, `practice/`, `session/`, `nota/`, `graph/`, `plan/`).
-- **Dati**: registri `.jsonl` in sola aggiunta. Lo stato (memoria FSRS, grafo, lezioni) si ricostruisce rileggendoli, e ogni payload passa da uno schema Zod.
+- **Main process** (`src/main`): vault and watcher, graph, FSRS memory, sessions, practice, exams, plan, lesson tutor, dictation, and the bridge to the AI engines.
+- **Preload** (`src/preload`): exposes to the renderer only the channels declared in `src/shared/api.ts`.
+- **Renderer** (`src/renderer/src`): the shell (`shell/`) and the views (`lessons/`, `review/`, `practice/`, `session/`, `nota/`, `graph/`, `plan/`).
+- **Data**: append-only `.jsonl` ledgers. State (FSRS memory, graph, lessons) is rebuilt by replaying them, and every payload goes through a Zod schema.
 
-La specifica completa è in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+The full reference is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (in Italian).
 
-## Motori AI
+## AI engines
 
-Sinapsi non usa chiavi API: chiama le CLI già installate e collegate ai tuoi abbonamenti.
+Sinapsi uses no API keys: it calls the command-line tools already installed and signed in with your own subscriptions.
 
-| Motore | CLI | Usato per (predefinito) |
+| Engine | CLI | Used for (default) |
 | --- | --- | --- |
-| Gemini, tramite Antigravity | `agy` | estrazione dei concetti, note vive, domande del Ripasso |
-| Claude, tramite Claude Code | `claude` | tutor di studio e pratica, correzione e foto del foglio |
+| Gemini, through Antigravity | `agy` | concept extraction, living notes, review questions |
+| Claude, through Claude Code | `claude` | study and practice tutor, grading and sheet photos |
 
-Per ogni compito il motore e il modello si cambiano in **Impostazioni → Motori AI**. Se una CLI chiede l'accesso, aprila una volta nel terminale (`agy` o `claude`), completa il login e riapri Sinapsi.
+You can change the engine and model for each task in **Impostazioni → Motori AI**. If a CLI asks you to sign in, run it once in a terminal (`agy` or `claude`), complete the login and reopen Sinapsi.
 
-Facoltativi: `pip install mlx-whisper` per la dettatura e `yt-dlp` per le fonti video.
+Optional: `pip install mlx-whisper` for dictation, and `yt-dlp` for video sources.
 
-## Avvio
+## Getting started
 
-Requisiti: macOS 13 o successivo (Apple Silicon consigliato) e Node.js 20 o superiore.
+Requirements: macOS 13 or later (Apple Silicon recommended) and Node.js 20 or later.
 
 ```bash
 git clone https://github.com/andrevvuuuu/sinapsi.git
@@ -121,47 +141,47 @@ npm install
 npm run dev
 ```
 
-Il vault predefinito è `~/Obsidian Vault`; si cambia dalle Impostazioni.
+The default vault is `~/Obsidian Vault`; you can change it in the settings.
 
-### Creare l'app
+### Building the app
 
 ```bash
-npm run build:unpack   # dist/mac-arm64/Sinapsi.app, senza installer
-npm run dist           # .app e .dmg in dist/
+npm run build:unpack   # dist/mac-arm64/Sinapsi.app, no installer
+npm run dist           # .app and .dmg in dist/
 ```
 
-L'app non è firmata con un Developer ID: la prima volta aprila con clic destro → Apri.
+The app is not signed with a Developer ID: the first time, open it with right-click → Open.
 
-## Sviluppo
+## Development
 
 ```bash
-npm test            # test unitari (Vitest)
-npm run typecheck   # TypeScript, main e renderer
+npm test            # unit tests (Vitest)
+npm run typecheck   # TypeScript, main and renderer
 npm run lint        # ESLint
-npm run test:e2e    # end-to-end con Playwright sull'app Electron
+npm run test:e2e    # end-to-end tests with Playwright on the Electron app
 ```
 
-Alcuni test unitari falliscono già sul ramo principale, soprattutto sui moduli in dismissione (notebook e vecchia Home). Prima di unire una modifica, confronta i fallimenti con quelli del ramo principale invece di aspettarti zero.
+Some unit tests already fail on the main branch, mostly in modules being phased out (notebook and the old Home). Before merging a change, compare its failures with those on the main branch rather than expecting zero.
 
-### Variabili d'ambiente
+### Environment variables
 
-| Variabile | Effetto |
+| Variable | Effect |
 | --- | --- |
-| `SINAPSI_DATA` | cartella dati alternativa (predefinita: `~/Library/Application Support/Sinapsi`); serve anche a isolare le istanze di test |
-| `SINAPSI_VAULT` | percorso del vault, al posto di quello delle impostazioni |
-| `SINAPSI_FAKE_EXTRACT`, `SINAPSI_FAKE_NOTE`, `SINAPSI_FAKE_REVIEW`, `SINAPSI_FAKE_TEACHER`, `SINAPSI_FAKE_PRACTICE`, `SINAPSI_FAKE_MEDIA` | con `1`, sostituiscono il motore AI o i media di quel modulo con risposte finte deterministiche, per lavorare offline e nei test |
+| `SINAPSI_DATA` | alternative data folder (default `~/Library/Application Support/Sinapsi`); also used to isolate test instances |
+| `SINAPSI_VAULT` | vault path, overriding the one in the settings |
+| `SINAPSI_FAKE_EXTRACT`, `SINAPSI_FAKE_NOTE`, `SINAPSI_FAKE_REVIEW`, `SINAPSI_FAKE_TEACHER`, `SINAPSI_FAKE_PRACTICE`, `SINAPSI_FAKE_MEDIA` | set to `1` to replace that module's AI engine or media with deterministic fake responses, for offline work and tests |
 
-### Regole del codice
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the code rules.
 
-1. Non scrivere mai nel vault: i dati prodotti vanno nella cartella dati.
-2. I registri `.jsonl` sono in sola aggiunta: un cambiamento è un nuovo evento, non una riga modificata.
-3. Ogni payload tra main, renderer e risposte AI passa da uno schema Zod.
-4. Il renderer non importa moduli di Node: le operazioni di sistema passano dai canali di `src/shared/api.ts`.
-5. Commit in stile [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`…).
+## Documentation
 
-## Documentazione
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): architecture and data flows
+- [`docs/design.md`](docs/design.md): the original design
+- [`docs/ricerca/il-mio-metodo.md`](docs/ricerca/il-mio-metodo.md): the study method behind the app
+- [`reports/ui-reference/STYLE.md`](reports/ui-reference/STYLE.md): the interface style
 
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): architettura e flussi dei dati
-- [`docs/design.md`](docs/design.md): il progetto iniziale
-- [`docs/ricerca/il-mio-metodo.md`](docs/ricerca/il-mio-metodo.md): il metodo di studio su cui si basa l'app
-- [`reports/ui-reference/STYLE.md`](reports/ui-reference/STYLE.md): lo stile dell'interfaccia
+The documents in `docs/` are in Italian.
+
+## Security
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
