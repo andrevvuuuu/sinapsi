@@ -56,6 +56,15 @@ function api(state?: PracticeState) {
 }
 
 describe('PracticeSetup', () => {
+  it('does not allow a fifth selected concept in training', async () => {
+    const { a } = api()
+    a.practice.catalog.mockResolvedValue({ ...catalog, suggested: [...catalog.suggested, { id: 'n_x', name: 'Quinto concetto', why: 'mai praticato' }] })
+    window.sinapsi = a as never
+    render(<PracticeSetup initial={{ conceptIds: ['n_l', 'n_r', 'n_f', 'n_w'] }} onBack={vi.fn()} onStarted={vi.fn()} />)
+    const fifth = await screen.findByRole('button', { name: /Quinto concetto/ })
+    expect((fifth as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText(/4\/4 concetti/)).toBeTruthy()
+  })
   it('pre-selects the two most urgent suggestions and shows why the others are suggested', async () => {
     api()
     render(<PracticeSetup onBack={vi.fn()} onStarted={vi.fn()} />)

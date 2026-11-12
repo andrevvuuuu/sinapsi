@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { matchConcepts } from '../../../shared/practice-match'
-import type { Catalog } from '../../../shared/practice-types'
+import { PRACTICE_MAX_CONCEPTS, type Catalog } from '../../../shared/practice-types'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
@@ -47,11 +47,23 @@ export function PracticeSetup({
   const dictation = useDictation({ target: freeField, value: free, onChange: setFree })
   const dictating = dictation.state !== 'idle'
   const minutes = preset === 'custom' ? custom : Number(preset)
+  const changeMode = (next: 'train' | 'exam'): void => {
+    if (next === 'train' && concepts.size > PRACTICE_MAX_CONCEPTS) {
+      setConcepts(new Set([...concepts].slice(0, PRACTICE_MAX_CONCEPTS)))
+      setToast('In un allenamento puoi scegliere al massimo 4 concetti.')
+    }
+    setMode(next)
+  }
 
   const applyText = (cat: Catalog, raw: string, picked: Set<string>): Set<string> => {
     const hits = matchConcepts(cat, raw)
     const next = new Set(picked)
     hits.forEach((id) => next.add(id))
+    // A training keeps at most 4 concepts, also when the text names more.
+    if (mode === 'train' && next.size > PRACTICE_MAX_CONCEPTS) {
+      setToast(`Trovati più concetti per «${raw}»: in un allenamento ne tengo al massimo 4. Cambiali con la ×.`)
+      return new Set([...next].slice(0, PRACTICE_MAX_CONCEPTS))
+    }
     setToast(
       hits.length
         ? `${hits.length === 1 ? 'Trovato 1 concetto' : `Trovati ${hits.length} concetti`} per «${raw}»: ${hits.length === 1 ? 'aggiunto' : 'aggiunti'}. Toglili con la ×.`
@@ -68,10 +80,18 @@ export function PracticeSetup({
       let picked = new Set(
         initial ? initial.conceptIds : cat.suggested.slice(0, 2).map((x) => x.id)
       )
+      if ((initial?.exam ? 'exam' : 'train') === 'train' && picked.size > PRACTICE_MAX_CONCEPTS) {
+        picked = new Set([...picked].slice(0, PRACTICE_MAX_CONCEPTS))
+        setToast('In un allenamento puoi scegliere al massimo 4 concetti.')
+      }
       const text = initialText.trim()
       if (text) {
         picked = applyText(cat, text, picked)
         if (!matchConcepts(cat, text).length) setFree(text)
+      }
+      if ((initial?.exam ? 'exam' : 'train') === 'train' && picked.size > PRACTICE_MAX_CONCEPTS) {
+        picked = new Set([...picked].slice(0, PRACTICE_MAX_CONCEPTS))
+        setToast('In un allenamento puoi scegliere al massimo 4 concetti.')
       }
       setConcepts(picked)
       go.current?.focus()
@@ -181,7 +201,8 @@ export function PracticeSetup({
                         key={x.id}
                         type="button"
                         className="mt-chip"
-                        onClick={() => setConcepts((p) => new Set([...p, x.id]))}
+                        disabled={mode === 'train' && concepts.size >= PRACTICE_MAX_CONCEPTS}
+                        onClick={() => setConcepts((p) => p.size >= PRACTICE_MAX_CONCEPTS && mode === 'train' ? p : new Set([...p, x.id]))}
                       >
                         {x.name}
                         <small>{x.why}</small>
@@ -198,6 +219,7 @@ export function PracticeSetup({
                   )}
                 </div>
               </div>
+              {mode === 'train' && <p className="mt-hint">{concepts.size}/{PRACTICE_MAX_CONCEPTS} concetti · In un allenamento al massimo 4 concetti.</p>}
               <div className="mt-toast" role="status">
                 {toast}
               </div>
@@ -214,11 +236,11 @@ export function PracticeSetup({
                     role="radio"
                     aria-checked={mode === m}
                     className={'mode' + (m === 'exam' ? ' exam' : '')}
-                    onClick={() => setMode(m)}
+                    onClick={() => changeMode(m)}
                     onKeyDown={(e) => {
                       if (e.key.startsWith('Arrow')) {
                         e.preventDefault()
-                        setMode(mode === 'train' ? 'exam' : 'train')
+                        changeMode(mode === 'train' ? 'exam' : 'train')
                       }
                     }}
                   >
@@ -348,7 +370,8 @@ export function PracticeSetup({
           sources={sources}
           onClose={() => setDialog(false)}
           onConfirm={(c, s) => {
-            setConcepts(c)
+            setConcepts(mode === 'train' ? new Set([...c].slice(0, PRACTICE_MAX_CONCEPTS)) : c)
+            if (mode === 'train' && c.size > PRACTICE_MAX_CONCEPTS) setToast('In un allenamento puoi scegliere al massimo 4 concetti.')
             setSources(s)
             setDialog(false)
           }}

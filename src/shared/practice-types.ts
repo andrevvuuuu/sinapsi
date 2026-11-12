@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { MISSES } from './practice-protocol'
+export const PRACTICE_MAX_CONCEPTS = 4
 
 /** What a practice session is about: concepts from the graph, notebook sources, and/or Andrea's own words. */
 export const MaterialSchema = z.object({

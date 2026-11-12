@@ -4,6 +4,7 @@ import type { Exercise } from '../../shared/exercise-schema'
 import type { Concept, GraphData } from '../../shared/graph-types'
 import { proposeGrade, type ExerciseType, type Grade, type Memory, type ReviewLine } from '../../shared/memory-types'
 import type { VaultIndex } from '../../shared/vault-types'
+import { PACER_EXERCISE_TYPES, type PacerType } from '../../shared/lesson-types'
 import { memoryOf, previewIntervals } from './fsrs'
 import { buildExplainPrompt, explainReplySchema, MAX_QUESTIONS, questionsAsked, type ExplainReply, type ExplainTurn } from './explain'
 import { buildGradePrompt, GradeSchema } from './grade-prompt'
@@ -25,7 +26,7 @@ export type GradeResult = { verdict: 'ok' | 'partial' | 'wrong'; feedback: strin
 /** A "Spiegalo tu" turn: the picky student asks for the missing step, or gives the verdict. */
 export type ExplainResult = { kind: 'question'; question: string } | ({ kind: 'verdict' } & GradeResult)
 export type ReviewService = {
-  plan(opts?: { conceptIds?: string[]; weakest?: boolean }): Promise<ReviewPlan>
+  plan(opts?: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean }): Promise<ReviewPlan>
   prepare(notePath: string): Promise<void>
   grade(req: { conceptId: string; exercise: Exercise; answer: string; confidence: number }): Promise<GradeResult>
   explain(req: { conceptId: string; exercise: Exercise; turns: ExplainTurn[]; confidence: number }): Promise<ExplainResult>
@@ -59,6 +60,7 @@ export function createReviewService(deps: {
   vault: () => Promise<VaultIndex | null>
   readNote: (path: string) => Promise<string>
   settings: () => Promise<{ reviewSessionSize: number; exerciseTypes: ExerciseType[] }>
+  pacerOf?: () => Promise<Map<string, PacerType>>
   now?: () => number
   workDir: string
 }): ReviewService {
@@ -70,12 +72,12 @@ export function createReviewService(deps: {
   // Plans run their variant check one after the other: the second sees what the first generated.
   let gate: Promise<unknown> = Promise.resolve()
   function ensureVariants(concepts: Concept[], allowed: Set<ExerciseType>, index: VaultIndex | null): Promise<void> {
-    const run = gate.then(() => generateMissing(concepts, allowed, index))
+    const run = gate.then(async () => generateMissing(concepts, allowed, index, (await deps.pacerOf?.()) ?? new Map()))
     gate = run.catch(() => undefined)
     return run
   }
 
-  async function generateMissing(concepts: Concept[], allowed: Set<ExerciseType>, index: VaultIndex | null): Promise<void> {
+  async function generateMissing(concepts: Concept[], allowed: Set<ExerciseType>, index: VaultIndex | null, pacers: Map<string, PacerType>): Promise<void> {
     const [have, checked] = await Promise.all([deps.variants.read(), allowed.has('explain') ? deps.variants.explainChecked() : new Set<string>()])
     const typesKey = [...allowed].sort().join(',')
     const general: ExerciseType[] = [...allowed].filter((t) => t !== 'explain')
@@ -105,8 +107,8 @@ export function createReviewService(deps: {
         const title = index?.notes.find((n) => n.path === notePath)?.title ?? notePath.split('/').pop()!.replace(/\.md$/, '')
         const r = await deps.bridge.ask({
           task: 'variants',
-          prompt: buildVariantsPrompt({ noteTitle: title, noteText: text, concepts: cs, types }),
-          schema: variantsReplySchema(new Set(cs.map((c) => c.id)), now),
+          prompt: buildVariantsPrompt({ noteTitle: title, noteText: text, concepts: cs, types, depth: cs.length > 0 && cs.every((c) => ['C', 'A'].includes(pacers.get(c.id) ?? '')) }),
+          schema: variantsReplySchema(new Set(cs.map((c) => c.id)), now, new Set(types)),
           timeoutMs: VARIANTS_TIMEOUT,
           cwd: deps.workDir
         })
@@ -136,15 +138,16 @@ export function createReviewService(deps: {
       const concepts = g.concepts.filter((c) => c.birth === notePath)
       if (concepts.length) await ensureVariants(concepts, new Set(settings.exerciseTypes), index)
     },
-    async plan(opts = {}) {
-      const [g, reviews, settings, index] = await Promise.all([deps.graph(), deps.memory.read(), deps.settings(), deps.vault()])
+    async plan(opts: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean } = {}) {
+      const [g, reviews, settings, index, pacers] = await Promise.all([deps.graph(), deps.memory.read(), deps.settings(), deps.vault(), deps.pacerOf?.() ?? Promise.resolve(new Map<string, PacerType>())])
       const t = now()
       const mem = memoryOf(reviews, t)
       const byId = new Map(g.concepts.map((c) => [c.id, c]))
       const R = (id: string): number => mem.get(id)?.R ?? -1
       const dueIds = g.concepts.filter((c) => (mem.get(c.id)?.due ?? Infinity) <= t).map((c) => c.id)
       let chosen: Concept[]
-      if (opts.conceptIds) chosen = opts.conceptIds.map((id) => byId.get(id)).filter((c): c is Concept => !!c)
+      if (opts.misconceptions) chosen = g.concepts.filter((c) => mem.get(c.id)?.misconception).sort((a, b) => R(a.id) - R(b.id)).slice(0, settings.reviewSessionSize)
+      else if (opts.conceptIds) chosen = opts.conceptIds.map((id) => byId.get(id)).filter((c): c is Concept => !!c)
       else if (opts.weakest) {
         const reviewed = g.concepts.filter((c) => mem.has(c.id)).sort((a, b) => R(a.id) - R(b.id))
         const fresh = g.concepts.filter((c) => !mem.has(c.id)).sort((a, b) => a.depth - b.depth)
@@ -156,7 +159,19 @@ export function createReviewService(deps: {
       }
 
       const allowed = new Set(settings.exerciseTypes.length ? settings.exerciseTypes : (['open'] as ExerciseType[]))
-      await ensureVariants(chosen, allowed, index)
+      const allowedFor = (c: Concept): Set<ExerciseType> => {
+        const pacer = pacers.get(c.id)
+        if (!pacer) return allowed
+        const intersection = [...allowed].filter((t) => PACER_EXERCISE_TYPES[pacer].includes(t))
+        return intersection.length ? new Set(intersection) : allowed
+      }
+      const groups = new Map<string, { types: Set<ExerciseType>; concepts: Concept[] }>()
+      for (const c of chosen) {
+        const types = allowedFor(c), key = [...types].sort().join(',')
+        const group = groups.get(key) ?? { types, concepts: [] }
+        group.concepts.push(c); groups.set(key, group)
+      }
+      await Promise.all([...groups.values()].map((group) => ensureVariants(group.concepts, group.types, index)))
       const variants = await deps.variants.read()
       const lastAsked = new Map<string, number>()
       for (const r of reviews) if (r.variantId) lastAsked.set(r.variantId, Math.max(lastAsked.get(r.variantId) ?? 0, r.at))
@@ -165,7 +180,8 @@ export function createReviewService(deps: {
       const explainCap = Math.max(1, Math.floor(chosen.length / EXPLAIN_SHARE))
       let explains = 0
       const items: ReviewItem[] = chosen.map((c) => {
-        const all = variants.filter((v) => v.conceptId === c.id && allowed.has(v.exercise.type))
+        const allowedHere = allowedFor(c)
+        const all = variants.filter((v) => v.conceptId === c.id && allowedHere.has(v.exercise.type))
         const others = all.filter((v) => v.exercise.type !== 'explain')
         const mine = explains >= explainCap && others.length ? others : all
         const lastType = [...reviews].filter((r) => r.conceptId === c.id && r.type).sort((a, b) => b.at - a.at)[0]?.type

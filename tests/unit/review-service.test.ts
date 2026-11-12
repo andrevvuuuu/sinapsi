@@ -42,7 +42,7 @@ beforeEach(async () => {
   vars = variantsStore(dir)
   types = [...EXERCISE_TYPES]
 })
-function setup(ask?: ReturnType<typeof vi.fn>, now = () => T0 + 10 * DAY, size = 12) {
+function setup(ask?: ReturnType<typeof vi.fn>, now = () => T0 + 10 * DAY, size = 12, pacerOf?: () => Promise<Map<string, 'P' | 'A' | 'C' | 'E' | 'R'>>) {
   const bridge = {
     ask:
       ask ??
@@ -60,6 +60,7 @@ function setup(ask?: ReturnType<typeof vi.fn>, now = () => T0 + 10 * DAY, size =
     vault: async () => index,
     readNote: async () => 'testo della nota',
     settings: async () => ({ reviewSessionSize: size, exerciseTypes: types as never }),
+    pacerOf,
     now,
     workDir: join(dir, 'w')
   })
@@ -121,6 +122,20 @@ describe('plan', () => {
     const { svc } = setup()
     expect((await svc.plan({ conceptIds: ['b2'] })).items.map((i) => i.conceptId)).toEqual(['b2'])
     expect((await svc.plan({ weakest: true })).items[0].conceptId).toBe('b1')
+  })
+  it('uses only the R PACER intersection for generation and selection', async () => {
+    const { svc, ask } = setup(undefined, undefined, 12, async () => new Map([['a1', 'R']]))
+    const plan = await svc.plan({ conceptIds: ['a1'] })
+    expect(ask.mock.calls.filter((c) => c[0].task === 'variants')[0][0].prompt).toContain('"fill"')
+    expect(['mc', 'truefalse', 'open']).toContain(plan.items[0].exercise.type)
+    expect(plan.items[0].exercise.type).not.toBe('explain')
+  })
+  it('limits Error Clinic to active misconceptions, weakest first and session size', async () => {
+    for (const id of ['a1', 'a2', 'a3']) await review(id, T0, 1, { confidence: 90, correct: false, misconception: true })
+    const { svc } = setup(undefined, undefined, 2)
+    const plan = await svc.plan({ misconceptions: true })
+    expect(plan.items).toHaveLength(2)
+    expect(plan.items.every((item) => ['a1', 'a2'].includes(item.conceptId))).toBe(true)
   })
 })
 

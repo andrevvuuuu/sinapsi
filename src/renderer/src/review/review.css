@@ -800,3 +800,9 @@
   background: linear-gradient(to top, var(--bg), color-mix(in srgb, var(--bg) 60%, transparent) 50%, transparent);
   pointer-events: none;
 }
+.rv-confidence { padding: var(--s-4); margin: var(--s-5) 0; border-radius: var(--r-lg); background: var(--faint); }
+.rv-confidence h2 { margin: 0 0 var(--s-2); font: var(--font-display); }
+.rv-confidence p { margin: var(--s-2) 0; color: var(--muted); }
+.rv-confidence-bars { display: flex; gap: var(--s-2); height: 8px; margin: var(--s-3) 0; }
+.rv-confidence-bars span, .rv-confidence-bars i { display: block; height: 8px; border-radius: var(--r-pill); background: var(--accent); }
+.rv-confidence-bars i { background: var(--good); }

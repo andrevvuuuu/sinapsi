@@ -2,6 +2,11 @@ import { z } from 'zod'
 
 export const PacerTypeSchema = z.enum(['P', 'A', 'C', 'E', 'R'])
 export type PacerType = z.infer<typeof PacerTypeSchema>
+import type { ExerciseType } from './memory-types'
+export const PACER_EXERCISE_TYPES: Record<PacerType, ExerciseType[]> = {
+  R: ['fill', 'mc', 'truefalse', 'match', 'open'], E: ['fill', 'mc', 'truefalse', 'match', 'open'],
+  C: ['explain', 'counterexample', 'spoterror', 'open', 'graph'], A: ['explain', 'counterexample', 'open'], P: ['open', 'order', 'spoterror', 'estimate']
+}
 export const MasteryLevelSchema = z.enum(['known', 'partial', 'unknown'])
 export type MasteryLevel = z.infer<typeof MasteryLevelSchema>
 export const DigestStepSchema = z.enum(['digest', 'recall24h', 'weekly'])

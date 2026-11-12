@@ -9,6 +9,7 @@ import { RichText } from '../session/RichText'
 import { MODE, TYPE_LABEL } from './labels'
 import { ExerciseView, type ExerciseState } from './ExerciseView'
 import './review.css'
+import { ConfidencePanel } from './ConfidencePanel'
 
 const GRADES: [Grade, string][] = [
   [1, 'Di nuovo'],
@@ -55,6 +56,7 @@ export function ReviewView({
   const api = window.sinapsi
   const [items, setItems] = useState<ReviewItem[] | null>(null)
   const [due, setDue] = useState(0)
+  const [clinicEmpty, setClinicEmpty] = useState(false)
   const [types, setTypes] = useState<ExerciseType[]>([...EXERCISE_TYPES])
   const [i, setI] = useState(-1)
   const [state, setState] = useState<ExerciseState>({ answer: '', correct: null, ready: false })
@@ -77,7 +79,7 @@ export function ReviewView({
   const [endedAt, setEndedAt] = useState<number | null>(null)
 
   const load = useCallback(
-    async (opts?: { conceptIds?: string[]; weakest?: boolean }, reset = true) => {
+    async (opts?: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean }, reset = true) => {
       if (reset) {
         setItems(null)
         setError(null)
@@ -100,6 +102,7 @@ export function ReviewView({
         }
         const p = await api.review.plan(o)
         setItems(p.items)
+        setClinicEmpty(!!opts?.misconceptions && p.items.length === 0)
         setDue(p.due)
         setI(-1)
         setResults([])
@@ -325,7 +328,7 @@ export function ReviewView({
                   <h1>Niente da ripassare oggi.</h1>
                   <p>
                     {error ??
-                      'Tutto quello che hai studiato è ancora nitido. I concetti arrivano dalle note che apri e studi.'}
+                      (clinicEmpty ? 'Non ci sono misconception attive da ripassare.' : 'Tutto quello che hai studiato è ancora nitido. I concetti arrivano dalle note che apri e studi.')}
                   </p>
                   <div className="rv-acts">
                     <button
@@ -339,6 +342,7 @@ export function ReviewView({
                       Torna alla home
                     </button>
                   </div>
+                  <ConfidencePanel onClinic={() => void load({ misconceptions: true })} />
                 </>
               ) : (
                 <>
@@ -364,6 +368,7 @@ export function ReviewView({
                       <span>mescolate apposta</span>
                     </div>
                   </div>
+                  <ConfidencePanel onClinic={() => void load({ misconceptions: true })} />
                   <ul className="rv-list" aria-label="Da ripassare">
                     {items.map((it) => (
                       <li key={it.conceptId}>

@@ -57,3 +57,9 @@ it('chooses due concepts only and limits practice to lesson concepts', () => {
     r.kind === 'practice' && r.material.conceptIds.every((x) => base.conceptIds.includes(x))
   ).toBe(true)
 })
+it('keeps the four weakest concepts for practice, including a pending digestion', () => {
+  const entry = { ...base, conceptIds: ['a', 'b', 'c', 'd', 'e', 'f'] }
+  const memory = Object.fromEntries(entry.conceptIds.map((id, i) => [id, { conceptId: id, state: 'debole' as const, R: i / 10, due: null, reps: 1, lapses: 0, lastAt: null, misconception: false }]))
+  const result = resolveLessonLaunch(entry, memory, 100, 'practice')
+  expect(result.kind === 'practice' && result.material.conceptIds).toEqual(['a', 'b', 'c', 'd'])
+})

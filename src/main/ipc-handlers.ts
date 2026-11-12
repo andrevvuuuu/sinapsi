@@ -2,6 +2,7 @@ import type { ReviewService } from './memory/review'
 import { MAX_QUESTIONS } from './memory/explain'
 import { ExerciseSchema } from '../shared/exercise-schema'
 import { EXERCISE_TYPES, ReviewLineSchema } from '../shared/memory-types'
+import { PRACTICE_MAX_CONCEPTS } from '../shared/practice-types'
 import type { Extractor } from './graph/jobs'
 import type { NoteGenerator } from './notes/generator'
 import { access } from 'node:fs/promises'
@@ -346,7 +347,8 @@ export function makeGraphHandlers(
 const PlanOpts = z
   .object({
     conceptIds: z.array(z.string().min(1).max(64)).max(200).optional(),
-    weakest: z.boolean().optional()
+    weakest: z.boolean().optional(),
+    misconceptions: z.boolean().optional()
   })
   .strict()
 const GradeReq = z.object({
@@ -496,7 +498,11 @@ export function makePracticeHandlers(d: {
 }) {
   return {
     catalog: () => d.catalog(),
-    create: async (m: unknown) => d.runner.create(MaterialInput.parse(m) as Material),
+    create: async (m: unknown) => {
+      const material = MaterialInput.parse(m) as Material
+      if (material.conceptIds.length > PRACTICE_MAX_CONCEPTS) throw new Error('In un allenamento al massimo 4 concetti: togliene qualcuno')
+      return d.runner.create(material)
+    },
     submit: async (id: unknown, s: unknown) =>
       d.runner.submit(Id.parse(id), SubmissionSchema.parse(s)),
     get: async (id: unknown) => d.exam.get(Id.parse(id)),

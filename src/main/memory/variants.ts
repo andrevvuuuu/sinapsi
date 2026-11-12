@@ -10,7 +10,7 @@ import { appendJsonl, readJsonl } from '../store/jsonl'
 const Reply = z.object({ concepts: z.array(z.object({ id: z.string(), exercises: z.array(z.unknown()) })) })
 
 /** Lenient: each exercise is checked alone; ids and times are set here, never by the model. */
-export function parseVariants(raw: unknown, conceptIds: Set<string>, now: () => number): { variants: VariantLine[]; dropped: number } {
+export function parseVariants(raw: unknown, conceptIds: Set<string>, now: () => number, allowed?: Set<ExerciseType>): { variants: VariantLine[]; dropped: number } {
   const r = Reply.parse(raw)
   let dropped = 0
   const variants: VariantLine[] = []
@@ -23,7 +23,7 @@ export function parseVariants(raw: unknown, conceptIds: Set<string>, now: () => 
     for (const e of c.exercises) {
       const p = ExerciseSchema.safeParse(e)
       // One "Spiegalo tu" per concept: it is long, and the rotation must not keep landing on it.
-      if (!p.success || (p.data.type === 'explain' && explains++ > 0)) {
+      if (!p.success || (allowed && !allowed.has(p.data.type)) || (p.data.type === 'explain' && explains++ > 0)) {
         dropped++
         continue
       }
@@ -34,10 +34,10 @@ export function parseVariants(raw: unknown, conceptIds: Set<string>, now: () => 
 }
 
 /** For bridge.ask: a reply without a concepts list is a schema error (one retry), the rest is lenient. */
-export const variantsReplySchema = (conceptIds: Set<string>, now: () => number): z.ZodType<{ variants: VariantLine[]; dropped: number }> =>
+export const variantsReplySchema = (conceptIds: Set<string>, now: () => number, allowed?: Set<ExerciseType>): z.ZodType<{ variants: VariantLine[]; dropped: number }> =>
   z.unknown().transform((raw, ctx) => {
     try {
-      return parseVariants(raw, conceptIds, now)
+      return parseVariants(raw, conceptIds, now, allowed)
     } catch (e) {
       ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message.slice(0, 300) : String(e) })
       return z.NEVER
@@ -64,7 +64,7 @@ const FORMAT: Record<ExerciseType, string> = {
 
 const EXPLAIN_RULE = `- "explain" (spiegalo tu: Andrea spiega a libro chiuso, a voce o per iscritto, e Claude lo corregge confrontando con la nota) solo per i concetti che hanno una dimostrazione da ricostruire o che sono una definizione importante, mai per fatti minori o calcoli; al massimo uno per concetto. Il "prompt" chiede di ricostruire la dimostrazione o di spiegare il concetto come a un compagno ("A libro chiuso: ricostruisci la dimostrazione di…", "Spiega a un compagno che cos'è… e perché serve…"); "answer" elenca i passaggi chiave, con le ipotesi, nell'ordine della nota.`
 
-export function buildVariantsPrompt(input: { noteTitle: string; noteText: string; concepts: Concept[]; types?: ExerciseType[] }): string {
+export function buildVariantsPrompt(input: { noteTitle: string; noteText: string; concepts: Concept[]; types?: ExerciseType[]; depth?: boolean }): string {
   const types = input.types?.length ? input.types : [...EXERCISE_TYPES]
   // Concepts that already have their other variants only need the check for a "Spiegalo tu".
   const explainOnly = types.length === 1 && types[0] === 'explain'
@@ -77,6 +77,7 @@ ${
     : "- Per ogni concetto qui sotto: 4 o 5 esercizi, di tipi diversi quando possibile, ognuno da un'angolazione diversa: richiamo (farlo venire in mente), distinzione (non confonderlo con concetti vicini), composizione (usarlo in un ragionamento o in un calcolo)."
 }${types.includes('explain') ? `\n${EXPLAIN_RULE}` : ''}
 - Mai la stessa domanda riformulata: ogni esercizio deve chiedere qualcosa di diverso. Mai rivelare la risposta nel testo della domanda.
+${input.depth ? '- Punta su catene causa-effetto, condizioni in cui il risultato non vale e differenze con concetti simili; evita il puro richiamo mnemonico.' : ''}
 - "answer" è la risposta di riferimento, completa e precisa, mostrata dopo che Andrea ha risposto.
 - Usa "graph" solo se il concetto riguarda la forma di una funzione (tangenti, crescenza, massimi…): la figura segue il formato delle figure delle note vive e "target" è un'espressione del parametro che vale 0 nel punto giusto.
 - Italiano; matematica in LaTeX con $…$; dentro le stringhe JSON ogni backslash va raddoppiato (\\\\frac).`,

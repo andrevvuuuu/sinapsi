@@ -1,6 +1,7 @@
 import type { LessonEntry } from '../../shared/lesson-types'
 import type { Memory } from '../../shared/memory-types'
 import type { Material } from '../../shared/practice-types'
+import { PRACTICE_MAX_CONCEPTS } from '../../shared/practice-types'
 import { pendingDigest } from './reduce'
 export type LaunchResult =
   | { kind: 'practice'; material: Material }
@@ -14,13 +15,14 @@ export function resolveLessonLaunch(
   sourceText = ''
 ): LaunchResult {
   const ids = [...new Set(entry.conceptIds)]
+  const weakFirst = [...ids].sort((a, b) => (memories[a]?.R ?? -1) - (memories[b]?.R ?? -1))
   const practice = (): LaunchResult =>
     !ids.length && !entry.sourceNote
       ? { kind: 'disabled', reason: 'Collega almeno un concetto o una nota' }
       : {
           kind: 'practice',
           material: {
-            conceptIds: ids,
+            conceptIds: weakFirst.slice(0, PRACTICE_MAX_CONCEPTS),
             sourceIds: [],
             free: sourceText.slice(0, 20000),
             lessonId: entry.id
@@ -37,6 +39,5 @@ export function resolveLessonLaunch(
       : { kind: 'disabled', reason: 'Nessun concetto della lezione è disponibile per il ripasso' }
   if (pendingDigest(entry, now)) return practice()
   if (due.length) return { kind: 'review', conceptIds: due }
-  ids.sort((a, b) => (memories[a]?.R ?? -1) - (memories[b]?.R ?? -1))
   return practice()
 }

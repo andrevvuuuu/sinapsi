@@ -62,6 +62,7 @@ export const CH = {
   voiceStage: 'voice:stage',
   reviewRecord: 'review:record',
   reviewMemory: 'review:memory',
+  reviewCalibration: 'review:calibration',
   reviewIntervals: 'review:intervals',
   reviewSessions: 'review:sessions',
   notebookList: 'notebook:list',
@@ -163,6 +164,7 @@ export interface SinapsiApi {
     plan(opts?: {
       conceptIds?: string[]
       weakest?: boolean
+      misconceptions?: boolean
     }): Promise<import('../main/memory/review').ReviewPlan>
     grade(req: {
       conceptId: string
@@ -184,6 +186,7 @@ export interface SinapsiApi {
       intervals: Record<import('./memory-types').Grade, string>
     }>
     memory(): Promise<Record<string, import('./memory-types').Memory>>
+    calibration(): Promise<Omit<import('./confidence').ConfidenceCalibration, 'confidentErrors'> & { confidentErrors: { conceptId: string; name: string; at: number; confidence: number }[] }>
     intervals(conceptId: string): Promise<Record<import('./memory-types').Grade, string>>
     /** Past Ripasso sittings, newest first. */
     sessions(): Promise<import('../main/memory/history').ReviewSession[]>

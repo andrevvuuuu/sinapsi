@@ -58,6 +58,7 @@ const api: SinapsiApi = {
     explain: (req) => ipcRenderer.invoke(CH.reviewExplain, req),
     record: (r) => ipcRenderer.invoke(CH.reviewRecord, r),
     memory: () => ipcRenderer.invoke(CH.reviewMemory),
+    calibration: () => ipcRenderer.invoke(CH.reviewCalibration),
     intervals: (id) => ipcRenderer.invoke(CH.reviewIntervals, id),
     sessions: () => ipcRenderer.invoke(CH.reviewSessions)
   },

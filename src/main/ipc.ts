@@ -12,6 +12,7 @@ import {
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { CH } from '../shared/api'
+import { confidenceCalibration } from '../shared/confidence'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
@@ -330,6 +331,15 @@ export function registerIpc(): { bridge: Bridge } {
     vault: vaultOrNull,
     readNote: (path) => readFile(path, 'utf8'),
     settings: async () => settings.load(),
+    pacerOf: async () => {
+      const lessons = reduceLessons(await lessonStore(dataDir()).read())
+      const map = new Map<string, { type: import('../shared/lesson-types').PacerType; at: number }>()
+      for (const lesson of lessons) for (const id of lesson.conceptIds) {
+        const current = map.get(id), at = Date.parse(lesson.updatedAt)
+        if (!current || at > current.at) map.set(id, { type: lesson.pacerType, at })
+      }
+      return new Map([...map].map(([id, v]) => [id, v.type]))
+    },
     workDir: join(dataDir(), 'ai-work')
   })
   const fakeVoice = process.env.SINAPSI_FAKE_MEDIA === '1'
@@ -363,6 +373,16 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.reviewExplain, (_e, req) => rh.explain(req))
   ipcMain.handle(CH.reviewRecord, (_e, r) => rh.record(r))
   ipcMain.handle(CH.reviewMemory, () => rh.memory())
+  ipcMain.handle(CH.reviewCalibration, async () => {
+    const [lines, graph, index] = await Promise.all([memoryStore(memoryDir).read(), extractor.graph(), vaultOrNull()])
+    const subject = (id: string): string | null => {
+      const concept = graph.concepts.find((c) => c.id === id)
+      return index?.notes.find((n) => n.path === concept?.birth)?.subject ?? null
+    }
+    const result = confidenceCalibration(lines, subject)
+    const names = new Map(graph.concepts.map((c) => [c.id, c.name]))
+    return { ...result, confidentErrors: result.confidentErrors.map((e) => ({ ...e, name: names.get(e.conceptId) ?? e.conceptId })) }
+  })
   ipcMain.handle(CH.reviewIntervals, (_e, id) => rh.intervals(id))
   ipcMain.handle(CH.reviewSessions, async () =>
     reviewSessions(

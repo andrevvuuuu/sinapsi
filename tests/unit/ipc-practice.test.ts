@@ -41,6 +41,14 @@ describe('practice handlers', () => {
     await h.examSelf(ID, 'e1', 7.5)
     expect(exam.selfGrade).toHaveBeenCalledWith(ID, 'e1', 7.5)
   })
+  it('caps training at four concepts while exams still accept five', async () => {
+    const { h, runner, exam } = setup()
+    const five = { conceptIds: ['a', 'b', 'c', 'd', 'e'], sourceIds: [], free: '' }
+    await expect(h.create(five)).rejects.toThrow('In un allenamento al massimo 4 concetti')
+    expect(runner.create).not.toHaveBeenCalled()
+    await h.examStart(five, 45)
+    expect(exam.start).toHaveBeenCalledWith(five, 45, false)
+  })
   it('routes get and retry by mode, and passes photo bytes', async () => {
     const { h, runner, exam, photo } = setup()
     await h.get(ID)
