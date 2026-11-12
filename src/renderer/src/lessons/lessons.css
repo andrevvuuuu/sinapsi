@@ -1,77 +1,104 @@
-/* Layout & Page Container */
-.lessons{height:100%;overflow-y:auto;padding:var(--s-6) clamp(var(--s-4),3vw,var(--s-7)) 116px;color:var(--ink);background:var(--bg);display:flex;flex-direction:column;gap:var(--s-5);scrollbar-width:thin}
+/* Cabina v2 / Reference Design: Lessons Registry */
+.lessons{height:100%;overflow-y:auto;padding:var(--s-6) clamp(var(--s-4),3.5vw,var(--s-8)) calc(112px + var(--s-5));color:var(--ink);background:var(--bg);display:flex;flex-direction:column;gap:var(--s-5);scrollbar-width:thin}
 .lessons>*{max-width:1180px;width:100%;margin-left:auto;margin-right:auto}
 .lessons h1,.lessons h2,.lessons h3,.lessons p{margin-top:0}
-.lessons h1{font:var(--font-display);font-size:28px;font-weight:var(--fw-medium);letter-spacing:var(--track-title);margin-bottom:2px}
-.lessons h2{font:var(--font-callout);font-size:17px;font-weight:var(--fw-medium);letter-spacing:var(--track-title);margin-bottom:var(--s-1)}
-
-/* Page Header */
+.lessons h1{font:var(--font-display);font-size:26px;font-weight:var(--fw-medium);letter-spacing:var(--track-title);margin-bottom:2px;color:var(--ink)}
+.lessons h2{font:var(--font-callout);font-size:16px;font-weight:var(--fw-medium);letter-spacing:var(--track-title);margin-bottom:var(--s-1);color:var(--ink)}
+.lessons h3{font:var(--font-caption);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted);margin-bottom:var(--s-1)}
 .lessons .lesson-page-header{display:flex;align-items:center;justify-content:space-between;gap:var(--s-4);flex-wrap:wrap;padding-bottom:var(--s-2)}
 .lessons .lesson-page-title-group{display:flex;flex-direction:column}
 .lessons .lesson-page-subtitle{font:var(--font-footnote);color:var(--muted);margin:0}
 .lessons .lesson-page-controls{display:flex;align-items:center;gap:var(--s-3);flex-wrap:wrap}
 .lessons .lesson-filter-select-group{display:inline-flex;align-items:center;gap:var(--s-2);color:var(--muted);font:var(--font-footnote)}
 .lessons .lesson-filter-select-group label{font:var(--font-caption);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted)}
-.lessons .lesson-page-header select,.lessons .lesson-fields input,.lessons .lesson-fields select,.lessons .lesson-fields textarea,.lessons .lesson-detail select,.lessons .lesson-detail textarea{min-height:var(--ctl-sm);border:1px solid var(--ctl-edge);border-radius:var(--r-sm);background:var(--bg);color:var(--ink);padding:0 var(--s-3);font:var(--font-footnote);transition:border-color .15s var(--ease-out)}
-.lessons .lesson-page-header select:focus-visible,.lessons .lesson-fields input:focus-visible,.lessons .lesson-fields select:focus-visible,.lessons .lesson-fields textarea:focus-visible,.lessons .lesson-detail select:focus-visible,.lessons .lesson-detail textarea:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-color:var(--accent)}
+.lessons .lesson-page-header select{min-height:var(--ctl-sm);border:1px solid var(--ctl-edge);border-radius:var(--r-pill);background:color-mix(in srgb,var(--ink) 4%,var(--surface));color:var(--ink);padding:0 var(--s-4);font:var(--font-footnote);transition:border-color .15s var(--ease-out)}
+.lessons .lesson-page-header select:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-color:var(--accent)}
 .lessons .lesson-check{display:inline-flex;align-items:center;gap:var(--s-2);color:var(--ink);font:var(--font-footnote);cursor:pointer;user-select:none}
 .lessons .lesson-check input[type="checkbox"]{accent-color:var(--accent);width:16px;height:16px;border-radius:4px;cursor:pointer}
-
-/* Two-column overview grid: Padronanza (left, wider) | Calendario & Esami (right) */
-.lessons .lessons-overview-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(320px,1fr);gap:var(--s-5);align-items:start}
-.lessons .lessons-side-col{display:flex;flex-direction:column;gap:var(--s-5)}
-
-/* Padronanza delle lezioni (.st-tutor) - Graphite semi-opaque with glowing border and subtle gradient */
-.lessons .st-tutor,.lessons .tc-calendar,.lessons .lesson-exams{background:linear-gradient(180deg,rgba(255,255,255,.03) 0%,transparent 60px) color-mix(in srgb,var(--surface) 92%,transparent);border:1px solid var(--hair);border-radius:var(--r-lg);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 4px 20px rgba(0,0,0,.18);padding:var(--s-4) var(--s-5);display:flex;flex-direction:column;gap:var(--s-4);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
-[data-theme="trattato"] .lessons :is(.st-tutor,.tc-calendar,.lesson-exams){background:linear-gradient(180deg,rgba(255,255,255,.55) 0%,transparent 60px) color-mix(in srgb,var(--surface) 95%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 2px 14px rgba(29,29,31,.05)}
-.lessons .st-tutor-head h2{margin:0 0 2px;font:var(--font-callout);font-size:18px;font-weight:var(--fw-medium);letter-spacing:var(--track-title);color:var(--ink)}
-.lessons .st-tutor-head p{margin:0;font:var(--font-footnote);color:var(--muted)}
-.lessons .st-empty{padding:var(--s-5);border-radius:var(--r-md);background:var(--faint);color:var(--muted);font:var(--font-footnote);text-align:center;margin:0}
-
-/* Course cards (.st-courses & .st-course) - Mastery protagonist with large tabular numbers */
-.lessons .st-courses{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:var(--s-3)}
-.lessons .st-course{background:linear-gradient(180deg,rgba(255,255,255,.02) 0%,transparent 40px) color-mix(in srgb,var(--surface-raised) 92%,transparent);border:1px solid var(--hair);border-radius:var(--r-md);padding:var(--s-4);display:flex;flex-direction:column;gap:var(--s-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.04);transition:border-color .15s var(--ease-out),transform .15s var(--ease-out)}
-.lessons .st-course:hover{border-color:color-mix(in srgb,var(--ink) 22%,transparent);transform:translateY(-1px)}
-[data-theme="trattato"] .lessons .st-course{background:linear-gradient(180deg,rgba(255,255,255,.6) 0%,transparent 40px) var(--surface-raised);box-shadow:inset 0 1px 0 rgba(255,255,255,.8);border-color:var(--hair)}
-.lessons .st-course-top{display:flex;flex-direction:column;gap:3px}
+.lessons .st-mastery-section,.lessons .tc-calendar,.lessons .lesson-exams,.lessons .st-lesson,.lessons .lessons-registry-section{background:linear-gradient(180deg,rgba(255,255,255,.05) 0%,transparent 60px) color-mix(in srgb,var(--surface) 90%,transparent);border:1px solid var(--hair);border-radius:var(--r-lg);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 8px 24px rgba(0,0,0,.2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+[data-theme="trattato"] .lessons :is(.st-mastery-section,.tc-calendar,.lesson-exams,.st-lesson,.lessons-registry-section){background:linear-gradient(180deg,rgba(255,255,255,.7) 0%,transparent 60px) color-mix(in srgb,var(--surface) 95%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 4px 16px rgba(29,29,31,.06);border-color:var(--hair)}
+.lessons .st-mastery-section{padding:var(--s-4) var(--s-5);display:flex;flex-direction:column;gap:var(--s-3)}
+.lessons .st-mastery-header h2{margin:0 0 2px;font:var(--font-callout);font-size:16px;font-weight:var(--fw-medium);letter-spacing:var(--track-title);color:var(--ink)}
+.lessons .st-mastery-header p{margin:0;font:var(--font-footnote);color:var(--muted)}
+.lessons .st-courses{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--s-3)}
+.lessons .st-course{background:linear-gradient(180deg,rgba(255,255,255,.04) 0%,transparent 40px) color-mix(in srgb,var(--surface-raised) 92%,transparent);border:1px solid var(--hair);border-radius:var(--r-md);padding:var(--s-4);display:flex;flex-direction:column;gap:var(--s-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 2px 10px rgba(0,0,0,.1);transition:border-color .15s var(--ease-out),transform .15s var(--ease-out)}
+.lessons .st-course:hover{border-color:color-mix(in srgb,var(--ink) 24%,transparent);transform:translateY(-1px)}
+[data-theme="trattato"] .lessons .st-course{background:linear-gradient(180deg,rgba(255,255,255,.7) 0%,transparent 40px) var(--surface-raised);box-shadow:inset 0 1px 0 rgba(255,255,255,.8);border-color:var(--hair)}
+.lessons .st-course-top{display:flex;flex-direction:column;gap:4px}
 .lessons .st-course-name{margin:0;font:var(--font-caption);text-transform:uppercase;letter-spacing:var(--track-label);color:var(--muted);font-weight:var(--fw-medium)}
-.lessons .st-course-mastery{margin:2px 0 4px;display:flex;align-items:baseline;gap:6px}
-.lessons .st-course-mastery strong{font-size:36px;font-weight:var(--fw-medium);line-height:1;font-variant-numeric:tabular-nums;color:var(--ink);letter-spacing:-.04em}
+.lessons .st-course-mastery-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);margin:2px 0}
+.lessons .st-course-mastery{display:flex;align-items:baseline;gap:4px}
+.lessons .st-course-mastery strong{font-size:34px;font-weight:var(--fw-medium);line-height:1;font-variant-numeric:tabular-nums;color:var(--ink);letter-spacing:-.04em}
 .lessons .st-course-mastery small{font:var(--font-caption);color:var(--muted);text-transform:uppercase;letter-spacing:var(--track-caption);font-weight:var(--fw-medium)}
-.lessons .st-course-meta{margin:2px 0 0;font:var(--font-caption);font-family:var(--mono);color:var(--muted)}
-
-/* Segmented bar for course mastery */
-.lessons .st-bar{display:flex;height:5px;border-radius:var(--r-pill);overflow:hidden;background:var(--faint);gap:2px;margin-top:2px}
-.lessons .st-bar-seg{height:100%;min-width:4px;transition:flex-grow .3s var(--ease-out);border-radius:2px}
-
-/* Legend */
+.lessons .st-course-meta{margin:2px 0 0;font:var(--font-caption);font-family:var(--mono);color:var(--muted);line-height:1.4}
+.lessons .st-bar{display:flex;width:68px;height:6px;border-radius:var(--r-pill);overflow:hidden;background:color-mix(in srgb,var(--ink) 8%,var(--faint));gap:2px}
+.lessons .st-bar-seg{height:100%;min-width:3px;border-radius:2px;transition:flex-grow .3s var(--ease-out)}
+.lessons .st-bar-seg[data-state="interiorizzato"],.lessons .st-legend-dot[data-state="interiorizzato"]{background:var(--good)}
+.lessons .st-bar-seg[data-state="in corso"],.lessons .st-legend-dot[data-state="in corso"]{background:var(--accent)}
+.lessons .st-bar-seg[data-state="fragile"],.lessons .st-legend-dot[data-state="fragile"]{background:var(--warn)}
+.lessons .st-bar-seg[data-state="mai studiato"],.lessons .st-legend-dot[data-state="mai studiato"]{background:color-mix(in srgb,var(--ink) 25%,transparent)}
+.lessons .st-bar-seg[data-state="da estrarre"],.lessons .st-legend-dot[data-state="da estrarre"]{background:var(--surface);border:1px dashed var(--pen)}
+.lessons .st-bar-seg[data-state="scollegato"],.lessons .st-legend-dot[data-state="scollegato"]{background:color-mix(in srgb,var(--ink) 14%,transparent)}
 .lessons .st-legend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:var(--s-1) 0 0;margin:0;list-style:none}
-.lessons .st-legend li{display:inline-flex;align-items:center;gap:6px;font:500 11px/1 var(--mono);letter-spacing:var(--track-caption);text-transform:uppercase}
+.lessons .st-legend li{display:inline-flex;align-items:center;gap:6px;font:500 11px/1 var(--mono);letter-spacing:var(--track-caption);text-transform:uppercase;color:var(--muted)}
 .lessons .st-legend-dot{width:7px;height:7px;border-radius:50%;flex:none}
-
-/* Tutor Lessons list - generous separation */
-.lessons .st-lessons-list{display:flex;flex-direction:column;gap:var(--s-4);margin-top:var(--s-2)}
-.lessons .st-lesson{background:linear-gradient(180deg,rgba(255,255,255,.02) 0%,transparent 40px) color-mix(in srgb,var(--surface-raised) 92%,transparent);border:1px solid var(--hair);border-radius:var(--r-lg);padding:var(--s-4) var(--s-5);display:flex;flex-direction:column;gap:var(--s-3);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 2px 8px rgba(0,0,0,.08);transition:border-color .15s var(--ease-out),transform .15s var(--ease-out)}
+.lessons .lessons-services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:var(--s-4)}
+.lessons .tc-calendar,.lessons .lesson-exams{padding:var(--s-4) var(--s-5);display:flex;flex-direction:column;gap:var(--s-3)}
+.lessons .tc-calendar-head,.lessons .lesson-exams-header{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3)}
+.lessons .tc-calendar-head h2,.lessons .lesson-exams-header h2{margin:0;font:var(--font-callout);font-size:16px;font-weight:var(--fw-medium);color:var(--ink)}
+.lessons .tc-calendar-body{display:flex;flex-direction:column;gap:var(--s-3)}
+.lessons .tc-next-lesson{padding:var(--s-3) var(--s-4);border-radius:12px;background:color-mix(in srgb,var(--ink) 4%,var(--surface-raised));border:1px solid var(--hair);display:flex;flex-direction:column;gap:4px}
+.lessons .tc-next-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2)}
+.lessons .tc-next-badge{font:500 11px/1 var(--mono);color:var(--warn);text-transform:uppercase;letter-spacing:var(--track-caption);font-weight:var(--fw-semibold)}
+.lessons .tc-next-course{margin:0;font:var(--font-footnote);font-weight:var(--fw-semibold);color:var(--ink)}
+.lessons .tc-next-datetime{margin:0;font:500 12px/1.3 var(--mono);color:var(--muted)}
+.lessons .tc-exams-box h3{font:var(--font-caption);text-transform:uppercase;letter-spacing:var(--track-label);color:var(--muted);margin:var(--s-2) 0 var(--s-1)}
+.lessons .tc-exams-list,.lessons .lesson-exams-list{display:flex;flex-direction:column;gap:4px}
+.lessons .tc-exam,.lessons .lesson-exam-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);min-height:44px;padding:0 var(--s-3);border-radius:10px;font:var(--font-footnote);transition:background-color .15s var(--ease-out)}
+.lessons .tc-exam:hover,.lessons .lesson-exam-row:hover{background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.lessons .tc-exams-list .tc-exam:first-child,.lessons .lesson-exams-list .lesson-exam-row:first-child{background:color-mix(in srgb,var(--ink) 6%,var(--surface-raised))}
+[data-theme="trattato"] .lessons .tc-exams-list .tc-exam:first-child,[data-theme="trattato"] .lessons .lesson-exams-list .lesson-exam-row:first-child{background:color-mix(in srgb,var(--ink) 4%,var(--surface-raised))}
+.lessons .tc-exam-main{color:var(--ink);font-weight:var(--fw-medium)}
+.lessons .tc-exam-date,.lessons .lesson-exam-sub-row time,.lessons .lesson-exam-countdown{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.lessons .lesson-exam-countdown{color:var(--warn)}
+.lessons .lesson-exam-main-col{display:flex;flex-direction:column;gap:2px}
+.lessons .lesson-exam-title-row strong{color:var(--ink);font-weight:var(--fw-semibold)}
+.lessons .lesson-exam-sub-row{display:flex;align-items:center;gap:var(--s-2)}
+.lessons .lesson-exam-status{padding:3px 8px;border-radius:var(--r-pill);background:var(--faint);color:color-mix(in srgb,var(--accent) 80%,var(--ink));font:500 11px/1 var(--mono);letter-spacing:var(--track-caption);text-transform:uppercase}
+.lessons .lesson-exam-btn-group{display:flex;align-items:center;gap:var(--s-1)}
+.lessons .lesson-exam-btn-group button{min-height:28px;padding:0 var(--s-3);border:1px solid var(--ctl-edge);border-radius:var(--r-pill);background:transparent;color:var(--muted);font:var(--font-caption);cursor:pointer;transition:var(--btn-transition)}
+.lessons .lesson-exam-btn-group button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);border-color:var(--ink)}
+.lessons .lesson-exam-form{margin-top:var(--s-2);padding-top:var(--s-3);border-top:1px solid var(--hair);display:flex;flex-direction:column;gap:var(--s-2)}
+.lessons .lesson-exam-form h3{margin:0;font:var(--font-caption);text-transform:uppercase;letter-spacing:var(--track-label);color:var(--muted)}
+.lessons .exam-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-2)}
+.lessons .exam-field{display:flex;flex-direction:column;gap:3px}
+.lessons .exam-field-full{grid-column:1/-1}
+.lessons .exam-field label{font:var(--font-caption);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted)}
+.lessons .exam-field input{min-height:34px;height:34px;padding:0 14px;border:1px solid var(--ctl-edge);border-radius:var(--r-pill);background:color-mix(in srgb,var(--ink) 4%,var(--bg));color:var(--ink);font:var(--font-footnote);transition:border-color .15s var(--ease-out),background-color .15s var(--ease-out)}
+.lessons .exam-field input:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+[data-theme="trattato"] .lessons .exam-field input{background:color-mix(in srgb,var(--ink) 2%,var(--surface))}
+.lessons .exam-form-actions{display:flex;align-items:center;gap:var(--s-2);margin-top:var(--s-1)}
+.lessons .lessons-logs-section{display:flex;flex-direction:column;gap:var(--s-4)}
+.lessons .st-lessons-list{display:flex;flex-direction:column;gap:var(--s-3)}
+.lessons .st-lesson{padding:var(--s-4) var(--s-5);display:flex;flex-direction:column;gap:var(--s-3);transition:border-color .15s var(--ease-out)}
 .lessons .st-lesson:hover{border-color:color-mix(in srgb,var(--ink) 24%,transparent)}
-[data-theme="trattato"] .lessons .st-lesson{background:linear-gradient(180deg,rgba(255,255,255,.6) 0%,transparent 40px) var(--surface-raised);box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 2px 6px rgba(29,29,31,.04)}
-.lessons .st-lesson-head{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);flex-wrap:wrap}
+.lessons .st-lesson-head{display:flex;align-items:center;justify-content:flex-start;gap:var(--s-3);flex-wrap:wrap}
+.lessons .st-lesson-head>:last-child{margin-left:auto}
 .lessons .st-lesson-tags{display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap}
+.lessons .st-lesson-head time{font:500 12px/1 var(--mono);color:var(--muted);min-width:90px}
 .lessons .st-lesson-course{font:var(--fw-semibold) var(--fs-footnote)/1.3 var(--sans);color:var(--ink)}
 .lessons .st-lesson-num{padding:2px 7px;border-radius:var(--r-pill);background:var(--faint);font:500 11px/1 var(--mono);color:var(--muted);letter-spacing:var(--track-caption)}
-.lessons .st-lesson-head time{font:500 12px/1 var(--mono);color:var(--muted)}
 .lessons .st-lesson-mastery{font:600 11px/1 var(--mono);font-variant-numeric:tabular-nums;padding:3px 8px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--good) 14%,transparent);color:color-mix(in srgb,var(--good) 75%,var(--ink))}
 .lessons .st-lesson-mastery[data-state="scollegato"]{background:var(--faint);color:var(--muted)}
 .lessons .st-lesson-text{font:var(--font-footnote);color:var(--ink);line-height:1.45;margin:0}
 .lessons .st-lesson-text.tc-truncated{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .lessons .st-lesson-action-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);margin-top:2px}
-.lessons .st-more{background:none;border:0;padding:2px 0;font:var(--font-footnote);cursor:pointer;text-decoration:none;font-weight:var(--fw-medium);color:color-mix(in srgb,var(--pen) 72%,var(--ink))}
-.lessons .st-more:hover{text-decoration:underline}
+.lessons .st-more{background:none;border:0;padding:2px 0;font:var(--font-footnote);cursor:pointer;font-weight:var(--fw-medium);color:color-mix(in srgb,var(--pen) 72%,var(--ink));transition:color .15s var(--ease-out)}
+.lessons .st-more:hover{text-decoration:underline;color:var(--pen)}
 .lessons .st-lesson-meta{font:var(--font-caption);color:var(--muted);margin:0;font-family:var(--mono)}
-
-/* Tutor Concepts Items (.st-items & .st-item) - Dot before label, NO thick side border */
-.lessons .st-items{list-style:none;padding:0;margin:var(--s-2) 0 0;display:flex;flex-direction:column;gap:6px}
-.lessons .st-item{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);padding:7px 12px;border-radius:var(--r-sm);background:color-mix(in srgb,var(--bg) 60%,var(--surface));border:1px solid var(--hair);transition:border-color .15s var(--ease-out)}
-.lessons .st-item:hover{border-color:color-mix(in srgb,var(--ink) 20%,transparent)}
+.lessons .st-items{list-style:none;padding:0;margin:var(--s-2) 0 0;display:flex;flex-direction:column;gap:4px}
+.lessons .st-item{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);min-height:36px;padding:0 12px;border-radius:var(--r-sm);background:color-mix(in srgb,var(--ink) 4%,var(--surface));border:1px solid var(--hair);transition:border-color .15s var(--ease-out),background-color .15s var(--ease-out)}
+.lessons .st-item:hover{border-color:color-mix(in srgb,var(--ink) 18%,transparent);background:color-mix(in srgb,var(--ink) 6%,var(--surface))}
 .lessons .st-item-label{display:flex;align-items:center;gap:8px;font:var(--font-footnote);color:var(--ink);font-weight:var(--fw-medium)}
 .lessons .st-item-label::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--st-dot,transparent)}
 .lessons .st-item-right{display:flex;align-items:center;gap:var(--s-2);flex-shrink:0}
@@ -79,15 +106,6 @@
 .lessons .st-extract{min-height:26px;padding:0 var(--s-2);border-radius:var(--r-pill);border:1px solid var(--ctl-edge);background:var(--surface);color:var(--ink);font:var(--font-caption);cursor:pointer;transition:var(--btn-transition)}
 .lessons .st-extract:hover:not(:disabled){background:color-mix(in srgb,var(--ink) 8%,transparent);border-color:var(--ink)}
 .lessons .st-extract:disabled{opacity:.5;cursor:not-allowed}
-
-/* States styling for segments, dots, and labels - AA contrast certified */
-.lessons .st-bar-seg[data-state="interiorizzato"],.lessons .st-legend-dot[data-state="interiorizzato"]{background:var(--good)}
-.lessons .st-bar-seg[data-state="in corso"],.lessons .st-legend-dot[data-state="in corso"]{background:var(--accent)}
-.lessons .st-bar-seg[data-state="fragile"],.lessons .st-legend-dot[data-state="fragile"]{background:var(--warn)}
-.lessons .st-bar-seg[data-state="mai studiato"],.lessons .st-legend-dot[data-state="mai studiato"]{background:color-mix(in srgb,var(--ink) 25%,transparent)}
-.lessons .st-bar-seg[data-state="da estrarre"],.lessons .st-legend-dot[data-state="da estrarre"]{background:var(--surface);border:1.5px dashed var(--pen)}
-.lessons .st-bar-seg[data-state="scollegato"],.lessons .st-legend-dot[data-state="scollegato"]{background:color-mix(in srgb,var(--ink) 14%,transparent)}
-
 .lessons .st-item[data-state="interiorizzato"]{--st-dot:var(--good)}
 .lessons .st-item[data-state="in corso"]{--st-dot:var(--accent)}
 .lessons .st-item[data-state="fragile"]{--st-dot:var(--coral)}
@@ -96,76 +114,28 @@
 .lessons .st-item[data-state="da estrarre"] .st-item-label::before{background:none;box-shadow:inset 0 0 0 1.5px var(--pen)}
 .lessons .st-item[data-state="scollegato"]{--st-dot:color-mix(in srgb,var(--ink) 14%,transparent)}
 .lessons .st-item[data-state="scollegato"] :is(.st-item-label,.st-item-state){color:var(--muted)}
-
-.lessons .st-item[data-state="interiorizzato"] .st-item-state,.lessons .st-legend li[data-state="interiorizzato"]{color:color-mix(in srgb,var(--good) 82%,var(--ink))}
-.lessons .st-item[data-state="in corso"] .st-item-state,.lessons .st-legend li[data-state="in corso"]{color:color-mix(in srgb,var(--accent) 82%,var(--ink))}
-.lessons .st-item[data-state="fragile"] .st-item-state,.lessons .st-legend li[data-state="fragile"]{color:color-mix(in srgb,var(--coral) 84%,var(--ink))}
-.lessons .st-item[data-state="mai studiato"] .st-item-state,.lessons .st-legend li[data-state="mai studiato"]{color:var(--muted)}
-.lessons .st-item[data-state="da estrarre"] .st-item-state,.lessons .st-legend li[data-state="da estrarre"]{color:color-mix(in srgb,var(--pen) 84%,var(--ink))}
-.lessons .st-item[data-state="scollegato"] .st-item-state,.lessons .st-legend li[data-state="scollegato"]{color:var(--placeholder)}
-
-/* Calendario (.tc-calendar) */
-.lessons .tc-calendar-head h2{margin:0 0 var(--s-2);font:var(--font-callout);font-size:16px;font-weight:var(--fw-medium);letter-spacing:var(--track-title)}
-.lessons .tc-calendar-empty{color:var(--muted);font:var(--font-footnote);margin:0}
-.lessons .tc-calendar-body{display:flex;flex-direction:column;gap:var(--s-3)}
-.lessons .tc-next-lesson{padding:var(--s-3) var(--s-4);border-radius:var(--r-md);background:linear-gradient(180deg,rgba(255,255,255,.02) 0%,transparent 40px) var(--surface-raised);border:1px solid var(--hair);box-shadow:var(--inner);display:flex;flex-direction:column;gap:4px}
-[data-theme="trattato"] .lessons .tc-next-lesson{background:linear-gradient(180deg,rgba(255,255,255,.6) 0%,transparent 40px) var(--surface-raised);box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
-.lessons .tc-next-badge{font:500 11px/1 var(--mono);color:var(--warn);text-transform:uppercase;letter-spacing:var(--track-caption);font-weight:var(--fw-semibold)}
-.lessons .tc-next-course{margin:0;font:var(--font-footnote);font-weight:var(--fw-semibold);color:var(--ink)}
-.lessons .tc-next-datetime{margin:0;font:500 12px/1.3 var(--mono);color:var(--muted)}
-.lessons .tc-exams-box h3{font:var(--font-caption);text-transform:uppercase;letter-spacing:var(--track-label);color:var(--muted);margin:var(--s-2) 0 var(--s-1)}
-.lessons .tc-exams-list{display:flex;flex-direction:column;gap:var(--s-1)}
-.lessons .tc-exam{display:flex;align-items:center;justify-content:space-between;padding:var(--s-2) 0;border-bottom:1px solid var(--hair);margin:0;font:var(--font-footnote)}
-.lessons .tc-exam:last-child{border-bottom:0}
-.lessons .tc-exam-main{color:var(--ink);font-weight:var(--fw-medium)}
-.lessons .tc-exam-date{font:500 12px/1 var(--mono);color:var(--muted)}
-
-/* Esami (.lesson-exams) */
-.lessons .lesson-exams-header{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3)}
-.lessons .lesson-exams-header h2{margin:0;font:var(--font-callout);font-size:16px;font-weight:var(--fw-medium);letter-spacing:var(--track-title)}
-.lessons .lesson-exams-list{display:flex;flex-direction:column;gap:var(--s-2)}
-.lessons .lesson-exam-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3);padding:var(--s-2) 0;border-top:1px solid var(--hair);font:var(--font-footnote)}
-.lessons .lesson-exam-main-col{display:flex;flex-direction:column;gap:2px}
-.lessons .lesson-exam-title-row strong{color:var(--ink);font-weight:var(--fw-semibold)}
-.lessons .lesson-exam-sub-row{display:flex;align-items:center;gap:var(--s-2);font:500 12px/1 var(--mono);color:var(--muted)}
-.lessons .lesson-exam-countdown{color:var(--warn)}
-.lessons .lesson-exam-status{padding:2px 8px;border-radius:var(--r-pill);background:var(--faint);color:color-mix(in srgb,var(--accent) 80%,var(--ink));font:500 11px/1 var(--mono);letter-spacing:var(--track-caption);text-transform:uppercase}
-.lessons .lesson-exam-btn-group{display:flex;align-items:center;gap:var(--s-1)}
-.lessons .lesson-exam-btn-group button{min-height:28px;padding:0 var(--s-3);border:1px solid var(--ctl-edge);border-radius:var(--r-pill);background:transparent;color:var(--muted);font:var(--font-caption);cursor:pointer;transition:var(--btn-transition)}
-.lessons .lesson-exam-btn-group button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);border-color:var(--ink)}
-
-/* Compact Exam Form: labels ABOVE fields */
-.lessons .lesson-exam-form{margin-top:var(--s-2);padding-top:var(--s-3);border-top:1px solid var(--hair);display:flex;flex-direction:column;gap:var(--s-3)}
-.lessons .lesson-exam-form h3{margin:0;font:var(--font-caption);text-transform:uppercase;letter-spacing:var(--track-label);color:var(--muted)}
-.lessons .exam-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-2)}
-.lessons .exam-field{display:flex;flex-direction:column;gap:4px}
-.lessons .exam-field-full{grid-column:1/-1}
-.lessons .exam-field label{font:var(--font-caption);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted)}
-.lessons .exam-field input{min-height:var(--ctl-sm);padding:0 var(--s-3);border:1px solid var(--ctl-edge);border-radius:var(--r-sm);background:var(--bg);color:var(--ink);font:var(--font-footnote);transition:border-color .15s var(--ease-out)}
-.lessons .exam-field input:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-color:var(--accent)}
-.lessons .exam-form-actions{display:flex;align-items:center;gap:var(--s-2);margin-top:var(--s-1)}
-
-/* Sinapsi Registry Lessons Section (.lessons-registry-section) */
-.lessons .lessons-registry-section{display:flex;flex-direction:column;gap:var(--s-3);margin-top:var(--s-2)}
-.lessons .lessons-registry-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:var(--s-1)}
-.lessons .lessons-registry-head h2{margin:0;font:var(--font-callout);font-size:18px;font-weight:var(--fw-medium);letter-spacing:var(--track-title)}
+.lessons .st-item[data-state="interiorizzato"] .st-item-state{color:color-mix(in srgb,var(--good) 82%,var(--ink))}
+.lessons .st-item[data-state="in corso"] .st-item-state{color:color-mix(in srgb,var(--accent) 82%,var(--ink))}
+.lessons .st-item[data-state="fragile"] .st-item-state{color:color-mix(in srgb,var(--coral) 84%,var(--ink))}
+.lessons .st-item[data-state="mai studiato"] .st-item-state{color:var(--muted)}
+.lessons .st-item[data-state="da estrarre"] .st-item-state{color:color-mix(in srgb,var(--pen) 84%,var(--ink))}
+.lessons .st-item[data-state="scollegato"] .st-item-state{color:var(--placeholder)}
+.lessons .lessons-registry-section{padding:var(--s-4) var(--s-5);display:flex;flex-direction:column;gap:var(--s-3)}
+.lessons .lessons-registry-head{display:flex;align-items:center;justify-content:space-between}
+.lessons .lessons-registry-head h2{margin:0;font:var(--font-callout);font-size:16px;font-weight:var(--fw-medium);color:var(--ink)}
 .lessons .lessons-count-pill{padding:3px 10px;border-radius:var(--r-pill);background:var(--faint);color:var(--muted);font:500 11px/1 var(--mono);letter-spacing:var(--track-caption)}
-.lessons .lessons-rows-container{display:flex;flex-direction:column;gap:var(--s-2)}
-
-/* Sinapsi Lesson Row (.lesson-row) */
-.lessons .lesson-row{display:grid;grid-template-columns:minmax(180px,1fr) auto auto auto minmax(180px,auto);align-items:center;gap:var(--s-3);border:1px solid var(--hair);border-radius:var(--r-md);background:linear-gradient(180deg,rgba(255,255,255,.02) 0%,transparent 40px) color-mix(in srgb,var(--surface) 92%,transparent);box-shadow:var(--inner);padding:var(--s-3) var(--s-4);transition:border-color .15s var(--ease-out),transform .15s var(--ease-out)}
-.lessons .lesson-row:hover{border-color:color-mix(in srgb,var(--ink) 25%,transparent);transform:translateY(-1px)}
-[data-theme="trattato"] .lessons .lesson-row{background:linear-gradient(180deg,rgba(255,255,255,.6) 0%,transparent 40px) var(--surface);box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+.lessons .lessons-rows-container{display:flex;flex-direction:column;gap:4px}
+.lessons .lesson-row{display:grid;grid-template-columns:auto minmax(180px,1fr) auto auto minmax(140px,auto);align-items:center;gap:var(--s-3);min-height:44px;padding:0 12px;border-radius:10px;background:color-mix(in srgb,var(--ink) 2%,var(--surface));border:1px solid var(--hair);transition:border-color .15s var(--ease-out),background-color .15s var(--ease-out)}
+.lessons .lesson-row:hover{border-color:color-mix(in srgb,var(--ink) 22%,transparent);background:color-mix(in srgb,var(--ink) 5%,var(--surface))}
+.lessons .lesson-row:first-child{background:color-mix(in srgb,var(--ink) 5%,var(--surface-raised))}
+.lessons .lesson-row time{color:var(--muted);font:500 12px/1 var(--mono);min-width:80px}
 .lessons .lesson-title{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:0;background:transparent;color:var(--ink);text-align:left;cursor:pointer;padding:0}
 .lessons .lesson-title strong{font:var(--font-footnote);font-weight:var(--fw-semibold);color:var(--ink)}
 .lessons .lesson-title span{color:var(--muted);font:500 11px/1 var(--mono);letter-spacing:var(--track-caption)}
-.lessons .lesson-row time{color:var(--muted);font:500 12px/1 var(--mono)}
 .lessons .lesson-badge{border-radius:var(--r-pill);padding:3px 8px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:color-mix(in srgb,var(--accent) 80%,var(--ink));font:600 11px/1 var(--mono);letter-spacing:var(--track-caption);text-transform:uppercase}
 .lessons .lesson-mastery{color:var(--muted);font:500 11px/1 var(--mono);letter-spacing:var(--track-caption);text-transform:uppercase}
-
-/* Launch Button & Details */
 .lessons .lesson-launch{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--s-2);margin-left:auto}
-.lessons .lesson-launch-main{min-height:var(--ctl-sm);padding:0 var(--s-4);border-radius:var(--r-pill);border:1px solid var(--btn-primary-bg);background:var(--btn-primary-bg);color:var(--btn-primary-ink);font:var(--font-footnote);font-weight:var(--fw-medium);cursor:pointer;transition:var(--btn-transition);white-space:nowrap}
+.lessons .lesson-launch-main{min-height:32px;padding:0 var(--s-3);border-radius:var(--r-pill);border:1px solid var(--btn-primary-bg);background:var(--btn-primary-bg);color:var(--btn-primary-ink);font:var(--font-footnote);font-weight:var(--fw-medium);cursor:pointer;transition:var(--btn-transition);white-space:nowrap}
 .lessons .lesson-launch-main:hover:not(:disabled){background:var(--btn-primary-bg-hover);border-color:var(--btn-primary-bg-hover);transform:scale(1.02)}
 .lessons .lesson-launch-main:active:not(:disabled){background:var(--btn-primary-bg-pressed);border-color:var(--btn-primary-bg-pressed);transform:scale(.98)}
 .lessons .lesson-launch-main:disabled{background:var(--btn-disabled-bg);border-color:var(--btn-disabled-border);color:var(--btn-disabled-ink);cursor:not-allowed}
@@ -174,14 +144,6 @@
 .lessons .lesson-launch summary:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}
 .lessons .lesson-launch details button{display:block;min-height:32px;padding:6px 12px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--ink);text-align:left;cursor:pointer;font:var(--font-footnote);transition:var(--btn-transition)}
 .lessons .lesson-launch details button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
-.lessons .lesson-error{margin:var(--s-2) 0;color:var(--bad);font:var(--font-footnote)}
-
-/* Empty state (.lesson-empty) */
-.lessons .lesson-empty{background:var(--surface);border:1px dashed var(--ctl-edge);border-radius:var(--r-lg);box-shadow:var(--inner);padding:var(--s-8) var(--s-5);text-align:center;max-width:540px;margin:var(--s-5) auto}
-.lessons .lesson-empty h2{font:var(--font-callout);font-size:18px;font-weight:var(--fw-medium);letter-spacing:var(--track-title);margin-bottom:var(--s-2)}
-.lessons .lesson-empty p{color:var(--muted);font:var(--font-footnote);margin-bottom:var(--s-4)}
-
-/* Shared Buttons in lessons */
 .lessons .btn{display:inline-flex;align-items:center;justify-content:center;min-height:var(--ctl-sm);padding:0 var(--s-4);border:1px solid var(--ctl-edge);border-radius:var(--r-pill);background:transparent;color:var(--ink);font:var(--font-footnote);cursor:pointer;transition:var(--btn-transition)}
 .lessons .btn:hover:not(:disabled){background:color-mix(in srgb,var(--ink) 6%,transparent);border-color:var(--ink)}
 .lessons .btn:active:not(:disabled){background:color-mix(in srgb,var(--ink) 10%,transparent);transform:scale(.98)}
@@ -190,8 +152,11 @@
 .lessons .btn.pri:hover:not(:disabled){background:var(--btn-primary-bg-hover);border-color:var(--btn-primary-bg-hover);transform:scale(1.02)}
 .lessons .btn.pri:active:not(:disabled){background:var(--btn-primary-bg-pressed);border-color:var(--btn-primary-bg-pressed);transform:scale(.98)}
 .lessons .btn:disabled,.lessons .btn.pri:disabled{background:var(--btn-disabled-bg);border-color:var(--btn-disabled-border);color:var(--btn-disabled-ink);cursor:not-allowed}
-
-/* Preserved Detail / Sticky / Editor styles */
+.lessons .lesson-empty{background:var(--surface);border:1px dashed var(--ctl-edge);border-radius:var(--r-lg);box-shadow:var(--inner);padding:var(--s-8) var(--s-5);text-align:center;max-width:540px;margin:var(--s-5) auto}
+.lessons .lesson-empty h2{font:var(--font-callout);font-size:18px;font-weight:var(--fw-medium);letter-spacing:var(--track-title);margin-bottom:var(--s-2)}
+.lessons .lesson-empty p{color:var(--muted);font:var(--font-footnote);margin-bottom:var(--s-4)}
+.lessons .lesson-error{margin:var(--s-2) 0;color:var(--bad);font:var(--font-footnote)}
+.lessons .st-empty{padding:var(--s-5);border-radius:var(--r-md);background:var(--faint);color:var(--muted);font:var(--font-footnote);text-align:center;margin:0}
 .lessons .lesson-sticky{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;padding:14px 18px;border:1px solid var(--hair);border-radius:16px;background:var(--surface);box-shadow:var(--inner),0 4px 16px rgba(0,0,0,.15);margin-bottom:8px}
 .lessons .lesson-sticky h1{margin:0;font:var(--font-callout);font-size:20px;font-weight:500;letter-spacing:-.02em}
 .lessons .lesson-sticky p{margin:2px 0 0;font:var(--font-caption);letter-spacing:var(--track-caption);color:var(--muted);font-family:var(--mono)}
@@ -209,19 +174,6 @@
 .lessons .lesson-fields fieldset .lesson-check{color:var(--ink)}
 .lessons .lesson-fields .lesson-resource{display:grid;grid-template-columns:180px minmax(0,1fr);gap:var(--s-2);align-items:center}
 .lessons .lesson-fields .lesson-error,.lessons .lesson-fields>.btn{grid-column:1/-1}
-
-/* Responsive queries */
-@media (max-width:980px){
-.lessons .lessons-overview-grid{grid-template-columns:1fr}
-}
-@media (max-width:800px){
-.lessons{padding:var(--s-4) var(--s-3) 116px}
-.lessons .lesson-page-header{flex-direction:column;align-items:flex-start}
-.lessons .lesson-row{grid-template-columns:minmax(0,1fr) auto}
-.lessons .lesson-row .lesson-launch{grid-column:1/-1;justify-content:flex-start}
-.lessons .exam-form-grid{grid-template-columns:1fr}
-.lessons .exam-field-full{grid-column:auto}
-}
-@media (prefers-reduced-motion:reduce){
-.lessons,.lessons *{animation:none!important;transition:none!important}
-}
+@media (max-width:980px){.lessons .lessons-services-grid{grid-template-columns:1fr}}
+@media (max-width:800px){.lessons{padding:var(--s-4) var(--s-3) calc(112px + var(--s-4))}.lessons .lesson-page-header{flex-direction:column;align-items:flex-start}.lessons .lesson-row{grid-template-columns:auto minmax(0,1fr)}.lessons .lesson-row .lesson-launch{grid-column:1/-1;justify-content:flex-start}.lessons .exam-form-grid{grid-template-columns:1fr}.lessons .exam-field-full{grid-column:auto}}
+@media (prefers-reduced-motion:reduce){.lessons,.lessons *{animation:none!important;transition:none!important}}

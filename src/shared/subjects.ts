@@ -11,25 +11,39 @@ export type SubjectPrefs = {
   universitySubjects: string[] | null
 }
 
+/** The university subjects shown until Andrea chooses his own. */
+export const DEFAULT_UNIVERSITY = [
+  'Matematica',
+  'Intelligenza Artificiale',
+  'Informatica',
+  'Fisica',
+  'Biologia e Neuroscienze'
+]
+
 export type Subject = { name: string; isUniversity: boolean; order: number }
 export type SubjectGroups = { university: Subject[]; personal: Subject[] }
 
 /**
  * Splits and orders the subjects.
  * @param names the subjects in their default order (e.g. most notes first)
- * @param guess the university subjects to assume while Andrea has not chosen
+ * @param guess the university subjects to assume while Andrea has not chosen (the fixed default list)
  */
-export function arrangeSubjects(names: string[], prefs: SubjectPrefs, guess: string[] = []): SubjectGroups {
+export function arrangeSubjects(names: string[], prefs: SubjectPrefs, guess: string[] = DEFAULT_UNIVERSITY): SubjectGroups {
   const uni = new Set(prefs.universitySubjects ?? guess)
   const rank = new Map(prefs.subjectOrder.map((n, i) => [n, i]))
   const defaultRank = new Map(names.map((n, i) => [n, i]))
+  // Not placed yet: the default university subjects keep the order of their list, then the rest.
+  const defaultKey = (n: string): number => {
+    const g = guess.indexOf(n)
+    return g >= 0 ? g : guess.length + defaultRank.get(n)!
+  }
   const sorted = [...names].sort((a, b) => {
     const ra = rank.get(a)
     const rb = rank.get(b)
     if (ra !== undefined && rb !== undefined) return ra - rb
     if (ra !== undefined) return -1
     if (rb !== undefined) return 1
-    return defaultRank.get(a)! - defaultRank.get(b)!
+    return defaultKey(a) - defaultKey(b)
   })
   const all = sorted.map((name, order) => ({ name, isUniversity: uni.has(name), order }))
   return { university: all.filter((s) => s.isUniversity), personal: all.filter((s) => !s.isUniversity) }

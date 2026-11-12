@@ -1371,3 +1371,7 @@ button.sh-brand .sh-brand-tag {
 .sh-composer .mic-field > input ~ .mic{top:50%;transform:translateY(-50%)}
 @media (prefers-reduced-motion:reduce){.sh-arrange-row,.sh-arrange-btn,.sh-arrange-done,.sh-send,.sh-composer .mic-field{transition:none!important;transform:none!important}}
 .sh-subjects .sh-side-heading > span:first-child{letter-spacing:.06em}
+/* «Mostra tutte / meno» under the subjects: the same box and type as a subject row, text aligned with the names. */
+.sh-sidebar .sh-subjects .sh-show-more{display:flex;align-items:center;width:100%;min-height:32px;padding:4px 8px 4px 30px;border:0;border-radius:10px;background:transparent;color:var(--muted);font:var(--font-footnote);text-align:left;cursor:pointer;transition:background .15s var(--ease-out),color .15s var(--ease-out)}
+.sh-sidebar .sh-subjects .sh-show-more:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+.sh-sidebar .sh-subjects .sh-show-more:focus-visible{outline:var(--btn-focus-ring);outline-offset:-2px}

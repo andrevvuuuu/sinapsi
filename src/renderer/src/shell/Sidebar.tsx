@@ -43,8 +43,6 @@ export function Sidebar(p: {
   onSettings: () => void
   /** Saved order and university flags of the subjects. */
   subjectPrefs: SubjectPrefs
-  /** University subjects to assume until Andrea chooses. */
-  universityGuess: string[]
   onSubjectPrefs: (prefs: SubjectPrefs) => void
 }): React.JSX.Element {
   const [subjectsOpen, setSubjectsOpen] = useState(true),
@@ -67,8 +65,7 @@ export function Sidebar(p: {
   const byName = new Map(nodes.map((n) => [n.name, n]))
   const groups = arrangeSubjects(
     nodes.map((n) => n.name),
-    p.subjectPrefs,
-    p.universityGuess
+    p.subjectPrefs
   )
   const save = (next: SubjectPrefs): void => p.onSubjectPrefs(next)
   const drop = (e: DragEvent, toUniversity: boolean, before: string | null): void => {
@@ -226,8 +223,9 @@ export function Sidebar(p: {
                   <NoteTree nodes={treeOf(personalShown)} onOpen={p.onOpenSource} />
                   {groups.personal.length > PERSONAL_SHOWN && (
                     <button
-                      className="sh-all-register"
+                      className="sh-show-more"
                       type="button"
+                      aria-expanded={showAllSubjects}
                       onClick={() => setShowAllSubjects((value) => !value)}
                     >
                       {showAllSubjects ? 'Mostra meno' : `Mostra tutte (${groups.personal.length})`}

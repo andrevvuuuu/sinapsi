@@ -6,8 +6,16 @@ const none = { subjectOrder: [], universitySubjects: null }
 const flat = (g: ReturnType<typeof arrangeSubjects>): [string[], string[]] => [g.university.map((s) => s.name), g.personal.map((s) => s.name)]
 
 describe('subjects', () => {
+  it('starts from the fixed university list, in its order', () => {
+    const vault = ['Arte', 'Fisica', 'Biologia e Neuroscienze', 'Matematica', 'Informatica', 'Intelligenza Artificiale', 'Psicologia']
+    expect(flat(arrangeSubjects(vault, none))).toEqual([
+      ['Matematica', 'Intelligenza Artificiale', 'Informatica', 'Fisica', 'Biologia e Neuroscienze'],
+      ['Arte', 'Psicologia']
+    ])
+  })
+
   it('splits by the guess until chosen, keeping the default order', () => {
-    expect(flat(arrangeSubjects(names, none, ['Fisica', 'Matematica']))).toEqual([['Matematica', 'Fisica'], ['Arte', 'Psicologia']])
+    expect(flat(arrangeSubjects(names, none, ['Fisica', 'Matematica']))).toEqual([['Fisica', 'Matematica'], ['Arte', 'Psicologia']])
   })
 
   it('a saved choice wins over the guess, and saved order wins over the default', () => {

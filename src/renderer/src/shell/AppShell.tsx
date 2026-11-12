@@ -56,8 +56,7 @@ export function AppShell({
     [status, setStatus] = useState<Record<Engine, Status> | null>(null),
     [settings, setSettings] = useState<Settings | null>(null),
     [due, setDue] = useState(0),
-    [notes, setNotes] = useState<NoteMeta[]>([]),
-    [universityGuess, setUniversityGuess] = useState<string[]>([])
+    [notes, setNotes] = useState<NoteMeta[]>([])
 
   useEffect(() => {
     const api = window.sinapsi
@@ -87,28 +86,6 @@ export function AppShell({
       offNotes()
     }
   }, [])
-
-  // Until Andrea picks his university subjects, guess them from the notes the lesson tutor links.
-  // The note paths need the vault index, so the guess waits for it.
-  // Note paths are absolute: the subject is the first folder under the vault root.
-  const vaultRoot = index && 'notes' in index ? index.root.replace(/\/+$/, '') + '/' : null
-  useEffect(() => {
-    if (!vaultRoot) return
-    void window.sinapsi.tutor
-      ?.report?.()
-      .then((r) =>
-        setUniversityGuess([
-          ...new Set(
-            r.lessons.flatMap((l) =>
-              l.items.flatMap((i) =>
-                i.notePath?.startsWith(vaultRoot) ? [i.notePath.slice(vaultRoot.length).split('/')[0]] : []
-              )
-            )
-          )
-        ])
-      )
-      .catch(() => undefined)
-  }, [vaultRoot])
 
   // Only the three dock destinations light the dock; the sidebar marks the others.
   const destination: Destination | null =
@@ -156,7 +133,6 @@ export function AppShell({
           subjectOrder: settings?.subjectOrder ?? [],
           universitySubjects: settings?.universitySubjects ?? null
         }}
-        universityGuess={universityGuess}
         onSubjectPrefs={(prefs) => {
           // Optimistic: the sidebar reorders at once; the saved settings follow.
           setSettings((s) => (s ? { ...s, ...prefs } : s))
