@@ -1,7 +1,12 @@
 export const NOTE_LIMIT = 60_000
 
-/** The Obsidian note as sent to a model: capped, with a visible marker when cut. */
-export const capNote = (text: string): string => (text.length > NOTE_LIMIT ? text.slice(0, NOTE_LIMIT - 200) + '\n[…nota troncata]' : text)
+/** Written by the vault's correctness check (correctness_check.py) around its callout of flagged errors. */
+export const VERIFY_MARK = '%% verifica-inizio %%'
+const VERIFY_NOTICE = `[Questa nota contiene un callout «Verifica di correttezza»: un revisore ha segnalato errori o dubbi probabili. Nelle parti segnalate vale la correzione, non il testo della nota: non insegnarle, non estrarle e non usarle nelle domande nella versione sbagliata. Se ne parli, di' che la nota lì è imprecisa.]\n\n`
+
+/** The Obsidian note as sent to a model: capped, with a visible marker when cut, and a warning when it has flagged errors. */
+export const capNote = (text: string): string =>
+  (text.includes(VERIFY_MARK) ? VERIFY_NOTICE : '') + (text.length > NOTE_LIMIT ? text.slice(0, NOTE_LIMIT - 200) + '\n[…nota troncata]' : text)
 
 export const TEACHER_SYSTEM_PROMPT = `Sei il tutor di Sinapsi, un'app per studiare in modo attivo. Insegni ad Andrea, una persona alla volta, un argomento alla volta.
 
@@ -40,6 +45,14 @@ Ogni risposta a scelta ha una fiducia 0–100%. Corretta e sicura: va avanti. Co
 # Materiale di Andrea
 Se il primo messaggio contiene una sua nota Obsidian, è il suo materiale: usa le sue definizioni, notazioni e numerazioni (es. "Teorema 3.8"), ma insegna con il metodo sopra, non riassumerla.
 
+# Memoria di Andrea
+Se il primo messaggio porta lo «Stato di memoria dei concetti», viene dai suoi ripassi: la misura parte da lì, non da zero.
+- "la sai" con S di settimane: è un pavimento. Al massimo una domanda di conferma, poi trattalo come noto nel piano.
+- "incerto": una domanda per capire se regge, prima di costruirci sopra.
+- "debole", "Di nuovo" o una misconcezione: qui insisti. Misura con cura, ripara e verifica due volte.
+- "mai visto": misuralo come al solito.
+Quello che chiedi la memoria non lo dice già: non rifargli domande su ciò che è solido.
+
 # Giochi
 Per rendere lo studio più divertente puoi usare, al posto di una normale verifica, un gioco breve (domanda con "kind": "game", "role": "check" o "recall"). Ogni gioco è richiamo o distinzione, mai decorazione:
 - "speed" (Lampo): 3–10 affermazioni vero/falso su ciò che hai appena spiegato, {"statement","true","why"}; Andrea ha pochi secondi per ognuna.
@@ -58,11 +71,13 @@ Rispondi SEMPRE con un solo oggetto JSON valido secondo lo schema, e nient'altro
 - Quasi ogni turno termina con una domanda: è lui che risponde e la sessione avanza.
 - "summary" solo con "phase": "done".`
 
-export function firstMessage(topic: string, note?: { title: string; text: string }): string {
+/** memory: the note's concepts and how well he remembers them (memoryBrief), when there are any. */
+export function firstMessage(topic: string, note?: { title: string; text: string }, memory?: string): string {
   let msg = `Voglio studiare: ${topic}`
   if (note) {
     const text = capNote(note.text)
     msg += `\n\nMateriale di Andrea dalla sua nota Obsidian «${note.title}»:\n\n${text}`
   }
+  if (memory) msg += `\n\n${memory}`
   return msg
 }

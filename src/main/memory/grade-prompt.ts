@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Exercise } from '../../shared/exercise-schema'
+import { GRADING_RIGOR } from '../ai/rigor'
 
 export const GradeSchema = z.object({ verdict: z.enum(['ok', 'partial', 'wrong']), feedback: z.string().trim().min(1).max(600) })
 export type GradeReply = z.infer<typeof GradeSchema>
@@ -12,7 +13,8 @@ export function buildGradePrompt(input: { concept: { name: string; statement: st
     `Domanda: ${input.exercise.prompt}`,
     `Risposta di riferimento: ${input.exercise.answer}`,
     `Risposta di Andrea (fiducia ${input.confidence}%): ${input.answer}`,
-    `Giudica il contenuto, non la forma: "ok" se coglie il punto essenziale della risposta di riferimento, "partial" se è giusta ma incompleta o manca il perché, "wrong" se è sbagliata o non risponde. In "feedback" una o due frasi: che cosa manca o che cosa è sbagliato, e il punto chiave. Matematica in $…$.`,
+    `Giudica il contenuto, non la forma: "ok" se coglie il punto essenziale della risposta di riferimento, "partial" se è giusta ma incompleta o manca il perché, "wrong" se è sbagliata o non risponde. Se non sei sicuro che sia corretta, "partial" e dillo. In "feedback" una o due frasi: che cosa manca o che cosa è sbagliato, e il punto chiave. Matematica in $…$.`,
+    GRADING_RIGOR,
     `Rispondi solo con JSON: { "verdict": "ok" | "partial" | "wrong", "feedback": "…" }`
   ].join('\n\n')
 }

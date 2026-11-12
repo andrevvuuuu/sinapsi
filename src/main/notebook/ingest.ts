@@ -11,7 +11,23 @@ const KINDS: Record<string, SourceKind> = {
   '.pptx': 'slides',
   '.txt': 'text',
   '.md': 'text',
-  ...Object.fromEntries(['.m4a', '.mp3', '.wav', '.aiff', '.aif', '.aac', '.flac', '.ogg', '.opus', '.mp4', '.mov', '.m4v', '.webm'].map((e) => [e, 'audio' as const]))
+  ...Object.fromEntries(
+    [
+      '.m4a',
+      '.mp3',
+      '.wav',
+      '.aiff',
+      '.aif',
+      '.aac',
+      '.flac',
+      '.ogg',
+      '.opus',
+      '.mp4',
+      '.mov',
+      '.m4v',
+      '.webm'
+    ].map((e) => [e, 'audio' as const])
+  )
 }
 export const ACCEPTED_EXTENSIONS = Object.keys(KINDS).map((e) => e.slice(1))
 
@@ -20,10 +36,13 @@ const plural = (n: number, one: string, many: string): string => `${n} ${n === 1
 function describe(kind: SourceKind, t: SourceText): string {
   const n = t.segments.length
   const main =
-    kind === 'pdf' ? plural(n, 'pagina', 'pagine')
-    : kind === 'slides' ? plural(n, 'slide', 'slide')
-    : kind === 'audio' || kind === 'youtube' ? `${Math.max(1, Math.round(((t.segments[n - 1]?.start ?? 0) + 60) / 60))} min`
-    : plural(n, 'sezione', 'sezioni')
+    kind === 'pdf'
+      ? plural(n, 'pagina', 'pagine')
+      : kind === 'slides'
+        ? plural(n, 'slide', 'slide')
+        : kind === 'audio' || kind === 'youtube'
+          ? `${Math.max(1, Math.round(((t.segments[n - 1]?.start ?? 0) + 60) / 60))} min`
+          : plural(n, 'sezione', 'sezioni')
   return [main, ...t.warnings].join(' · ')
 }
 
@@ -31,7 +50,12 @@ function describe(kind: SourceKind, t: SourceText): string {
  * Turns added files, YouTube links and vault notes into text, one job at a time.
  * Live progress stays in memory: the ledger only gets the status changes.
  */
-export function createIngestor(deps: { store: NotebookStore; run: RunTool; readVault: (path: string) => Promise<string>; onChange: () => void }) {
+export function createIngestor(deps: {
+  store: NotebookStore
+  run: RunTool
+  readVault: (path: string) => Promise<string>
+  onChange: () => void
+}) {
   const { store } = deps
   const progress = new Map<string, number>()
   const removed = new Set<string>()
@@ -40,10 +64,17 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
   const controllers = new Map<string, AbortController>()
   const stages = new Map<string, 'download' | 'transcribe'>()
   // Two lanes: a PDF or a note never waits behind an hour of recording.
-  const lanes: Record<'docs' | 'media', Promise<void>> = { docs: Promise.resolve(), media: Promise.resolve() }
-  const laneOf = (kind: SourceKind): 'docs' | 'media' => (kind === 'audio' || kind === 'youtube' ? 'media' : 'docs')
+  const lanes: Record<'docs' | 'media', Promise<void>> = {
+    docs: Promise.resolve(),
+    media: Promise.resolve()
+  }
+  const laneOf = (kind: SourceKind): 'docs' | 'media' =>
+    kind === 'audio' || kind === 'youtube' ? 'media' : 'docs'
 
-  async function read(s: Source, signal: AbortSignal): Promise<{ text: SourceText; title?: string }> {
+  async function read(
+    s: Source,
+    signal: AbortSignal
+  ): Promise<{ text: SourceText; title?: string }> {
     const dir = store.filesDir(s.id)
     const file = join(dir, s.origin)
     const onProgress = (p: number): void => {
@@ -88,14 +119,18 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
       await store.setStatus(id, { status: 'ready', info: describe(s.kind, r.text), title: r.title })
     } catch (e) {
       if (removed.has(id)) return
-      await store.setStatus(id, { status: 'failed', error: e instanceof Error ? e.message : String(e) })
+      await store.setStatus(id, {
+        status: 'failed',
+        error: e instanceof Error ? e.message : String(e)
+      })
     } finally {
       progress.delete(id)
       stages.delete(id)
       controllers.delete(id)
       pending.delete(id)
       // A killed tool may still have written its output into the removed source's folder.
-      if (removed.has(id)) await rm(store.filesDir(id), { recursive: true, force: true }).catch(() => undefined)
+      if (removed.has(id))
+        await rm(store.filesDir(id), { recursive: true, force: true }).catch(() => undefined)
       deps.onChange()
     }
   }
@@ -114,7 +149,10 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
   }
 
   return {
-    async addFiles(notebookId: string, paths: string[]): Promise<{ added: string[]; rejected: string[] }> {
+    async addFiles(
+      notebookId: string,
+      paths: string[]
+    ): Promise<{ added: string[]; rejected: string[] }> {
       const added: string[] = []
       const rejected: string[] = []
       for (const p of paths) {
@@ -127,31 +165,34 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
         const id = randomUUID()
         await mkdir(store.filesDir(id), { recursive: true })
         await copyFile(p, join(store.filesDir(id), name))
-        added.push(await add({ id, notebookId, kind, title: name.slice(0, name.length - extname(name).length), origin: name }))
+        added.push(
+          await add({
+            id,
+            notebookId,
+            kind,
+            title: name.slice(0, name.length - extname(name).length),
+            origin: name
+          })
+        )
       }
       return { added, rejected }
     },
     async addYoutube(notebookId: string, url: string): Promise<string> {
       const canonical = canonicalYoutube(url)
       if (!canonical) throw new Error('Link YouTube non valido')
-      return add({ id: randomUUID(), notebookId, kind: 'youtube', title: 'Video YouTube', origin: canonical })
+      return add({
+        id: randomUUID(),
+        notebookId,
+        kind: 'youtube',
+        title: 'Video YouTube',
+        origin: canonical
+      })
     },
-    addVaultNote: (notebookId: string, path: string, title: string): Promise<string> => add({ id: randomUUID(), notebookId, kind: 'vault', title, origin: path }),
     async retry(id: string): Promise<void> {
       if (pending.has(id)) return
       pending.add(id)
       const s = await store.source(id)
       if (!s || s.status !== 'failed') return void pending.delete(id)
-      await store.setStatus(id, { status: 'queued' })
-      deps.onChange()
-      enqueue(id, s.kind)
-    },
-    /** "Aggiorna": read a vault note again (it may have changed in Obsidian). */
-    async refresh(id: string): Promise<void> {
-      if (pending.has(id)) return
-      pending.add(id)
-      const s = await store.source(id)
-      if (!s || s.kind !== 'vault' || s.status === 'processing') return void pending.delete(id)
       await store.setStatus(id, { status: 'queued' })
       deps.onChange()
       enqueue(id, s.kind)
@@ -176,10 +217,19 @@ export function createIngestor(deps: { store: NotebookStore; run: RunTool; readV
     /** Work left half-done by a quit cannot resume on its own: say so and let Andrea retry. */
     async fixStale(): Promise<void> {
       for (const nb of await store.notebooks())
-        for (const s of nb.sources) if (s.status === 'queued' || s.status === 'processing') await store.setStatus(s.id, { status: 'failed', error: 'Interrotta. Riprova.' })
+        for (const s of nb.sources)
+          if (s.status === 'queued' || s.status === 'processing')
+            await store.setStatus(s.id, { status: 'failed', error: 'Interrotta. Riprova.' })
     },
     decorate: (nbs: Notebook[]): Notebook[] =>
-      nbs.map((n) => ({ ...n, sources: n.sources.map((s) => ({ ...s, ...(progress.has(s.id) ? { progress: progress.get(s.id) } : {}), ...(stages.has(s.id) ? { stage: stages.get(s.id) } : {}) })) })),
+      nbs.map((n) => ({
+        ...n,
+        sources: n.sources.map((s) => ({
+          ...s,
+          ...(progress.has(s.id) ? { progress: progress.get(s.id) } : {}),
+          ...(stages.has(s.id) ? { stage: stages.get(s.id) } : {})
+        }))
+      })),
     /** Resolves when every job queued so far has finished. */
     async idle(): Promise<void> {
       let seen: [Promise<void>, Promise<void>]

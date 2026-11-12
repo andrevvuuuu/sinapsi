@@ -36,6 +36,7 @@ const api: SinapsiApi = {
     list: () => ipcRenderer.invoke(CH.notesList),
     get: (id) => ipcRenderer.invoke(CH.notesGet, id),
     retry: (id) => ipcRenderer.invoke(CH.notesRetry, id),
+    attempt: (a) => ipcRenderer.invoke(CH.notesAttempt, a),
     onUpdate: (cb) => subscribe(CH.notesUpdated, cb)
   },
   graph: {
@@ -46,31 +47,31 @@ const api: SinapsiApi = {
     positions: () => ipcRenderer.invoke(CH.graphPositions),
     savePositions: (p) => ipcRenderer.invoke(CH.graphSavePositions, p)
   },
+  voice: {
+    transcribe: (bytes) => ipcRenderer.invoke(CH.voiceTranscribe, bytes),
+    microphone: () => ipcRenderer.invoke(CH.voiceMicrophone),
+    onStage: (cb) => subscribe(CH.voiceStage, cb)
+  },
   review: {
     plan: (opts) => ipcRenderer.invoke(CH.reviewPlan, opts),
     grade: (req) => ipcRenderer.invoke(CH.reviewGrade, req),
+    explain: (req) => ipcRenderer.invoke(CH.reviewExplain, req),
     record: (r) => ipcRenderer.invoke(CH.reviewRecord, r),
     memory: () => ipcRenderer.invoke(CH.reviewMemory),
+    calibration: () => ipcRenderer.invoke(CH.reviewCalibration),
     intervals: (id) => ipcRenderer.invoke(CH.reviewIntervals, id),
     sessions: () => ipcRenderer.invoke(CH.reviewSessions)
   },
   notebook: {
     list: () => ipcRenderer.invoke(CH.notebookList),
     create: (name) => ipcRenderer.invoke(CH.notebookCreate, name),
-    update: (id, patch) => ipcRenderer.invoke(CH.notebookUpdate, id, patch),
+    bucketFor: (subject) => ipcRenderer.invoke(CH.notebookBucketFor, subject),
     remove: (id) => ipcRenderer.invoke(CH.notebookRemove, id),
     addFiles: (id, paths) => ipcRenderer.invoke(CH.notebookAddFiles, id, paths),
     chooseFiles: (id) => ipcRenderer.invoke(CH.notebookChooseFiles, id),
     addYoutube: (id, url) => ipcRenderer.invoke(CH.notebookAddYoutube, id, url),
-    addVault: (id, path) => ipcRenderer.invoke(CH.notebookAddVault, id, path),
     removeSource: (id) => ipcRenderer.invoke(CH.notebookRemoveSource, id),
     retrySource: (id) => ipcRenderer.invoke(CH.notebookRetrySource, id),
-    refreshSource: (id) => ipcRenderer.invoke(CH.notebookRefreshSource, id),
-    busy: (id) => ipcRenderer.invoke(CH.notebookBusy, id),
-    text: (id) => ipcRenderer.invoke(CH.notebookText, id),
-    chat: (id) => ipcRenderer.invoke(CH.notebookChat, id),
-    ask: (id, q, ids) => ipcRenderer.invoke(CH.notebookAsk, id, q, ids),
-    openFile: (id) => ipcRenderer.invoke(CH.notebookOpenFile, id),
     pathForFile: (file) => webUtils.getPathForFile(file),
     onUpdate: (cb) => subscribe(CH.notebookUpdated, cb)
   },
@@ -81,14 +82,44 @@ const api: SinapsiApi = {
     retry: (id) => ipcRenderer.invoke(CH.practiceRetry, id),
     get: (id) => ipcRenderer.invoke(CH.practiceGet, id),
     list: () => ipcRenderer.invoke(CH.practiceList),
-    examStart: (m, minutes) => ipcRenderer.invoke(CH.practiceExamStart, m, minutes),
+    examStart: (m, minutes, paper) => ipcRenderer.invoke(CH.practiceExamStart, m, minutes, paper),
     examSave: (id, a) => ipcRenderer.invoke(CH.practiceExamSave, id, a),
     examDeliver: (id, a) => ipcRenderer.invoke(CH.practiceExamDeliver, id, a),
+    examHand: (id) => ipcRenderer.invoke(CH.practiceExamHand, id),
+    examSelf: (id, problemId, points) =>
+      ipcRenderer.invoke(CH.practiceExamSelf, id, problemId, points),
+    calibration: () => ipcRenderer.invoke(CH.practiceCalibration),
     photo: (id, bytes) => ipcRenderer.invoke(CH.practicePhoto, id, bytes),
     camera: () => ipcRenderer.invoke(CH.practiceCamera),
     onUpdate: (cb) => subscribe(CH.practiceUpdated, cb)
   },
-  suggest: { get: () => ipcRenderer.invoke(CH.suggestGet) }
+  lessons: {
+    list: () => ipcRenderer.invoke(CH.lessonsList),
+    get: (id) => ipcRenderer.invoke(CH.lessonsGet, id),
+    create: (e) => ipcRenderer.invoke(CH.lessonsCreate, e),
+    update: (id, p) => ipcRenderer.invoke(CH.lessonsUpdate, id, p),
+    addConfusion: (id, t) => ipcRenderer.invoke(CH.lessonsAddConfusion, id, t),
+    resolveConfusion: (id, q) => ipcRenderer.invoke(CH.lessonsResolveConfusion, id, q),
+    setMastery: (id, l) => ipcRenderer.invoke(CH.lessonsSetMastery, id, l),
+    archive: (id) => ipcRenderer.invoke(CH.lessonsArchive, id),
+    launch: (id, m) => ipcRenderer.invoke(CH.lessonsLaunch, id, m)
+  },
+  tutor: {
+    calendar: () => ipcRenderer.invoke(CH.tutorCalendar),
+    report: () => ipcRenderer.invoke(CH.tutorReport)
+  },
+  exams: {
+    list: () => ipcRenderer.invoke(CH.examsList),
+    create: (entry) => ipcRenderer.invoke(CH.examsCreate, entry),
+    update: (id, patch) => ipcRenderer.invoke(CH.examsUpdate, id, patch),
+    archive: (id) => ipcRenderer.invoke(CH.examsArchive, id)
+  },
+  plan: { week: () => ipcRenderer.invoke(CH.planWeek) },
+  suggest: { get: () => ipcRenderer.invoke(CH.suggestGet) },
+  ui: {
+    reducedTransparency: () => ipcRenderer.invoke(CH.uiTransparency),
+    onReducedTransparency: (cb) => subscribe(CH.uiTransparencyChanged, cb)
+  }
 }
 
 contextBridge.exposeInMainWorld('sinapsi', api)

@@ -4,7 +4,9 @@ import { FigureSchema } from './nota-schema'
 
 /**
  * Review exercises: each tests one concept from a different angle (richiamo, distinzione,
- * composizione). Everything but `open` is graded in the app; `open` is graded by Claude.
+ * composizione). Everything but `open` and `explain` is graded in the app; those two are graded by Claude.
+ * `explain` (Spiegalo tu): Andrea explains a concept or rebuilds a proof with the book closed; `answer` holds
+ * the key steps in the note's order.
  */
 const base = { prompt: z.string().trim().min(1), answer: z.string().trim().min(1) }
 const choice = z.array(z.string().trim().min(1)).min(2).max(6)
@@ -65,6 +67,94 @@ export function blankParts(text: string): string[] {
   return parts
 }
 export const blanks = (text: string): { options: string[]; correct: number }[] => blankSpans(text).map(({ options, correct }) => ({ options, correct }))
+
+/** The $ delimiters of a piece of text, $$ as one display delimiter, \\$ as none. */
+type Dollar = { at: number; len: 1 | 2 }
+function dollarsAt(s: string): Dollar[] {
+  const out: Dollar[] = []
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '\\') i++
+    else if (s[i] === '$') {
+      const len = s[i + 1] === '$' ? 2 : 1
+      out.push({ at: i, len })
+      i += len - 1
+    }
+  }
+  return out
+}
+
+/** The delimiter around the math, spaces kept outside: "$f(1) = " closes as "$f(1) =$ ", which renderMd reads as math. */
+function mathOf(s: string, d: string): string {
+  const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(s)!
+  return m[2] ? `${m[1]}${d}${m[2]}${d}${m[3]}` : s
+}
+
+export type ClozeBlank = { options: string[]; correct: number; math: boolean }
+export type Cloze = { parts: string[]; blanks: ClozeBlank[] }
+
+/**
+ * The parts of a cloze text ready to render on their own: the model often puts the blanks inside a formula
+ * («$f(1) = {{ -2 | *0 | 1 }}$») and forgets the closing $, so the pieces around the blanks would show raw
+ * «$f(1) =» or «\\frac{…}». Here the math is balanced across the pieces: a piece that opens $ (or $$) without
+ * closing it is closed at its end and reopened where the formula continues after the blank. A formula still open
+ * at the end closes after the last blank; only a final $ with no blank after it, never closed, is dropped.
+ * Options of a blank inside a formula become formulas themselves.
+ */
+export function clozeParts(text: string): Cloze {
+  const spans = blankSpans(text)
+  const raw = blankParts(text)
+  const marks = raw.map(dollarsAt)
+  // The delimiter of the formula open at the start and at the end of each piece ('' when none is open).
+  const startsIn: string[] = []
+  const endsIn: string[] = []
+  let open = ''
+  raw.forEach((piece, i) => {
+    // "{{…}} $y$": a $ after a space opens a new formula; the one left open before the blank ends at the blank.
+    if (open && /^\s+\$/.test(piece)) open = ''
+    startsIn.push(open)
+    for (const d of marks[i]) open = open ? '' : d.len === 2 ? '$$' : '$'
+    endsIn.push(open)
+  })
+  let drop: [number, Dollar] | null = null
+  if (open) {
+    const lastPiece = marks.findLastIndex((m) => m.length > 0)
+    if (lastPiece === raw.length - 1 && !startsIn[lastPiece]) {
+      // A truly unmatched final $: nothing after it to close.
+      drop = [lastPiece, marks[lastPiece][marks[lastPiece].length - 1]]
+      endsIn[lastPiece] = ''
+    } else {
+      // The closing $ the model forgot: the formula ends right after the last blank.
+      startsIn[raw.length - 1] = ''
+      endsIn[raw.length - 1] = ''
+    }
+  }
+  const parts = raw.map((piece, i) => {
+    let s = piece
+    if (drop && drop[0] === i) s = s.slice(0, drop[1].at) + s.slice(drop[1].at + drop[1].len)
+    const m = dollarsAt(s)
+    let head = ''
+    let body = s
+    // A formula carried over from the previous blank: it continues up to this piece's first $.
+    if (startsIn[i]) {
+      const cut = m.length ? m[0].at : s.length
+      head = mathOf(s.slice(0, cut), startsIn[i])
+      body = m.length ? s.slice(cut + m[0].len) : ''
+    }
+    // A formula still open at the end: close it before the blank.
+    if (endsIn[i] && (!startsIn[i] || m.length)) {
+      const bm = dollarsAt(body)
+      const last = bm[bm.length - 1]
+      body = body.slice(0, last.at) + mathOf(body.slice(last.at + last.len), endsIn[i])
+    }
+    return head + body
+  })
+  const blanks = spans.map((b, i) => {
+    const math = !!endsIn[i]
+    return { options: b.options.map((o) => (math && !o.includes('$') ? `$${o}$` : o)), correct: b.correct, math }
+  })
+  return { parts, blanks }
+}
+
 const fillOk = (text: string): boolean => {
   const groups = blankSpans(text)
   return groups.length > 0 && groups.every((g) => g.starred === 1)
@@ -72,6 +162,7 @@ const fillOk = (text: string): boolean => {
 
 export const ExerciseSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('open'), ...base }),
+  z.object({ type: z.literal('explain'), ...base }),
   z.object({ type: z.literal('mc'), ...base, options: choice, correct: z.number().int() }).refine((e) => e.correct >= 0 && e.correct < e.options.length, 'correct fuori intervallo'),
   z.object({ type: z.literal('truefalse'), ...base, statement: z.string().trim().min(1), value: z.boolean() }),
   z.object({ type: z.literal('order'), ...base, steps: z.array(z.string().trim().min(1)).min(3).max(8) }).refine((e) => distinct(e.steps), 'passi ripetuti'),

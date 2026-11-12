@@ -5,6 +5,7 @@ export const MODE_IT: Record<(typeof PRACTICE_MODES)[number], string> = { recall
 export const OUTCOMES = ['solved', 'solved_hints', 'surrendered'] as const
 export const OUTCOME_IT: Record<(typeof OUTCOMES)[number], string> = { solved: 'Risolto', solved_hints: 'Risolto con aiuti', surrendered: 'Arreso' }
 export const MISSES = ['cue', 'discrimination', 'execution', 'careless', 'structural'] as const
+export const RUNG_IT = ['Attenzione', 'Schema', 'Candidati', 'Proposizione', 'Mossa', 'Passo svolto'] as const
 
 const BlockSchema = z.object({ type: z.literal('text'), md: z.string() })
 export const ProblemSchema = z.object({
@@ -40,14 +41,33 @@ export const PracticeTurnSchema = TurnShape.superRefine((t, ctx) => {
   if (t.problem?.lines && t.problem.lines.length < 2) ctx.addIssue({ code: 'custom', message: '"lines" ha almeno due righe' })
 })
 
+/** Whether Andrea has sent any reasoning on the open problem. */
+export function hasAttempt(state: { active?: string; problems?: { id: string; attempts?: number }[] }): boolean {
+  return (state.problems?.find((p) => p.id === state.active)?.attempts ?? 0) > 0
+}
+
+/** Attempt first: with nothing written yet, one rung-0 hint is free; the next waits for a try. */
+export function hintGate(p: { hints: number; attempts: number; compass?: unknown }): null | 'attempt' | 'compass' {
+  if (p.attempts === 0 && p.hints === 0) return null
+  if (p.attempts === 0) return 'attempt'
+  if (!p.compass) return 'compass'
+  return null
+}
+export function hintBlocked(p: { hints: number; attempts: number }): boolean {
+  return hintGate(p) === 'attempt'
+}
+
 /** The rules a turn must also satisfy against the session so far and what Andrea just asked. null when fine. */
-export function checkTurnAgainst(state: { active?: string; problems?: { id: string }[] }, t: PracticeTurn, asked?: Submission['kind']): string | null {
+export function checkTurnAgainst(state: { active?: string; problems?: { id: string; attempts?: number }[] }, t: PracticeTurn, asked?: Submission['kind']): string | null {
   if (t.problem && state.active) return `c'è già un problema aperto (${state.active}): concludilo prima di proporne un altro`
   if (t.problem && state.problems?.some((p) => p.id === t.problem!.id)) return `l'id "${t.problem.id}" è già stato usato: dai al problema un id nuovo`
   if ((t.conclude || t.hint) && !state.active) return 'non c\'è nessun problema aperto: proponi un problema con "problem"'
   if (asked === 'dismiss' && !t.conclude) return 'Andrea ha lasciato il problema: concludi con "conclude" e outcome "surrendered"'
   if ((asked === 'start' || asked === 'next') && !t.problem && t.phase !== 'done') return 'Andrea aspetta il prossimo problema: proponilo con "problem" (oppure chiudi con "done")'
   if (asked === 'end' && t.phase !== 'done') return 'Andrea ha chiuso la sessione: rispondi con phase "done" e "summary"'
+  if (asked === 'compass' && (!t.hint || t.problem || t.conclude)) return 'Andrea ha chiesto un indizio mirato con la Bussola: rispondi con "hint"'
+  if (asked === 'restate' && (t.hint || t.problem)) return 'Andrea ha riformulato l’indizio: commenta la riformulazione nei "blocks" senza aggiungere indizi o problemi'
+  if (asked !== 'compass' && t.hint && t.hint.rung > 0 && !hasAttempt(state)) return 'Andrea non ha ancora scritto un tentativo: l\'indizio resta al gradino 0 (attenzione o chiarimento del testo)'
   return null
 }
 
@@ -58,18 +78,26 @@ export function practiceJsonSchema(): object {
 }
 
 export const SubmissionSchema = z.object({
-  kind: z.enum(['start', 'thinking', 'hint', 'next', 'ask', 'dismiss', 'end']),
+  kind: z.enum(['start', 'thinking', 'hint', 'next', 'ask', 'dismiss', 'end', 'compass', 'restate']),
   text: z.string().max(20_000).optional(),
   line: z.number().int().min(0).max(50).optional(),
-  photoText: z.string().max(20_000).optional()
+  photoText: z.string().max(20_000).optional(),
+  compass: z.object({ known: z.string().max(2000), stuck: z.string().min(1).max(2000), question: z.string().min(1).max(1000) }).optional()
+}).superRefine((s, ctx) => {
+  if (s.kind === 'compass' && !s.compass) ctx.addIssue({ code: 'custom', message: 'la Bussola della confusione è obbligatoria' })
+  if (s.kind === 'restate' && !s.text?.trim()) ctx.addIssue({ code: 'custom', message: 'la riformulazione è obbligatoria' })
 })
 export type Submission = z.infer<typeof SubmissionSchema>
 
 /** What Andrea sent, as the tutor reads it. */
-export function formatSubmission(s: Submission, problem?: Pick<Problem, 'lines'>): string {
+export function formatSubmission(s: Submission, problem?: Pick<Problem, 'lines'> & { attempts?: number }): string {
   switch (s.kind) {
     case 'hint':
-      return 'Mi serve un indizio.'
+      return problem?.attempts === 0 ? 'Mi serve un indizio. Non ho ancora scritto un tentativo: solo gradino 0.' : 'Mi serve un indizio.'
+    case 'compass':
+      return `Bussola della confusione — So già: ${s.compass?.known ?? ''} / Mi blocco qui: ${s.compass?.stuck ?? ''} / La mia domanda: ${s.compass?.question ?? ''} Mi serve un indizio mirato a questa domanda.`
+    case 'restate':
+      return `Riformulo l'indizio con parole mie: ${s.text ?? ''}`
     case 'next':
       return 'Prossimo problema.'
     case 'ask':
@@ -87,5 +115,7 @@ export function formatSubmission(s: Submission, problem?: Pick<Problem, 'lines'>
       if (s.photoText?.trim()) parts.push(`Dal foglio fotografato:\n${s.photoText.trim()}`)
       return parts.join('\n')
     }
+    default:
+      return ''
   }
 }

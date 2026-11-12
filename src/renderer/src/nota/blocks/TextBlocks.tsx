@@ -1,6 +1,7 @@
 import { useContext, useState } from 'react'
 import type { LeafBlock } from '../../../../shared/nota-schema'
-import { RichText } from '../../session/RichText'
+import { Inline, Md } from '../Md'
+import { plainText } from '../math'
 import { NotaContext } from '../context'
 
 type B<T extends LeafBlock['type']> = Extract<LeafBlock, { type: T }>
@@ -13,21 +14,25 @@ export function Prose({ block }: { block: B<'prose'> }): React.JSX.Element {
         <p className="nv-srcs">
           {block.sources.map((s, i) => (
             <span key={i} className={'nv-src' + (/obsidian/i.test(s) ? ' ob' : '')}>
-              {s}
+              <Inline md={s} />
             </span>
           ))}
         </p>
       )}
-      <RichText md={block.md} />
+      <Md md={block.md} />
     </div>
   )
 }
 
 export function Theorem({ block }: { block: B<'theorem'> }): React.JSX.Element {
   return (
-    <div className="nv-thm" role="group" aria-label={block.label ? `Enunciato: ${block.label}` : 'Enunciato'}>
-      {block.label && <div className="t">{block.label}</div>}
-      <RichText md={block.md} />
+    <div className="nv-thm" role="group" aria-label={block.label ? `Enunciato: ${plainText(block.label)}` : 'Enunciato'}>
+      {block.label && (
+        <div className="t">
+          <Inline md={block.label} />
+        </div>
+      )}
+      <Md md={block.md} />
     </div>
   )
 }
@@ -38,9 +43,9 @@ export function Why({ block }: { block: B<'why'> }): React.JSX.Element {
     <div className="nv-why">
       <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span aria-hidden="true">{open ? '−' : '+'}</span>
-        {block.title}
+        <Inline md={block.title} />
       </button>
-      {open && <RichText md={block.md} className="body" />}
+      {open && <Md md={block.md} className="body" />}
     </div>
   )
 }
@@ -59,11 +64,11 @@ export function Flag({ block }: { block: B<'flag'> }): React.JSX.Element | null 
   return (
     <div className="nv-flag" role="note">
       <b>Segnalazione sulla tua nota</b>
-      <RichText md={block.md} />
+      <Md md={block.md} />
       {block.correction && (
         <div className="nv-correction">
           <span>Correzione proposta</span>
-          <RichText md={block.correction} />
+          <Md md={block.correction} />
         </div>
       )}
       <div className="nv-row">
@@ -93,7 +98,7 @@ export function SessionNote({ block }: { block: B<'session'> }): React.JSX.Eleme
   return (
     <div className={'nv-ann ' + block.kind}>
       <span className="who">{SESSION_LABEL[block.kind]}</span>
-      <RichText md={block.md} />
+      <Md md={block.md} />
     </div>
   )
 }

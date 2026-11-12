@@ -33,7 +33,7 @@ describe('free topic', () => {
 describe('photo dialog', () => {
   it('closes with Esc and accepts the same file twice', async () => {
     const photo = vi.fn(async () => 'testo')
-    const state = { id: 'p', mode: 'train', material: { conceptIds: [], sourceIds: [], free: 'x' }, topic: 'x', phase: 'warmup', items: [], problems: [{ id: 'p1', statement: 's', mode: 'recall', targets: [], status: 'active', phase: 'warmup', hints: 0, maxRung: null }], active: 'p1', paused: false, awaiting: 'learner', hasTutorTurn: true, createdAt: 1, updatedAt: 1 }
+    const state = { id: 'p', mode: 'train', material: { conceptIds: [], sourceIds: [], free: 'x' }, topic: 'x', phase: 'warmup', items: [], problems: [{ id: 'p1', statement: 's', mode: 'recall', targets: [], status: 'active', phase: 'warmup', hints: 0, maxRung: null, attempts: 0 }], active: 'p1', paused: false, awaiting: 'learner', hasTutorTurn: true, createdAt: 1, updatedAt: 1 }
     window.sinapsi = { practice: { get: vi.fn(async () => state), onUpdate: () => () => undefined, photo, camera: vi.fn(async () => false), submit: vi.fn() } } as never
     render(<PracticeView id="p" onBack={vi.fn()} onStarted={vi.fn()} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Foto del foglio' }))

@@ -17,7 +17,7 @@ export const ExtractionLineSchema = z.object({
   notePath: z.string(),
   hash: z.string(),
   at: z.number(),
-  reason: z.enum(['manual', 'study', 'background']),
+  reason: z.enum(['manual', 'study', 'background', 'linked']),
   nodes: z.number(),
   chains: z.number(),
   dropped: z.number(),

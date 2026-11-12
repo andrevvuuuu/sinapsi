@@ -29,7 +29,7 @@ test('a nota viva written from an Obsidian note, with live figure and quiz', asy
 
   // "Prova da solo" covers the second proof step
   await expect(win.getByText('Un estremo interno ha derivata nulla.')).toBeVisible()
-  await win.getByRole('button', { name: 'Prova da solo' }).click()
+  await win.getByRole('tab', { name: 'Prova da solo' }).click()
   await expect(win.getByText('Un estremo interno ha derivata nulla.')).toHaveCount(0)
   await expect(win.getByText('Perché almeno un estremo è interno?')).toBeVisible()
   await win.screenshot({ path: 'test-results/nota.png', fullPage: true })

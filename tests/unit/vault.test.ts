@@ -65,6 +65,17 @@ describe('scanVault', () => {
     expect(idx.notes.find((n) => n.title === 'Teorema di Rolle')).toMatchObject({ available: true })
   })
 
+  it('reads the outcome of the correctness check, ignoring unknown values', async () => {
+    const realRead = (p: string) => readFile(p, 'utf8')
+    const idx = await scanVault(ROOT, EXCLUDED, {
+      readFile: async (p) =>
+        p.endsWith('Teorema di Rolle.md') ? '---\nVerifica: errori\nVerificata: 2026-11-02\n---\n# Rolle' : p.endsWith('Bicipite.md') ? '---\nVerifica: forse\n---\n' : realRead(p)
+    })
+    expect(idx.notes.find((n) => n.title === 'Teorema di Rolle')?.verifica).toBe('errori')
+    expect(idx.notes.find((n) => n.title === 'Bicipite')?.verifica).toBeUndefined()
+    expect(idx.notes.find((n) => n.title === 'Teorema di Lagrange')?.verifica).toBeUndefined()
+  })
+
   it('never changes the vault', async () => {
     const file = join(ROOT, 'Matematica/Teorema di Rolle.md')
     const before = [(await stat(file)).mtimeMs, await readFile(file, 'utf8')]

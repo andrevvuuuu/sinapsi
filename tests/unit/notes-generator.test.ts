@@ -1,5 +1,6 @@
 import { mkdtemp, readdir, readFile, writeFile, mkdir } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -33,14 +34,14 @@ beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), 'sinapsi-notes-'))
 })
 
-function setup(ask: Bridge['ask'] = vi.fn(async () => ({ data: parseNota(raw), fromCache: false, engine: 'agy' as const })) as never) {
+function setup(ask: Bridge['ask'] = vi.fn(async () => ({ data: parseNota(raw), fromCache: false, engine: 'agy' as const })) as never, readNote = async (): Promise<string> => '## 1. Enunciato\ntesto') {
   const updates: NoteMeta[] = []
   const g = createNoteGenerator({
     bridge: { ask },
     dir: join(dir, 'notes'),
     workDir: join(dir, 'ai-work'),
     vault: async () => index,
-    readNote: async () => '## 1. Enunciato\ntesto',
+    readNote,
     session: async (id) =>
       id === '22222222-2222-4222-8222-222222222222'
         ? reduceSession([{ t: 'created', id, topic: 'Rolle', noteTitle: 'Teorema di Rolle', notePath: '/vault/Matematica/Teorema di Rolle.md', at: 1 }])
@@ -119,6 +120,51 @@ describe('note generator', () => {
     const list = await g.list()
     expect(list[0]).toMatchObject({ id, status: 'error', error: 'Generazione interrotta. Riprova.', title: 'Teorema di Rolle' })
     expect((await g.get(id)).status).toBe('error')
+  })
+  it('rewrites a ready nota viva only when its Obsidian note changed, keeping the old one if writing fails', async () => {
+    let text = '## 1. Enunciato\ntesto'
+    let fail = false
+    const ask = vi.fn(async () => {
+      if (fail) throw new AiTimeoutError('agy', 480_000)
+      return { data: parseNota(raw), fromCache: false, engine: 'agy' as const }
+    })
+    const { g } = setup(ask as never, async () => text)
+    const id = await g.create({ sourcePath: '/vault/Matematica/Teorema di Rolle.md' })
+    await settle()
+    const first = await g.get(id)
+    expect(await g.refresh('/vault/Matematica/Teorema di Rolle.md')).toBe(0)
+    text = '## 1. Enunciato\ntesto corretto'
+    fail = true
+    expect(await g.refresh('/vault/Matematica/Teorema di Rolle.md')).toBe(0)
+    expect(await g.get(id)).toEqual(first)
+    fail = false
+    expect(await g.refresh('/vault/Matematica/Teorema di Rolle.md')).toBe(1)
+    const again = await g.get(id)
+    expect(again).toMatchObject({ id, status: 'ready' })
+    expect(again.sourceHash).not.toBe(first.sourceHash)
+    expect((ask.mock.calls.at(-1) as unknown as [{ prompt: string }])[0].prompt).toContain('testo corretto')
+    expect(await g.refresh('/vault/Matematica/Teorema di Rolle.md')).toBe(0)
+  })
+  it('does not rewrite a nota viva when only the frontmatter of its note changed', async () => {
+    let text = '---\nDisciplina: Matematica\n---\n## 1. Enunciato\ntesto'
+    const { g, ask } = setup(undefined, async () => text)
+    await g.create({ sourcePath: '/vault/Matematica/Teorema di Rolle.md' })
+    await settle()
+    text = '---\nDisciplina: Matematica\nLezioni:\n  - 2026-10-26\n---\n## 1. Enunciato\ntesto'
+    expect(await g.refresh('/vault/Matematica/Teorema di Rolle.md')).toBe(0)
+    expect(ask).toHaveBeenCalledTimes(1)
+  })
+  it('accepts the full-text hash saved by older versions, so existing notes vive are not all rewritten', async () => {
+    const text = '---\nDisciplina: Matematica\n---\n## 1. Enunciato\ntesto'
+    const { g, ask } = setup(undefined, async () => text)
+    const id = await g.create({ sourcePath: '/vault/Matematica/Teorema di Rolle.md' })
+    await settle()
+    const file = join(dir, 'notes', `${id}.json`)
+    const stored = JSON.parse(await readFile(file, 'utf8'))
+    stored.sourceHash = createHash('sha256').update(text).digest('hex')
+    await writeFile(file, JSON.stringify(stored))
+    expect(await g.refresh('/vault/Matematica/Teorema di Rolle.md')).toBe(0)
+    expect(ask).toHaveBeenCalledTimes(1)
   })
   it('lists newest first, titled by the nota', async () => {
     const { g } = setup()

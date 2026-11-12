@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Composer } from '../../src/renderer/src/home/Composer'
 import Home from '../../src/renderer/src/home/Home'
 import type { VaultResult } from '../../src/shared/api'
 import { settingsSchema } from '../../src/shared/settings-schema'
@@ -33,12 +34,12 @@ function mount(over: Record<string, unknown> = {}) {
 describe('left panel', () => {
   it('filters past sessions by kind, Ripasso included, and opens them', async () => {
     const { props } = mount()
-    const kinds = await screen.findByRole('group', { name: 'Sessioni da mostrare' })
-    expect(within(kinds).getAllByRole('button').map((b) => b.textContent)).toEqual(['Tutte', 'Apprendimento', 'Pratica', 'Ripasso'])
+    const kinds = await screen.findByRole('tablist', { name: 'Sessioni da mostrare' })
+    expect(within(kinds).getAllByRole('tab').map((b) => b.textContent)).toEqual(['Tutte', 'Apprendimento', 'Pratica', 'Ripasso'])
     const list = await screen.findByRole('list', { name: 'Sessioni passate' })
     expect(await within(list).findByText('Teorema di Lagrange')).toBeTruthy()
     expect(within(list).getAllByRole('button')).toHaveLength(3)
-    fireEvent.click(within(kinds).getByRole('button', { name: 'Ripasso' }))
+    fireEvent.click(within(kinds).getByRole('tab', { name: 'Ripasso' }))
     fireEvent.click(within(list).getByRole('button', { name: /Teorema di Lagrange/ }))
     expect(props.onOpenReview).toHaveBeenCalledWith('', ['n_l'])
   })
@@ -73,10 +74,10 @@ describe('settings dialog', () => {
     mount()
     fireEvent.click(await screen.findByRole('button', { name: 'Impostazioni' }))
     const dlg = screen.getByRole('dialog', { name: 'Impostazioni' })
-    const trattato = within(dlg).getByRole('button', { name: 'Trattato' })
-    trattato.focus()
-    await act(async () => fireEvent.click(trattato))
-    expect(document.activeElement).toBe(trattato)
+    const sw = within(dlg).getByRole('switch')
+    sw.focus()
+    await act(async () => fireEvent.keyDown(sw, { key: 'Enter' }))
+    expect(document.activeElement).toBe(sw)
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Impostazioni' })).toBeNull()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Impostazioni' }))
@@ -111,7 +112,7 @@ describe('right panel', () => {
 describe('centre', () => {
   it('keeps the mode slider detached above the field', async () => {
     mount()
-    const modes = await screen.findByRole('group', { name: 'Tipo di sessione' })
+    const modes = await screen.findByRole('tablist', { name: 'Tipo di sessione' })
     const field = screen.getByLabelText('Cosa vuoi studiare?')
     expect(modes.closest('.shell')).toBeNull()
     expect(field.closest('.shell')).toBeTruthy()
@@ -129,5 +130,30 @@ describe('centre', () => {
     fireEvent.keyDown(search, { key: 'Escape' })
     expect(screen.queryByRole('combobox', { name: 'Cerca nel grafo' })).toBeNull()
     expect(document.activeElement).toBe(btn)
+  })
+})
+
+describe('composer', () => {
+  const chip = (label: string, reason: string) => ({ label, reason, action: { kind: 'learn' as const, topic: label } })
+  const SUG = { learn: [chip('Principio del Buon Ordinamento dei Naturali', 'sessione da finire'), chip('Numeri Reali', 'base di 25 note')], review: [], practice: [] }
+  it('gives each suggestion its full text on hover and to assistive tech', () => {
+    render(<Composer onSubmit={vi.fn()} suggestions={SUG} />)
+    const group = screen.getByRole('group', { name: 'Consigliati' })
+    const chips = within(group).getAllByRole('button')
+    expect(chips.map((c) => c.getAttribute('title'))).toEqual(['Principio del Buon Ordinamento dei Naturali — sessione da finire', 'Numeri Reali — base di 25 note'])
+    expect(chips.map((c) => c.getAttribute('aria-label'))).toEqual(chips.map((c) => c.getAttribute('title')))
+    expect(screen.getByRole('button', { name: 'Principio del Buon Ordinamento dei Naturali — sessione da finire' }).querySelector('.sg-label')!.textContent).toBe('Principio del Buon Ordinamento dei Naturali')
+  })
+  it('exposes when send is disabled and when it is enabled', () => {
+    const onSubmit = vi.fn()
+    render(<Composer onSubmit={onSubmit} suggestions={SUG} />)
+    const send = screen.getByRole('button', { name: 'Inizia' })
+    expect(send).toHaveProperty('disabled', true)
+    fireEvent.click(send)
+    expect(onSubmit).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Cosa vuoi studiare?'), { target: { value: 'Limiti' } })
+    expect(send).toHaveProperty('disabled', false)
+    fireEvent.click(send)
+    expect(onSubmit).toHaveBeenCalledWith('Apprendimento', 'Limiti')
   })
 })

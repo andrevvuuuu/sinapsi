@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { toTitleCase } from '../../shared/subjects'
 import { mkdir, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
@@ -6,7 +7,7 @@ import type { Bridge } from '../ai/bridge'
 import { AuthRequiredError, EngineMissingError } from '../ai/errors'
 import { appendJsonl, readJsonl } from '../store/jsonl'
 import type { Grade } from '../../shared/memory-types'
-import { checkTurnAgainst, formatSubmission, practiceJsonSchema, PracticeTurnSchema, type PracticeTurn, type Submission } from '../../shared/practice-protocol'
+import { checkTurnAgainst, formatSubmission, hintGate, practiceJsonSchema, PracticeTurnSchema, type PracticeTurn, type Submission } from '../../shared/practice-protocol'
 import type { Material } from '../../shared/practice-types'
 import type { MemoryStore } from '../memory/store'
 import { reducePractice, type PracticeEvent, type PracticeState, type PracticeSummary } from './events'
@@ -23,6 +24,9 @@ export type PracticeDeps = {
   onUpdate: (s: PracticeState) => void
   now?: () => number
   uuid?: () => string
+  onDone?: (lessonId: string) => Promise<void>
+  onCompass?: (lessonId: string, question: string) => Promise<void>
+  onSolved?: (lessonId: string, questions: string[]) => Promise<void>
 }
 
 const AnyEvent = z.custom<PracticeEvent>((v) => !!v && typeof v === 'object' && typeof (v as { t?: unknown }).t === 'string')
@@ -60,8 +64,11 @@ export function createPracticeRunner(deps: PracticeDeps) {
     return s
   }
   async function append(id: string, e: PracticeEvent): Promise<void> {
+    const before = await load(id)
     await appendJsonl(file(id), e)
-    deps.onUpdate(await load(id))
+    const after = await load(id)
+    deps.onUpdate(after)
+    if (before.phase !== 'done' && after.phase === 'done' && after.material.lessonId) await deps.onDone?.(after.material.lessonId)
   }
 
   async function record(s: PracticeState, turn: PracticeTurn): Promise<void> {
@@ -70,7 +77,7 @@ export function createPracticeRunner(deps: PracticeDeps) {
     const grade = gradeFor(turn.conclude.outcome, p.maxRung)
     const ref = `train:${s.id}:${p.id}`
     const done = new Set((await deps.memory.read()).filter((r) => r.ref === ref).map((r) => r.conceptId))
-    for (const conceptId of new Set(p.targets)) if (!done.has(conceptId)) await deps.memory.append({ conceptId, at: now(), grade, correct: turn.conclude.outcome !== 'surrendered', via: 'practice', ref })
+    for (const conceptId of new Set(p.targets)) if (!done.has(conceptId)) await deps.memory.append({ conceptId, at: now(), grade, correct: turn.conclude.outcome !== 'surrendered', via: 'practice', ref, lessonId: s.material.lessonId, rung: p.maxRung ?? 0 })
   }
 
   async function tutorTurn(id: string): Promise<void> {
@@ -113,6 +120,10 @@ export function createPracticeRunner(deps: PracticeDeps) {
       inflight.delete(id)
       await append(id, { t: 'tutor', turn, conversationId, at: now() })
       await record(s, turn)
+      if (s.material.lessonId && turn.conclude && ['solved', 'solved_hints'].includes(turn.conclude.outcome)) {
+        const active = s.problems.find((p) => p.id === s.active)
+        if (active?.compass) await deps.onSolved?.(s.material.lessonId, [active.compass.question])
+      }
     } catch (e) {
       inflight.delete(id)
       await append(id, { t: 'error', message: friendly(e), at: now() })
@@ -125,9 +136,16 @@ export function createPracticeRunner(deps: PracticeDeps) {
     if (s.mode !== 'train') return 'questa è una simulazione d\'esame'
     if (s.awaiting !== 'learner') return 'aspetta la risposta del tutor'
     if (s.phase === 'done') return 'la sessione è finita'
-    const needsActive = sub.kind === 'thinking' || sub.kind === 'hint' || sub.kind === 'dismiss'
+    const needsActive = sub.kind === 'thinking' || sub.kind === 'hint' || sub.kind === 'dismiss' || sub.kind === 'compass' || sub.kind === 'restate'
     if (needsActive && !s.active) return 'non c\'è nessun problema aperto'
     if ((sub.kind === 'next' || sub.kind === 'ask') && s.active) return 'c\'è ancora un problema aperto'
+    const p = s.problems.find((x) => x.id === s.active)
+    if (p?.needsRestate && ['thinking', 'hint', 'compass'].includes(sub.kind)) return "Prima riformula con parole tue l'idea dell'indizio"
+    if (sub.kind === 'restate' && !p?.needsRestate) return 'non serve riformulare un indizio adesso'
+    if (sub.kind === 'hint' && p && hintGate(p) === 'attempt') return 'prima scrivi un tentativo, anche solo un pezzo di ragionamento'
+    if (sub.kind === 'hint' && p && hintGate(p) === 'compass') return 'compila prima la Bussola della confusione per chiedere un indizio mirato'
+    // The compass aims a hint at a precise question: it needs an attempt first, like any hint above rung 0.
+    if (sub.kind === 'compass' && p && p.attempts === 0) return 'prima scrivi un tentativo, anche solo un pezzo di ragionamento'
     if (sub.kind === 'thinking' && !sub.text?.trim() && !sub.photoText?.trim() && sub.line === undefined) return 'scrivi il tuo ragionamento'
     return null
   }
@@ -144,7 +162,7 @@ export function createPracticeRunner(deps: PracticeDeps) {
       const [context, topic] = await Promise.all([deps.material(material), deps.topic(material)])
       inflight.add(id)
       return serial(id, async () => {
-        await append(id, { t: 'created', id, mode: 'train', material, topic, at: now() })
+        await append(id, { t: 'created', id, mode: 'train', material, topic: toTitleCase(topic), at: now() })
         await append(id, { t: 'learner', submission: { kind: 'start' }, text: firstPracticeMessage(context), at: now() })
         return id
       })
@@ -156,6 +174,7 @@ export function createPracticeRunner(deps: PracticeDeps) {
         if (why) throw new Error(why)
         const problem = s.problems.find((p) => p.id === s.active)
         await append(id, { t: 'learner', submission: sub, text: formatSubmission(sub, problem), at: now() })
+        if (sub.kind === 'compass' && s.material.lessonId && sub.compass) await deps.onCompass?.(s.material.lessonId, sub.compass.question)
         await tutorTurn(id)
       }),
     retry: (id: string): Promise<void> =>

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { toTitleCase } from '../../shared/subjects'
 import { mkdir, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { TeacherTurnSchema, formatLearnerReply, teacherJsonSchema, type LearnerAnswer, type TeacherTurn } from '../../shared/teacher-protocol'
@@ -40,6 +41,8 @@ export function createSessionRunner(deps: {
   uuid?: () => string
   /** Whether the tutor may propose mini-games (Impostazioni → Giochi nelle sessioni). */
   games?: () => Promise<boolean>
+  /** How well he remembers the note's concepts (memoryBrief); '' when the graph knows none. */
+  memory?: (notePath: string) => Promise<string>
 }): SessionRunner {
   const uuid = deps.uuid ?? randomUUID
   const file = (id: string): string => join(deps.dir, `${id}.jsonl`)
@@ -101,12 +104,13 @@ export function createSessionRunner(deps: {
     const note = index ? matchNote(index, topic) : null
     let noteText: string | undefined
     if (note) noteText = await deps.readNote(note.path).catch(() => undefined)
+    const memory = note && noteText ? await deps.memory?.(note.path).catch(() => '') : undefined
     const gamesOn = (await deps.games?.().catch(() => true)) ?? true
     // The first turn starts right after: don't flash "Riprova" in between.
     inflight.add(id)
     return serial(id, async () => {
-      await append(id, { t: 'created', id, topic, ...(note && noteText ? { noteTitle: note.title, notePath: note.path } : {}), at: Date.now() })
-      await append(id, { t: 'learner', text: firstMessage(topic, note && noteText ? { title: note.title, text: noteText } : undefined) + (gamesOn ? '' : '\n\n(Giochi disattivati: non proporre giochi.)'), at: Date.now() })
+      await append(id, { t: 'created', id, topic: toTitleCase(topic), ...(note && noteText ? { noteTitle: note.title, notePath: note.path } : {}), at: Date.now() })
+      await append(id, { t: 'learner', text: firstMessage(topic, note && noteText ? { title: note.title, text: noteText } : undefined, memory) + (gamesOn ? '' : '\n\n(Giochi disattivati: non proporre giochi.)'), at: Date.now() })
       return id
     })
   }

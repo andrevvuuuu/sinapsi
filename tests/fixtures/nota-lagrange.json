@@ -1,0 +1,1237 @@
+{
+ "id": "4d1fc3dc-5cb0-4ce5-b2f4-438fd14a32dd",
+ "createdAt": 1793096157893,
+ "updatedAt": 1793096357797,
+ "status": "ready",
+ "sourcePath": "/vault/Matematica/Teorema di Lagrange del Valor Medio.md",
+ "sourceTitle": "Teorema di Lagrange del Valor Medio",
+ "nota": {
+  "title": "Teorema di Lagrange",
+  "titleEm": "del Valor Medio",
+  "eyebrow": "Analisi 1 · Calcolo differenziale · Teorema",
+  "aka": [
+   "Teorema del Valor Medio",
+   "Teorema del Valor Medio di Lagrange",
+   "Teorema 3.8",
+   "Teorema 33"
+  ],
+  "lede": "Il ponte fondamentale dell'analisi che traduce l'informazione infinitesimale locale della derivata prima nel comportamento globale della funzione su un intervallo.",
+  "tldr": [
+   "Se $f$ è continua su $[a, b]$ e derivabile in $(a, b)$, esiste almeno un punto interno $c \\in (a, b)$ in cui la derivata istantanea eguaglia la pendenza media: $f'(c) = \\frac{f(b) - f(a)}{b - a}$.",
+   "Geometricamente garantisce una retta tangente parallela alla corda secante congiungente gli estremi $(a, f(a))$ e $(b, f(b))$.",
+   "Costituisce la radice deduttiva del test di costanza, dei criteri di monotonia, della lipschitzianità e della formula di Taylor."
+  ],
+  "provenance": {
+   "fromNote": [
+    "Inquadramento concettuale e ponte logico tra locale e globale",
+    "Definizioni preliminari: rapporto incrementale, derivata, classi C0, intervallo connesso, lipschitzianità",
+    "Tabella notazioni formali e glossario simboli",
+    "Enunciato formale Teorema 3.8 / Teorema 33 con decodifica logico-formale in tre schede e metafora autostradale",
+    "Ruolo del Teorema di Rolle (Teorema 3.7 / 32) come caso particolare a pendenza nulla",
+    "Dimostrazione in 6 passi con funzione ausiliaria di scarto g(x) = f(x) - y_sec(x)",
+    "Mermaid diagram dell'architettura logico-deduttiva",
+    "Controesempi: punto angoloso f(x) = |x| e dominio sconnesso A = (1, 2) U (3, 4)",
+    "Cinque corollari con dimostrazioni complete: test di costanza, primitive, monotonia, lipschitzianità, criterio del limite della derivata",
+    "Esempi notevoli: identità arcsin(x) + arccos(x) = pi/2 e trappola di arctan(x) + arctan(1/x) su R\\{0}",
+    "Esercizi d'esame svolti: disuguaglianze analitiche (e^x, ln(x), sin(x)) e calcolo del punto c per f(x) = x^3 - 3x^2 + 2x",
+    "Ponti logici verso Cauchy, de l'Hôpital, Taylor con resto di Lagrange, media integrale e collegamenti ipertestuali",
+    "8 Flashcard e 5 Quiz d'esame provenienti dalla Palestra interattiva Obsidian"
+   ],
+   "added": [
+    "7 figure interattive manipolabili con cursori, punti trascinabili, feedback cromatico greenWhen e rilevamento automatico dei punti ottimali",
+    "Figura a evoluzione parametrizzata stepParams sincronizzata passo per passo dentro la dimostrazione formale",
+    "Esercizi a gradiente didattico: aggiunta di esercizio a completamento interattivo e sfida in autonomia",
+    "Box di approfondimento 'why' mirati al passaggio concettuale della rotazione del sistema di coordinate e al vincolo della connessione",
+    "Prompts interattivi 'tryPrompt' ('Prima prova tu') intercalati nei passaggi chiave della dimostrazione",
+    "Riorganizzazione modulare a schede 'tabs' per l'esplorazione autonoma e ordinata dei 5 corollari fondamentali",
+    "Segnalazione critica (flag) sulla classificazione dei punti di non derivabilità per limite infinito concorde"
+   ],
+   "flagged": [
+    "Sezione 7.5 (Criterio di derivabilità via limite): l'affermazione che per L = ±∞ la funzione possa presentare una cuspide è imprecisa; quando il limite bilaterale esiste ed è infinito concorde (+∞ o -∞) si ha un punto di flesso a tangente verticale, mentre la cuspide esige limiti unilaterali infiniti discordi."
+   ]
+  },
+  "sections": [
+   {
+    "id": "s1",
+    "num": "§1",
+    "title": "Definizioni Preliminari e Notazione Formale",
+    "blocks": [
+     {
+      "type": "prose",
+      "md": "Per inquadrare con rigore ipotetico-deduttivo l'enunciato e le conseguenze analitiche del teorema, è necessario formalizzare le grandezze geometriche del calcolo differenziale e le proprietà topologiche del dominio.\n\n### 1.1 Rapporto Incrementale e Pendenza della Secante\nSia $f: [a, b] \\to \\mathbb{R}$ una funzione a valori reali definita su un intervallo limitato della retta reale. Siano $x_1, x_2 \\in [a, b]$ due punti distinti, con $x_1 \\neq x_2$.\nIl **rapporto incrementale** di $f$ tra i punti $x_1$ e $x_2$ è definito dal quoziente delle differenze:\n$$\\frac{\\Delta f}{\\Delta x} = \\frac{f(x_2) - f(x_1)}{x_2 - x_1}$$\n\n- **Significato Geometrico**: Il rapporto incrementale esprime la pendenza (coefficiente angolare $m_{\\text{sec}}$) della retta secante passante per i due punti del grafico cartesiano $P_1 = (x_1, f(x_1))$ e $P_2 = (x_2, f(x_2))$.\n- **Interpretazione Cinematica**: Se la variabile indipendente rappresenta il tempo $t$ e $s(t)$ descrive la legge oraria della posizione di un punto materiale, il rapporto incrementale:\n  $$v_m = \\frac{s(b) - s(a)}{b - a}$$\n  rappresenta la **velocità media** mantenuta dal corpo nell'intervallo temporale $[a, b]$.\n\n### 1.2 Derivata Prima e Retta Tangente\nLa funzione $f$ si dice derivabile nel punto interno $c \\in (a, b)$ se esiste finito il limite del rapporto incrementale quando l'incremento tende a zero:\n$$f'(c) = \\lim_{h \\to 0} \\frac{f(c + h) - f(c)}{h} = \\lim_{x \\to c} \\frac{f(x) - f(c)}{x - c}$$\nIl valore scalare $f'(c)$ rappresenta il coefficiente angolare della retta tangente al grafico cartesiano della funzione nel punto $(c, f(c))$. Nella cinematica unidimensionale, $s'(c)$ quantifica la **velocità istantanea** posseduta dal punto materiale all'istante esatto $t = c$."
+     },
+     {
+      "type": "figure",
+      "title": "Figura 1 · Secante media vs Retta tangente locale",
+      "caption": "Trascina il punto $P$ lungo la curva $f(x)$ o usa il cursore $p$: osserva la retta tangente (in arancione mattone) variare la sua pendenza locale $f'(p)$ a confronto con la corda secante fissa tra gli estremi (tratteggiata in grigio).",
+      "x": [
+       -1.5,
+       3.5
+      ],
+      "y": [
+       -1,
+       4.5
+      ],
+      "functions": {
+       "f": "x^3/4 - x + 2"
+      },
+      "params": [
+       {
+        "id": "p",
+        "label": "Ascissa p",
+        "min": -1,
+        "max": 3,
+        "step": 0.05,
+        "value": 0.5
+       }
+      ],
+      "elements": [
+       {
+        "kind": "curve",
+        "fn": "f",
+        "label": "f(x)",
+        "color": "accent"
+       },
+       {
+        "kind": "segment",
+        "x1": "-1",
+        "y1": "f(-1)",
+        "x2": "3",
+        "y2": "f(3)",
+        "dashed": true,
+        "color": "muted"
+       },
+       {
+        "kind": "point",
+        "x": "-1",
+        "y": "f(-1)",
+        "label": "A",
+        "color": "ink"
+       },
+       {
+        "kind": "point",
+        "x": "3",
+        "y": "f(3)",
+        "label": "B",
+        "color": "ink"
+       },
+       {
+        "kind": "line",
+        "x": "p",
+        "y": "f(p)",
+        "slope": "f'(p)",
+        "color": "accent"
+       },
+       {
+        "kind": "point",
+        "x": "p",
+        "y": "f(p)",
+        "label": "P",
+        "drag": "p",
+        "color": "accent"
+       }
+      ],
+      "readouts": [
+       {
+        "label": "Pendenza secante m_sec",
+        "expr": "(f(3) - f(-1))/4"
+       },
+       {
+        "label": "Pendenza tangente f'(p)",
+        "expr": "f'(p)"
+       }
+      ]
+     },
+     {
+      "type": "prose",
+      "md": "### 1.3 Classi di Funzioni e Topologia del Dominio\n- **Classe $C^0([a, b])$**: Denota lo spazio delle funzioni reali $f: [a, b] \\to \\mathbb{R}$ continue in ogni punto dell'intervallo chiuso e limitato $[a, b]$, con continuità unilaterale negli estremi (continuità da destra in $a$ e continuità da sinistra in $b$).\n- **Intervallo (Insieme Connesso)**: Un sottoinsieme $I \\subseteq \\mathbb{R}$ si definisce **intervallo** se e solo se per ogni coppia di punti $x_1, x_2 \\in I$ con $x_1 < x_2$, l'intero segmento $[x_1, x_2]$ è interamente contenuto in $I$:\n  $$\\forall x_1, x_2 \\in I, \\, x_1 < x_2 \\implies [x_1, x_2] \\subseteq I$$\n  Questa proprietà esprime la connessione topologica della retta reale: un intervallo non presenta lacune o interruzioni spaziali.\n- **Funzione Lipschitziana**: Una funzione $f: A \\subseteq \\mathbb{R} \\to \\mathbb{R}$ si dice **lipschitziana** sull'insieme $A$ se esiste una costante reale finita $L \\ge 0$ (spesso indicata con $C \\ge 0$) tale che:\n  $$|f(x_1) - f(x_2)| \\le L |x_1 - x_2| \\quad \\forall x_1, x_2 \\in A$$\n  La più piccola costante $L$ per cui la disuguaglianza risulta soddisfatta è detta *costante di Lipschitz* di $f$."
+     },
+     {
+      "type": "glossary",
+      "rows": [
+       {
+        "symbol": "[a, b]",
+        "read": "intervallo chiuso e limitato da a a b",
+        "meaning": "Dominio compatto comprendente i punti estremi a e b"
+       },
+       {
+        "symbol": "(a, b) \\text{ oppure } ]a, b[",
+        "read": "intervallo aperto da a a b",
+        "meaning": "Insieme dei punti interni del dominio, privo degli estremi"
+       },
+       {
+        "symbol": "f \\in C^0([a, b])",
+        "read": "f appartiene a C zero di [a, b]",
+        "meaning": "Continuità globale della funzione su tutto l'intervallo compatto"
+       },
+       {
+        "symbol": "\\frac{f(b) - f(a)}{b - a}",
+        "read": "rapporto incrementale globale tra a e b",
+        "meaning": "Pendenza della retta secante congiungente gli estremi del grafico"
+       },
+       {
+        "symbol": "f'(c)",
+        "read": "derivata prima di f valutata in c",
+        "meaning": "Pendenza esatta della retta tangente al grafico nel punto (c, f(c))"
+       },
+       {
+        "symbol": "L \\ge 0",
+        "read": "costante di Lipschitz",
+        "meaning": "Limite superiore universale al tasso di variazione delle quote funzionali"
+       }
+      ]
+     },
+     {
+      "type": "flashcard",
+      "q": "Qual è la formulazione cinematica del Teorema di Lagrange per un corpo in moto rettilineo unidimensionale?",
+      "a": "Se la posizione di un punto materiale è descritta da una traiettoria continua e derivabile $s(t)$ nell'intervallo temporale $[t_1, t_2]$, allora deve esistere almeno un istante intermedio $\\tau \\in (t_1, t_2)$ in cui la velocità istantanea $v(\\tau) = s'(\\tau)$ coincide esattamente con la velocità media $v_m = \\frac{s(t_2) - s(t_1)}{t_2 - t_1}$ calcolata sull'intero percorso."
+     }
+    ]
+   },
+   {
+    "id": "s2",
+    "num": "§2",
+    "title": "Enunciato Formale del Teorema di Lagrange",
+    "blocks": [
+     {
+      "type": "prose",
+      "md": "Il Teorema di Lagrange (Teorema 3.8 / Teorema 33) formalizza con precisione analitica le condizioni sufficienti affinché la velocità istantanea eguagli la velocità media, ovvero affinché la retta tangente sia parallela alla corda secante."
+     },
+     {
+      "type": "theorem",
+      "label": "Teorema 3.8 / Teorema 33 (del Valor Medio di Lagrange)",
+      "md": "Sia $f: [a, b] \\to \\mathbb{R}$ una funzione a valori reali definita su un intervallo chiuso e limitato $[a, b]$, con $a < b$.\nSupponiamo che siano verificate le seguenti due ipotesi fondamentali:\n1. **Continuità sul dominio compatto:** $f$ è continua sull'intervallo chiuso e limitato $[a, b]$, ossia $f \\in C^0([a, b])$;\n2. **Derivabilità all'interno:** $f$ è derivabile nell'intervallo aperto $(a, b)$ (indicato anche con $]a, b[$).\n\nAllora esiste **almeno un punto** $c \\in (a, b)$ (indicabile anche con la notazione $\\xi \\in ]a, b[$) appartenente all'intervallo aperto tale che:\n$$f'(c) = \\frac{f(b) - f(a)}{b - a}$$\novvero, in forma non frazionaria:\n$$f(b) - f(a) = f'(c)(b - a)$$\n\n**Significato Geometrico**: Esiste almeno un punto interno $c \\in (a, b)$ in cui la retta tangente al grafico cartesiano della funzione $f$ risulta perfettamente **parallela** alla retta secante passante per i punti estremi del grafico $(a, f(a))$ e $(b, f(b))$."
+     },
+     {
+      "type": "decode",
+      "formal": "\\forall f \\in C^0([a, b]), \\, f \\text{ derivabile in } (a, b) \\implies \\exists c \\in (a, b) : f'(c) = \\frac{f(b) - f(a)}{b - a}",
+      "read": "Se la funzione f appartiene alla classe delle funzioni continue sull'intervallo chiuso e limitato [a, b], ed è derivabile in ogni punto dell'intervallo aperto (a, b), allora esiste almeno un punto c appartenente all'intervallo aperto (a, b) tale che la derivata prima di f calcolata in c è uguale al rapporto tra l'incremento della funzione f(b) - f(a) e l'ampiezza dell'intervallo b - a.",
+      "meaning": "Immaginiamo un'automobile che percorre un tratto autostradale da un casello A a un casello B, distanti tra loro 100 km, impiegando esattamente un'ora: la sua velocità media sull'intero tragitto è di 100 km/h. Se il moto è avvenuto senza teletrasporti (funzione continua) e senza urti o variazioni discontinue istantanee di traiettoria (funzione derivabile), allora il tachimetro dell'automobile deve aver segnato esattamente 100 km/h in almeno un istante preciso del viaggio. Geometricamente: su una curva liscia tra due punti, esiste sempre almeno un punto in cui la direzione locale istantanea coincide con l'orientamento globale del tragitto."
+     },
+     {
+      "type": "figure",
+      "title": "Figura 2 · L'allineamento di Lagrange: retta tangente parallela alla corda",
+      "caption": "Muovi il punto $P$ trascinando lungo la curva: la retta tangente diventa verde (good) non appena la sua pendenza eguaglia quella della corda secante $AB$. Clicca su 'Mostra i punti' per rivelare i valori esatti di $c$.",
+      "x": [
+       -1.5,
+       3.2
+      ],
+      "y": [
+       -1,
+       4.5
+      ],
+      "functions": {
+       "f": "-0.25*x^3 + 0.6*x^2 + 0.8*x + 1"
+      },
+      "params": [
+       {
+        "id": "p",
+        "label": "Punto c",
+        "min": -1,
+        "max": 2.5,
+        "step": 0.02,
+        "value": 0
+       }
+      ],
+      "elements": [
+       {
+        "kind": "curve",
+        "fn": "f",
+        "label": "f(x)",
+        "color": "accent"
+       },
+       {
+        "kind": "segment",
+        "x1": "-1",
+        "y1": "f(-1)",
+        "x2": "2.5",
+        "y2": "f(2.5)",
+        "dashed": true,
+        "color": "muted"
+       },
+       {
+        "kind": "point",
+        "x": "-1",
+        "y": "f(-1)",
+        "label": "A",
+        "color": "ink"
+       },
+       {
+        "kind": "point",
+        "x": "2.5",
+        "y": "f(2.5)",
+        "label": "B",
+        "color": "ink"
+       },
+       {
+        "kind": "line",
+        "x": "p",
+        "y": "f(p)",
+        "slope": "f'(p)",
+        "color": "accent",
+        "greenWhen": "f'(p) - (f(2.5) - f(-1))/3.5"
+       },
+       {
+        "kind": "point",
+        "x": "p",
+        "y": "f(p)",
+        "label": "c",
+        "drag": "p",
+        "color": "ink"
+       }
+      ],
+      "readouts": [
+       {
+        "label": "Pendenza secante m_sec",
+        "expr": "(f(2.5) - f(-1))/3.5"
+       },
+       {
+        "label": "Pendenza tangente f'(p)",
+        "expr": "f'(p)"
+       },
+       {
+        "label": "Discrepanza f'(p) - m_sec",
+        "expr": "f'(p) - (f(2.5) - f(-1))/3.5"
+       }
+      ],
+      "points": {
+       "label": "Mostra i punti",
+       "param": "p",
+       "expr": "f'(p) - (f(2.5) - f(-1))/3.5",
+       "at": "f"
+      }
+     },
+     {
+      "type": "flashcard",
+      "q": "Il Teorema di Lagrange assicura l'unicità del punto $c \\in (a, b)$ la cui retta tangente è parallela alla corda secante?",
+      "a": "No. Il Teorema di Lagrange è un puro teorema di esistenza e assicura unicamente l'esistenza di *almeno un* punto interno ($\\exists c \\in (a, b)$). A seconda dell'andamento oscillatorio della curva, possono esistere molteplici punti interni distinti (o persino infiniti punti, come nel caso di una retta o di una funzione costante dove ogni punto interno soddisfa la relazione) in cui la derivata eguaglia la pendenza della secante."
+     }
+    ]
+   },
+   {
+    "id": "s3",
+    "num": "§3",
+    "title": "Teoremi Prerequisiti e il Ruolo del Teorema di Rolle",
+    "blocks": [
+     {
+      "type": "prose",
+      "md": "La dimostrazione del Teorema di Lagrange non richiede la costruzione di complessi apparati topologici ex novo, ma si riconduce in modo immediato al Teorema di Rolle attraverso una geniale rotazione/inclinazione del sistema di riferimento.\n\n### 3.1 Il Teorema di Rolle (Teorema 3.7 / Teorema 32)\nSia $f: [a, b] \\to \\mathbb{R}$ continua su $[a, b]$ e derivabile in $(a, b)$. Se la funzione assume valori identici agli estremi:\n$$f(a) = f(b)$$\nallora esiste almeno un punto interno $c \\in (a, b)$ in cui la derivata si annulla:\n$$f'(c) = 0$$\n\nIl Teorema di Rolle si rivela come il **caso particolare del Teorema di Lagrange** in cui la pendenza della secante congiungente gli estremi è nulla:\n$$\\frac{f(b) - f(a)}{b - a} = \\frac{0}{b - a} = 0 \\implies f'(c) = 0$$\nIl passaggio da Rolle a Lagrange consiste nel 'sottrarre' alla funzione $f(x)$ la retta secante, trasformando una corda obliqua in una corda orizzontale di quota zero."
+     },
+     {
+      "type": "figure",
+      "title": "Figura 3 · Da Rolle a Lagrange: raddrizzare la corda",
+      "caption": "Sposta il cursore 'Inclinazione corda m': osserva come il Teorema di Rolle ($m=0$) sia il caso orizzontale di Lagrange. La retta tangente orizzontale diventa obliqua conservando il parallelismo con la corda.",
+      "x": [
+       -0.5,
+       3.5
+      ],
+      "y": [
+       -1,
+       5
+      ],
+      "functions": {
+       "f": "-(x - 0.5)*(x - 2.5) + m*x + 1"
+      },
+      "params": [
+       {
+        "id": "m",
+        "label": "Inclinazione corda m",
+        "min": -0.6,
+        "max": 1.2,
+        "step": 0.1,
+        "value": 0
+       }
+      ],
+      "elements": [
+       {
+        "kind": "curve",
+        "fn": "f",
+        "label": "f(x)",
+        "color": "accent"
+       },
+       {
+        "kind": "segment",
+        "x1": "0.5",
+        "y1": "f(0.5)",
+        "x2": "2.5",
+        "y2": "f(2.5)",
+        "dashed": true,
+        "color": "muted"
+       },
+       {
+        "kind": "line",
+        "x": "1.5",
+        "y": "f(1.5)",
+        "slope": "m",
+        "color": "good"
+       },
+       {
+        "kind": "point",
+        "x": "1.5",
+        "y": "f(1.5)",
+        "label": "c=1.5",
+        "color": "good"
+       }
+      ],
+      "readouts": [
+       {
+        "label": "Pendenza secante",
+        "expr": "m"
+       },
+       {
+        "label": "f'(1.5)",
+        "expr": "m"
+       }
+      ]
+     },
+     {
+      "type": "why",
+      "title": "Perché proprio Rolle per dimostrare Lagrange?",
+      "md": "Dimostrare direttamente che una pendenza arbitraria viene assunta dalla derivata richiederebbe strumenti avanzati (come il teorema dei valori intermedi per le derivate di Darboux). Riconducendosi a Rolle mediante la sottrazione della secante $g(x) = f(x) - y_{\\text{sec}}(x)$, il problema si riduce alla ricerca di un massimo o minimo interno garantito dal teorema di Weierstrass e annullato dal teorema di Fermat: una catena deduttiva minimale ed elegantissima."
+     },
+     {
+      "type": "flashcard",
+      "q": "Qual è il significato geometrico della funzione ausiliaria $g(x) = f(x) - f(a) - \\frac{f(b)-f(a)}{b-a}(x-a)$ introdotta nella dimostrazione di Lagrange?",
+      "a": "La funzione $g(x)$ quantifica, per ogni ascissa $x \\in [a, b]$, la distanza verticale (lo scarto orientato) tra il punto del grafico cartesiano $(x, f(x))$ e il corrispondente punto sulla retta secante passante per $(a, f(a))$ e $(b, f(b))$. Poiché la secante interseca il grafico proprio in $x = a$ e $x = b$, tale scarto si annulla agli estremi ($g(a) = g(b) = 0$), riconducendo il problema obliquo di Lagrange al problema a quota costante orizzontale risolto dal Teorema di Rolle."
+     }
+    ]
+   },
+   {
+    "id": "s4",
+    "num": "§4",
+    "title": "Dimostrazione Rigorosa a Tre Atti del Teorema di Lagrange",
+    "blocks": [
+     {
+      "type": "prose",
+      "md": "La dimostrazione universale del Teorema di Lagrange adotta il metodo della **funzione ausiliaria di scarto**, operando una traslazione lineare che azzera i valori agli estremi per consentire l'applicazione diretta di Rolle."
+     },
+     {
+      "type": "proof",
+      "steps": [
+       {
+        "kicker": "Atto I · Passo 1",
+        "title": "Costruzione dell'equazione della retta secante",
+        "md": "La retta secante passante per i punti del piano $A = (a, f(a))$ e $B = (b, f(b))$ possiede coefficiente angolare:\n$$m_{\\text{sec}} = \\frac{f(b) - f(a)}{b - a}$$\nApplicando l'equazione canonica del fascio di rette passante per $(a, f(a))$, l'ordinata della secante per una generica ascissa $x$ è data da:\n$$y_{\\text{sec}}(x) = f(a) + \\frac{f(b) - f(a)}{b - a}(x - a)$$",
+        "tryPrompt": "Scrivi l'equazione cartesiana della retta congiungente $(a, f(a))$ e $(b, f(b))$ prima di procedere."
+       },
+       {
+        "kicker": "Atto I · Passo 2",
+        "title": "Definizione della funzione ausiliaria di scarto",
+        "md": "Definiamo la funzione ausiliaria $g: [a, b] \\to \\mathbb{R}$ sottraendo a $f(x)$ l'equazione della retta secante:\n$$g(x) := f(x) - y_{\\text{sec}}(x) = f(x) - f(a) - \\frac{f(b) - f(a)}{b - a}(x - a)$$\nGeometricamente, $g(x)$ misura la 'distanza verticale' tra la curva e la corda secante.",
+        "tryPrompt": "Quale espressione algebrica per $g(x)$ garantisce che valga $0$ sia in $a$ che in $b$?"
+       },
+       {
+        "kicker": "Atto II · Passo 3",
+        "title": "Verifica della continuità e derivabilità di g(x)",
+        "md": "- **Continuità su $[a, b]$:** La funzione $g(x)$ è combinazione lineare della funzione $f(x)$ (continua su $[a, b]$ per la prima ipotesi) e del polinomio affine di primo grado $y_{\\text{sec}}(x)$ (continuo su tutto $\\mathbb{R}$). La somma e differenza di funzioni continue è continua, pertanto:\n  $$g \\in C^0([a, b])$$\n- **Derivabilità su $(a, b)$:** Per la seconda ipotesi $f(x)$ è derivabile nell'aperto $(a, b)$. Il polinomio di primo grado è derivabile su tutto $\\mathbb{R}$. Essendo la derivazione un operatore lineare, $g(x)$ è derivabile in ogni punto di $(a, b)$:\n  $$g \\text{ è derivabile in } (a, b)$$"
+       },
+       {
+        "kicker": "Atto II · Passo 4",
+        "title": "Verifica dell'uguaglianza dei valori agli estremi",
+        "md": "Calcoliamo esplicitamente il valore di $g(x)$ nei punti di confine $x = a$ e $x = b$:\n- Per $x = a$:\n  $$g(a) = f(a) - f(a) - \\frac{f(b) - f(a)}{b - a}(a - a) = 0 - 0 = 0$$\n- Per $x = b$:\n  $$g(b) = f(b) - f(a) - \\frac{f(b) - f(a)}{b - a}(b - a) = f(b) - f(a) - (f(b) - f(a)) = 0$$\nSi ha dunque:\n$$g(a) = g(b) = 0$$"
+       },
+       {
+        "kicker": "Atto III · Passo 5",
+        "title": "Applicazione del Teorema di Rolle a g(x)",
+        "md": "La funzione ausiliaria $g$ soddisfa simultaneamente tutte e tre le ipotesi del Teorema di Rolle sull'intervallo $[a, b]$:\n1. $g \\in C^0([a, b])$;\n2. $g$ è derivabile su $(a, b)$;\n3. $g(a) = g(b) = 0$.\n\nPer il Teorema di Rolle, esiste **almeno un punto** $c \\in (a, b)$ tale che:\n$$g'(c) = 0$$",
+        "tryPrompt": "Riconosci le 3 ipotesi di Rolle verificate da $g$? Quale conclusione ne deriva?"
+       },
+       {
+        "kicker": "Atto III · Passo 6",
+        "title": "Calcolo della derivata prima di g(x) e conclusione algebrica",
+        "md": "Deriviamo analiticamente l'espressione di $g(x)$ rispetto a $x$ per un generico punto dell'intervallo aperto $(a, b)$:\n$$g'(x) = \\frac{d}{dx}\\left[ f(x) - f(a) - \\frac{f(b) - f(a)}{b - a}(x - a) \\right]$$\nPoiché $f(a)$ e il coefficiente $\\frac{f(b) - f(a)}{b - a}$ sono costanti scalari rispetto a $x$, e la derivata di $(x - a)$ rispetto a $x$ vale $1$:\n$$g'(x) = f'(x) - \\frac{f(b) - f(a)}{b - a}$$\nValutando la derivata prima nel punto garantito $x = c$ e ponendola uguale a zero:\n$$g'(c) = f'(c) - \\frac{f(b) - f(a)}{b - a} = 0 \\implies f'(c) = \\frac{f(b) - f(a)}{b - a}$$\nL'esistenza del punto $c \\in (a, b)$ è rigorosamente dimostrata. $\\blacksquare$"
+       }
+      ],
+      "figure": {
+       "type": "figure",
+       "title": "Figura 4 · Evoluzione dinamica della dimostrazione: da f(x) allo scarto g(x)",
+       "caption": "Mentre scorri i passi della dimostrazione, osserva la trasformazione: $f(x)$ con la secante inclinata si trasforma nella funzione scarto $g(x)$ con estremi nulli in cui si individua il massimo a derivata orizzontale $g'(c) = 0$.",
+       "x": [
+        -1.5,
+        3.5
+       ],
+       "y": [
+        -1.5,
+        4.5
+       ],
+       "functions": {
+        "f": "-0.3*x^3 + 0.6*x^2 + x + 0.5",
+        "sec": "f(-1) + ((f(3) - f(-1))/4)*(x - (-1))",
+        "g": "f(x) - sec(x)"
+       },
+       "params": [
+        {
+         "id": "step",
+         "label": "Passo dimostrazione",
+         "min": 1,
+         "max": 6,
+         "step": 1,
+         "value": 1
+        }
+       ],
+       "elements": [
+        {
+         "kind": "curve",
+         "fn": "f",
+         "label": "f(x)",
+         "color": "accent"
+        },
+        {
+         "kind": "curve",
+         "fn": "sec",
+         "dashed": true,
+         "color": "muted",
+         "steps": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+         ]
+        },
+        {
+         "kind": "curve",
+         "fn": "g",
+         "label": "g(x)",
+         "color": "good",
+         "steps": [
+          2,
+          3,
+          4,
+          5,
+          6
+         ]
+        },
+        {
+         "kind": "point",
+         "x": "-1",
+         "y": "0",
+         "label": "g(a)=0",
+         "color": "good",
+         "steps": [
+          4,
+          5,
+          6
+         ]
+        },
+        {
+         "kind": "point",
+         "x": "3",
+         "y": "0",
+         "label": "g(b)=0",
+         "color": "good",
+         "steps": [
+          4,
+          5,
+          6
+         ]
+        },
+        {
+         "kind": "line",
+         "x": "1.74",
+         "y": "g(1.74)",
+         "slope": "0",
+         "dashed": true,
+         "color": "good",
+         "steps": [
+          5,
+          6
+         ]
+        },
+        {
+         "kind": "line",
+         "x": "1.74",
+         "y": "f(1.74)",
+         "slope": "f'(1.74)",
+         "color": "good",
+         "steps": [
+          6
+         ]
+        },
+        {
+         "kind": "point",
+         "x": "1.74",
+         "y": "f(1.74)",
+         "label": "c",
+         "color": "ink",
+         "steps": [
+          6
+         ]
+        }
+       ],
+       "readouts": [
+        {
+         "label": "Quota g(a)",
+         "expr": "g(-1)"
+        },
+        {
+         "label": "Quota g(b)",
+         "expr": "g(3)"
+        },
+        {
+         "label": "Derivata scarto g'(c)",
+         "expr": "g'(1.74)"
+        }
+       ],
+       "stepParams": [
+        {
+         "step": 1
+        },
+        {
+         "step": 2
+        },
+        {
+         "step": 3
+        },
+        {
+         "step": 4
+        },
+        {
+         "step": 5
+        },
+        {
+         "step": 6
+        }
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "id": "s5",
+    "num": "§5",
+    "title": "Architettura Logico-Deduttiva della Dimostrazione",
+    "blocks": [
+     {
+      "type": "prose",
+      "md": "Il seguente diagramma sintetizza la sequenza di deduzioni che permette di ricondurre il problema geometrico di Lagrange all'ambiente simmetrico di Rolle attraverso la funzione scarto:\n\n```mermaid\nflowchart TD\n    A[\"Funzione f continua su [a, b]<br/>e derivabile in (a, b)\"] --> B[\"Calcolo equazione retta secante:<br/>y = f(a) + m*(x - a)\"]\n    B --> C[\"Costruzione funzione ausiliaria di scarto:<br/>g(x) = f(x) - y_sec(x)\"]\n    C --> D[\"Verifica proprieta di g(x):<br/>Continua su [a, b] e derivabile in (a, b)\"]\n    C --> E[\"Verifica valori agli estremi:<br/>g(a) = 0 e g(b) = 0\"]\n    D --> F[\"Applicazione Teorema di Rolle a g(x):<br/>Esiste c in (a, b) tale che g'(c) = 0\"]\n    E --> F\n    F --> G[\"Calcolo esplicito di g'(x):<br/>g'(x) = f'(x) - [f(b) - f(a)] / (b - a)\"]\n    G --> H[\"Valutazione in x = c:<br/>f'(c) - [f(b) - f(a)] / (b - a) = 0\"]\n    H --> I[\"Tesi di Lagrange Verificata:<br/>f'(c) = [f(b) - f(a)] / (b - a)\"]\n```"
+     }
+    ]
+   },
+   {
+    "id": "s6",
+    "num": "§6",
+    "title": "Analisi Critica delle Ipotesi e Controesempi",
+    "blocks": [
+     {
+      "type": "prose",
+      "md": "Le due ipotesi richieste dal Teorema di Lagrange — la **continuità sull'intervallo chiuso e limitato** e la **derivabilità nell'intervallo aperto** — sono condizioni minime essenziali. Se anche una sola di esse viene a mancare in un singolo punto del dominio, il teorema crolla e la tesi non è più garantita.\n\n### 6.1 Controesempio 1: Violazione della Derivabilità in un Singolo Punto Interno\n- **Configurazione Analitica**: Consideriamo la funzione valore assoluto $f: [-1, 1] \\to \\mathbb{R}$ definita da:\n  $$f(x) = |x| = \\begin{cases} x & \\text{se } x \\ge 0 \\\\ -x & \\text{se } x < 0 \\end{cases}$$\n- **Verifica delle Ipotesi**:\n  - $f$ è continua su tutto l'intervallo compatto $[-1, 1]$ (funzione continua elementare).\n  - Gli estremi assumono quote $f(-1) = |-1| = 1$ e $f(1) = |1| = 1$.\n  - Il rapporto incrementale globale (pendenza della secante) vale:\n    $$m_{\\text{sec}} = \\frac{f(1) - f(-1)}{1 - (-1)} = \\frac{1 - 1}{2} = 0$$\n- **Punto di Rottura**: La funzione **non è derivabile** nel punto interno $x_0 = 0 \\in (-1, 1)$. I limiti unilaterali del rapporto incrementale sono discordi ($f'_+(0) = +1 \\neq -1 = f'_-(0)$).\n- **Fallimento della Tesi**: La derivata prima di $f$ assume unicamente i valori:\n  $$f'(x) = \\begin{cases} +1 & \\text{se } x > 0 \\\\ -1 & \\text{se } x < 0 \\end{cases}$$\n  Non esiste **alcun punto** $c \\in (-1, 1)$ in cui la derivata prima si annulli ($f'(c) \\neq 0$ per ogni $c \\neq 0$). Il Teorema di Lagrange fallisce: basta un unico spigolo interno a impedire alla tangente di allinearsi con la secante."
+     },
+     {
+      "type": "figure",
+      "title": "Figura 5 · Controesempio del punto angoloso: il valore assoluto f(x) = |x|",
+      "caption": "Trascina il punto $p$: la secante tra $-1$ e $1$ è orizzontale ($m=0$). Tuttavia la derivata vale ovunque $+1$ o $-1$ e non si annulla mai, rendendo impossibile raggiungere il colore verde (good) del parallelismo.",
+      "x": [
+       -1.5,
+       1.5
+      ],
+      "y": [
+       -0.5,
+       1.5
+      ],
+      "functions": {
+       "f": "abs(x)"
+      },
+      "params": [
+       {
+        "id": "p",
+        "label": "Punto p",
+        "min": -0.9,
+        "max": 0.9,
+        "step": 0.05,
+        "value": -0.5
+       }
+      ],
+      "elements": [
+       {
+        "kind": "curve",
+        "fn": "f",
+        "label": "|x|",
+        "color": "bad"
+       },
+       {
+        "kind": "segment",
+        "x1": "-1",
+        "y1": "1",
+        "x2": "1",
+        "y2": "1",
+        "dashed": true,
+        "color": "muted"
+       },
+       {
+        "kind": "point",
+        "x": "-1",
+        "y": "1",
+        "label": "A",
+        "color": "ink"
+       },
+       {
+        "kind": "point",
+        "x": "1",
+        "y": "1",
+        "label": "B",
+        "color": "ink"
+       },
+       {
+        "kind": "line",
+        "x": "p",
+        "y": "abs(p)",
+        "slope": "sign(p)",
+        "color": "warn",
+        "greenWhen": "sign(p)"
+       },
+       {
+        "kind": "point",
+        "x": "p",
+        "y": "abs(p)",
+        "label": "P",
+        "drag": "p",
+        "color": "ink"
+       },
+       {
+        "kind": "point",
+        "x": "0",
+        "y": "0",
+        "label": "Punto angoloso",
+        "color": "bad"
+       }
+      ],
+      "readouts": [
+       {
+        "label": "Pendenza secante m_sec",
+        "expr": "0"
+       },
+       {
+        "label": "Pendenza f'(p)",
+        "expr": "sign(p)"
+       }
+      ]
+     },
+     {
+      "type": "prose",
+      "md": "### 6.2 Controesempio 2: Violazione della Connessione del Dominio (Mancanza della Struttura di Intervallo)\nIl Teorema di Lagrange e i suoi corollari richiedono tassativamente che il dominio di definizione sia un **intervallo connesso** e non un'unione di intervalli disgiunti.\n- **Configurazione Analitica**: Consideriamo l'insieme sconnesso $A = (1, 2) \\cup (3, 4)$ e la funzione a gradino $f: A \\to \\mathbb{R}$ definita da:\n  $$f(x) = \\begin{cases} 0 & \\text{se } x \\in (1, 2) \\\\ 1 & \\text{se } x \\in (3, 4) \\end{cases}$$\n- **Verifica delle Ipotesi**: La funzione è costante su ciascun troncone aperto, pertanto è derivabile in ogni punto di $A$ con derivata identicamente nulla:\n  $$f'(x) = 0 \\quad \\forall x \\in A$$\n- **Punto di Rottura**: Se scegliamo $x_1 = 1.5 \\in (1, 2)$ e $x_2 = 3.5 \\in (3, 4)$, il segmento congiungente $[1.5, 3.5]$ non è contenuto in $A$, poiché attraversa la lacuna $[2, 3]$.\n- **Fallimento della Tesi**: Il rapporto incrementale tra $x_1$ e $x_2$ vale:\n  $$\\frac{f(x_2) - f(x_1)}{x_2 - x_1} = \\frac{1 - 0}{3.5 - 1.5} = \\frac{1}{2} \\neq 0$$\n  Nonostante la derivata sia ovunque nulla ($f'(x) = 0$), la funzione **non è costante** su tutto $A$. Senza la struttura di intervallo la derivata nulla non garantisce la costanza globale."
+     },
+     {
+      "type": "flashcard",
+      "q": "Perché nel Teorema di Lagrange è richiesta la continuità sull'intervallo chiuso e limitato $[a, b]$, mentre per la derivabilità è sufficiente l'intervallo aperto $(a, b)$?",
+      "a": "La continuità sull'intervallo chiuso $[a, b]$ serve ad assicurare che la funzione ausiliaria $g(x) = f(x) - y_{\\text{sec}}(x)$ sia continua su tutto il compatto e assuma valori definiti e nulli negli estremi ($g(a) = g(b) = 0$), requisito indispensabile per poter applicare il Teorema di Rolle (il quale a sua volta poggia sulla compattezza per il Teorema di Weierstrass). La derivabilità, invece, è richiesta unicamente nell'aperto $(a, b)$ perché il punto di tangenza $c$ deve essere rigorosamente interno affinché esista un intorno bilaterale in cui la derivata prima possa annullarsi; la funzione può possedere cuspidi o tangenti verticali negli estremi $a$ e $b$ senza invalidare la tesi."
+     },
+     {
+      "type": "flashcard",
+      "q": "Quale ipotesi del Teorema di Lagrange viene violata dalla funzione $f(x) = |x|$ sull'intervallo $[-1, 1]$ e perché essa non contraddice la validità del teorema?",
+      "a": "Viene violata l'ipotesi di derivabilità nell'intervallo aperto $(-1, 1)$, in quanto nel punto interno $x_0 = 0$ la funzione presenta un punto angoloso in cui la derivata destra ($+1$) differisce dalla derivata sinistra ($-1$). Poiché il rapporto incrementale globale vale $\\frac{1-1}{2} = 0$, ma la derivata prima assume unicamente i valori $\\pm 1$ e non si annulla mai, la tesi di Lagrange non è soddisfatta. Ciò non costituisce contraddizione poiché le ipotesi sufficienti del teorema non erano integralmente verificate."
+     },
+     {
+      "type": "quiz",
+      "prompt": "Sia data la funzione $f: [-1, 2] \\to \\mathbb{R}$ definita da $f(x) = \\frac{1}{x^2}$ per $x \\neq 0$ e $f(0) = 1$. È possibile applicare il Teorema di Lagrange sull'intervallo $[-1, 2]$?",
+      "options": [
+       "Sì, perché la funzione è derivabile in ogni punto dell'intervallo aperto tranne che nell'origine.",
+       "No, perché la funzione presenta una discontinuità essenziale (asintoto verticale) nel punto interno x = 0, violando la continuità su [-1, 2].",
+       "Sì, perché il rapporto incrementale tra gli estremi esiste ed è finito.",
+       "No, perché l'intervallo [-1, 2] non è simmetrico rispetto all'origine."
+      ],
+      "correct": 1,
+      "why": [
+       "Errata: la mancanza di continuità anche in un solo punto interno invalida la prima ipotesi fondamentale.",
+       "Corretta: per x che tende a 0 la funzione diverge a +∞, dunque in x = 0 vi è un asintoto verticale che distrugge la continuità sull'intervallo compatto.",
+       "Errata: l'esistenza della pendenza secante non basta se la curva presenta una frattura verticale.",
+       "Errata: il Teorema di Lagrange non richiede alcuna proprietà di simmetria per l'intervallo."
+      ],
+      "fromNote": true
+     }
+    ]
+   },
+   {
+    "id": "s7",
+    "num": "§7",
+    "title": "I Corollari Fondamentali del Teorema di Lagrange",
+    "blocks": [
+     {
+      "type": "prose",
+      "md": "La straordinaria rilevanza del Teorema di Lagrange nell'analisi matematica risiede nei suoi corollari, che traducono le proprietà della derivata prima in proprietà strutturali e geometriche della funzione.\n\nEsplora i 5 corollari fondamentali tramite le schede interattive qui sotto:"
+     },
+     {
+      "type": "tabs",
+      "tabs": [
+       {
+        "label": "Corollario 1: Test di Costanza",
+        "blocks": [
+         {
+          "type": "theorem",
+          "label": "Corollario 34 / Teorema 3.9 (Test di Costanza)",
+          "md": "Sia $I \\subseteq \\mathbb{R}$ un **intervallo** (aperto, chiuso, limitato o illimitato). Sia $f: I \\to \\mathbb{R}$ una funzione derivabile in ogni punto di $I$.\nLa derivata prima di $f$ è identicamente nulla su $I$ se e solo se la funzione $f$ è identicamente **costante** su $I$:\n$$f'(x) = 0 \\quad \\forall x \\in I \\iff \\exists C \\in \\mathbb{R} : f(x) = C \\quad \\forall x \\in I$$"
+         },
+         {
+          "type": "proof",
+          "steps": [
+           {
+            "title": "Dimostrazione dell'implicazione diretta (derivata nulla implica costanza)",
+            "md": "L'implicazione inversa $(\\impliedby)$ è immediata dalle regole di derivazione di una costante. Per dimostrare l'implicazione diretta $(\\implies)$:\n1. Siano $x_1, x_2 \\in I$ due punti arbitrari con $x_1 < x_2$.\n2. Poiché $I$ è un intervallo connesso, il segmento $[x_1, x_2]$ è interamente contenuto in $I$.\n3. La restrizione di $f$ a $[x_1, x_2]$ è continua e derivabile in $(x_1, x_2)$.\n4. Per il Teorema di Lagrange, esiste $c \\in (x_1, x_2)$ tale che:\n   $$\\frac{f(x_2) - f(x_1)}{x_2 - x_1} = f'(c)$$\n5. Poiché per ipotesi $f'(x) = 0$ su tutto $I$, si ha $f'(c) = 0$, da cui:\n   $$f(x_2) - f(x_1) = 0 \\implies f(x_1) = f(x_2)$$\nEssendo i punti arbitrari, $f(x)$ è costante su $I$. $\\blacksquare$"
+           }
+          ]
+         },
+         {
+          "type": "flashcard",
+          "q": "Perché il Corollario del Test di Costanza ($f'(x) = 0 \\implies f(x) = C$) crolla se il dominio della funzione non è un intervallo connesso?",
+          "a": "La dimostrazione del test di costanza poggia sull'applicazione del Teorema di Lagrange al sottointervallo $[x_1, x_2]$ per due punti arbitrari del dominio. Se il dominio non è un intervallo (ad esempio $A = (1, 2) \\cup (3, 4)$ o $\\mathbb{R} \\setminus \\{0\\}$), il segmento $[x_1, x_2]$ con $x_1 \\in (1, 2)$ e $x_2 \\in (3, 4)$ attraversa una lacuna non appartenente al dominio; la funzione non vi è definita né continua, rendendo inapplicabile Lagrange. La funzione può quindi assumere valori costanti differenti su ciascuna componente connessa disgiunta pur avendo derivata ovunque nulla."
+         }
+        ]
+       },
+       {
+        "label": "Corollario 2: Caratterizzazione delle Primitive",
+        "blocks": [
+         {
+          "type": "theorem",
+          "label": "Corollario: Funzioni con la Stessa Derivata",
+          "md": "Siano $f, g: I \\to \\mathbb{R}$ due funzioni derivabili definite su un **intervallo** $I \\subseteq \\mathbb{R}$.\nSe le due funzioni possiedono la medesima derivata prima in ogni punto di $I$:\n$$f'(x) = g'(x) \\quad \\forall x \\in I$$\nallora le due funzioni differiscono unicamente per una costante reale additiva:\n$$\\exists C \\in \\mathbb{R} : f(x) = g(x) + C \\quad \\forall x \\in I$$"
+         },
+         {
+          "type": "proof",
+          "steps": [
+           {
+            "title": "Dimostrazione tramite la funzione differenza",
+            "md": "Si definisce la funzione differenza $d(x) := f(x) - g(x)$. Poiché la derivata della differenza è la differenza delle derivate:\n$$d'(x) = f'(x) - g'(x) = 0 \\quad \\forall x \\in I$$\nEssendo $I$ un intervallo, per il Corollario 1 la funzione $d(x)$ è identicamente costante: esiste $C \\in \\mathbb{R}$ tale che $d(x) = C$, ossia $f(x) - g(x) = C \\implies f(x) = g(x) + C$. $\\blacksquare$"
+           }
+          ]
+         },
+         {
+          "type": "flashcard",
+          "q": "In che modo il Teorema di Lagrange garantisce la correttezza della scrittura delle primitive come $\\int f(x) \\, dx = F(x) + C$?",
+          "a": "Tramite il Corollario 2: se due funzioni $F(x)$ e $G(x)$ sono entrambe primitive di $f(x)$ sullo stesso intervallo $I$, allora $F'(x) = f(x)$ e $G'(x) = f(x)$, da cui $(F - G)'(x) = 0$. Per il test di costanza derivato da Lagrange, la funzione differenza è identicamente costante ($F(x) - G(x) = C$). Questo assicura che una volta trovata una singola primitiva $F(x)$, tutte le altre primitive possibili su quell'intervallo si ottengono sommando una costante reale."
+         }
+        ]
+       },
+       {
+        "label": "Corollario 3: Criterio di Monotonia",
+        "blocks": [
+         {
+          "type": "theorem",
+          "label": "Corollario 35 / Teorema 3.9 (Criterio di Monotonia)",
+          "md": "Sia $f: [a, b] \\to \\mathbb{R}$ una funzione continua su $[a, b]$ e derivabile nell'intervallo aperto $(a, b)$:\n1. $f'(x) \\ge 0 \\; \\forall x \\in (a, b) \\iff f$ è **monotona crescente** su $[a, b]$;\n2. $f'(x) \\le 0 \\; \\forall x \\in (a, b) \\iff f$ è **monotona decrescente** su $[a, b]$;\n3. Se $f'(x) > 0 \\; \\forall x \\in (a, b) \\implies f$ è **strettamente crescente** su $[a, b]$;\n4. Se $f'(x) < 0 \\; \\forall x \\in (a, b) \\implies f$ è **strettamente decrescente** su $[a, b]$."
+         },
+         {
+          "type": "proof",
+          "steps": [
+           {
+            "title": "Dimostrazione del legame tra segno di f' e monotonia",
+            "md": "Siano $c, d \\in [a, b]$ con $c < d$. Applicando il Teorema di Lagrange alla restrizione di $f$ su $[c, d]$, esiste $p \\in (c, d)$ tale che:\n$$f(d) - f(c) = f'(p)(d - c)$$\nPoiché $d - c > 0$, il segno dell'incremento $f(d) - f(c)$ coincide esattamente con il segno di $f'(p)$:\n- Se $f'(x) \\ge 0$, allora $f'(p) \\ge 0 \\implies f(d) - f(c) \\ge 0 \\implies f(c) \\le f(d)$ (crescenza);\n- Se $f'(x) > 0$, allora $f'(p) > 0 \\implies f(d) - f(c) > 0 \\implies f(c) < f(d)$ (stretta crescenza). $\\blacksquare$"
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "label": "Corollario 4: Criterio di Lipschitzianità",
+        "blocks": [
+         {
+          "type": "theorem",
+          "label": "Osservazione 3.11 (Criterio di Lipschitzianità)",
+          "md": "Sia $f: [a, b] \\to \\mathbb{R}$ continua su $[a, b]$ e derivabile nell'aperto $(a, b)$.\nSe la derivata prima di $f$ è **limitata** sull'intervallo $(a, b)$, ossia se esiste una costante finita $C \\ge 0$ tale che:\n$$|f'(t)| \\le C \\quad \\forall t \\in (a, b)$$\nallora la funzione $f$ è **lipschitziana** su tutto l'intervallo $[a, b]$ con costante di Lipschitz pari a $C$:\n$$|f(x) - f(y)| \\le C |x - y| \\quad \\forall x, y \\in [a, b]$$"
+         },
+         {
+          "type": "proof",
+          "steps": [
+           {
+            "title": "Dimostrazione tramite maggiorazione del rapporto incrementale",
+            "md": "Siano $x, y \\in [a, b]$ con $x < y$. Per il Teorema di Lagrange su $[x, y]$, esiste $c \\in (x, y)$ tale che $\\frac{f(y) - f(x)}{y - x} = f'(c)$.\nPassando ai valori assoluti:\n$$\\frac{|f(y) - f(x)|}{|y - x|} = |f'(c)|$$\nPoiché $|f'(t)| \\le C$ per ogni $t \\in (a, b)$, segue direttamente che $|f'(c)| \\le C$, da cui:\n$$|f(x) - f(y)| \\le C |x - y| \\quad \\blacksquare$$"
+           }
+          ]
+         },
+         {
+          "type": "flashcard",
+          "q": "Qual è la relazione deduttiva tra la limitatezza della derivata prima e la proprietà di lipschitzianità di una funzione su un intervallo?",
+          "a": "Per due punti qualsiasi $x < y$, il Teorema di Lagrange assicura che $\\frac{f(y)-f(x)}{y-x} = f'(c)$ con $c \\in (x, y)$. Passando ai valori assoluti, $\\frac{|f(x)-f(y)|}{|x-y|} = |f'(c)|$. Se la derivata prima è uniformemente limitata in modulo da una costante $C$ ($|f'(t)| \\le C$), si ottiene immediatamente $|f(x) - f(y)| \\le C|x - y|$, dimostrando che la funzione è lipschitziana con costante di Lipschitz pari all'estremo superiore del modulo della derivata prima."
+         },
+         {
+          "type": "quiz",
+          "prompt": "Quale delle seguenti funzioni è lipschitziana sull'intervallo $(0, 1)$ in virtù del Corollario di Lagrange sulla derivata limitata?",
+          "options": [
+           "f(x) = 1/x",
+           "f(x) = sqrt(x)",
+           "f(x) = sin(3*x)",
+           "f(x) = ln(x)"
+          ],
+          "correct": 2,
+          "why": [
+           "Errata: f'(x) = -1/x^2 diverge a -∞ per x che tende a 0+.",
+           "Errata: f'(x) = 1/(2*sqrt(x)) è illimitata per x vicino a 0+.",
+           "Corretta: f'(x) = 3*cos(3*x), limitata in modulo da 3 per ogni x. Dunque f è lipschitziana con costante L = 3.",
+           "Errata: f'(x) = 1/x diverge a +∞ per x vicino a 0+."
+          ],
+          "fromNote": true
+         }
+        ]
+       },
+       {
+        "label": "Corollario 5: Criterio di Derivabilità via Limite",
+        "blocks": [
+         {
+          "type": "theorem",
+          "label": "Osservazione 3.21 (Criterio di Derivabilità via Limite della Derivata)",
+          "md": "Sia $x_0 \\in (a, b)$ e sia $f: (a, b) \\to \\mathbb{R}$ una funzione **continua** su tutto $(a, b)$ e derivabile in $(a, x_0) \\cup (x_0, b)$.\nSupponiamo che esista il limite della derivata prima per $x$ che tende a $x_0$:\n$$\\lim_{x \\to x_0} f'(x) = L$$\n- Se $L \\in \\mathbb{R}$ è un numero reale finito, allora $f$ è **derivabile anche nel punto $x_0$** e si ha:\n  $$f'(x_0) = L$$\n- Se $L = +\\infty$ oppure $L = -\\infty$, la funzione $f$ **non è derivabile** in $x_0$ (si presenta un punto a tangente verticale o una cuspide)."
+         },
+         {
+          "type": "flag",
+          "md": "Nel testo originale della nota si legge: 'Se L = +∞ oppure L = -∞, la funzione f non è derivabile in x_0 (si presenta un punto a tangente verticale o una cuspide)'. La menzione della cuspide in questo contesto è imprecisa: se il limite bilaterale esiste ed è concorde (+∞ o -∞), si ottiene un punto di flesso a tangente verticale. La cuspide richiede invece limiti unilaterali infiniti discordi (+∞ da un lato e -∞ dall'altro), scenario in cui il limite bilaterale della derivata prima non esiste affatto.",
+          "correction": "Se $L = +\\infty$ oppure $L = -\\infty$, la funzione $f$ **non è derivabile** in $x_0$ (si presenta un punto di flesso a tangente verticale; la cuspide si verifica invece quando i due limiti unilaterali divergono con segno opposto, nel qual caso il limite bilaterale non esiste)."
+         },
+         {
+          "type": "proof",
+          "steps": [
+           {
+            "title": "Dimostrazione mediante il teorema dei carabinieri applicato al punto di Lagrange",
+            "md": "Consideriamo il rapporto incrementale destro con $h > 0$: $\\frac{f(x_0 + h) - f(x_0)}{h}$.\nPer Lagrange sull'intervallo $[x_0, x_0 + h]$, esiste $y_h \\in (x_0, x_0 + h)$ tale che $\\frac{f(x_0 + h) - f(x_0)}{h} = f'(y_h)$.\nQuando $h \\to 0^+$, per i Carabinieri $y_h \\to x_0^+$. Sfruttando l'esistenza del limite di $f'$:\n$$f'_+(x_0) = \\lim_{h \\to 0^+} f'(y_h) = \\lim_{y \\to x_0^+} f'(y) = L$$\nRipetendo specularmente a sinistra per $h < 0$, si ricava $f'_-(x_0) = L$. Essendo uguali e finiti, la funzione è derivabile in $x_0$ con $f'(x_0) = L$. $\\blacksquare$"
+           }
+          ]
+         },
+         {
+          "type": "quiz",
+          "prompt": "Si consideri la funzione $f(x) = x^2 \\sin(1/x)$ per $x \\neq 0$ e $f(0) = 0$. Perché il Criterio del Limite della Derivata non permette di calcolare $f'(0)$, pur essendo la funzione derivabile nell'origine?",
+          "options": [
+           "Perché la funzione non è continua nell'origine, violando l'ipotesi preliminare del criterio.",
+           "Perché per x ≠ 0 la derivata è f'(x) = 2x*sin(1/x) - cos(1/x), il cui limite per x → 0 non esiste per l'oscillazione del termine cos(1/x); il criterio è solo sufficiente, e f'(0) = 0 si prova da rapporto incrementale.",
+           "Perché la derivata in 0 vale infinito e il punto è a tangente verticale.",
+           "Perché una funzione che oscilla all'infinito non può mai ammettere retta tangente."
+          ],
+          "correct": 1,
+          "why": [
+           "Errata: la funzione è continua in 0 poiché x^2*sin(1/x) è infinitesima per limitata.",
+           "Corretta: f'(x) non ammette limite per l'oscillazione selvaggia di cos(1/x) vicino a 0. Il criterio fallisce perché richiede l'esistenza del limite, ma il rapporto incrementale h^2*sin(1/h)/h = h*sin(1/h) converge a 0.",
+           "Errata: la derivata in 0 esiste ed è finita e pari a 0.",
+           "Errata: l'oscillazione è smorzata dal fattore quadratico, consentendo la derivabilità."
+          ],
+          "fromNote": true
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "s8",
+    "num": "§8",
+    "title": "Esempi Notevoli di Identità ed Equazioni Funzionali",
+    "blocks": [
+     {
+      "type": "prose",
+      "md": "Il Corollario 1 (Test di Costanza) permette di dimostrare identità matematiche profonde senza ricorrere a complesse manipolazioni algebriche, ma semplicemente verificando che la derivata prima della funzione sia identicamente nulla su un intervallo.\n\n### 8.1 Esempio 1: Identità Trigonometrica $\\arcsin x + \\arccos x = \\frac{\\pi}{2}$\n- **Problema**: Dimostrare che per ogni $x \\in [-1, 1]$ vale l'identità fondamentale:\n  $$\\arcsin x + \\arccos x = \\frac{\\pi}{2}$$\n- **Risoluzione Rigorosa**:\n  1. Consideriamo la funzione $f: [-1, 1] \\to \\mathbb{R}$ definita da:\n     $$f(x) := \\arcsin x + \\arccos x$$\n  2. La funzione $f$ è continua sull'intervallo compatto $[-1, 1]$ ed è derivabile nell'aperto $(-1, 1)$.\n  3. Calcoliamo la derivata prima per $x \\in (-1, 1)$, ricordando le derivate notevoli delle funzioni inverse:\n     $$f'(x) = \\frac{d}{dx}(\\arcsin x) + \\frac{d}{dx}(\\arccos x) = \\frac{1}{\\sqrt{1 - x^2}} + \\left(-\\frac{1}{\\sqrt{1 - x^2}}\\right) = 0$$\n  4. Poiché l'insieme di definizione $[-1, 1]$ è un **intervallo connesso** e la derivata è identicamente nulla in ogni suo punto interno, per il Corollario 1 la funzione $f(x)$ è **costante** su tutto $[-1, 1]$:\n     $$\\exists C \\in \\mathbb{R} : f(x) = C \\quad \\forall x \\in [-1, 1]$$\n  5. Per determinare il valore esatto della costante $C$, valutiamo la funzione in un punto comodo dell'intervallo, ad esempio nell'origine $x = 0$:\n     $$C = f(0) = \\arcsin(0) + \\arccos(0) = 0 + \\frac{\\pi}{2} = \\frac{\\pi}{2}$$\n  6. Ne segue che $C = \\frac{\\pi}{2}$, provando l'identità:\n     $$\\arcsin x + \\arccos x = \\frac{\\pi}{2} \\quad \\forall x \\in [-1, 1]$$"
+     },
+     {
+      "type": "prose",
+      "md": "### 8.2 Esempio 2: Analisi di $g(x) = \\arctan x + \\arctan\\left(\\frac{1}{x}\\right)$ su un Dominio Sconnesso\nQuesto esempio evidenzia in modo magistrale il trabocchetto della disconnessione del dominio.\n- **Funzione e Dominio**: Sia data la funzione:\n  $$g(x) := \\arctan x + \\arctan\\left(\\frac{1}{x}\\right)$$\n  Il dominio naturale di definizione è $A = \\mathbb{R} \\setminus \\{0\\} = (-\\infty, 0) \\cup (0, +\\infty)$. L'insieme $A$ **non è un intervallo**, ma l'unione di due semirette disgiunte.\n- **Calcolo della Derivata Prima**: Applicando la regola di derivazione delle funzioni composte:\n  $$g'(x) = \\frac{1}{1 + x^2} + \\frac{1}{1 + \\left(\\frac{1}{x}\\right)^2} \\cdot \\left(-\\frac{1}{x^2}\\right) = \\frac{1}{1 + x^2} - \\frac{1}{\\frac{x^2 + 1}{x^2}} \\cdot \\frac{1}{x^2}$$\n  Semplificando il fattore $x^2$:\n  $$g'(x) = \\frac{1}{1 + x^2} - \\frac{x^2}{x^2 + 1} \\cdot \\frac{1}{x^2} = \\frac{1}{1 + x^2} - \\frac{1}{1 + x^2} = 0 \\quad \\forall x \\neq 0$$\n- **Applicazione Critica del Test di Costanza**:\n  La derivata prima è identicamente nulla in ogni punto del dominio. Tuttavia, non possiamo concludere che $g(x)$ sia costante su tutto $\\mathbb{R} \\setminus \\{0\\}$. Il Corollario 1 assicura unicamente che $g(x)$ sia costante **separatamente su ciascuno dei due intervalli connessi** che compongono il dominio:\n  - Sull'intervallo $(0, +\\infty)$, valutando in $x = 1$:\n    $$C_1 = g(1) = \\arctan(1) + \\arctan(1) = \\frac{\\pi}{4} + \\frac{\\pi}{4} = \\frac{\\pi}{2} \\implies g(x) = \\frac{\\pi}{2} \\quad \\forall x > 0$$\n  - Sull'intervallo $(-\\infty, 0)$, valutando in $x = -1$:\n    $$C_2 = g(-1) = \\arctan(-1) + \\arctan(-1) = -\\frac{\\pi}{4} - \\frac{\\pi}{4} = -\\frac{\\pi}{2} \\implies g(x) = -\\frac{\\pi}{2} \\quad \\forall x < 0$$\n  La funzione assume due valori costanti distinti a seconda del segno della variabile, confermando che il dominio disconnesso spezza la globalità della costanza."
+     },
+     {
+      "type": "figure",
+      "title": "Figura 6 · Il salto nel dominio disconnesso: g(x) = arctan(x) + arctan(1/x)",
+      "caption": "Trascina $x$: la derivata è identicamente nulla ovunque ($g'(x)=0$), eppure la funzione non è una sola costante globale ma salta da $-\\pi/2 \\approx -1.57$ per $x < 0$ a $+\\pi/2 \\approx 1.57$ per $x > 0$.",
+      "x": [
+       -4,
+       4
+      ],
+      "y": [
+       -2.5,
+       2.5
+      ],
+      "functions": {
+       "g": "atan(x) + atan(1/x)"
+      },
+      "params": [
+       {
+        "id": "x0",
+        "label": "Punto x",
+        "min": -3.5,
+        "max": 3.5,
+        "step": 0.1,
+        "value": 1.5
+       }
+      ],
+      "elements": [
+       {
+        "kind": "curve",
+        "fn": "g",
+        "label": "g(x)",
+        "color": "accent"
+       },
+       {
+        "kind": "hline",
+        "y": "1.5708",
+        "dashed": true,
+        "color": "good"
+       },
+       {
+        "kind": "hline",
+        "y": "-1.5708",
+        "dashed": true,
+        "color": "warn"
+       },
+       {
+        "kind": "point",
+        "x": "x0",
+        "y": "g(x0)",
+        "label": "P",
+        "drag": "x0",
+        "color": "ink"
+       },
+       {
+        "kind": "line",
+        "x": "x0",
+        "y": "g(x0)",
+        "slope": "0",
+        "color": "good"
+       }
+      ],
+      "readouts": [
+       {
+        "label": "Quota g(x)",
+        "expr": "g(x0)"
+       },
+       {
+        "label": "Derivata g'(x)",
+        "expr": "0"
+       }
+      ]
+     },
+     {
+      "type": "quiz",
+      "prompt": "Sia $f(x) = \\frac{x}{|x|}$ definita su $D = \\mathbb{R} \\setminus \\{0\\}$. La derivata prima vale $f'(x) = 0$ per ogni $x \\in D$. Perché questo fatto non contraddice il Test di Costanza di Lagrange?",
+      "options": [
+       "Perché il valore assoluto non è mai derivabile in alcun punto reale.",
+       "Perché il dominio D = (-∞, 0) U (0, +∞) non è un intervallo connesso, quindi la funzione può assumere costanti diverse (-1 per x < 0 e +1 per x > 0) su ciascuna componente connessa disgiunta.",
+       "Perché la derivata prima non è identicamente nulla ma vale +1 per x > 0 e -1 per x < 0.",
+       "Perché il Teorema di Lagrange si applica solo a funzioni polinomiali a coefficienti interi."
+      ],
+      "correct": 1,
+      "why": [
+       "Errata: per x ≠ 0 la funzione è localmente costante e perfettamente derivabile.",
+       "Corretta: il Corollario 1 impone la connessione dell'intervallo. Su insiemi sconnessi il teorema garantisce la costanza solo localmente sulle singole componenti connesse.",
+       "Errata: f(x) vale ±1, quindi la sua derivata è identicamente 0 per ogni x ≠ 0.",
+       "Errata: Lagrange è valido per qualsiasi funzione derivabile, non solo polinomiale."
+      ],
+      "fromNote": true
+     }
+    ]
+   },
+   {
+    "id": "s9",
+    "num": "§9",
+    "title": "Applicazioni ed Esercizi d'Esame Svolti Passo-Passo",
+    "blocks": [
+     {
+      "type": "prose",
+      "md": "Nelle prove universitarie di Analisi Matematica 1, il Teorema di Lagrange e il Criterio di Monotonia costituiscono lo strumento sovrano per dimostrare disuguaglianze analitiche e per determinare esplicitamente punti stazionari intermedi.\n\n### 9.1 Esercizio d'Esame 1: Dimostrazione di Disuguaglianze Analitiche (Esercizio 3.19)\nIl metodo standard d'esame per dimostrare che $f(x) \\ge g(x)$ consiste nel definire la funzione differenza $h(x) = f(x) - g(x)$, calcolarne il valore nel punto di contatto e studiarne la monotonia tramite il segno della derivata prima.\n\n#### 1. Dimostrare che $e^x \\ge 1 + x$ per ogni $x \\in \\mathbb{R}$\n1. **Definizione della funzione ausiliaria:** Poniamo $f(x) := e^x - (1 + x)$ definita su tutto $\\mathbb{R}$.\n2. **Valutazione nel punto di contatto:** Per $x = 0$ si ha:\n   $$f(0) = e^0 - (1 + 0) = 1 - 1 = 0$$\n3. **Calcolo e studio del segno della derivata:**\n   $$f'(x) = e^x - 1$$\n   - Per $x > 0$: l'esponenziale è strettamente crescente, dunque $e^x > e^0 = 1 \\implies f'(x) > 0$. Per il Criterio di Monotonia, $f$ è strettamente crescente su $[0, +\\infty)$. Di conseguenza:\n     $$x > 0 \\implies f(x) > f(0) = 0 \\implies e^x - (1 + x) > 0 \\implies e^x > 1 + x$$\n   - Per $x < 0$: si ha $e^x < e^0 = 1 \\implies f'(x) < 0$. Per il Criterio di Monotonia, $f$ è strettamente decrescente su $(-\\infty, 0]$. Di conseguenza, retrocedendo verso sinistra a partire da zero:\n     $$x < 0 \\implies f(x) > f(0) = 0 \\implies e^x - (1 + x) > 0 \\implies e^x > 1 + x$$\n4. **Sintesi:** La disuguaglianza $e^x \\ge 1 + x$ è verificata per ogni $x \\in \\mathbb{R}$, con uguaglianza stretta valida se e solo se $x = 0$.\n\n#### 2. Dimostrare che $\\ln x \\le x - 1$ per ogni $x > 0$\n1. **Definizione della funzione ausiliaria:** Poniamo $g(x) := (x - 1) - \\ln x$ definita sull'intervallo $(0, +\\infty)$.\n2. **Valutazione nel punto cardine:** Per $x = 1$ si ha:\n   $$g(1) = (1 - 1) - \\ln(1) = 0 - 0 = 0$$\n3. **Calcolo della derivata prima:**\n   $$g'(x) = 1 - \\frac{1}{x} = \\frac{x - 1}{x}$$\n   Essendo il denominatore $x > 0$, il segno della derivata coincide con il segno di $x - 1$:\n   - Per $x > 1$: $x - 1 > 0 \\implies g'(x) > 0 \\implies g$ è strettamente crescente su $[1, +\\infty)$, dunque $g(x) \\ge g(1) = 0 \\implies \\ln x \\le x - 1$.\n   - Per $0 < x < 1$: $x - 1 < 0 \\implies g'(x) < 0 \\implies g$ è strettamente decrescente su $(0, 1]$, dunque per $x < 1$ si ha $g(x) \\ge g(1) = 0 \\implies \\ln x \\le x - 1$.\n4. **Sintesi:** La disuguaglianza $\\ln x \\le x - 1$ sussiste per ogni $x > 0$, con eguaglianza se e solo se $x = 1$.\n\n#### 3. Dimostrare che $\\sin x \\le x$ per ogni $x \\ge 0$\n1. **Definizione della funzione ausiliaria:** Poniamo $h(x) := x - \\sin x$ definita sulla semiretta $[0, +\\infty)$.\n2. **Valutazione nell'origine:**\n   $$h(0) = 0 - \\sin(0) = 0$$\n3. **Calcolo e segno della derivata:**\n   $$h'(x) = 1 - \\cos x$$\n   Poiché il coseno è universalmente limitato da $-1 \\le \\cos x \\le 1$, per ogni $x \\in \\mathbb{R}$ si ha:\n   $$1 - \\cos x \\ge 0 \\implies h'(x) \\ge 0 \\quad \\forall x \\ge 0$$\n4. **Conclusione:** Per il Criterio di Monotonia, $h$ è una funzione debolmente crescente su $[0, +\\infty)$. Pertanto, per ogni $x \\ge 0$:\n   $$h(x) \\ge h(0) = 0 \\implies x - \\sin x \\ge 0 \\implies \\sin x \\le x$$"
+     },
+     {
+      "type": "prose",
+      "md": "### 9.2 Esercizio d'Esame 2: Calcolo Esplicito del Punto di Lagrange per un Polinomio di Terzo Grado\n- **Testo dell'Esercizio**: Sia data la funzione polinomiale $f(x) = x^3 - 3x^2 + 2x$ definita sull'intervallo $[0, 3]$. Verificare la validità delle ipotesi del Teorema di Lagrange e determinare esplicitamente tutti i punti $c \\in (0, 3)$ che soddisfano la tesi del teorema."
+     },
+     {
+      "type": "exercise",
+      "level": "svolto",
+      "title": "Esercizio Svolto · Calcolo del punto di Lagrange per f(x) = x³ - 3x² + 2x su [0, 3]",
+      "steps": [
+       "**Verifica Ipotesi:** $f(x)$ è un polinomio, continuo su $[0, 3]$ e derivabile in $(0, 3)$. Le ipotesi di Lagrange sono pienamente verificate.",
+       "**Calcolo quote e secante:** $f(0) = 0$ e $f(3) = 3^3 - 3(3^2) + 2(3) = 27 - 27 + 6 = 6$. La pendenza media è $m_{\\text{sec}} = \\frac{6 - 0}{3 - 0} = 2$.",
+       "**Derivata prima:** $f'(x) = 3x^2 - 6x + 2$.",
+       "**Equazione di Lagrange:** Poniamo $f'(c) = 2 \\implies 3c^2 - 6c + 2 = 2 \\implies 3c^2 - 6c = 0 \\implies 3c(c - 2) = 0$.",
+       "**Filtro topologico sull'intervallo aperto (0, 3):** Le soluzioni sono $c_1 = 0$ e $c_2 = 2$. La soluzione $c_1 = 0$ è al bordo ($0 \\notin (0, 3)$) e va scartata. L'unico punto interno valido è **$c = 2$**."
+      ]
+     },
+     {
+      "type": "figure",
+      "title": "Figura 7 · Il punto interno di Lagrange c = 2 per f(x) = x³ - 3x² + 2x",
+      "caption": "Sposta il punto $p$ su $[0, 3]$: la retta secante congiunge $(0, 0)$ e $(3, 6)$ con pendenza $2$. La retta tangente diventa verde (good) esattamente in corrispondenza del punto interno $c = 2$.",
+      "x": [
+       -0.5,
+       3.5
+      ],
+      "y": [
+       -1,
+       7
+      ],
+      "functions": {
+       "f": "x^3 - 3*x^2 + 2*x"
+      },
+      "params": [
+       {
+        "id": "p",
+        "label": "Punto c",
+        "min": 0,
+        "max": 3,
+        "step": 0.05,
+        "value": 1
+       }
+      ],
+      "elements": [
+       {
+        "kind": "curve",
+        "fn": "f",
+        "label": "f(x)",
+        "color": "accent"
+       },
+       {
+        "kind": "segment",
+        "x1": "0",
+        "y1": "0",
+        "x2": "3",
+        "y2": "6",
+        "dashed": true,
+        "color": "muted"
+       },
+       {
+        "kind": "point",
+        "x": "0",
+        "y": "0",
+        "label": "A(0,0)",
+        "color": "ink"
+       },
+       {
+        "kind": "point",
+        "x": "3",
+        "y": "6",
+        "label": "B(3,6)",
+        "color": "ink"
+       },
+       {
+        "kind": "line",
+        "x": "p",
+        "y": "f(p)",
+        "slope": "f'(p)",
+        "color": "accent",
+        "greenWhen": "f'(p) - 2"
+       },
+       {
+        "kind": "point",
+        "x": "p",
+        "y": "f(p)",
+        "label": "c",
+        "drag": "p",
+        "color": "ink"
+       }
+      ],
+      "readouts": [
+       {
+        "label": "Pendenza secante m_sec",
+        "expr": "2"
+       },
+       {
+        "label": "Pendenza f'(p)",
+        "expr": "f'(p)"
+       },
+       {
+        "label": "Differenza f'(p) - 2",
+        "expr": "f'(p) - 2"
+       }
+      ],
+      "points": {
+       "label": "Mostra i punti",
+       "param": "p",
+       "expr": "f'(p) - 2",
+       "at": "f"
+      }
+     },
+     {
+      "type": "exercise",
+      "level": "completa",
+      "title": "Esercizio Guidato · Applicazione di Lagrange a f(x) = x² - 4x + 3 su [1, 5]",
+      "steps": [
+       "Calcola i valori agli estremi dell'intervallo: $f(1) = {{ -2 | *0 | 1 }}$ e $f(5) = {{ 6 | *8 | 10 }}.",
+       "Determina la pendenza della retta secante: $m_{\\text{sec}} = \\frac{f(5) - f(1)}{5 - 1} = {{ 1 | *2 | 4 }}.",
+       "Calcola la derivata prima generica: $f'(x) = {{ 2x | *2x - 4 | x - 4 }}.",
+       "Imposta l'equazione di Lagrange $f'(c) = m_{\\text{sec}} \\implies 2c - 4 = 2$, ricavando il punto interno $c = {{ 2 | *3 | 4 }}.",
+       "Nota strutturale: per ogni parabola quadratica $y = ax^2+bx+c$, il punto di Lagrange coincide sempre con {{ l'estremo sinistro | *il punto medio dell'intervallo | il vertice }}."
+      ]
+     },
+     {
+      "type": "exercise",
+      "level": "solo",
+      "title": "Sfida in Autonomia · Disuguaglianza con radice quadrata via Lagrange",
+      "steps": [
+       "Dimostrare che per ogni $x > 0$ vale la disuguaglianza: $\\sqrt{1 + x} < 1 + \\frac{x}{2}$.",
+       "Suggerimento: applica il Teorema di Lagrange alla funzione $f(t) = \\sqrt{1 + t}$ sull'intervallo compatto $[0, x]$.",
+       "Verifica che esiste $c \\in (0, x)$ tale che $\\frac{\\sqrt{1+x} - 1}{x} = f'(c) = \\frac{1}{2\\sqrt{1+c}}$.",
+       "Concludi osservando che poiché $c > 0$, si ha $\\sqrt{1+c} > 1$, da cui $f'(c) < \\frac{1}{2}$, e moltiplica per $x > 0$."
+      ]
+     },
+     {
+      "type": "quiz",
+      "prompt": "Si applichi il Teorema di Lagrange alla funzione $f(x) = x^2 - 4x + 3$ sull'intervallo $[1, 5]$. Qual è il punto $c \\in (1, 5)$ la cui esistenza è garantita dal teorema?",
+      "options": [
+       "c = 2",
+       "c = 3",
+       "c = 4",
+       "c = 1"
+      ],
+      "correct": 1,
+      "why": [
+       "Errata: c = 2 è il vertice della parabola, dove la derivata si annulla f'(2) = 0.",
+       "Corretta: la pendenza della secante è (8 - 0)/4 = 2. Imponendo f'(c) = 2c - 4 = 2 si ottiene 2c = 6, ossia c = 3 ∈ (1, 5).",
+       "Errata: per c = 4 la derivata vale 2(4) - 4 = 4 ≠ 2.",
+       "Errata: c = 1 coincide con l'estremo sinistro del dominio, escluso dall'intervallo aperto (1, 5)."
+      ],
+      "fromNote": true
+     }
+    ]
+   },
+   {
+    "id": "s10",
+    "num": "§10",
+    "title": "Ponti Logici verso i Teoremi Derivati (Note Separate)",
+    "blocks": [
+     {
+      "type": "prose",
+      "md": "Il Teorema di Lagrange non conclude la teoria del calcolo differenziale, ma ne costituisce la matrice genetica da cui originano i teoremi avanzati dell'analisi:\n\n- **Ponte verso il Teorema di Cauchy:** Il Teorema di Cauchy generalizza Lagrange confrontando contemporaneamente gli incrementi di due distinte funzioni $f, g: [a, b] \\to \\mathbb{R}$. Se $g'(x) \\neq 0$, esiste $c \\in (a, b)$ tale che $\\frac{f(b)-f(a)}{g(b)-g(a)} = \\frac{f'(c)}{g'(c)}$. Ponendo $g(x) = x$, Cauchy collassa esattamente nel Teorema di Lagrange, confermandone la subordinazione gerarchica.\n- **Ponte verso il Teorema di de l'Hôpital-Bernoulli:** La celebre regola per sciogliere le forme indeterminate del tipo $\\left[\\frac{0}{0}\\right]$ e $\\left[\\frac{\\infty}{\\infty}\\right]$ scaturisce direttamente dall'applicazione del Teorema di Cauchy a rapporti incrementali infinitesimi.\n- **Ponte verso la Formula di Taylor con Resto di Lagrange:** Il Teorema di Lagrange può essere interpretato come la formula di Taylor arrestata al primo ordine con resto lagrangiano ($f(b) = f(a) + f'(c)(b - a)$). Per funzioni derivabili $N+1$ volte, la generalizzazione ricorsiva permette di quantificare l'errore esatto commesso approssimando la funzione con un polinomio di grado $N$:\n  $$f(x) = \\sum_{k=0}^N \\frac{f^{(k)}(x_0)}{k!}(x - x_0)^k + \\frac{f^{(N+1)}(\\xi)}{(N+1)!}(x - x_0)^{N+1}$$\n- **Ponte verso il Teorema della Media Integrale:** Data una funzione continua $g \\in C^0([a, b])$, il Teorema della Media Integrale afferma che $\\frac{1}{b-a}\\int_a^b g(x) \\, dx = g(\\xi)$. Se applichiamo tale risultato alla derivata $g(x) = f'(x)$, dal Teorema Fondamentale del Calcolo Integrale ($\\int_a^b f'(x) \\, dx = f(b) - f(a)$) si riottiene la formula di Lagrange:\n  $$\\frac{f(b) - f(a)}{b - a} = f'(\\xi)$$"
+     }
+    ]
+   },
+   {
+    "id": "s11",
+    "num": "§11",
+    "title": "Note e Paragrafi Collegati",
+    "blocks": [
+     {
+      "type": "prose",
+      "md": "### Teoremi e Concetti Derivati (Note Separate)\n- **Teorema di Cauchy**: estensione simultanea del rapporto incrementale per due funzioni distinte, motore algebrico di de l'Hôpital.\n- **Teorema di de l'Hopital-Bernoulli**: metodo di risoluzione delle forme indeterminate fondato su Cauchy.\n- **Formula di Taylor con Resto di Lagrange**: estensione d'ordine superiore di Lagrange per la stima dell'errore di troncamento polinomiale.\n- **Teorema della Media Integrale**: reinterpretazione della pendenza media in chiave di area sottesa e teorema fondamentale del calcolo.\n- **Criteri di Monotonia tramite la Derivata Prima**: trattazione sistematica della crescenza e decrescita delle funzioni differenziabili.\n- **Studio della Derivabilita di Funzioni Definite a Tratti**: procedura operativa che impiega il criterio del limite della derivata prima per classificare punti di non derivabilità.\n\n### Riferimenti Puntuali a Paragrafi\n- **Teorema di Rolle (§2 Enunciato Formale)**: caso particolare a quota costante e prerequisito dimostrativo fondamentale.\n- **Teorema di Fermat sui Punti Stazionari (Punto Angoloso)**: analisi del controesempio classico del punto angoloso e fallimento della derivabilità.\n- **Massimi e Minimi Relativi e Assoluti (§5.1 Criterio della Derivata Prima)**: applicazione di Lagrange per legare il segno di $f'$ alla monotonia del grafico.\n- **Vincolo della Connessione Intervallare**: analisi della caduta del test di costanza su domini disconnessi.\n- **Punti Critici o Stazionari**: classificazione dei punti critici tramite intorno di monotonia.\n\n### Note Generali e MOC\n- **Analisi 1 MOC**: quadro di raccordo e architettura d'esame per l'intero insegnamento di Analisi Matematica 1.\n- **Teorema di Rolle**: radice simmetrica dei teoremi del valor medio.\n- **Teorema di Fermat sui Punti Stazionari**: condizione necessaria per gli estremi interni e fondamento di Rolle.\n- **Massimi e Minimi Relativi e Assoluti**: studio globale e locale delle estremanti funzionali.\n- **Punti Interni e Punti di Estremo**: inquadramento topologico dei punti interni e compattezza."
+     }
+    ]
+   }
+  ],
+  "recap": {
+   "ideas": [
+    "Lagrange è il convertitore universale che trasforma derivate puntuali infinitesime in variazioni macroscopiche globali.",
+    "La dimostrazione poggia su Rolle attraverso la funzione scarto g(x) = f(x) - y_sec(x), che misura la distanza verticale ed è nulla agli estremi.",
+    "Tutti i test operativi dello studio di funzione (costanza, primitive, monotonia, lipschitzianità) discendono direttamente da Lagrange.",
+    "L'ipotesi di connessione del dominio (intervallo) è categorica: sui domini con lacune una derivata ovunque nulla non implica la costanza globale."
+   ],
+   "formulas": [
+    {
+     "label": "Tesi del Teorema di Lagrange",
+     "tex": "f'(c) = \\frac{f(b) - f(a)}{b - a}, \\quad c \\in (a, b)"
+    },
+    {
+     "label": "Forma non frazionaria di Lagrange",
+     "tex": "f(b) - f(a) = f'(c)(b - a)"
+    },
+    {
+     "label": "Funzione ausiliaria di scarto",
+     "tex": "g(x) = f(x) - f(a) - \\frac{f(b) - f(a)}{b - a}(x - a)"
+    },
+    {
+     "label": "Test di Costanza",
+     "tex": "f'(x) = 0 \\; \\forall x \\in I \\iff f(x) = C"
+    },
+    {
+     "label": "Criterio di Monotonia Stretta",
+     "tex": "f'(x) > 0 \\; \\forall x \\in (a, b) \\implies f(x_1) < f(x_2) \\; \\forall x_1 < x_2"
+    },
+    {
+     "label": "Stima di Lipschitzianità",
+     "tex": "|f(x) - f(y)| \\le \\left( \\sup_{t \\in (a, b)} |f'(t)| \\right) |x - y|"
+    }
+   ]
+  }
+ },
+ "dropped": 0,
+ "engine": "agy"
+}

@@ -72,10 +72,12 @@ export async function scanVault(root: string, excluded: string[], partial: Parti
       const body = stripCode(content)
       const tags = [...new Set([...asList(data.tags), ...[...body.matchAll(/(?:^|\s)#([\p{L}][\p{L}\p{N}_/-]*)/gu)].map((m) => m[1])])]
       const type = asList(data.Type ?? data.type)[0]
+      const verifica = ['ok', 'dubbi', 'errori'].find((v) => v === String(data.Verifica ?? '').trim()) as VaultNote['verifica']
       return {
         ...base,
         tags,
         ...(type ? { type } : {}),
+        ...(verifica ? { verifica } : {}),
         aliases: asList(data.aliases).length ? (Array.isArray(data.aliases) ? data.aliases.map(String) : [String(data.aliases)]) : [],
         links: parseWikilinks(content).map((l) => ({ ...l, resolved: false })),
         headings: [...body.matchAll(/^#{1,6}\s+(.+?)\s*$/gm)].map((m) => m[1]),

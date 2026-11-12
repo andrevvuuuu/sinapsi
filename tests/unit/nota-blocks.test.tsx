@@ -51,9 +51,18 @@ describe('try it yourself', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ho provato, mostra' }))
     expect(screen.getByText('Vale zero.')).toBeTruthy()
   })
+  it('keeps the solution covered until something is written, with an honest "Non lo so"', () => {
+    render(<BlockView block={tryit} mode="prova" />)
+    expect((screen.getByRole('button', { name: 'Ho provato, mostra' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('La tua risposta'), { target: { value: '   ' } })
+    expect((screen.getByRole('button', { name: 'Ho provato, mostra' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Non lo so, mostra' }))
+    expect(screen.getByText('Vale zero.')).toBeTruthy()
+  })
   it('always covers a "solo" exercise', () => {
     render(<BlockView block={{ type: 'exercise', level: 'solo', title: '$\\sin x\\le x$', steps: ['Poni $h=x-\\sin x$.'] }} mode="leggi" />)
     expect(screen.queryByText(/Poni/)).toBeNull()
+    fireEvent.change(screen.getByLabelText('La tua risposta'), { target: { value: 'h crescente' } })
     fireEvent.click(screen.getByRole('button', { name: 'Confronta con la soluzione' }))
     expect(screen.getByText(/Poni/)).toBeTruthy()
   })

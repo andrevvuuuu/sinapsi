@@ -91,7 +91,8 @@ describe('suggestions with StrictMode', () => {
 describe('the back button', () => {
   it('keeps the 44 px touch size and no pill inside the note island', () => {
     const css = readFileSync('src/renderer/src/styles/tokens.css', 'utf8')
-    expect(css).toMatch(/button\.back-btn\.back-btn\.back-btn\{[^}]*min-height:44px/)
+    expect(css).toMatch(/button\.back-btn\.back-btn\.back-btn\{[^}]*min-height:var\(--ctl\);[^}]*border:0/)
+    expect(css).toMatch(/--ctl:44px/)
     expect(css).toMatch(/\.island button\.back-btn\.back-btn\.back-btn\{[^}]*background:transparent/)
   })
 })

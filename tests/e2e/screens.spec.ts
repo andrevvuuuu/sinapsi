@@ -1,0 +1,319 @@
+import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { makeNotaViva } from './helpers'
+
+/**
+ * Every view in both themes: a screenshot in test-results/screens/<vista>-<tema>.png, and two checks on what is
+ * on screen. Every visible button outside the dense bars is at least 44×44; no visible text is under 11 px.
+ */
+
+const THEMES = ['lavagna', 'trattato'] as const
+
+/**
+ * Dense bars keep their 36/28 px controls (--ctl-sm / --hit-min): their buttons are left out of the 44×44 check.
+ * - `.nota .island button`: the nota viva island bar, the floating glass bar of the note.
+ * - `.graph .gzoom button`: the graph's zoom controls, floating on the canvas.
+ * - `.mic.mic-sm`: the in-field microphone of size sm, inside short fields.
+ * - `.graph .gpanel button`: the graph menu panel (lens selector, «Disposizione e strati»), graph controls too.
+ * - `.tree .leaf`: the note rows of the Home's side panels (vault tree, notes vive), dense macOS sidebar rows (36 px).
+ * - `.nb-cite`: the notebook's inline citation marks, footnote marks inside the running text (24 px, hit area 32).
+ */
+const DENSE = ['.nota .island button', '.graph .gzoom button', '.mic.mic-sm', '.graph .gpanel button', '.tree .leaf', '.nb-cite']
+
+type Finding = string
+
+/** The buttons under 44×44 and the text under 11 px on screen now, described so a reader finds them. */
+async function audit(win: Page): Promise<Finding[]> {
+  return win.evaluate((dense) => {
+    const out: string[] = []
+    const shown = (el: Element): boolean => {
+      const r = el.getBoundingClientRect()
+      if (r.width === 0 || r.height === 0) return false
+      // Visually hidden helpers (.sr): a 1 px clipped box.
+      if (r.width <= 1 && r.height <= 1) return false
+      const cs = getComputedStyle(el)
+      return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) > 0 && !el.closest('[aria-hidden="true"],[hidden],.sr')
+    }
+    const name = (el: Element): string => {
+      const label = el.getAttribute('aria-label') ?? (el.textContent ?? '').trim()
+      return label.replace(/\s+/g, ' ').slice(0, 40)
+    }
+    const where = (el: Element): string => {
+      const cls = (e: Element): string => (typeof e.className === 'string' && e.className.trim() ? '.' + e.className.trim().split(/\s+/).join('.') : '')
+      const parent = el.parentElement
+      return `${parent ? parent.tagName.toLowerCase() + cls(parent) + ' > ' : ''}${el.tagName.toLowerCase()}${cls(el)}`
+    }
+    for (const b of document.querySelectorAll('button')) {
+      if (!shown(b) || dense.some((s) => b.matches(s))) continue
+      const r = b.getBoundingClientRect()
+      // Half a pixel of rounding (fractional layouts).
+      if (r.width < 43.5 || r.height < 43.5) out.push(`button «${name(b)}» ${Math.round(r.width)}×${Math.round(r.height)} (${where(b)})`)
+    }
+    const seen = new Set<Element>()
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const el = n.parentElement
+      if (!el || seen.has(el) || !(n.textContent ?? '').trim()) continue
+      seen.add(el)
+      // KaTeX sets its own sub- and superscript sizes relative to the line: typeset maths, not interface text.
+      if (el.closest('.katex, script, style, title') || !shown(el)) continue
+      const size = parseFloat(getComputedStyle(el).fontSize)
+      if (size < 11) out.push(`text «${name(el)}» ${size}px (${where(el)})`)
+    }
+    return [...new Set(out)]
+  }, DENSE)
+}
+
+/** The theme in the settings too: the Home applies the stored theme again whenever it reloads them. */
+async function setTheme(win: Page, theme: (typeof THEMES)[number]): Promise<void> {
+  await win.evaluate(async (t) => {
+    await window.sinapsi.settings.set({ theme: t })
+    document.documentElement.dataset.theme = t
+  }, theme)
+}
+
+/** Shoots the view in both themes and checks it: no button under 44×44 outside DENSE, no text under 11 px. */
+async function screen(win: Page, vista: string): Promise<void> {
+  const found = new Set<Finding>()
+  for (const theme of THEMES) {
+    await setTheme(win, theme)
+    await win.waitForTimeout(300) // the material's colour transition
+    await win.screenshot({ path: `test-results/screens/${vista}-${theme}.png` })
+    for (const f of await audit(win)) found.add(f)
+  }
+  // Soft: every view of the test is shot and checked even when an earlier one fails.
+  expect.soft([...found], `${vista}: buttons under 44×44 or text under 11 px`).toEqual([])
+}
+
+async function launch(extra: Record<string, string> = {}): Promise<{ app: ElectronApplication; win: Page }> {
+  const app = await electron.launch({
+    args: ['.'],
+    env: {
+      ...process.env,
+      SINAPSI_FAKE_TEACHER: '1',
+      SINAPSI_FAKE_NOTE: '1',
+      SINAPSI_FAKE_EXTRACT: '1',
+      SINAPSI_FAKE_REVIEW: '1',
+      SINAPSI_FAKE_PRACTICE: '1',
+      SINAPSI_FAKE_NOTEBOOK: '1',
+      SINAPSI_FAKE_MEDIA: '1',
+      SINAPSI_VAULT: resolve('tests/fixtures/vault'),
+      SINAPSI_DATA: mkdtempSync(join(tmpdir(), 'sinapsi-e2e-')),
+      ...extra
+    }
+  })
+  const win = await app.firstWindow()
+  win.on('pageerror', (e) => console.log('PAGEERROR', e.message))
+  await expect(win.getByLabel('Cosa vuoi studiare?')).toBeVisible()
+  return { app, win }
+}
+
+test('home, settings, nota viva, graph', async () => {
+  const { app, win } = await launch()
+  await screen(win, 'home')
+
+  await win.getByRole('button', { name: 'Impostazioni', exact: true }).click()
+  await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toBeVisible()
+  await win.waitForTimeout(300) // the dialog's entrance
+  await screen(win, 'impostazioni')
+  await win.keyboard.press('Escape')
+  await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toHaveCount(0)
+
+  await win.getByText('Matematica', { exact: true }).click()
+  await win.getByRole('button', { name: 'Teorema di Rolle' }).click()
+  await win.getByRole('button', { name: 'Crea la nota viva' }).click()
+  await expect(win.getByRole('heading', { level: 1, name: /Teorema di Rolle/ })).toBeVisible()
+  await screen(win, 'nota')
+  await win.getByRole('button', { name: '← Home' }).click()
+
+  await expect
+    .poll(async () => win.evaluate(async () => (await window.sinapsi.graph.get()).concepts.length), { timeout: 15_000 })
+    .toBeGreaterThan(0)
+  await win.getByRole('button', { name: 'Vista del grafo' }).click()
+  await expect(win.locator('.graph .gzoom')).toBeVisible()
+  await win.waitForTimeout(600) // the layout settles
+  await screen(win, 'grafo')
+  // The detail card of a concept, reached from the menu's search.
+  if (!(await win.getByRole('combobox', { name: 'Cerca nel grafo' }).isVisible())) await win.locator('.graph .gmenu-btn').click()
+  await win.getByRole('combobox', { name: 'Cerca nel grafo' }).fill('Teorema di Rolle')
+  await win.getByRole('option', { name: /Teorema di Rolle.*concetto/ }).click()
+  await expect(win.getByRole('dialog', { name: 'Dettagli' })).toBeVisible()
+  await win.waitForTimeout(300)
+  await screen(win, 'grafo-scheda')
+  await app.close()
+})
+
+test('session: Misura, then with the plan', async () => {
+  const { app, win } = await launch()
+  await win.getByLabel('Cosa vuoi studiare?').fill('Teorema di Lagrange')
+  await win.getByRole('button', { name: 'Inizia' }).click()
+  await win.getByLabel('La tua risposta').fill("passare l'esame")
+  await win.getByRole('button', { name: 'Invia risposta' }).click()
+  await expect(win.getByRole('button', { name: /^A:/ })).toBeVisible()
+  await win.waitForTimeout(600) // the smooth scroll to the question
+  // At 1280×820 the whole Misura question fits the dock at rest: nothing scrolls inside it, and «Il tuo ragionamento»
+  // sits whole inside the dock (its bottom border and corners visible).
+  const fit = await win.evaluate(() => {
+    const scroller = document.querySelector<HTMLElement>('.dock .dock-scroll')
+    const dock = document.querySelector('.dock')!.getBoundingClientRect()
+    const think = document.querySelector('.dock .think')!.getBoundingClientRect()
+    return {
+      size: [window.innerWidth, window.innerHeight],
+      overflow: scroller ? scroller.scrollHeight - scroller.clientHeight : 0,
+      thinkInside: think.top >= dock.top && think.bottom <= dock.bottom,
+      thinkVisible: scroller ? think.bottom <= scroller.getBoundingClientRect().bottom + 0.5 : true
+    }
+  })
+  expect(fit.size).toEqual([1280, 820])
+  expect(fit.overflow, 'Misura dock: no overflow at rest').toBeLessThanOrEqual(0)
+  expect(fit.thinkInside, 'Misura dock: «Il tuo ragionamento» inside the dock').toBe(true)
+  expect(fit.thinkVisible, 'Misura dock: «Il tuo ragionamento» not clipped by the scroll area').toBe(true)
+  await screen(win, 'sessione-misura')
+
+  await win.getByRole('button', { name: /^A:/ }).click()
+  await win.getByLabel('Fiducia').fill('90')
+  await win.getByRole('button', { name: 'Invia risposta' }).click()
+  await win.getByRole('button', { name: 'Approva il piano' }).click()
+  await expect(win.getByRole('complementary', { name: 'Il piano' }).getByText('Pendenza della corda')).toBeVisible()
+  await win.waitForTimeout(600)
+  await screen(win, 'sessione-piano')
+  await app.close()
+})
+
+test('review: setup, exercise, verdict, summary', async () => {
+  const { app, win } = await launch()
+  await makeNotaViva(win, 'Teorema di Rolle')
+  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: /^Ripasso/ }).click()
+  await win.getByRole('button', { name: 'Inizia' }).click()
+  // Setup: the concepts to review and the exercise-type selector.
+  await expect(win.getByRole('heading', { name: /concetti da fissare/ })).toBeVisible()
+  await expect(win.getByRole('group', { name: 'Esercizi' })).toBeVisible()
+  await screen(win, 'ripasso-setup')
+
+  // An exercise ready to answer: nothing picked yet, «Verifica» disabled.
+  await win.getByRole('button', { name: 'Inizia ripasso' }).click()
+  await expect(win.getByRole('button', { name: /La continuità/ })).toBeVisible()
+  await expect(win.getByRole('button', { name: 'Verifica' })).toBeDisabled()
+  await win.waitForTimeout(500) // the card's entrance
+  await screen(win, 'ripasso-esercizio')
+
+  // The verdict with the grade buttons.
+  await win.getByRole('button', { name: /La continuità/ }).click()
+  await win.getByRole('button', { name: 'Verifica' }).click()
+  await expect(win.getByRole('group', { name: 'Quanto ti è costato ricordarlo?' })).toBeVisible()
+  await screen(win, 'ripasso-verdetto')
+
+  // The summary: «Di nuovo» on the first item, so its callout and «Rifai subito gli errori» show too.
+  await win.getByRole('button', { name: /Di nuovo/ }).click()
+  for (let k = 0; k < 3; k++) {
+    if (k > 0) {
+      await win.getByRole('button', { name: /La continuità/ }).click()
+      await win.getByRole('button', { name: 'Verifica' }).click()
+    }
+    await win.getByRole('button', { name: k === 2 ? 'Vedi riepilogo' : 'Prossima' }).click()
+  }
+  await expect(win.getByRole('heading', { name: /nitido/ })).toBeVisible()
+  await expect(win.getByRole('button', { name: 'Rifai subito gli errori' })).toBeVisible()
+  await screen(win, 'ripasso-riepilogo')
+  await app.close()
+})
+
+test('practice: training and exam', async () => {
+  const { app, win } = await launch()
+  await makeNotaViva(win, 'Teorema di Rolle')
+  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: 'Pratica', exact: true }).click()
+  await win.getByLabel('Cosa vuoi studiare?').fill('rolle')
+  await win.getByRole('button', { name: 'Inizia' }).click()
+  // The setup, in exam mode: material, the two modes, the duration and the place.
+  await win.getByRole('radio', { name: /Simulazione d'esame/ }).click()
+  await screen(win, 'pratica-setup')
+  // The long placeholder of the free topic stays on its one line: nothing wraps into a clipped second line.
+  const free = win.getByLabel('Argomento libero')
+  expect(await free.evaluate((t) => t.scrollHeight - t.clientHeight), 'free topic: placeholder clipped').toBeLessThanOrEqual(0)
+  // The material dialog, whole inside the window at 1280×820 and 1280×720.
+  await win.getByRole('button', { name: 'Scegli…' }).click()
+  await expect(win.getByRole('dialog', { name: 'Scegli il materiale' })).toBeVisible()
+  await win.waitForTimeout(300)
+  for (const h of [820, 720]) {
+    await app.evaluate(({ BrowserWindow }, h) => BrowserWindow.getAllWindows()[0].setContentSize(1280, h), h)
+    await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(h)
+    const r = await win.getByRole('dialog', { name: 'Scegli il materiale' }).boundingBox()
+    expect(r!.y, `material dialog at ${h}: top inside the window`).toBeGreaterThanOrEqual(0)
+    expect(r!.y + r!.height, `material dialog at ${h}: bottom inside the window`).toBeLessThanOrEqual(h)
+  }
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 820))
+  await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(820)
+  await screen(win, 'pratica-materiale')
+  await win.getByRole('button', { name: 'Chiudi' }).click()
+  await win.getByRole('radio', { name: /Allenamento/ }).click()
+  await win.getByRole('button', { name: 'Inizia allenamento' }).click()
+  const dock = win.getByRole('region', { name: 'Problema' })
+  await expect(dock.getByText(/Mostra che per ogni/)).toBeVisible()
+  await screen(win, 'pratica-allenamento')
+  // «Foto del foglio» from the glass dock: its overlay covers the whole window, not just the dock.
+  await dock.getByRole('button', { name: 'Foto del foglio' }).click()
+  await expect(win.getByRole('dialog', { name: 'Foto del foglio' })).toBeVisible()
+  const overlay = await win.locator('.pr-overlay').boundingBox()
+  expect([overlay!.x, overlay!.y, overlay!.width, overlay!.height]).toEqual([0, 0, 1280, 820])
+  await screen(win, 'pratica-foto')
+  // At 1280×720 the photo dialog's actions are on screen at rest, below the (capped) camera preview.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 720))
+  await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(720)
+  for (const action of [win.locator('.pr-photo label.pr-file'), win.getByRole('button', { name: 'Scatta' })]) {
+    const r = (await action.boundingBox())!
+    expect(r.y, 'photo dialog at 720: action top on screen').toBeGreaterThanOrEqual(0)
+    expect(r.y + r.height, 'photo dialog at 720: action bottom on screen').toBeLessThanOrEqual(720)
+    const hit = await win.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.pr-file, button')?.textContent?.trim(), [r.x + r.width / 2, r.y + r.height / 2])
+    expect(hit, 'photo dialog at 720: action not covered').toBeTruthy()
+  }
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 820))
+  await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(820)
+  await win.getByRole('button', { name: 'Chiudi' }).click()
+  await win.getByRole('button', { name: '← Home' }).click()
+
+  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: 'Pratica', exact: true }).click()
+  await win.getByLabel('Cosa vuoi studiare?').fill('limiti notevoli')
+  await win.getByRole('button', { name: 'Inizia' }).click()
+  await win.getByRole('radio', { name: /Simulazione d'esame/ }).click()
+  await win.getByRole('tab', { name: '30 min' }).click()
+  await win.getByRole('button', { name: 'Inizia simulazione · 30 min' }).click()
+  await expect(win.getByRole('timer')).toBeVisible()
+  await screen(win, 'pratica-esame')
+  // The photo dialog from an exercise of the exam: the same portal, the overlay covers the window.
+  await win.getByRole('region', { name: 'Esercizio 1' }).getByRole('button', { name: 'Foto del foglio' }).click()
+  await expect(win.getByRole('dialog', { name: 'Foto del foglio' })).toBeVisible()
+  const examOverlay = await win.locator('.pr-overlay').boundingBox()
+  expect([examOverlay!.x, examOverlay!.y, examOverlay!.width, examOverlay!.height]).toEqual([0, 0, 1280, 820])
+  await screen(win, 'pratica-esame-foto')
+  await win.getByRole('button', { name: 'Chiudi' }).click()
+  await app.close()
+})
+
+test('notebook', async () => {
+  const { app, win } = await launch()
+  const panel = win.getByRole('complementary', { name: 'Notebook' })
+  await panel.getByRole('button', { name: 'Nuovo notebook' }).click()
+  await panel.getByLabel('Nome del notebook').fill('Analisi 1')
+  await panel.getByRole('button', { name: 'Crea' }).click()
+  await expect(win.getByLabel('Nome del notebook')).toHaveValue('Analisi 1')
+  // The three starter questions share one row, as before.
+  await expect(win.locator('.nb-starters button')).toHaveCount(3)
+  const tops = await win.locator('.nb-starters button').evaluateAll((bs) => bs.map((b) => (b as HTMLElement).offsetTop))
+  expect(new Set(tops).size, 'notebook starters on one row').toBe(1)
+  await win.getByRole('button', { name: 'Nota del vault' }).click()
+  await win.getByLabel('Cerca una nota').fill('Rolle')
+  await win.getByRole('button', { name: 'Teorema di Rolle', exact: true }).click()
+  await expect(win.getByRole('list', { name: 'Fonti' }).getByText('Teorema di Rolle')).toBeVisible()
+  await screen(win, 'notebook')
+  // An answer with its citation, then the cited source open beside the chat.
+  await win.getByLabel('Chiedi alle tue fonti').fill('Come si chiama Rolle nel corso?')
+  await win.getByRole('button', { name: 'Chiedi' }).click()
+  await expect(win.getByText('Le fonti non dicono chi lo ha dimostrato.')).toBeVisible()
+  await screen(win, 'notebook-risposta')
+  await win.locator('.nb-cite').first().click()
+  await expect(win.locator('.nb-viewer')).toBeVisible()
+  await screen(win, 'notebook-fonte')
+  await app.close()
+})

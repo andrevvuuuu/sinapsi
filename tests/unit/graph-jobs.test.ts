@@ -45,9 +45,12 @@ describe('extractor', () => {
     expect(ask).toHaveBeenCalledTimes(1)
     await x.request('/v/Rolle.md', 'manual')
     expect(ask).toHaveBeenCalledTimes(2)
+    // A neighbour edited in Obsidian: extracted again even though its own text did not change.
+    await x.request('/v/Rolle.md', 'linked')
+    expect(ask).toHaveBeenCalledTimes(3)
     texts['/v/Rolle.md'] = 'testo cambiato'
     await x.request('/v/Rolle.md', 'study')
-    expect(ask).toHaveBeenCalledTimes(3)
+    expect(ask).toHaveBeenCalledTimes(4)
   })
   it('offers the note its own concepts again when re-extracting', async () => {
     const { x, ask } = setup()

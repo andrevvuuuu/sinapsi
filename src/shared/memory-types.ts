@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const EXERCISE_TYPES = ['open', 'mc', 'truefalse', 'order', 'fill', 'match', 'counterexample', 'estimate', 'spoterror', 'graph'] as const
+export const EXERCISE_TYPES = ['open', 'mc', 'truefalse', 'order', 'fill', 'match', 'counterexample', 'estimate', 'spoterror', 'graph', 'explain'] as const
 export type ExerciseType = (typeof EXERCISE_TYPES)[number]
 export type Grade = 1 | 2 | 3 | 4
 
@@ -18,7 +18,10 @@ export const ReviewLineSchema = z.object({
   /** Where the evidence came from: a Ripasso item (default) or a concluded Pratica problem. */
   via: z.enum(['review', 'practice']).optional(),
   /** Where in Pratica it came from ("exam:<id>:<problem>"): grading again never writes it twice. */
-  ref: z.string().max(200).optional()
+  ref: z.string().max(200).optional(),
+  /** The Registro Lezioni lesson that launched the session, if any. */
+  lessonId: z.string().max(64).optional(),
+  rung: z.number().int().min(0).max(5).optional()
 })
 export type ReviewLine = z.infer<typeof ReviewLineSchema>
 
@@ -34,6 +37,10 @@ export type Memory = {
   lastAt: number | null
   /** The last answer was wrong and given with confidence ≥ 70. */
   misconception: boolean
+  /** FSRS stability in days: how long until R falls to 90%. */
+  stability?: number
+  /** The grade of the last review. */
+  lastGrade?: Grade
 }
 
 export const stateOf = (R: number | null): MemoryState => (R === null ? 'mai visto' : R >= 0.85 ? 'la sai' : R >= 0.6 ? 'incerto' : 'debole')

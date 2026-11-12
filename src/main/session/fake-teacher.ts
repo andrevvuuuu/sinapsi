@@ -52,7 +52,42 @@ export const FAKE_SCRIPT: TeacherTurn[] = [
   { phase: 'done', blocks: [{ type: 'text', md: 'Ecco cosa resta.' }], summary: { learned: ['Pendenza della corda'], shaky: ['Funzione ausiliaria g'], misconceptions: [] } }
 ]
 
-export function fakeTeacher(): Pick<Bridge, 'converse'> {
+/** e2e only (SINAPSI_FAKE_TEACHER_SCRIPT=long-measure): the Misura question of Andrea's screenshot, after a long tutor message — four options of two or three lines with math. */
+export const LONG_MEASURE_SCRIPT: TeacherTurn[] = [
+  FAKE_SCRIPT[0],
+  {
+    phase: 'probe',
+    blocks: [
+      {
+        type: 'text',
+        md: [
+          'Bene, allora partiamo da un esempio concreto. Il **Principio del Buon Ordinamento** dice che ogni sottoinsieme non vuoto di $\\mathbb{N}$ ha un elemento minimo.',
+          'Considera l’insieme $S = \\{ n \\in \\mathbb{N} : n^2 > 50 \\}$. Non è vuoto, perché $8^2 = 64 > 50$, quindi per il principio ha un minimo. Il minimo è $8$: infatti $7^2 = 49 \\le 50$, e nessun numero più piccolo di $7$ può stare in $S$.',
+          'Ora la parte delicata. Nelle dimostrazioni per assurdo si usa spesso così: si suppone che l’insieme dei controesempi $C$ non sia vuoto, si prende il suo minimo $m$ e si costruisce un controesempio più piccolo di $m$, che è impossibile.',
+          'Ti propongo quattro ragionamenti su questo schema. Uno solo è corretto: leggili con calma prima di scegliere.'
+        ].join('\n\n')
+      }
+    ],
+    question: {
+      id: 'q2',
+      role: 'probe',
+      kind: 'choice',
+      prompt: 'Quale ragionamento è corretto?',
+      options: [
+        'Se $C \\neq \\emptyset$ ha minimo $m$ e da $m$ si ricava un controesempio $m’ < m$, allora $C$ non ha minimo, contro il principio: dunque $C = \\emptyset$ e la proprietà vale per ogni $n \\in \\mathbb{N}$.',
+        'Se $C \\neq \\emptyset$ basta trovare un elemento $c \\in C$ con $c > 0$: allora $c - 1 \\in C$ e, ripetendo, si arriva a $0 \\in C$, che è assurdo perché la proprietà vale in $0$ per verifica diretta.',
+        'Il principio garantisce che $C$ abbia un massimo $M$; se da $M$ si ricava un controesempio $M + 1 > M$ si ottiene un assurdo, quindi $C$ è vuoto e la proprietà vale per tutti gli $n \\ge 0$.',
+        'Si prende il minimo $m$ di $\\mathbb{N} \\setminus C$ e si mostra che $m + 1 \\in \\mathbb{N} \\setminus C$: per il principio $\\mathbb{N} \\setminus C = \\mathbb{N}$, quindi $C = \\emptyset$ senza bisogno di altri passaggi.'
+      ],
+      correct: 0,
+      why: ['È lo schema corretto.', 'Non usa il minimo.', 'Il principio non dà un massimo.', 'Il minimo del complementare non basta.'],
+      nodeId: 'rolle'
+    }
+  },
+  ...FAKE_SCRIPT.slice(2)
+]
+
+export function fakeTeacher(script: TeacherTurn[] = FAKE_SCRIPT): Pick<Bridge, 'converse'> {
   const counts = new Map<string, number>()
   return {
     async converse(req) {
@@ -60,7 +95,7 @@ export function fakeTeacher(): Pick<Bridge, 'converse'> {
       const n = counts.get(key) ?? 0
       counts.set(key, n + 1)
       await new Promise((r) => setTimeout(r, 300))
-      return { data: FAKE_SCRIPT[Math.min(n, FAKE_SCRIPT.length - 1)] as never, conversationId: key, engine: 'claude' }
+      return { data: script[Math.min(n, script.length - 1)] as never, conversationId: key, engine: 'claude' }
     }
   }
 }

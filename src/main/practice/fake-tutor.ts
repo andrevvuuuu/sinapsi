@@ -13,7 +13,7 @@ export function fakeTutor(): Pick<Bridge, 'converse' | 'ask'> {
         : { phase: 'body', blocks: [{ type: 'text', md: 'Cambio argomento.' }], problem: { id: 'p2', statement: 'Uno studente scrive questa dimostrazione. Dov’è l’errore?', mode: 'discrimination', targets: st.target, modelSolution: 'Riga 3: $|x|$ non è derivabile in 0, Rolle non si applica.', lines: ['$f(x)=|x|$ è continua su $[-1,1]$', '$f(-1)=f(1)=1$', 'Quindi per Rolle esiste $c$ con $f\'(c)=0$', 'Infatti $c=0$ va bene'] } }
     }
     if (prompt.startsWith('MATERIALE')) return pose()
-    if (prompt === 'Mi serve un indizio.') return { phase: 'warmup', blocks: [], hint: { rung: st.hints++, md: 'A sinistra c’è una **differenza di valori** della stessa funzione.' } }
+    if (prompt.startsWith('Mi serve un indizio.')) return { phase: 'warmup', blocks: [], hint: { rung: st.hints++, md: 'A sinistra c’è una **differenza di valori** della stessa funzione.' } }
     if (prompt.startsWith('Lascio')) return { phase: 'body', blocks: [], conclude: { outcome: 'surrendered', verdict: 'Lo riprendiamo nel ritest.', retest: true } }
     if (prompt.startsWith('Domanda sul problema')) return { phase: 'body', blocks: [{ type: 'text', md: 'Perché la differenza di valori chiama il valor medio.' }] }
     if (prompt === 'Prossimo problema.') return st.posed < 2 ? pose() : { phase: 'done', blocks: [{ type: 'text', md: 'Basta per oggi.' }], summary: { solved: ['Valor medio', 'Ipotesi di Rolle'], retest: [], note: 'Due su due.' } }

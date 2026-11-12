@@ -7,6 +7,8 @@ export type VaultNote = {
   folder: string
   tags: string[]
   type?: string
+  /** Outcome of the vault's correctness check (frontmatter "Verifica"); absent if never checked. */
+  verifica?: 'ok' | 'dubbi' | 'errori'
   aliases: string[]
   links: VaultLink[]
   headings: string[]

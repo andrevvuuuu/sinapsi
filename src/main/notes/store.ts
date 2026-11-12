@@ -11,6 +11,8 @@ export type StoredNote = {
   error?: string
   sourcePath: string
   sourceTitle: string
+  /** sha256 of the Obsidian note it was written from: a different hash means the note changed since. */
+  sourceHash?: string
   sessionId?: string
   engine?: Engine
   dropped?: number

@@ -1,20 +1,35 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ChipAction, EngineStatus as Status, NoteMeta, PracticeSummary, ReviewSession, SessionSummary, Suggestions, VaultResult } from '../../../shared/api'
+import type {
+  ChipAction,
+  EngineStatus as Status,
+  NoteMeta,
+  PracticeSummary,
+  ReviewSession,
+  SessionSummary,
+  Suggestions,
+  VaultResult
+} from '../../../shared/api'
 import type { Engine, Settings } from '../../../shared/settings-schema'
+import type { WeekPlan } from '../../../shared/plan-types'
+import type { LaunchDestination } from '../../../shared/lesson-types'
 import { buildTree } from './build-tree'
 import { Composer } from './Composer'
 import { EngineStatus } from './EngineStatus'
 import { IconPanel } from './icons'
 import { LeftPanel } from './LeftPanel'
-import { NotebookPanel } from './NotebookPanel'
+import { NotesPanel } from './NotesPanel'
 import { clampLayout, LIMITS, loadLayout, saveLayout, type Layout } from './layout'
 import { Splitter } from './Splitter'
 import { GraphView } from '../graph/GraphView'
+import { GlassContent } from '@glass-sdk/liquid-glass'
+import { ViewScene } from '../components/glass'
 import './home.css'
 
 function applyTheme(theme: Settings['theme']): void {
-  const dark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches
-  document.documentElement.dataset.theme = theme === 'system' ? (dark ? 'lavagna' : 'trattato') : theme
+  const dark =
+    typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches
+  document.documentElement.dataset.theme =
+    theme === 'system' ? (dark ? 'lavagna' : 'trattato') : theme
 }
 
 type HomeProps = {
@@ -22,12 +37,24 @@ type HomeProps = {
   onOpenNota?: (id: string) => void
   onOpenSource?: (path: string) => void
   onOpenReview?: (query: string, conceptIds?: string[]) => void
-  onOpenNotebook?: (id: string) => void
   onOpenPractice?: (text: string, initial?: { conceptIds: string[]; exam?: boolean }) => void
   onOpenPracticeSession?: (id: string) => void
+  onOpenLessons?: () => void
+  onOpenPlan?: () => void
+  onLaunched?: (result: LaunchDestination) => void
 }
 
-export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenReview, onOpenNotebook, onOpenPractice, onOpenPracticeSession }: HomeProps = {}): React.JSX.Element {
+export default function Home({
+  onOpenSession,
+  onOpenNota,
+  onOpenSource,
+  onOpenReview,
+  onOpenPractice,
+  onOpenPracticeSession,
+  onOpenLessons,
+  onOpenPlan,
+  onLaunched
+}: HomeProps = {}): React.JSX.Element {
   const api = window.sinapsi
   const [index, setIndex] = useState<VaultResult | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -40,18 +67,29 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
   const [reviews, setReviews] = useState<ReviewSession[]>([])
   const [notes, setNotes] = useState<NoteMeta[]>([])
   const [due, setDue] = useState(0)
+  const [pendingLessons, setPendingLessons] = useState(0)
+  const [weekPlan, setWeekPlan] = useState<WeekPlan | null>(null)
   const [suggestions, setSuggestions] = useState<Suggestions | null>(null)
   // Sizes Andrea dragged, kept across restarts and clamped to the window.
-  const [layout, setLayoutState] = useState<Layout>(() => clampLayout(loadLayout(), window.innerWidth || 1440, window.innerHeight || 900))
+  const [layout, setLayoutState] = useState<Layout>(() =>
+    clampLayout(loadLayout(), window.innerWidth || 1440, window.innerHeight || 900)
+  )
   const [resizing, setResizing] = useState(false)
   const setLayout = (patch: Partial<Layout>, dragging?: 'left' | 'right'): void =>
     setLayoutState((l) => {
-      const next = clampLayout({ ...l, ...patch }, window.innerWidth || 1440, window.innerHeight || 900, { left, right }, dragging)
+      const next = clampLayout(
+        { ...l, ...patch },
+        window.innerWidth || 1440,
+        window.innerHeight || 900,
+        { left, right },
+        dragging
+      )
       saveLayout(next)
       return next
     })
   useEffect(() => {
-    const onResize = (): void => setLayoutState((l) => clampLayout(l, window.innerWidth, window.innerHeight, { left, right }))
+    const onResize = (): void =>
+      setLayoutState((l) => clampLayout(l, window.innerWidth, window.innerHeight, { left, right }))
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [left, right])
@@ -66,7 +104,12 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
       setLoadError(null)
     } catch (e) {
       // Without this the home stayed empty with no explanation.
-      setLoadError((e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+      setLoadError(
+        (e instanceof Error ? e.message : String(e)).replace(
+          /^Error invoking remote method '[^']+': (Error: )?/,
+          ''
+        )
+      )
     }
   }, [api])
 
@@ -74,7 +117,15 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
     void reload()
     void api.ai.status().then(setStatus)
     void api.session?.list().then(setSessions)
-    void api.practice?.list().then(setPractices).catch(() => undefined)
+    void api.practice
+      ?.list()
+      .then(setPractices)
+      .catch(() => undefined)
+    void api.lessons
+      ?.list()
+      .then((xs) => setPendingLessons(xs.filter((x) => x.pending != null).length))
+      .catch(() => undefined)
+    void api.plan?.week().then((result) => setWeekPlan(result.plan)).catch(() => undefined)
     // Several refreshes can overlap (mount, focus, a new nota): only the newest answer counts.
     let asked = 0
     const loadSuggestions = (): void => {
@@ -88,9 +139,14 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
     const refresh = (): void => {
       void api.review
         ?.memory()
-        .then((m) => setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length))
+        .then((m) =>
+          setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length)
+        )
         .catch(() => undefined)
-      void api.review?.sessions?.().then(setReviews).catch(() => undefined)
+      void api.review
+        ?.sessions?.()
+        .then(setReviews)
+        .catch(() => undefined)
       loadSuggestions()
     }
     refresh()
@@ -143,8 +199,15 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
 
   return (
     <div
-      className={'app' + (left ? '' : ' l-off') + (right ? '' : ' r-off') + (resizing ? ' resizing' : '')}
-      style={{ '--lw': left ? `${layout.left}px` : '0px', '--rw': right ? `${layout.right}px` : '0px' } as React.CSSProperties}
+      className={
+        'app' + (left ? '' : ' l-off') + (right ? '' : ' r-off') + (resizing ? ' resizing' : '')
+      }
+      style={
+        {
+          '--lw': left ? `${layout.left}px` : '0px',
+          '--rw': right ? `${layout.right}px` : '0px'
+        } as React.CSSProperties
+      }
     >
       {left && (
         <Splitter
@@ -181,7 +244,11 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
         onOpenPractice={(id) => onOpenPracticeSession?.(id)}
         onOpenReview={(ids) => onOpenReview?.('', ids)}
         notes={notes}
-        subjectOf={(path) => (index && 'notes' in index ? (index.notes.find((n) => n.path === path)?.subject ?? null) : null)}
+        subjectOf={(path) =>
+          index && 'notes' in index
+            ? (index.notes.find((n) => n.path === path)?.subject ?? null)
+            : null
+        }
         onOpenNota={(id) => onOpenNota?.(id)}
         settings={settings}
         onSettings={setSettings}
@@ -190,15 +257,62 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
         sessionsHeight={layout.sessions}
         onSessionsHeight={(v) => setLayout({ sessions: v })}
       />
-      <main className="center">
+      {/* The centre is a glass scene: the graph (or its placeholder) is the live content under the composer and the graph controls. */}
+      <ViewScene className="center" role="main">
         <div className="topbar drag" />
+        <div className="home-lessons nodrag">
+          <button type="button" className="mini" onClick={onOpenLessons}>
+            Registro Lezioni
+          </button>
+          {pendingLessons > 0 && (
+            <span>
+              {pendingLessons} {pendingLessons === 1 ? 'digestione da fare' : 'digestioni da fare'}
+            </span>
+          )}
+          <section className="home-today" aria-label="Piano di oggi">
+            <strong>Oggi</strong>
+            {(weekPlan?.days[0]?.blocks ?? []).length === 0 ? (
+              <span>Niente in programma oggi</span>
+            ) : (
+              weekPlan?.days[0]?.blocks.map((block, index) => (
+                <div className="home-today-block" key={`${block.courseId}-${index}`}>
+                  <span>{block.courseId} · {block.minutes} min</span>
+                  {index === 0 && (
+                    <button type="button" className="mini" onClick={() => {
+                      if (block.kind === 'exam-sim') {
+                        onOpenPractice?.('', { conceptIds: block.conceptIds, exam: true })
+                      } else if (block.lessonIds[0]) {
+                        void api.lessons.launch(block.lessonIds[0]).then((result) => onLaunched?.(result))
+                      }
+                    }}>
+                      Avvia
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+            <button type="button" className="mini" onClick={onOpenPlan}>
+              Piano della settimana
+            </button>
+          </section>
+        </div>
         <div className="reopen l">
-          <button type="button" className="icon-btn" aria-label="Apri il pannello laterale" onClick={() => setLeft(true)}>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Apri il pannello laterale"
+            onClick={() => setLeft(true)}
+          >
             <IconPanel />
           </button>
         </div>
         <div className="reopen r">
-          <button type="button" className="icon-btn" aria-label="Apri il pannello Notebook" onClick={() => setRight(true)}>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Apri il pannello note"
+            onClick={() => setRight(true)}
+          >
             <IconPanel />
           </button>
         </div>
@@ -235,7 +349,7 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
             onStudy={study}
           />
         ) : (
-          <div className="placeholder">
+          <GlassContent className="placeholder">
             <div>
               <div className="orb" aria-hidden="true">
                 <i />
@@ -244,10 +358,13 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
                 Il grafo apparirà quando <em>inizi a studiare</em>
               </h2>
               <p>
-                {index && 'notes' in index ? `${index.notes.length} note lette dal tuo vault. ` : ''}Scrivi qui sotto cosa vuoi imparare.
+                {index && 'notes' in index
+                  ? `${index.notes.length} note lette dal tuo vault. `
+                  : ''}
+                Scrivi qui sotto cosa vuoi imparare.
               </p>
             </div>
-          </div>
+          </GlassContent>
         )}
         {toast && (
           <div className="toast" role="status">
@@ -261,21 +378,19 @@ export default function Home({ onOpenSession, onOpenNota, onOpenSource, onOpenRe
           onSubmit={async (mode, text) => {
             if (mode === 'Ripasso') return onOpenReview?.(text)
             if (mode === 'Pratica') return onOpenPractice?.(text)
-            if (mode !== 'Apprendimento' || !api.session) return setToast(`${mode}: arriva in una prossima fase`)
+            if (mode !== 'Apprendimento' || !api.session)
+              return setToast(`${mode}: arriva in una prossima fase`)
             const id = await api.session.start(text)
             onOpenSession?.(id)
           }}
         />
-      </main>
-      <NotebookPanel
+      </ViewScene>
+      <NotesPanel
         onClose={() => setRight(false)}
-        onOpen={(id) => onOpenNotebook?.(id)}
         tree={tree}
         onOpenNote={(path) => onOpenSource?.(path)}
         vaultPath={settings?.vaultPath}
         onChooseVault={() => void chooseVault()}
-        notebooksHeight={layout.notebooks}
-        onNotebooksHeight={(v) => setLayout({ notebooks: v })}
       />
     </div>
   )

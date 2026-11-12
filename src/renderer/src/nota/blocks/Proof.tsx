@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import type { LeafBlock } from '../../../../shared/nota-schema'
-import { RichText } from '../../session/RichText'
-import type { Mode } from '../context'
+import { Inline, Md } from '../Md'
+import { FadeContext, type Mode } from '../context'
+import { hiddenSteps } from '../fading'
 import { FigureView } from '../figure/FigureView'
 import { TryCover } from './Practice'
 
@@ -27,6 +28,10 @@ export function Proof({ block, mode, observe = intersection }: { block: ProofBlo
   const [active, setActive] = useState(0)
   const refs = useRef<(HTMLElement | null)[]>([])
   useEffect(() => observe(refs.current.filter((x): x is HTMLElement => x !== null), (i) => i >= 0 && setActive(i)), [observe, block])
+  const fade = useContext(FadeContext)
+  const [full, setFull] = useState(false)
+  const hidden = full || !fade ? 0 : hiddenSteps(fade.stage, block.steps.length)
+  const first = block.steps.length - hidden
   const jump = (i: number): void => {
     setActive(i)
     refs.current[i]?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
@@ -34,6 +39,14 @@ export function Proof({ block, mode, observe = intersection }: { block: ProofBlo
   return (
     <div className={'nv-proof' + (block.figure ? ' with-fig' : '')}>
       <div className="steps">
+        {hidden > 0 && fade && (
+          <p className="nv-fade">
+            {hidden === block.steps.length ? 'La dimostrazione è nascosta' : hidden === 1 ? "L'ultimo passo è nascosto" : `Gli ultimi ${hidden} passi sono nascosti`}: {fadeReason(fade.names)} Prova a {hidden === 1 ? 'ricostruirlo' : 'ricostruirli'} da solo, poi scopri ogni passo.{' '}
+            <button type="button" className="link" onClick={() => setFull(true)}>
+              Mostra tutta la dimostrazione
+            </button>
+          </p>
+        )}
         {block.steps.map((s, i) => (
           <article
             key={i}
@@ -42,16 +55,24 @@ export function Proof({ block, mode, observe = intersection }: { block: ProofBlo
             }}
             className={'pstep' + (i === active ? ' on' : '')}
           >
-            {s.kicker && <div className="nv-kick">{s.kicker}</div>}
+            {s.kicker && (
+              <div className="nv-kick">
+                <Inline md={s.kicker} />
+              </div>
+            )}
             <h3>
-              <RichText md={s.title} className="inline" />
+              <Inline md={s.title} />
             </h3>
-            {mode === 'prova' && s.tryPrompt ? (
+            {i >= first ? (
+              <TryCover prompt={s.tryPrompt ?? 'Ricostruisci questo passo.'} label="Scopri il passo">
+                <Md md={s.md} />
+              </TryCover>
+            ) : mode === 'prova' && s.tryPrompt ? (
               <TryCover prompt={s.tryPrompt}>
-                <RichText md={s.md} />
+                <Md md={s.md} />
               </TryCover>
             ) : (
-              <RichText md={s.md} />
+              <Md md={s.md} />
             )}
           </article>
         ))}
@@ -62,7 +83,7 @@ export function Proof({ block, mode, observe = intersection }: { block: ProofBlo
           {block.steps.map((s, i) => (
             <li key={i}>
               <button type="button" aria-current={i === active ? 'step' : undefined} onClick={() => jump(i)}>
-                {s.title.replace(/\$/g, '')}
+                <Inline md={s.title} />
               </button>
             </li>
           ))}
@@ -70,4 +91,11 @@ export function Proof({ block, mode, observe = intersection }: { block: ProofBlo
       </div>
     </div>
   )
+}
+
+/** Why the steps are covered: the concepts he has already reviewed. */
+function fadeReason(names: string[]): string {
+  const shown = names.slice(0, 3).map((n) => `«${n}»`)
+  const list = shown.length > 1 ? `${shown.slice(0, -1).join(', ')} e ${shown.at(-1)}` : shown[0]
+  return `${list}${names.length > 3 ? ` e altri ${names.length - 3}` : ''} ${names.length === 1 ? "l'hai" : 'li hai'} già ripassat${names.length === 1 ? 'o' : 'i'}.`
 }

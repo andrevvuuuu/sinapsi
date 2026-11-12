@@ -2,13 +2,17 @@ import type { PracticeTurn, Problem, Submission } from '../../shared/practice-pr
 import type { ExamGrade, ExamSheet, Material, PublicExamProblem } from '../../shared/practice-types'
 
 export type PracticeEvent =
-  | { t: 'created'; id: string; mode: 'train' | 'exam'; material: Material; topic: string; durationMin?: number; at: number }
+  | { t: 'created'; id: string; mode: 'train' | 'exam'; material: Material; topic: string; durationMin?: number; paper?: boolean; at: number }
   | { t: 'learner'; submission: Submission; text: string; at: number }
   | { t: 'tutor'; turn: PracticeTurn; conversationId?: string; at: number }
   | { t: 'error'; message: string; at: number }
   | { t: 'exam'; sheet: ExamSheet; endsAt: number; at: number }
   | { t: 'answers'; answers: Record<string, string>; final: boolean; at: number }
   | { t: 'graded'; grade: ExamGrade; at: number }
+  /** Paper exam: the time is over (or Andrea handed in), the sheet is put down and the solutions shown. */
+  | { t: 'handed'; at: number }
+  /** Paper exam: the points Andrea gives one problem, before writing out the answer and before the correction. */
+  | { t: 'self'; id: string; points: number; at: number }
 
 type PublicProblem = Omit<Problem, 'modelSolution'>
 export type PracticeItem =
@@ -21,6 +25,10 @@ export type PracticeProblem = PublicProblem & {
   phase: PracticeTurn['phase']
   hints: number
   maxRung: number | null
+  /** Reasoning Andrea sent on this problem: until the first one, hints stop at the first rung. */
+  attempts: number
+  compass?: { known: string; stuck: string; question: string }
+  needsRestate: boolean
   outcome?: NonNullable<PracticeTurn['conclude']>['outcome']
   verdict?: string
   miss?: NonNullable<PracticeTurn['conclude']>['miss']
@@ -35,6 +43,8 @@ export type PracticeState = {
   material: Material
   topic: string
   durationMin?: number
+  /** An exam written on paper, with the machine off: the answers are typed or photographed afterwards. */
+  paper?: boolean
   phase: PracticeTurn['phase']
   items: PracticeItem[]
   problems: PracticeProblem[]
@@ -46,7 +56,16 @@ export type PracticeState = {
   conversationId?: string
   hasTutorTurn: boolean
   lastLearnerText?: string
-  exam?: { sheet: { title: string; problems: PublicExamProblem[] }; endsAt: number; answers: Record<string, string>; delivered: boolean; grade?: ExamGrade }
+  exam?: {
+    sheet: { title: string; problems: PublicExamProblem[] }
+    endsAt: number
+    answers: Record<string, string>
+    /** Sent to the grader. In a paper exam this comes after "handed" and the self-grades. */
+    delivered: boolean
+    handed?: boolean
+    self?: Record<string, number>
+    grade?: ExamGrade
+  }
   createdAt: number
   updatedAt: number
 }
@@ -69,12 +88,25 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
     switch (e.t) {
       case 'created':
         Object.assign(s, { id: e.id, mode: e.mode, material: e.material, topic: e.topic, durationMin: e.durationMin, createdAt: e.at })
+        if (e.paper) s.paper = true
         // An exam starts by generating its sheet.
         if (e.mode === 'exam') s.awaiting = 'tutor'
         break
       case 'learner':
         s.items.push({ kind: 'learner', submission: e.submission, text: e.text })
         if (e.submission.kind === 'next') s.paused = false
+        if (e.submission.kind === 'thinking') {
+          const p = s.problems.find((x) => x.id === s.active)
+          if (p) p.attempts++
+        }
+        if (e.submission.kind === 'compass') {
+          const p = s.problems.find((x) => x.id === s.active)
+          if (p && e.submission.compass) p.compass = e.submission.compass
+        }
+        if (e.submission.kind === 'restate') {
+          const p = s.problems.find((x) => x.id === s.active)
+          if (p) p.needsRestate = false
+        }
         s.lastLearnerText = e.text
         s.awaiting = 'tutor'
         break
@@ -87,7 +119,7 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
         if (e.conversationId) s.conversationId = e.conversationId
         if (problem && publicProblem) {
           solutions.set(problem.id, problem.modelSolution)
-          s.problems.push({ ...publicProblem, status: 'active', phase: e.turn.phase, hints: 0, maxRung: null })
+          s.problems.push({ ...publicProblem, status: 'active', phase: e.turn.phase, hints: 0, maxRung: null, attempts: 0, needsRestate: false })
           s.active = problem.id
           s.paused = false
         }
@@ -95,6 +127,7 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
         if (e.turn.hint && p) {
           p.hints++
           p.maxRung = Math.max(p.maxRung ?? 0, e.turn.hint.rung)
+          if (e.turn.hint.rung >= 3) p.needsRestate = true
         }
         if (e.turn.conclude && p) {
           Object.assign(p, { status: 'done', outcome: e.turn.conclude.outcome, verdict: e.turn.conclude.verdict, miss: e.turn.conclude.miss, retest: e.turn.conclude.retest, modelSolution: solutions.get(p.id) })
@@ -129,6 +162,19 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
           s.awaiting = 'tutor'
         }
         break
+      case 'handed':
+        if (!s.exam || !sheet || s.exam.handed) break
+        s.exam.handed = true
+        s.exam.self = {}
+        s.exam.sheet.problems = sheet.problems
+        break
+      case 'self': {
+        const p = sheet?.problems.find((x) => x.id === e.id)
+        // The first self-grade counts: it must come before the answer is seen again and before the correction.
+        if (!s.exam?.self || !p || s.exam.delivered || e.id in s.exam.self) break
+        s.exam.self[e.id] = Math.min(p.points, Math.max(0, Math.round(e.points * 2) / 2))
+        break
+      }
       case 'graded':
         if (!s.exam || !sheet) break
         s.exam.grade = e.grade

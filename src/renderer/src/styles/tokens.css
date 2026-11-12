@@ -1,17 +1,108 @@
 /* Sizes and spacing (layout only, same for every theme). */
+/* A top bar with its bottom hairline: how far the content scrolling under it starts. */
+:root{--topbar-full:calc(var(--topbar-h) + 1px)}
 :root{--ctl:44px;--ctl-sm:36px;--hit-min:28px;--topbar-h:72px;--space-label:8px;--space-group:20px}
-:root{--ease-out:cubic-bezier(.23,1,.32,1);--serif:'Instrument Serif',Georgia,serif;--sans:'Geist',ui-sans-serif,system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace;--hand:'Caveat',cursive}
-[data-theme="lavagna"]{color-scheme:dark;--bg:#0f100d;--panel:#141511;--surface:#1a1b17;--hair:rgba(236,233,223,.09);--faint:rgba(236,233,223,.05);--inner:inset 0 1px 0 rgba(236,233,223,.05);--ink:#ece9df;--muted:#a19e92;--accent:#ef7a42;--good:#8fd1a6;--warn:#e9b95f;--bad:#f08080;--pen:#8fb8ff}
-[data-theme="trattato"]{color-scheme:light;--bg:#f3eee4;--panel:#ede7db;--surface:#fbf8f2;--hair:rgba(36,32,27,.11);--faint:rgba(36,32,27,.05);--inner:inset 0 1px 0 rgba(255,255,255,.8);--ink:#221e19;--muted:#615a4f;--accent:#a83d22;--good:#2f6e48;--warn:#8f6512;--bad:#a8323f;--pen:#2f55a8}
+/* Type scale: six steps, fixed line heights and weights. Caption is the mono uppercase label (the only text under 13 px, never under 11).
+   Caption tracking, two steps: --track-label (.12em) for a label that stands alone and heads something (section titles, field labels, the session phase, «Perché»); --track-caption (.06em) for a caption inside a row of other content (chips, counts, plan stages). */
+:root{--fs-caption:11px;--fs-footnote:13px;--fs-body:15px;--fs-callout:17px;--fs-title:22px;--fs-display:28px;--fw-regular:400;--fw-medium:500;--fw-semibold:600;--track-caption:.06em;--track-label:.12em;--track-title:-.03em;--track-display:-.045em}
+:root{--font-caption:500 11px/1.3 var(--mono);--font-footnote:400 13px/1.4 var(--sans);--font-body:400 15px/1.45 var(--sans);--font-callout:400 17px/1.45 var(--sans);--font-title:500 22px/1.2 var(--sans);--font-display:500 28px/1.1 var(--sans)}
+/* Spacing in multiples of 4. */
+:root{--s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:20px;--s-6:24px;--s-7:28px;--s-8:32px}
+/* Radii. Concentric: a container's radius is the inner radius plus its padding (the 18 px dialog core in a 6 px glass ring makes a 24 px shell). */
+:root{--r-sm:8px;--r-md:12px;--r-lg:18px;--r-pill:999px}
+:root{--ease-out:cubic-bezier(.23,1,.32,1);--serif:'Geist',ui-sans-serif,system-ui,sans-serif;--sans:'Geist',ui-sans-serif,system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace;--hand:'Caveat',cursive}
+[data-theme="lavagna"]{color-scheme:dark;--bg:#1c1d20;--panel:#232428;--surface:#2a2b30;--surface-raised:#303137;--raised:#303137;--hair:rgba(236,236,239,.14);--faint:rgba(236,236,239,.04);--inner:inset 0 1px 0 rgba(255,255,255,.04);--ink:#ececef;--muted:#a5a6ae;--accent:#a596f0;--good:#5fd38a;--warn:#f2b84b;--bad:#f08080;--pen:#4c8dff;--coral:#ed9572}
+[data-theme="trattato"]{color-scheme:light;--bg:#ecebe8;--panel:#e4e3df;--surface:#f7f6f3;--surface-raised:#efeeeb;--raised:#efeeeb;--hair:rgba(29,29,31,.16);--faint:rgba(29,29,31,.04);--inner:inset 0 1px 0 rgba(255,255,255,.82);--ink:#1d1d1f;--muted:#64656a;--accent:#5a48a8;--good:#237648;--warn:#845600;--bad:#a8323f;--pen:#245fc2;--coral:#a94d30}
+/* AA colours that are not part of the original palette. --placeholder: tertiary text, lighter than --muted, still 4.5:1 on --bg, --surface and --panel. --ctl-edge: the outline that identifies a control (3:1 on every ground); --hair stays the quiet separator between areas.
+   Button states. Primary: an --ink fill with --bg label. Secondary: transparent with a --ctl-edge outline. Text: accent label, no outline. Hover and pressed darken (lavagna) or lighten (trattato) the primary fill; secondary and text buttons add a faint ink tint; focus is the accent ring; disabled keeps a readable --muted label and a --ctl-edge outline, no fill. */
+[data-theme="lavagna"]{--placeholder:#9699a4;--ctl-edge:rgba(236,236,239,.42);--btn-primary-bg:var(--ink);--btn-primary-bg-hover:#dadadb;--btn-primary-bg-pressed:#c6c6c8;--btn-primary-ink:var(--bg);--btn-secondary-bg:rgba(236,236,239,0);--btn-secondary-bg-hover:rgba(236,236,239,.08);--btn-secondary-bg-pressed:rgba(236,236,239,.14);--btn-secondary-ink:var(--ink);--btn-secondary-border:var(--ctl-edge);--btn-text-bg:rgba(236,236,239,0);--btn-text-bg-hover:rgba(236,236,239,.06);--btn-text-bg-pressed:rgba(236,236,239,.1);--btn-text-ink:#c2b8f8}
+[data-theme="trattato"]{--placeholder:#64656a;--ctl-edge:rgba(29,29,31,.50);--btn-primary-bg:var(--ink);--btn-primary-bg-hover:#363538;--btn-primary-bg-pressed:#4a494d;--btn-primary-ink:var(--bg);--btn-secondary-bg:rgba(29,29,31,0);--btn-secondary-bg-hover:rgba(29,29,31,.06);--btn-secondary-bg-pressed:rgba(29,29,31,.1);--btn-secondary-ink:var(--ink);--btn-secondary-border:var(--ctl-edge);--btn-text-bg:rgba(29,29,31,0);--btn-text-bg-hover:rgba(29,29,31,.04);--btn-text-bg-pressed:rgba(29,29,31,.06);--btn-text-ink:var(--accent)}
+:root{--btn-focus:var(--accent);--btn-focus-ring:2px solid var(--btn-focus);--btn-focus-offset:2px;--btn-disabled-bg:transparent;--btn-disabled-ink:var(--muted);--btn-disabled-border:var(--ctl-edge);--btn-transition:background-color .15s var(--ease-out),border-color .15s var(--ease-out),color .15s var(--ease-out)}
+/* Text on Liquid Glass (@glass-sdk/liquid-glass, Regular material). --glass-ink is the library's foreground (--lg-foreground), --glass-ink-2 the secondary text, --glass-accent / --glass-pen the accent and pen labels (session phase, score, «Dalla tua nota»). All AA over what the material makes of the app's grounds (--bg, --surface, --panel) and of the content that can scroll under a bar, which the scroll edge band (.edge-fade) keeps at most 30 % visible at the labels: the worst case is --ink at 30 % over --bg, through the material's tone curve (tests/unit/contrast.test.ts models it from the library's own constants). --knob-edge rings the slider thumb's white face. The selection of a segmented control is ringed with --seg-edge, 3:1 on its track (glass or faint) in both themes; --lens-fill fills the full lens of a track that is not glass. */
+[data-theme="lavagna"]{--glass-ink:#ececef;--glass-ink-2:#e1e1e5;--glass-accent:#e4deff;--glass-pen:#d6e3ff;--knob-edge:rgba(236,236,239,.46);--seg-edge:rgba(236,236,239,.46);--lens-fill:#36373d}
+[data-theme="trattato"]{--glass-ink:#1d1d1f;--glass-ink-2:#3a3835;--glass-accent:#46348f;--glass-pen:#223e7a;--knob-edge:rgba(29,29,31,.56);--seg-edge:rgba(29,29,31,.64);--lens-fill:#ffffff}
 *{box-sizing:border-box}
 html,body,#root{height:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
+body{margin:0;background:var(--bg);color:var(--ink);font:var(--font-body);-webkit-font-smoothing:antialiased;overflow:hidden}
+:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:10px}
+/* Placeholders the views do not style themselves get the AA tertiary colour (the Chromium default grey is not AA on these grounds). */
+::placeholder{color:var(--placeholder);opacity:1}
 button{font:inherit;color:inherit}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
-/* "← Home": the same size and weight in every view (repeated class: it wins over the views' own .pill rules). */
-button.back-btn.back-btn.back-btn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--hair);background:color-mix(in srgb,var(--surface) 82%,transparent);color:var(--ink);font:500 14px/1 var(--sans);white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s}
-button.back-btn.back-btn.back-btn:hover{background:var(--surface);border-color:color-mix(in srgb,var(--ink) 22%,transparent)}
-.island button.back-btn.back-btn.back-btn{border-color:transparent;background:transparent}
+/* "← Home": discrete macOS-style back button (no border, subtle hover tint, ring focus, same on solid and glass). */
+button.back-btn.back-btn.back-btn{display:inline-flex;align-items:center;gap:var(--s-2);min-height:var(--ctl);padding:0 var(--s-3);border-radius:10px;border:0;background:transparent;color:var(--muted);font:var(--fw-medium) var(--fs-footnote)/1 var(--sans);white-space:nowrap;cursor:pointer;transition:var(--btn-transition)}
+button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+button.back-btn.back-btn.back-btn:active{background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);transform:scale(.99)}
+button.back-btn.back-btn.back-btn:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:10px}
+/* On a glass bar or island the button keeps the same discreet macOS look */
+.lg-surface button.back-btn.back-btn.back-btn{border:0;background:transparent;color:var(--muted)}
+.lg-surface button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+.lg-surface button.back-btn.back-btn.back-btn:active{background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink)}
+.island button.back-btn.back-btn.back-btn{border:0;background:transparent;color:var(--muted)}
+.island button.back-btn.back-btn.back-btn:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+.island button.back-btn.back-btn.back-btn:active{background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink)}
+
+/* Liquid Glass is @glass-sdk/liquid-glass (components/glass.tsx): each view is a GlassScene whose GlassContent is the
+   live content the glass refracts; bars, shells, menus, segmented controls and slider thumbs are its surfaces, in the
+   Regular material with the theme's appearance (lavagna dark, trattato light). Only on the control layer, never under
+   text to read; the library's stylesheet is imported once with the module.
+   Text and icons on glass: --lg-foreground, the library's foreground variable, set to the theme's ink. */
+:root{--lg-foreground:var(--glass-ink)}
+/* A flat ground as a scene's content (GlassGround): under the scene's own children, painting the surface the glass refracts. */
+.glass-ground{z-index:-1;background:var(--surface);border-radius:inherit;pointer-events:none}
+/* Solid unless data-glass="on" (with «Riduci trasparenza», and before macOS has answered, so the glass never flashes) and
+   where the scene could not prepare its material (data-glass-failed, no WebGPU): every surface is a full surface. */
+:root:not([data-glass="on"]) .lg-surface,.lg-scene[data-glass-failed] .lg-surface{background:var(--surface)}
+/* A full-width bar: square corners, its own hairline closes it. */
+.glass-bar{border-radius:0}
+/* Dialogs and the graph menu: a glass outer shell (6 px ring) around a solid core that holds the text, like the session's .shell/.inner. */
+.glass-shell{padding:6px}
+/* Segmented controls (Seg in glass.tsx): the library's tabs. The Tabs root takes no box, so the track sits where the old group did. */
+.seg-root{display:contents}
+/* The library dims unselected tabs to 85 %: the labels keep the app's AA colours instead. */
+.seg-track .lg-tab{opacity:1}
+.seg-track .lg-tab[data-active]{color:var(--ink)}
+/* The selection is ringed (--seg-edge, 3:1 on its track): inset, so the surface's outline does not clip it, and rounded as the
+   outline the library draws (it flattens the radius inline and publishes it as --lg-radius). */
+.seg-track .lg-tab-indicator{box-shadow:inset 0 0 0 1.5px var(--seg-edge);border-radius:var(--lg-radius,var(--lens-r,999px))!important}
+/* A track on glass or on a solid core is not glass (.seg-plain): its selection is the library's indicator as a full lens (Seg), sliding with the library's placement. */
+.seg-plain{position:relative}
+.seg-track .seg-lens{z-index:0;border-radius:var(--lens-r,999px);background:linear-gradient(to bottom,rgba(255,255,255,.35),transparent 60%) var(--lens-fill);box-shadow:inset 0 0 0 1.5px var(--seg-edge),0 1px 3px rgba(0,0,0,.18);transition:left .32s var(--ease-out),top .32s var(--ease-out),width .32s var(--ease-out),height .32s var(--ease-out)}
+/* Solid material: a faint track and a surface option, as before the glass. */
+:root:not([data-glass="on"]) .seg-track.lg-surface,.lg-scene[data-glass-failed] .seg-track.lg-surface{background:var(--faint)}
+/* Range thumbs (GlassSlider): the library's white face, ringed by --knob-edge (on the thumb, below), the control's 3:1 outline on the surface and both tracks. */
+:root{--knob-shadow:0 0 0 1px var(--knob-edge),0 1px 3px rgba(0,0,0,.35)}
+.dlg-core{flex:1;min-height:0;border-radius:18px;background:var(--surface);box-shadow:var(--inner)}
+/* Text on glass: secondary labels use --glass-ink-2, never --muted (not AA over bright content). */
+.glass-text{--muted:var(--glass-ink-2)}
+/* Scroll edge, under a floating bar: the library's GlassScrollEdges blurs the content there; a band of background inside the
+   content (sticky, so the glass refracts it too) fades it as well, so the text on the bar stays AA whatever scrolls under it.
+   Set --scroll-edge-top to the bar's depth (and --scroll-edge-solid to where the band starts fading, 60 % by default). */
+.edge-fade::before{content:"";display:block;flex:none;position:sticky;pointer-events:none;z-index:var(--scroll-edge-z,4)}
+/* A scroller with its own top padding says how much (--scroll-pad-top), so the band starts and sticks at its top edge (sticky offsets count from inside the padding); --scroll-gap is its flex gap. */
+.edge-fade::before{top:calc(-1 * var(--scroll-pad-top,0px));height:var(--scroll-edge-top,0px);margin-top:calc(-1 * var(--scroll-pad-top,0px));margin-bottom:calc(-1 * var(--scroll-edge-top,0px) - var(--scroll-gap,0px));background:linear-gradient(var(--bg) var(--scroll-edge-solid,60%),transparent)}
+/* The library places its content over the whole scene (absolute, inset 0): the views whose scroller is in their own
+   flow (a grid cell, a flex column) keep it there. */
+.lg-content:is(.scroll,.pr-scroll,.pr-col,.pr-setup,.nb-body){position:relative;inset:auto;width:auto;height:auto}
+/* A scene's live content is opaque, the page's ground under it, so the glass never samples transparent pixels. */
+.lg-content{background:var(--bg)}
+.lg-content.glass-ground{background:var(--surface)}
+.lg-content.glass-ground.panel-ground{background:var(--panel)}
+.lg-content.glass-ground.bg-ground{background:var(--bg)}
+/* A GlassRange fills its cell, in the 44 px row of the native range it replaces. */
+.range-scene{min-width:0}
+.range-scene .lg-slider{width:100%}
+.range-scene .lg-slider-control{height:var(--ctl)}
+/* Shadows of glass that is clipped to its shape (the library writes a clip-path on every surface): cast from a wrapper
+   or a parent that is not clipped, along the opaque cores, as the core and shell shadows were before. */
+.shell-drop{filter:drop-shadow(0 1px 1px rgba(0,0,0,.18)) drop-shadow(0 16px 22px rgba(0,0,0,.32))}
+.dock{filter:drop-shadow(0 1px 1px rgba(0,0,0,.2)) drop-shadow(0 16px 22px rgba(0,0,0,.35))}
+.dlg-drop{display:flex;justify-content:center;width:100%;max-height:100%;filter:drop-shadow(0 30px 40px rgba(0,0,0,.45))}
+[data-theme="trattato"] :is(.shell-drop,.dock){filter:drop-shadow(0 1px 1px rgba(36,32,27,.08)) drop-shadow(0 16px 22px rgba(36,32,27,.16))}
+/* Sliders: the white face is clipped to its shape, so the thumb itself (not clipped) carries the 3:1 ring and, from the keyboard, the focus ring. */
+.lg-slider-thumb{border-radius:999px;box-shadow:var(--knob-shadow)}
+.lg-slider-thumb:has(input:focus-visible){box-shadow:var(--knob-shadow),0 0 0 4px var(--btn-focus)}
+/* Focus rings of the library's tabs: the tab is clipped to its capsule and the library flattens its radius inline, so the ring is inset and follows the capsule. */
+.seg-track .lg-tab:focus-visible{outline:var(--btn-focus-ring);outline-offset:-3px;border-radius:var(--lens-r,999px)!important}

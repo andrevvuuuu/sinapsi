@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/renderer/src/practice/practice.css"
+        ],
+        "createdAt": "2026-11-05T21:19:31.478Z",
+        "reason": "Claude: practice.css:193 is a checkbox checkmark drawn with border-left+border-bottom rotated -45deg, not a card side-tab"
+      }
+    ]
+  }
+}

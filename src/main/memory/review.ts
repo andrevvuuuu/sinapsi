@@ -4,7 +4,9 @@ import type { Exercise } from '../../shared/exercise-schema'
 import type { Concept, GraphData } from '../../shared/graph-types'
 import { proposeGrade, type ExerciseType, type Grade, type Memory, type ReviewLine } from '../../shared/memory-types'
 import type { VaultIndex } from '../../shared/vault-types'
+import { PACER_EXERCISE_TYPES, type PacerType } from '../../shared/lesson-types'
 import { memoryOf, previewIntervals } from './fsrs'
+import { buildExplainPrompt, explainReplySchema, MAX_QUESTIONS, questionsAsked, type ExplainReply, type ExplainTurn } from './explain'
 import { buildGradePrompt, GradeSchema } from './grade-prompt'
 import type { MemoryStore } from './store'
 import { buildVariantsPrompt, fallbackExercise, variantsReplySchema, type VariantsStore } from './variants'
@@ -21,16 +23,20 @@ export type ReviewItem = {
 }
 export type ReviewPlan = { items: ReviewItem[]; due: number }
 export type GradeResult = { verdict: 'ok' | 'partial' | 'wrong'; feedback: string; proposed: Grade }
+/** A "Spiegalo tu" turn: the picky student asks for the missing step, or gives the verdict. */
+export type ExplainResult = { kind: 'question'; question: string } | ({ kind: 'verdict' } & GradeResult)
 export type ReviewService = {
-  plan(opts?: { conceptIds?: string[]; weakest?: boolean }): Promise<ReviewPlan>
+  plan(opts?: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean }): Promise<ReviewPlan>
   prepare(notePath: string): Promise<void>
   grade(req: { conceptId: string; exercise: Exercise; answer: string; confidence: number }): Promise<GradeResult>
+  explain(req: { conceptId: string; exercise: Exercise; turns: ExplainTurn[]; confidence: number }): Promise<ExplainResult>
   record(r: ReviewLine): Promise<{ memory: Memory; intervals: Record<Grade, string> }>
   memory(): Promise<Record<string, Memory>>
   intervals(conceptId: string): Promise<Record<Grade, string>>
 }
 
 export const NEW_PER_SESSION = 5
+export const EXPLAIN_SHARE = 4
 const VARIANTS_TIMEOUT = 300_000
 const GRADE_TIMEOUT = 120_000
 
@@ -54,6 +60,7 @@ export function createReviewService(deps: {
   vault: () => Promise<VaultIndex | null>
   readNote: (path: string) => Promise<string>
   settings: () => Promise<{ reviewSessionSize: number; exerciseTypes: ExerciseType[] }>
+  pacerOf?: () => Promise<Map<string, PacerType>>
   now?: () => number
   workDir: string
 }): ReviewService {
@@ -65,47 +72,59 @@ export function createReviewService(deps: {
   // Plans run their variant check one after the other: the second sees what the first generated.
   let gate: Promise<unknown> = Promise.resolve()
   function ensureVariants(concepts: Concept[], allowed: Set<ExerciseType>, index: VaultIndex | null): Promise<void> {
-    const run = gate.then(() => generateMissing(concepts, allowed, index))
+    const run = gate.then(async () => generateMissing(concepts, allowed, index, (await deps.pacerOf?.()) ?? new Map()))
     gate = run.catch(() => undefined)
     return run
   }
 
-  async function generateMissing(concepts: Concept[], allowed: Set<ExerciseType>, index: VaultIndex | null): Promise<void> {
-    const have = await deps.variants.read()
+  async function generateMissing(concepts: Concept[], allowed: Set<ExerciseType>, index: VaultIndex | null, pacers: Map<string, PacerType>): Promise<void> {
+    const [have, checked] = await Promise.all([deps.variants.read(), allowed.has('explain') ? deps.variants.explainChecked() : new Set<string>()])
     const typesKey = [...allowed].sort().join(',')
+    const general: ExerciseType[] = [...allowed].filter((t) => t !== 'explain')
     const waiting: Promise<void>[] = []
-    const missing: Concept[] = []
+    // Per note and type set: a concept with nothing to ask gets every type; one that only lacks the
+    // check for a "Spiegalo tu" (concepts from before it existed) gets just that.
+    const byNote = new Map<string, { notePath: string; types: ExerciseType[]; concepts: Concept[] }>()
     for (const c of concepts) {
       const pending = attempted.get(`${c.id}|${typesKey}`)
-      if (pending) waiting.push(pending)
-      else if (!have.some((v) => v.conceptId === c.id && allowed.has(v.exercise.type))) missing.push(c)
+      if (pending) {
+        waiting.push(pending)
+        continue
+      }
+      const mine = have.filter((v) => v.conceptId === c.id)
+      const explainDue = allowed.has('explain') && !checked.has(c.id) && !mine.some((v) => v.exercise.type === 'explain')
+      const types = general.length && !mine.some((v) => general.includes(v.exercise.type)) ? (explainDue ? [...allowed] : general) : explainDue ? (['explain'] as ExerciseType[]) : null
+      if (!types) continue
+      const key = `${c.birth}|${types.join(',')}`
+      const job = byNote.get(key) ?? { notePath: c.birth, types, concepts: [] }
+      job.concepts.push(c)
+      byNote.set(key, job)
     }
-    const byNote = new Map<string, Concept[]>()
-    for (const c of missing) byNote.set(c.birth, [...(byNote.get(c.birth) ?? []), c])
     await mkdir(deps.workDir, { recursive: true })
-    const generateNote = async (notePath: string, cs: Concept[]): Promise<void> => {
+    const generateNote = async ({ notePath, types, concepts: cs }: { notePath: string; types: ExerciseType[]; concepts: Concept[] }): Promise<void> => {
       try {
         const text = await deps.readNote(notePath).catch(() => '')
         const title = index?.notes.find((n) => n.path === notePath)?.title ?? notePath.split('/').pop()!.replace(/\.md$/, '')
         const r = await deps.bridge.ask({
           task: 'variants',
-          prompt: buildVariantsPrompt({ noteTitle: title, noteText: text, concepts: cs, types: [...allowed] }),
-          schema: variantsReplySchema(new Set(cs.map((c) => c.id)), now),
+          prompt: buildVariantsPrompt({ noteTitle: title, noteText: text, concepts: cs, types, depth: cs.length > 0 && cs.every((c) => ['C', 'A'].includes(pacers.get(c.id) ?? '')) }),
+          schema: variantsReplySchema(new Set(cs.map((c) => c.id)), now, new Set(types)),
           timeoutMs: VARIANTS_TIMEOUT,
           cwd: deps.workDir
         })
         for (const v of (r.data as { variants: Awaited<ReturnType<VariantsStore['read']>> }).variants) await deps.variants.append(v)
+        if (types.includes('explain')) for (const c of cs) await deps.variants.markExplainChecked(c.id, now())
       } catch (e) {
         console.warn('[review] varianti non generate', notePath, e)
       }
     }
     // Notes in parallel, a few at a time (agy queues per engine anyway; this caps prompt reads).
-    const jobs = [...byNote]
+    const jobs = [...byNote.values()]
     const runNext = async (): Promise<void> => {
       const job = jobs.shift()
       if (!job) return
-      const p = generateNote(job[0], job[1])
-      for (const c of job[1]) attempted.set(`${c.id}|${typesKey}`, p)
+      const p = generateNote(job)
+      for (const c of job.concepts) attempted.set(`${c.id}|${typesKey}`, p)
       await p
       await runNext()
     }
@@ -119,15 +138,16 @@ export function createReviewService(deps: {
       const concepts = g.concepts.filter((c) => c.birth === notePath)
       if (concepts.length) await ensureVariants(concepts, new Set(settings.exerciseTypes), index)
     },
-    async plan(opts = {}) {
-      const [g, reviews, settings, index] = await Promise.all([deps.graph(), deps.memory.read(), deps.settings(), deps.vault()])
+    async plan(opts: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean } = {}) {
+      const [g, reviews, settings, index, pacers] = await Promise.all([deps.graph(), deps.memory.read(), deps.settings(), deps.vault(), deps.pacerOf?.() ?? Promise.resolve(new Map<string, PacerType>())])
       const t = now()
       const mem = memoryOf(reviews, t)
       const byId = new Map(g.concepts.map((c) => [c.id, c]))
       const R = (id: string): number => mem.get(id)?.R ?? -1
       const dueIds = g.concepts.filter((c) => (mem.get(c.id)?.due ?? Infinity) <= t).map((c) => c.id)
       let chosen: Concept[]
-      if (opts.conceptIds) chosen = opts.conceptIds.map((id) => byId.get(id)).filter((c): c is Concept => !!c)
+      if (opts.misconceptions) chosen = g.concepts.filter((c) => mem.get(c.id)?.misconception).sort((a, b) => R(a.id) - R(b.id)).slice(0, settings.reviewSessionSize)
+      else if (opts.conceptIds) chosen = opts.conceptIds.map((id) => byId.get(id)).filter((c): c is Concept => !!c)
       else if (opts.weakest) {
         const reviewed = g.concepts.filter((c) => mem.has(c.id)).sort((a, b) => R(a.id) - R(b.id))
         const fresh = g.concepts.filter((c) => !mem.has(c.id)).sort((a, b) => a.depth - b.depth)
@@ -139,16 +159,35 @@ export function createReviewService(deps: {
       }
 
       const allowed = new Set(settings.exerciseTypes.length ? settings.exerciseTypes : (['open'] as ExerciseType[]))
-      await ensureVariants(chosen, allowed, index)
+      const allowedFor = (c: Concept): Set<ExerciseType> => {
+        const pacer = pacers.get(c.id)
+        if (!pacer) return allowed
+        const intersection = [...allowed].filter((t) => PACER_EXERCISE_TYPES[pacer].includes(t))
+        return intersection.length ? new Set(intersection) : allowed
+      }
+      const groups = new Map<string, { types: Set<ExerciseType>; concepts: Concept[] }>()
+      for (const c of chosen) {
+        const types = allowedFor(c), key = [...types].sort().join(',')
+        const group = groups.get(key) ?? { types, concepts: [] }
+        group.concepts.push(c); groups.set(key, group)
+      }
+      await Promise.all([...groups.values()].map((group) => ensureVariants(group.concepts, group.types, index)))
       const variants = await deps.variants.read()
       const lastAsked = new Map<string, number>()
       for (const r of reviews) if (r.variantId) lastAsked.set(r.variantId, Math.max(lastAsked.get(r.variantId) ?? 0, r.at))
 
+      // "Spiegalo tu" is long and only exists for proofs and key definitions: at most one item in four.
+      const explainCap = Math.max(1, Math.floor(chosen.length / EXPLAIN_SHARE))
+      let explains = 0
       const items: ReviewItem[] = chosen.map((c) => {
-        const mine = variants.filter((v) => v.conceptId === c.id && allowed.has(v.exercise.type))
+        const allowedHere = allowedFor(c)
+        const all = variants.filter((v) => v.conceptId === c.id && allowedHere.has(v.exercise.type))
+        const others = all.filter((v) => v.exercise.type !== 'explain')
+        const mine = explains >= explainCap && others.length ? others : all
         const lastType = [...reviews].filter((r) => r.conceptId === c.id && r.type).sort((a, b) => b.at - a.at)[0]?.type
         // Never-asked first, then the least recently asked; a different type from last time when possible.
         const pick = [...mine].sort((a, b) => (lastAsked.get(a.id) ?? -1) - (lastAsked.get(b.id) ?? -1) || Number(a.exercise.type === lastType) - Number(b.exercise.type === lastType))[0]
+        if (pick?.exercise.type === 'explain') explains++
         const note = index?.notes.find((n) => n.path === c.birth)
         return {
           conceptId: c.id,
@@ -180,6 +219,31 @@ export function createReviewService(deps: {
       } catch (e) {
         console.warn('[review] correzione non riuscita', e)
         return { verdict: 'partial', feedback: 'Non sono riuscito a correggere: valuta tu confrontando con la risposta di riferimento.', proposed: 2 }
+      }
+    },
+
+    async explain(req) {
+      try {
+        if (req.exercise.type !== 'explain') throw new Error('non è uno «Spiegalo tu»')
+        const c = (await deps.graph()).concepts.find((x) => x.id === req.conceptId)
+        const notePath = c?.birth
+        const [text, index] = await Promise.all([notePath ? deps.readNote(notePath).catch(() => '') : '', deps.vault()])
+        const noteTitle = index?.notes.find((n) => n.path === notePath)?.title ?? notePath?.split('/').pop()!.replace(/\.md$/, '') ?? ''
+        await mkdir(deps.workDir, { recursive: true })
+        const r = await deps.bridge.ask({
+          task: 'grade',
+          prompt: buildExplainPrompt({ concept: { name: c?.name ?? '', statement: c?.statement ?? '' }, exercise: req.exercise, noteTitle, noteText: text, turns: req.turns, confidence: req.confidence }),
+          schema: explainReplySchema(questionsAsked(req.turns) < MAX_QUESTIONS),
+          timeoutMs: GRADE_TIMEOUT,
+          cwd: deps.workDir
+        })
+        const reply = r.data as ExplainReply
+        if (reply.action === 'ask') return { kind: 'question', question: reply.question }
+        const { verdict, feedback } = reply
+        return { kind: 'verdict', verdict, feedback, proposed: proposeGrade({ correct: verdict === 'ok' ? true : verdict === 'partial' ? 'partial' : false, confidence: req.confidence }) }
+      } catch (e) {
+        console.warn('[review] spiegazione non corretta', e)
+        return { kind: 'verdict', verdict: 'partial', feedback: 'Non sono riuscito a correggere: confronta tu la tua spiegazione con i passaggi di riferimento.', proposed: 2 }
       }
     },
 

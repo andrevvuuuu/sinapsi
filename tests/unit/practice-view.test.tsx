@@ -43,6 +43,9 @@ function api(state?: PracticeState) {
       retry: vi.fn(async () => undefined),
       examSave: vi.fn(async () => undefined),
       examDeliver: vi.fn(async () => undefined),
+      examHand: vi.fn(async () => undefined),
+      examSelf: vi.fn(async () => undefined),
+      calibration: vi.fn(async () => [] as unknown[]),
       photo: vi.fn(async () => '$|\\cos c| \\le 1$'),
       camera: vi.fn(async () => true),
       onUpdate: vi.fn((cb: (s: PracticeState) => void) => ((listener = cb), () => undefined))
@@ -53,6 +56,15 @@ function api(state?: PracticeState) {
 }
 
 describe('PracticeSetup', () => {
+  it('does not allow a fifth selected concept in training', async () => {
+    const { a } = api()
+    a.practice.catalog.mockResolvedValue({ ...catalog, suggested: [...catalog.suggested, { id: 'n_x', name: 'Quinto concetto', why: 'mai praticato' }] })
+    window.sinapsi = a as never
+    render(<PracticeSetup initial={{ conceptIds: ['n_l', 'n_r', 'n_f', 'n_w'] }} onBack={vi.fn()} onStarted={vi.fn()} />)
+    const fifth = await screen.findByRole('button', { name: /Quinto concetto/ })
+    expect((fifth as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText(/4\/4 concetti/)).toBeTruthy()
+  })
   it('pre-selects the two most urgent suggestions and shows why the others are suggested', async () => {
     api()
     render(<PracticeSetup onBack={vi.fn()} onStarted={vi.fn()} />)
@@ -83,10 +95,19 @@ describe('PracticeSetup', () => {
     await screen.findByRole('group', { name: 'Scelti' })
     expect(screen.getByRole('status').textContent).toContain('lo userò come argomento libero')
     fireEvent.click(screen.getByRole('radio', { name: /Simulazione d'esame/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Altro…' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Altro…' }))
     fireEvent.click(screen.getByRole('button', { name: 'Più 5 minuti' }))
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Inizia simulazione · 50 min' })))
-    expect(a.practice.examStart).toHaveBeenCalledWith({ conceptIds: ['n_l', 'n_r'], sourceIds: [], free: 'autovalori' }, 50)
+    expect(a.practice.examStart).toHaveBeenCalledWith({ conceptIds: ['n_l', 'n_r'], sourceIds: [], free: 'autovalori' }, 50, false)
+  })
+  it('starts an exam on paper', async () => {
+    const { a } = api()
+    render(<PracticeSetup onBack={vi.fn()} onStarted={vi.fn()} />)
+    await screen.findByRole('group', { name: 'Scelti' })
+    fireEvent.click(screen.getByRole('radio', { name: /Simulazione d'esame/ }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Carta e penna' }))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Inizia simulazione su carta · 60 min' })))
+    expect(a.practice.examStart).toHaveBeenCalledWith({ conceptIds: ['n_l', 'n_r'], sourceIds: [], free: '' }, 60, true)
   })
   it('picks concepts and sources in the dialog; closing without confirming restores the choice', async () => {
     api()
@@ -114,7 +135,7 @@ const problem = { id: 'p1', statement: 'Mostra che $|\\sin a - \\sin b| \\le |a-
 const open: PracticeState = {
   ...base,
   items: [{ kind: 'learner', submission: { kind: 'start' }, text: 'MATERIALE…' }, { kind: 'tutor', turn: { phase: 'warmup', blocks: [{ type: 'text', md: 'Si parte.' }], problem } }],
-  problems: [{ ...problem, status: 'active', phase: 'warmup', hints: 0, maxRung: null }],
+  problems: [{ ...problem, status: 'active', phase: 'warmup', hints: 0, maxRung: null, attempts: 0 }],
   active: 'p1'
 }
 
@@ -222,6 +243,70 @@ describe('PracticeView — exam', () => {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Ritesta gli errori in allenamento' })))
     expect(a.practice.create).toHaveBeenCalledWith({ conceptIds: ['n_r'], sourceIds: [], free: '' })
     expect(onStarted).toHaveBeenCalledWith(ID)
+  })
+})
+
+describe('PracticeView — exam on paper', () => {
+  const sheet = { title: 'Prova', problems: [{ id: 'e1', statement: 'Calcola il limite.', points: 12, targets: [] }, { id: 'e2', statement: 'Dimostra Rolle.', points: 18, targets: ['n_r'] }] }
+  const solved = { title: 'Prova', problems: [{ ...sheet.problems[0], modelSolution: 'Vale 1.' }, { ...sheet.problems[1], modelSolution: 'Weierstrass e Fermat.' }] }
+  const paper = (extra: Partial<NonNullable<PracticeState['exam']>> = {}, endsAt = Date.now() + 30 * 60_000): PracticeState => ({ ...base, mode: 'exam', paper: true, durationMin: 30, exam: { sheet, endsAt, answers: {}, delivered: false, ...extra } })
+  it('shows only the sheet and the clock, and puts the pens down by itself when the time is over', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const { a } = api(paper({}, Date.now() + 2_000))
+    render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
+    expect(await screen.findByRole('timer')).toBeTruthy()
+    expect(screen.getByText('Dimostra Rolle.')).toBeTruthy()
+    expect(screen.queryByLabelText('Risposta all’esercizio 1')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Foto del foglio' })).toBeNull()
+    await act(async () => void vi.advanceTimersByTime(5_000))
+    expect(a.practice.examHand).toHaveBeenCalledTimes(1)
+    expect(a.practice.examDeliver).not.toHaveBeenCalled()
+  })
+  it('asks for the self-grade before the answer, and sends to the grader only when every problem has one', async () => {
+    const { a, push } = api(paper({ handed: true, self: {}, sheet: solved }))
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
+    expect(await screen.findByText('Weierstrass e Fermat.')).toBeTruthy()
+    expect(screen.queryByRole('timer')).toBeNull()
+    expect(screen.queryByLabelText('Risposta all’esercizio 1')).toBeNull()
+    expect((screen.getByRole('button', { name: 'Correggi' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Il tuo voto all’esercizio 1'), { target: { value: '13' } })
+    expect((screen.getAllByRole('button', { name: 'Conferma il mio voto' })[0] as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Il tuo voto all’esercizio 1'), { target: { value: '10,5' } })
+    await act(async () => fireEvent.click(screen.getAllByRole('button', { name: 'Conferma il mio voto' })[0]))
+    expect(a.practice.examSelf).toHaveBeenCalledWith(ID, 'e1', 10.5)
+    push(paper({ handed: true, self: { e1: 10.5, e2: 18 }, sheet: solved }))
+    expect(screen.getByText('10,5 / 12')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Risposta all’esercizio 1'), { target: { value: 'vale 1' } })
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Correggi' })))
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Un esercizio è senza risposta'))
+    expect(a.practice.examDeliver).toHaveBeenCalledWith(ID, { e1: 'vale 1' })
+  })
+  it('shows both grades and the calibration, now and over time', async () => {
+    const graded: PracticeState = {
+      ...paper({
+        handed: true,
+        delivered: true,
+        self: { e1: 12, e2: 16 },
+        answers: { e1: '1', e2: 'boh' },
+        sheet: solved,
+        grade: { items: [{ id: 'e1', points: 12, comment: 'Giusto.', self: 12 }, { id: 'e2', points: 9, comment: 'Manca la derivabilità.', self: 16 }], note: 'Riprendi Rolle.', total: 21, lode: false }
+      }),
+      phase: 'done'
+    }
+    const { a } = api(graded)
+    a.practice.calibration.mockResolvedValue([
+      { id: 'old', topic: 'Limiti', at: Date.UTC(2026, 10, 1), items: [{ id: 'e1', max: 15, self: 15, ai: 10 }, { id: 'e2', max: 15, self: 10, ai: 10 }] },
+      { id: ID, topic: 'Rolle', at: Date.UTC(2026, 10, 8), items: [{ id: 'e1', max: 12, self: 12, ai: 12 }, { id: 'e2', max: 18, self: 16, ai: 9 }] }
+    ])
+    render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
+    const panel = await screen.findByRole('region', { name: 'Calibrazione' })
+    expect(within(panel).getByText('28/30')).toBeTruthy()
+    expect(within(panel).getByText('Ti sei sopravvalutato di 3,5 punti in media a esercizio.')).toBeTruthy()
+    expect(screen.getByText('tu 16')).toBeTruthy()
+    expect(await within(panel).findByText('Limiti')).toBeTruthy()
+    expect(within(panel).getByText('25 → 20')).toBeTruthy()
+    expect(within(panel).getByText('Su 2 simulazioni a carta — Ti sei sopravvalutato di 3 punti in media a esercizio.')).toBeTruthy()
   })
 })
 

@@ -47,6 +47,9 @@ export function buildNotePrompt(input: { noteTitle: string; noteText: string; se
 - Esercizi a difficoltà crescente: "svolto", poi "completa" (con le scelte {{…|*giusta|…}}), poi "solo".
 - I blocchi "session" vengono SOLO dalla sessione qui sotto, se c'è; non inventarli.
 - Italiano. Matematica in LaTeX: $…$ in linea, $$…$$ in blocco. Nelle stringhe JSON i backslash vanno raddoppiati (\\\\frac).
+- FORMULE OVUNQUE TRA $…$: ogni formula, simbolo o variabile in ogni campo, anche titoli (title, titleEm, titoli di sezione, di figura, di esercizio, di passo), idee del recap, etichette (label dei cursori e dei readouts), opzioni e spiegazioni dei quiz, provenance. Mai matematica in testo semplice: non "g(x) = f(x) - y_sec(x)" ma "$g(x) = f(x) - y_{\\text{sec}}(x)$", non "x² - 4x + 3" ma "$x^2 - 4x + 3$", non "Pendenza m_sec" ma "Pendenza $m_{\\text{sec}}$". Ogni $ aperto va chiuso nello stesso campo.
+- Scelte {{…}} negli esercizi "completa": SEMPRE fuori dalle formule. Chiudi $ prima della scelta e riaprilo dopo se la formula continua: "$f(1) =$ {{$-2$|*$0$|$1$}} e $f(5) =$ {{$6$|*$8$|$10$}}", mai "$f(1) = {{-2|*0|1}}$". Se un'opzione è una formula, mettila tra $…$ dentro la scelta.
+- Diagrammi Mermaid (blocchi \`\`\`mermaid dentro "md"): etichette dei nodi tra virgolette, in testo semplice e leggibile, senza LaTeX né $: scrivi "g(x) = f(x) - y sec(x)" o a parole, vai a capo con <br/>.
 - In provenance.fromNote scrivi cosa viene dalla nota, in provenance.added cosa hai aggiunto tu.`,
     NOTA_FORMAT,
     `NOTA OBSIDIAN «${input.noteTitle}»\n\n${capNote(input.noteText)}`

@@ -16,6 +16,22 @@ describe('reducePractice — training', () => {
     expect(s.problems[0]).toMatchObject({ id: 'p1', status: 'active', hints: 0, maxRung: null, phase: 'warmup' })
     expect(JSON.stringify(s)).not.toContain('SEGRETO')
   })
+  it('stores the compass and gates continuation until a restatement follows R3+', () => {
+    const compass = { known: 'definizione', stuck: 'ipotesi', question: 'Quale teorema?' }
+    const s = reducePractice([
+      ...base,
+      { t: 'learner', submission: { kind: 'compass', compass }, text: 'Bussola', at: 4 },
+      { t: 'tutor', turn: { phase: 'warmup', blocks: [], hint: { rung: 3, md: 'x' } }, at: 5 }
+    ])
+    expect(s.problems[0]).toMatchObject({ compass, needsRestate: true })
+    const cleared = reducePractice([
+      ...base,
+      { t: 'learner', submission: { kind: 'compass', compass }, text: 'Bussola', at: 4 },
+      { t: 'tutor', turn: { phase: 'warmup', blocks: [], hint: { rung: 3, md: 'x' } }, at: 5 },
+      { t: 'learner', submission: { kind: 'restate', text: 'A mia parole' }, text: 'Riformulo', at: 6 }
+    ])
+    expect(cleared.problems[0].needsRestate).toBe(false)
+  })
   it('counts hints, then concludes, reveals the solution and pauses until "next"', () => {
     const s = reducePractice([
       ...base,

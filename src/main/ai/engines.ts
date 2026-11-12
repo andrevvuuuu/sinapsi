@@ -73,10 +73,15 @@ function pythonBins(home: string): string[] {
   return [...list(`${home}/Library/Python`, 'bin'), ...list('/Library/Frameworks/Python.framework/Versions', 'bin')]
 }
 
+/** The PATH the tools run with: apps started from the Finder get a bare one without Homebrew or pip. */
+export function toolPath(home = homedir()): string {
+  return [`${home}/.local/bin`, '/opt/homebrew/bin', '/usr/local/bin', process.env.PATH, ...pythonBins(home)].join(':')
+}
+
 export const nodeSpawn: SpawnFn = (cmd, args, { timeoutMs, cwd, onOutput, signal }) =>
   new Promise((resolve, reject) => {
     const home = homedir()
-    const env = { ...process.env, PATH: [`${home}/.local/bin`, '/opt/homebrew/bin', '/usr/local/bin', process.env.PATH, ...pythonBins(home)].join(':') }
+    const env = { ...process.env, PATH: toolPath(home) }
     const child = spawn(cmd, args, { cwd: cwd ?? home, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
     let stdout = ''
     let stderr = ''

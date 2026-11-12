@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
-import type { StoredNote } from '../../../shared/api'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
+import type { GraphData, Memory, StoredNote } from '../../../shared/api'
 import type { Nota } from '../../../shared/nota-schema'
-import { RichText } from '../session/RichText'
+import { Inline, Md } from './Md'
 import { BlockView, NotaContext } from './BlockView'
-import type { Layers, Mode } from './context'
+import { FadeContext, SectionContext, type Layers, type Mode } from './context'
+import { fadeOf, sectionConcepts, type Fade } from './fading'
 import './nota.css'
+import { ScrollEdges, Seg, ViewScene } from '../components/glass'
 
 const LAYERS: [keyof Layers, string][] = [
   ['sessione', 'Sessione'],
@@ -14,6 +17,23 @@ const LAYERS: [keyof Layers, string][] = [
 
 /** The message of an error thrown in main, without Electron's "Error invoking remote method" prefix. */
 export const remoteMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+
+/**
+ * The nota's scene: the floating island (a glass surface) over the page, which scrolls under it as the scene's live
+ * content. The page keeps the island's room at its top (the scroll edge band, .nota-scroll).
+ */
+export function NotaFrame({ bar, children }: { bar: ReactNode; children?: ReactNode }): React.JSX.Element {
+  const page = useRef<HTMLDivElement>(null)
+  return (
+    <ViewScene className="nota">
+      {bar}
+      <ScrollEdges target={page} edges={['top']} size={66} />
+      <GlassContent layout="scroll" className="nota-scroll edge-fade" ref={page}>
+        {children}
+      </GlassContent>
+    </ViewScene>
+  )
+}
 
 function Elapsed({ since }: { since: number }): React.JSX.Element {
   const [now, setNow] = useState(() => Date.now())
@@ -60,22 +80,40 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
     }
   }, [api, id])
 
+  // What he remembers of the note's concepts: proofs fade from the end as they consolidate (fading.ts).
+  const [known, setKnown] = useState<{ graph: GraphData; memory: Record<string, Memory> } | null>(null)
+  useEffect(() => {
+    let alive = true
+    const { graph, review } = window.sinapsi
+    if (!graph?.get || !review?.memory) return
+    void Promise.all([graph.get(), review.memory()]).then(
+      ([g, memory]) => alive && setKnown({ graph: g, memory }),
+      () => undefined
+    )
+    return () => {
+      alive = false
+    }
+  }, [])
+
   const bar = (
-    <nav className="island" aria-label="Controlli della nota">
+    <GlassSurface render={<nav />} radius="capsule" className="island glass-text" aria-label="Controlli della nota">
       <button type="button" className="back back-btn" onClick={onBack}>
         ← Home
       </button>
       {n?.status === 'ready' && (
         <>
           <span className="sep" aria-hidden="true" />
-          <div className="nv-seg" role="group" aria-label="Modalità">
-            <button type="button" aria-pressed={mode === 'leggi'} onClick={() => setMode('leggi')}>
-              Leggi
-            </button>
-            <button type="button" aria-pressed={mode === 'prova'} onClick={() => setMode('prova')}>
-              Prova da solo
-            </button>
-          </div>
+          <Seg
+            label="Modalità"
+            track="plain"
+            className="nv-seg"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'leggi', label: 'Leggi' },
+              { value: 'prova', label: 'Prova da solo' }
+            ]}
+          />
           <span className="sep" aria-hidden="true" />
           <div className="layers" role="group" aria-label="Strati">
             {LAYERS.map(([k, label]) => (
@@ -87,24 +125,22 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
           </div>
         </>
       )}
-    </nav>
+    </GlassSurface>
   )
 
   if (!n && loadError)
     return (
-      <div className="nota">
-        {bar}
+      <NotaFrame bar={bar}>
         <div className="nv-gen" role="alert">
           <h1>Questa nota non si riesce ad aprire</h1>
           <p>Il file della nota viva è danneggiato. Puoi crearne una nuova dalla nota Obsidian: aprila dalla home e scegli «Crea la nota viva».</p>
         </div>
-      </div>
+      </NotaFrame>
     )
-  if (!n) return <div className="nota">{bar}</div>
+  if (!n) return <NotaFrame bar={bar} />
   if (n.status !== 'ready' || !n.nota)
     return (
-      <div className="nota">
-        {bar}
+      <NotaFrame bar={bar}>
         <div className="state">
           <h1>{n.sourceTitle}</h1>
           {n.status === 'generating' ? (
@@ -127,26 +163,25 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
             </>
           )}
         </div>
-      </div>
+      </NotaFrame>
     )
 
   return (
-    <NotaContext.Provider value={{ layers }}>
-      <div className="nota">
-        {bar}
-        <Page nota={n.nota} stored={n} mode={mode} />
-      </div>
+    <NotaContext.Provider value={{ layers, noteId: id }}>
+      <NotaFrame bar={bar}>
+        <Page nota={n.nota} stored={n} mode={mode} fade={known ? (section) => fadeOf(sectionConcepts(known.graph, n.sourcePath, section), known.memory) : undefined} />
+      </NotaFrame>
     </NotaContext.Provider>
   )
 }
 
-function Page({ nota, stored, mode }: { nota: Nota; stored: StoredNote; mode: Mode }): React.JSX.Element {
+function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mode: Mode; fade?: (section: { num: string; title: string }) => Fade }): React.JSX.Element {
   const counts = nota.sections.flatMap((s) => s.blocks).reduce<Record<string, number>>((acc, b) => ((acc[b.type] = (acc[b.type] ?? 0) + 1), acc), {})
   const toc = nota.sections.map((s) => (
     <li key={s.id}>
       <a href={`#${s.id}`}>
         <b>{s.num.replace('§', '')}</b>
-        {s.title}
+        <Inline md={s.title} />
       </a>
     </li>
   ))
@@ -154,18 +189,29 @@ function Page({ nota, stored, mode }: { nota: Nota; stored: StoredNote; mode: Mo
     <main>
       <header className="hero">
         <div>
-          {nota.eyebrow && <span className="eyebrow enter">{nota.eyebrow}</span>}
+          {nota.eyebrow && (
+            <span className="eyebrow enter">
+              <Inline md={nota.eyebrow} />
+            </span>
+          )}
           <h1 className="enter">
-            {nota.title} {nota.titleEm && <em>{nota.titleEm}</em>}
+            <Inline md={nota.title} />{' '}
+            {nota.titleEm && (
+              <em>
+                <Inline md={nota.titleEm} />
+              </em>
+            )}
           </h1>
           {nota.aka.length > 0 && (
             <div className="aka" aria-label="Detto anche">
               {nota.aka.map((a, i) => (
-                <span key={i}>{a}</span>
+                <span key={i}>
+                  <Inline md={a} />
+                </span>
               ))}
             </div>
           )}
-          {nota.lede && <RichText md={nota.lede} className="lede" />}
+          {nota.lede && <Md md={nota.lede} className="lede" />}
           <div className="origin">
             <span>Nota Obsidian · {stored.sourceTitle}</span>
             {stored.sessionId && <span>Con la sessione di studio</span>}
@@ -197,15 +243,15 @@ function Page({ nota, stored, mode }: { nota: Nota; stored: StoredNote; mode: Mo
         <div className="grid3">
           <div>
             <h3>Dalla tua nota Obsidian</h3>
-            <ul>{nota.provenance.fromNote.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            <ul>{nota.provenance.fromNote.map((x, i) => <li key={i}><Inline md={x} /></li>)}</ul>
           </div>
           <div>
             <h3>{"Aggiunto dall'app"}</h3>
-            <ul>{nota.provenance.added.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            <ul>{nota.provenance.added.map((x, i) => <li key={i}><Inline md={x} /></li>)}</ul>
           </div>
           <div>
             <h3>Segnalato, non cambiato</h3>
-            <ul>{nota.provenance.flagged.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            <ul>{nota.provenance.flagged.map((x, i) => <li key={i}><Inline md={x} /></li>)}</ul>
           </div>
         </div>
         {(stored.dropped ?? 0) > 0 && (
@@ -219,7 +265,7 @@ function Page({ nota, stored, mode }: { nota: Nota; stored: StoredNote; mode: Mo
           <ol>
             {nota.tldr.map((t, i) => (
               <li key={i}>
-                <RichText md={t} className="inline" />
+                <Inline md={t} />
               </li>
             ))}
           </ol>
@@ -248,14 +294,23 @@ function Page({ nota, stored, mode }: { nota: Nota; stored: StoredNote; mode: Mo
               <header>
                 {s.num && <span className="num">{s.num}</span>}
                 <h2 id={`${s.id}-h`}>
-                  {s.title} {s.titleEm && <em>{s.titleEm}</em>}
+                  <Inline md={s.title} />{' '}
+                  {s.titleEm && (
+                    <em>
+                      <Inline md={s.titleEm} />
+                    </em>
+                  )}
                 </h2>
               </header>
-              <div className="blocks">
-                {s.blocks.map((b, i) => (
-                  <BlockView key={i} block={b} mode={mode} />
-                ))}
-              </div>
+              <FadeContext.Provider value={fade ? fade(s) : null}>
+                <SectionContext.Provider value={s.titleEm ? `${s.title} ${s.titleEm}` : s.title}>
+                  <div className="blocks">
+                    {s.blocks.map((b, i) => (
+                      <BlockView key={i} block={b} mode={mode} />
+                    ))}
+                  </div>
+                </SectionContext.Provider>
+              </FadeContext.Provider>
             </section>
           ))}
           <section className="sec" id="nv-fine" aria-labelledby="nv-fine-h">
@@ -274,7 +329,7 @@ function Page({ nota, stored, mode }: { nota: Nota; stored: StoredNote; mode: Mo
                       {nota.recap.ideas.map((x, i) => (
                         <li key={i}>
                           <b>{String(i + 1).padStart(2, '0')}</b>
-                          <RichText md={x} className="inline" />
+                          <Inline md={x} />
                         </li>
                       ))}
                     </ul>
@@ -288,8 +343,10 @@ function Page({ nota, stored, mode }: { nota: Nota; stored: StoredNote; mode: Mo
                     <div className="formulario">
                       {nota.recap.formulas.map((f, i) => (
                         <div key={i}>
-                          <span>{f.label}</span>
-                          <RichText md={f.tex.includes('$') ? f.tex : `$${f.tex}$`} className="inline" />
+                          <span>
+                            <Inline md={f.label} />
+                          </span>
+                          <Inline md={f.tex.includes('$') ? f.tex : `$${f.tex}$`} />
                         </div>
                       ))}
                     </div>

@@ -58,16 +58,17 @@ async function pick(q: string, label: RegExp): Promise<HTMLElement> {
 describe('GraphView with memory', () => {
   it('offers the lenses with their counts', async () => {
     mount()
-    const lens = await screen.findByRole('button', { name: 'Da ripassare (2)' })
-    expect(screen.getByRole('button', { name: 'Tutto' }).getAttribute('aria-pressed')).toBe('true')
+    // The lens selector is a segmented control: the library's tabs.
+    const lens = await screen.findByRole('tab', { name: 'Da ripassare (2)' })
+    expect(screen.getByRole('tab', { name: 'Tutto' }).getAttribute('aria-selected')).toBe('true')
     fireEvent.click(lens)
-    expect(lens.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByRole('button', { name: 'Mai visti (2)' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Basi fragili (1)' })).toBeTruthy()
+    expect(lens.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Mai visti (2)' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Basi fragili (1)' })).toBeTruthy()
   })
   it('shows the memory of a concept and reviews it', async () => {
     const { onReview } = mount()
-    await screen.findByRole('button', { name: 'Da ripassare (2)' })
+    await screen.findByRole('tab', { name: 'Da ripassare (2)' })
     const card = await pick('rolle', /Rolle.*concetto/)
     expect(within(card).getByText('incerto · 70%')).toBeTruthy()
     fireEvent.click(within(card).getByRole('button', { name: 'Ripassa' }))
@@ -75,7 +76,7 @@ describe('GraphView with memory', () => {
   })
   it('reviews every concept of a note from its region card', async () => {
     const { onReview } = mount()
-    await screen.findByRole('button', { name: 'Da ripassare (2)' })
+    await screen.findByRole('tab', { name: 'Da ripassare (2)' })
     const card = await pick('lagrange', /Lagrange.*nota/)
     fireEvent.click(within(card).getByRole('button', { name: 'Ripassa questa nota' }))
     expect(onReview).toHaveBeenCalledWith(['n_l', 'n_c', 'n_m'])

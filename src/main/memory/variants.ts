@@ -10,7 +10,7 @@ import { appendJsonl, readJsonl } from '../store/jsonl'
 const Reply = z.object({ concepts: z.array(z.object({ id: z.string(), exercises: z.array(z.unknown()) })) })
 
 /** Lenient: each exercise is checked alone; ids and times are set here, never by the model. */
-export function parseVariants(raw: unknown, conceptIds: Set<string>, now: () => number): { variants: VariantLine[]; dropped: number } {
+export function parseVariants(raw: unknown, conceptIds: Set<string>, now: () => number, allowed?: Set<ExerciseType>): { variants: VariantLine[]; dropped: number } {
   const r = Reply.parse(raw)
   let dropped = 0
   const variants: VariantLine[] = []
@@ -19,9 +19,11 @@ export function parseVariants(raw: unknown, conceptIds: Set<string>, now: () => 
       dropped += c.exercises.length
       continue
     }
+    let explains = 0
     for (const e of c.exercises) {
       const p = ExerciseSchema.safeParse(e)
-      if (!p.success) {
+      // One "Spiegalo tu" per concept: it is long, and the rotation must not keep landing on it.
+      if (!p.success || (allowed && !allowed.has(p.data.type)) || (p.data.type === 'explain' && explains++ > 0)) {
         dropped++
         continue
       }
@@ -32,10 +34,10 @@ export function parseVariants(raw: unknown, conceptIds: Set<string>, now: () => 
 }
 
 /** For bridge.ask: a reply without a concepts list is a schema error (one retry), the rest is lenient. */
-export const variantsReplySchema = (conceptIds: Set<string>, now: () => number): z.ZodType<{ variants: VariantLine[]; dropped: number }> =>
+export const variantsReplySchema = (conceptIds: Set<string>, now: () => number, allowed?: Set<ExerciseType>): z.ZodType<{ variants: VariantLine[]; dropped: number }> =>
   z.unknown().transform((raw, ctx) => {
     try {
-      return parseVariants(raw, conceptIds, now)
+      return parseVariants(raw, conceptIds, now, allowed)
     } catch (e) {
       ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message.slice(0, 300) : String(e) })
       return z.NEVER
@@ -56,16 +58,26 @@ const FORMAT: Record<ExerciseType, string> = {
   counterexample: '  { "type": "counterexample", "options": ["…","…"], "correct": 1 }      // scegli il controesempio',
   estimate: '  { "type": "estimate", "value": 3, "tolerance": 0.1, "unit": "…" }     // stima numerica',
   spoterror: '  { "type": "spoterror", "steps": ["…","…","…"], "wrong": 1, "why": "…" } // un passo sbagliato in una catena',
-  graph: '  { "type": "graph", "figure": Figura, "param": "p", "target": "f\'(p) - 0" } // la figura senza "points", "readouts" né "greenWhen"'
+  graph: '  { "type": "graph", "figure": Figura, "param": "p", "target": "f\'(p) - 0" } // la figura senza "points", "readouts" né "greenWhen"',
+  explain: '  { "type": "explain" }                                                 // spiegalo tu: "answer" = i passaggi chiave nell\'ordine della nota'
 }
 
-export function buildVariantsPrompt(input: { noteTitle: string; noteText: string; concepts: Concept[]; types?: ExerciseType[] }): string {
+const EXPLAIN_RULE = `- "explain" (spiegalo tu: Andrea spiega a libro chiuso, a voce o per iscritto, e Claude lo corregge confrontando con la nota) solo per i concetti che hanno una dimostrazione da ricostruire o che sono una definizione importante, mai per fatti minori o calcoli; al massimo uno per concetto. Il "prompt" chiede di ricostruire la dimostrazione o di spiegare il concetto come a un compagno ("A libro chiuso: ricostruisci la dimostrazione di…", "Spiega a un compagno che cos'è… e perché serve…"); "answer" elenca i passaggi chiave, con le ipotesi, nell'ordine della nota.`
+
+export function buildVariantsPrompt(input: { noteTitle: string; noteText: string; concepts: Concept[]; types?: ExerciseType[]; depth?: boolean }): string {
   const types = input.types?.length ? input.types : [...EXERCISE_TYPES]
+  // Concepts that already have their other variants only need the check for a "Spiegalo tu".
+  const explainOnly = types.length === 1 && types[0] === 'explain'
   return [
     `Prepari le domande di ripasso di Sinapsi per Andrea (Scienze matematiche per l'IA). Il ripasso a intervalli chiede un concetto quando sta per dimenticarlo, e ogni volta in una forma nuova: per questo ti chiedo più varianti per ogni concetto.`,
     `REGOLE
-- Per ogni concetto qui sotto: 4 o 5 esercizi, di tipi diversi quando possibile, ognuno da un'angolazione diversa: richiamo (farlo venire in mente), distinzione (non confonderlo con concetti vicini), composizione (usarlo in un ragionamento o in un calcolo).
+${
+  explainOnly
+    ? '- Questi concetti hanno già i loro esercizi: qui decidi solo, per ognuno, se merita un "explain". Se sì, uno solo; se no, "exercises": [].'
+    : "- Per ogni concetto qui sotto: 4 o 5 esercizi, di tipi diversi quando possibile, ognuno da un'angolazione diversa: richiamo (farlo venire in mente), distinzione (non confonderlo con concetti vicini), composizione (usarlo in un ragionamento o in un calcolo)."
+}${types.includes('explain') ? `\n${EXPLAIN_RULE}` : ''}
 - Mai la stessa domanda riformulata: ogni esercizio deve chiedere qualcosa di diverso. Mai rivelare la risposta nel testo della domanda.
+${input.depth ? '- Punta su catene causa-effetto, condizioni in cui il risultato non vale e differenze con concetti simili; evita il puro richiamo mnemonico.' : ''}
 - "answer" è la risposta di riferimento, completa e precisa, mostrata dopo che Andrea ha risposto.
 - Usa "graph" solo se il concetto riguarda la forma di una funzione (tangenti, crescenza, massimi…): la figura segue il formato delle figure delle note vive e "target" è un'espressione del parametro che vale 0 nel punto giusto.
 - Italiano; matematica in LaTeX con $…$; dentro le stringhe JSON ogni backslash va raddoppiato (\\\\frac).`,
@@ -73,7 +85,7 @@ export function buildVariantsPrompt(input: { noteTitle: string; noteText: string
 ${input.concepts.map((c) => `${c.id} | ${c.name} | ${c.statement.replace(/\s+/g, ' ')}`).join('\n')}`,
     `FORMATO (un solo oggetto JSON):
 { "concepts": [ { "id": "n_…", "exercises": [ Esercizio, … ] } ] }
-Usa SOLO questi tipi: ${types.map((t) => `"${t}"`).join(', ')}.${types.length < 3 ? ' (Qui bastano anche tipi ripetuti, con domande diverse.)' : ''}
+Usa SOLO questi tipi: ${types.map((t) => `"${t}"`).join(', ')}.${types.length < 3 && !explainOnly ? ' (Qui bastano anche tipi ripetuti, con domande diverse.)' : ''}
 Esercizio, tutti con "prompt" e "answer":
 ${types.map((t) => FORMAT[t]).join('\n')}`,
     `NOTA DI ORIGINE «${input.noteTitle}» (per il contesto e la notazione di Andrea)\n\n${capNote(input.noteText)}`,
@@ -81,10 +93,23 @@ ${types.map((t) => FORMAT[t]).join('\n')}`,
   ].join('\n\n---\n\n')
 }
 
-export type VariantsStore = { append(v: VariantLine): Promise<void>; read(): Promise<VariantLine[]> }
+const CheckedSchema = z.object({ conceptId: z.string(), at: z.number() })
+export type VariantsStore = {
+  append(v: VariantLine): Promise<void>
+  read(): Promise<VariantLine[]>
+  /** Concepts the model already judged for a "Spiegalo tu", with or without one: never asked again. */
+  markExplainChecked(conceptId: string, at: number): Promise<void>
+  explainChecked(): Promise<Set<string>>
+}
 
-/** variants.jsonl: append-only, one line per generated exercise. */
+/** variants.jsonl: append-only, one line per generated exercise; explain-checked.jsonl beside it. */
 export function variantsStore(dir: string): VariantsStore {
   const file = join(dir, 'variants.jsonl')
-  return { append: (v) => appendJsonl(file, v), read: () => readJsonl(file, VariantLineSchema) }
+  const checked = join(dir, 'explain-checked.jsonl')
+  return {
+    append: (v) => appendJsonl(file, v),
+    read: () => readJsonl(file, VariantLineSchema),
+    markExplainChecked: (conceptId, at) => appendJsonl(checked, { conceptId, at }),
+    explainChecked: async () => new Set((await readJsonl(checked, CheckedSchema)).map((l) => l.conceptId))
+  }
 }

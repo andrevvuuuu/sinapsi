@@ -135,14 +135,14 @@ describe('session runner', () => {
     const { runner } = await harness(async () => probeTurn)
     await runner.start('primo')
     const list = await runner.list()
-    expect(list[0]).toMatchObject({ topic: 'primo', phase: 'probe' })
+    expect(list[0]).toMatchObject({ topic: 'Primo', phase: 'probe' })
   })
 })
 
 describe('fake teacher script', () => {
   it('is made only of valid turns', async () => {
-    const { FAKE_SCRIPT } = await import('../../src/main/session/fake-teacher')
+    const { FAKE_SCRIPT, LONG_MEASURE_SCRIPT } = await import('../../src/main/session/fake-teacher')
     const { TeacherTurnSchema } = await import('../../src/shared/teacher-protocol')
-    for (const t of FAKE_SCRIPT) expect(TeacherTurnSchema.safeParse(t).success).toBe(true)
+    for (const t of [...FAKE_SCRIPT, ...LONG_MEASURE_SCRIPT]) expect(TeacherTurnSchema.safeParse(t).success).toBe(true)
   })
 })

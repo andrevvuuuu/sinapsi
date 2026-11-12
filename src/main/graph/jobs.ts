@@ -14,7 +14,8 @@ const IDLE_SECONDS = 300
 type Reason = ExtractionLine['reason']
 
 export type Extractor = {
-  request(path: string, reason: 'manual' | 'study'): Promise<void>
+  /** linked: a note linked to one edited in Obsidian, extracted again even if unchanged (its neighbours changed). */
+  request(path: string, reason: 'manual' | 'study' | 'linked'): Promise<void>
   backgroundTick(opts: { idleSeconds: number; enabled: boolean; dailyLimit: number }): Promise<string | null>
   status(): ExtractorStatus
   graph(): Promise<GraphData>
@@ -69,7 +70,7 @@ export function createExtractor(deps: {
       const text = await deps.readNote(path)
       const h = hash(text)
       const g = deriveGraph(await deps.store.read())
-      if (reason !== 'manual' && g.extracted[path]?.hash === h) {
+      if (reason !== 'manual' && reason !== 'linked' && g.extracted[path]?.hash === h) {
         // Touched but unchanged: record it, so the background pass does not pick it again.
         if (reason === 'background') await deps.store.append('extraction', { notePath: path, hash: h, at: now(), reason, nodes: 0, chains: 0, dropped: 0, ok: true, skipped: true })
         return
