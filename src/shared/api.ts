@@ -3,6 +3,7 @@ import type { VaultIndex } from './vault-types'
 import type { LearnerAnswer } from './teacher-protocol'
 import type { SessionState, SessionSummary } from '../main/session/events'
 import type { NoteMeta, StoredNote } from '../main/notes/store'
+import type { TutorCalendar } from '../main/tutor/calendar'
 
 export type { SessionState, SessionSummary, NoteMeta, StoredNote }
 export type { GraphData, ExtractorStatus } from './graph-types'
@@ -99,6 +100,7 @@ export const CH = {
   lessonsSetMastery: 'lessons:set-mastery',
   lessonsArchive: 'lessons:archive',
   lessonsLaunch: 'lessons:launch',
+  tutorCalendar: 'tutor:calendar',
   examsList: 'exams:list',
   examsCreate: 'exams:create',
   examsUpdate: 'exams:update',
@@ -256,6 +258,7 @@ export interface SinapsiApi {
       mode?: 'practice' | 'review'
     ): Promise<import('./lesson-types').LaunchDestination>
   }
+  tutor: { calendar(): Promise<TutorCalendar> }
   exams: {
     list(): Promise<import('./exam-types').ExamEntry[]>
     create(entry: { courseId: string; title?: string; date: string; weight?: number }): Promise<import('./exam-types').ExamEntry>

@@ -12,6 +12,7 @@ import {
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { CH } from '../shared/api'
+import { readTutorCalendar } from './tutor/calendar'
 import { confidenceCalibration } from '../shared/confidence'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
@@ -486,6 +487,7 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.lessonsSetMastery, (_e, id, l) => lh.setMastery(id, l))
   ipcMain.handle(CH.lessonsArchive, (_e, id) => lh.archive(id))
   ipcMain.handle(CH.lessonsLaunch, (_e, id, m) => lh.launch(id, m))
+  ipcMain.handle(CH.tutorCalendar, async () => readTutorCalendar((await loadSettings()).vaultPath))
   const es = examStore(dataDir())
   const eh = makeExamHandlers(es)
   ipcMain.handle(CH.examsList, () => eh.list())

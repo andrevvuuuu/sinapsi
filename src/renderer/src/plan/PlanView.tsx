@@ -19,8 +19,10 @@ export function PlanView({
 }): React.JSX.Element {
   const [data, setData] = useState<PlanData | null>(null)
   const [lessons, setLessons] = useState<LessonEntry[]>([])
+  const [sinapsiExams, setSinapsiExams] = useState<import('../../../shared/exam-types').ExamEntry[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
   const [error, setError] = useState('')
+  const [tutor, setTutor] = useState<import('../../../main/tutor/calendar').TutorCalendar | null>(null)
 
   async function reload(): Promise<void> {
     try {
@@ -32,6 +34,10 @@ export function PlanView({
       setData(planData)
       setSettings(currentSettings)
       setLessons(entries)
+      // Exams and the tutor calendar only enrich the readiness list: a missing or failing source
+      // must not break the plan.
+      setSinapsiExams((await window.sinapsi.exams?.list().catch(() => [])) ?? [])
+      setTutor((await window.sinapsi.tutor?.calendar().catch(() => null)) ?? null)
       setError('')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -174,7 +180,13 @@ export function PlanView({
           </article>
         ))}
       </section>
-      <ReadinessPanel items={data?.readiness ?? []} />
+      <ReadinessPanel items={[
+        ...(data?.readiness ?? []),
+        ...(tutor?.exams ?? []).filter(e => !sinapsiExams.some(x => x.courseId.trim().toLowerCase() === e.courseName.trim().toLowerCase() && x.date === e.date)).map((e) => ({
+          examId: e.date, courseId: `${e.courseName} · Tutor`, daysLeft: Math.max(0, Math.ceil((new Date(`${e.date}T00:00:00`).getTime() - new Date(new Date().toDateString()).getTime()) / 86400000)),
+          signals: [], score: null, status: 'da misurare' as const
+        }))
+      ]} />
     </main>
   )
 }

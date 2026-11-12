@@ -50,7 +50,7 @@
   font: var(--font-display);
   font-size: 28px;
   font-weight: 500;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.045em;
   margin: 0;
 }
 .rv-track {
@@ -99,9 +99,9 @@
 }
 .rv h1 {
   font: var(--font-display);
-  font-size: 32px;
+  font-size: 29px;
   font-weight: 500;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.045em;
   margin: var(--s-3) 0 var(--s-4);
 }
 .rv-intro p,
@@ -128,6 +128,7 @@
   font: var(--font-display);
   font-size: 28px;
   font-weight: 500;
+  letter-spacing: -0.045em;
 }
 .rv-plan span {
   font-size: var(--fs-footnote);

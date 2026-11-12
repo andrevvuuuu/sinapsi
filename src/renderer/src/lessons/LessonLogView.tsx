@@ -27,6 +27,9 @@ export function LessonLogView({
   const [examDate, setExamDate] = useState('')
   const [examWeight, setExamWeight] = useState('')
   const [editingExam, setEditingExam] = useState<string | null>(null)
+  const [tutor, setTutor] = useState<import('../../../main/tutor/calendar').TutorCalendar | null>(null)
+  const [expandedTutorLessons, setExpandedTutorLessons] = useState<string[]>([])
+  const [vaultPath, setVaultPath] = useState('')
   const reloadExams = (): void => {
     void Promise.all([window.sinapsi.exams.list(), window.sinapsi.plan.week()])
       .then(([items, plan]) => {
@@ -41,6 +44,8 @@ export function LessonLogView({
       .then(setLessons)
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)))
     reloadExams()
+    void (window.sinapsi.tutor?.calendar() ?? Promise.resolve(null)).then(setTutor).catch(() => setTutor(null))
+    void window.sinapsi.settings.get().then(s => setVaultPath(s.vaultPath)).catch(() => undefined)
   }, [])
   const courses = useMemo(
     () => [...new Set(lessons.map((lesson) => lesson.courseId))].sort(),
@@ -144,6 +149,24 @@ export function LessonLogView({
           </button>
           {editingExam && <button className="btn" type="button" onClick={() => setEditingExam(null)}>Annulla</button>}
         </form>
+      </section>
+      <section className="tc-calendar" aria-label="Calendario tutor">
+        <h2>Calendario</h2>
+        {!tutor || (!tutor.courses.length && !tutor.lessons.length && !tutor.exams.length) ? (
+          <p>Collega il tutor delle lezioni di Obsidian: {vaultPath || '<vault>'}/.antigravity/tutor</p>
+        ) : <>
+          {tutor.nextLesson && <p className="tc-next-lesson">Prossima lezione: <strong>{tutor.nextLesson.courseName}</strong>, {new Date(`${tutor.nextLesson.date}T12:00:00`).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })} {tutor.nextLesson.time}</p>}
+          {tutor.exams.length > 0 && <div><h3>Esami in arrivo</h3>{tutor.exams.map(e => <p className="tc-exam" key={`${e.course}-${e.date}-${e.name}`}>{e.courseName} · {e.name} · {e.date}</p>)}</div>}
+          {tutor.courses.map(c => {
+            const items = tutor.lessons.filter(l => l.course === c.id || l.course === c.nome)
+            return items.length ? <section className="tc-course" key={c.id || c.nome}><h3>{c.nome}</h3>{items.map(l => {
+              const key = `${l.course}-${l.date}-${l.number ?? ''}`
+              const expanded = expandedTutorLessons.includes(key)
+              return <article className="tc-lesson" key={key}><p>{l.date}{l.number !== undefined ? ` · lezione ${l.number}` : ''}</p><p className={expanded ? undefined : 'tc-truncated'}>{l.text}</p><button type="button" onClick={() => setExpandedTutorLessons(current => expanded ? current.filter(x => x !== key) : [...current, key])}>{expanded ? 'Riduci' : 'Espandi testo'}</button><p>{l.coverage.covered}/{l.coverage.total} concetti coperti</p>{l.coverage.missing.length > 0 && <p>Da coprire: {l.coverage.missing.join(', ')}</p>}</article>
+            })}</section> : null
+          })}
+          {tutor.lessons.filter(l => !tutor.courses.some(c => c.id === l.course || c.nome === l.course)).map(l => <article className="tc-lesson" key={`${l.course}-${l.date}-${l.number ?? ''}`}><h3>{l.courseName}</h3><p>{l.date}{l.number !== undefined ? ` · lezione ${l.number}` : ''}</p><p>{l.text}</p><p>{l.coverage.covered}/{l.coverage.total} concetti coperti</p>{l.coverage.missing.length > 0 && <p>Da coprire: {l.coverage.missing.join(', ')}</p>}</article>)}
+        </>}
       </section>
       {error && (
         <p role="alert" className="lesson-error">

@@ -20,9 +20,9 @@
 }
 .week-plan h1 {
   font: var(--font-display);
-  font-size: 32px;
+  font-size: 29px;
   font-weight: 500;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.045em;
   margin: 0;
 }
 .week-plan-header button {
@@ -72,7 +72,7 @@
 .plan-availability h2,
 .readiness-list h2 {
   font: var(--font-callout);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 500;
   letter-spacing: -0.02em;
   margin: 0 0 12px;
@@ -164,8 +164,9 @@
 }
 .plan-day > header h2 {
   font: var(--font-callout);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
+  letter-spacing: -0.02em;
   margin: 0;
   text-transform: capitalize;
 }
@@ -242,8 +243,9 @@
 .readiness-list article h3 {
   margin: 0;
   font: var(--font-callout);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
+  letter-spacing: -0.02em;
 }
 .readiness-list article > header {
   display: flex;

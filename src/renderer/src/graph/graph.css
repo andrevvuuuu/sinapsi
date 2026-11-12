@@ -48,7 +48,8 @@
   padding: 9px;
 }
 .graph .gpanel h2 {
-  font: var(--fw-regular) var(--fs-display) / 1 var(--serif);
+  font: var(--fw-medium) var(--fs-title) / 1.2 var(--sans);
+  letter-spacing: -0.03em;
   margin: 2px var(--s-1) var(--s-1);
 }
 .graph .meta {
@@ -318,7 +319,8 @@
 }
 /* 40 px on the right keep the title clear of the close button, as before. */
 .graph .gcard h3 {
-  font: var(--fw-regular) var(--fs-display) / 1.1 var(--serif);
+  font: var(--fw-medium) var(--fs-title) / 1.2 var(--sans);
+  letter-spacing: -0.03em;
   margin: 0 40px var(--s-2) 0;
 }
 .graph .gcard h4 {
@@ -554,7 +556,7 @@
 }
 
 .graph .glive-empty{position:absolute;inset:0;display:grid;place-items:center;padding:0 60px 180px;text-align:center;pointer-events:none;z-index:2}
-.graph .glive-empty p{max-width:44ch;color:var(--muted);font:var(--fw-regular) var(--fs-display)/1.25 var(--serif);margin:0}
+.graph .glive-empty p{max-width:44ch;color:var(--muted);font:var(--fw-medium) var(--fs-display)/1.25 var(--sans);letter-spacing:var(--track-display);margin:0}
 /* The round button is a library surface, clipped to its circle: its focus ring is drawn inside. */
 .graph button.gmenu-btn.gmenu-btn:focus-visible {
   outline-offset: -4px;

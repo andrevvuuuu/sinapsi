@@ -32,7 +32,7 @@
   font: var(--font-display);
   font-size: 28px;
   font-weight: 500;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.045em;
   margin: 0;
 }
 .pr-top .pill {
@@ -978,9 +978,9 @@ button.mt-chip:active {
 }
 .pr-sheet-title {
   font: var(--font-display);
-  font-size: 32px;
+  font-size: 29px;
   font-weight: 500;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.045em;
   margin: 0 0 var(--s-2);
 }
 .pr-ex {
@@ -991,7 +991,8 @@ button.mt-chip:active {
   padding: var(--s-6) 0 var(--s-3);
 }
 .pr-mark {
-  font: var(--fw-regular) 72px / 1 var(--serif);
+  font: var(--fw-medium) 72px / 1 var(--sans);
+  letter-spacing: -0.045em;
   margin: var(--s-2) 0 var(--s-3);
   color: var(--accent);
 }
@@ -1029,6 +1030,9 @@ button.mt-chip:active {
 }
 .pr-calib-totals {
   font: var(--font-title);
+  font-size: 21px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
   margin: var(--s-2) 0 2px;
 }
 .pr-calib-totals b {
@@ -1130,6 +1134,8 @@ button.mt-chip:active {
 .pr .mt-dh h2 {
   font: var(--font-display);
   font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.045em;
   margin: 0;
 }
 .pr .mt-x {
