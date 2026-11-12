@@ -9,8 +9,13 @@ export type { GraphData, ExtractorStatus } from './graph-types'
 export type { Memory, ReviewLine, Grade } from './memory-types'
 export type { ReviewItem, ReviewPlan, GradeResult, ExplainResult } from '../main/memory/review'
 export type { ExplainTurn } from '../main/memory/explain'
-export type { Notebook, Source, SourceText, ChatTurn, Excerpt } from './notebook-types'
-export type { PracticeState, PracticeSummary, PracticeItem, PracticeProblem } from '../main/practice/events'
+export type { Notebook, Source, SourceText, Excerpt } from './notebook-types'
+export type {
+  PracticeState,
+  PracticeSummary,
+  PracticeItem,
+  PracticeProblem
+} from '../main/practice/events'
 export type { Catalog, Material } from './practice-types'
 export type { ReviewSession } from '../main/memory/history'
 export type { Chip, ChipAction, Suggestions } from '../main/suggest/suggest'
@@ -60,21 +65,14 @@ export const CH = {
   reviewSessions: 'review:sessions',
   notebookList: 'notebook:list',
   notebookCreate: 'notebook:create',
-  notebookUpdate: 'notebook:update',
+  notebookBucketFor: 'notebook:bucket-for',
   notebookRemove: 'notebook:remove',
   notebookAddFiles: 'notebook:add-files',
   notebookChooseFiles: 'notebook:choose-files',
   notebookAddYoutube: 'notebook:add-youtube',
-  notebookAddVault: 'notebook:add-vault',
   notebookRemoveSource: 'notebook:remove-source',
   notebookRetrySource: 'notebook:retry-source',
-  notebookText: 'notebook:text',
-  notebookChat: 'notebook:chat',
-  notebookAsk: 'notebook:ask',
-  notebookOpenFile: 'notebook:open-file',
   notebookUpdated: 'notebook:updated',
-  notebookBusy: 'notebook:busy',
-  notebookRefreshSource: 'notebook:refresh-source',
   practiceCatalog: 'practice:catalog',
   practiceCreate: 'practice:create',
   practiceSubmit: 'practice:submit',
@@ -133,7 +131,12 @@ export interface SinapsiApi {
     /** manual (default) always re-extracts; study skips a note unchanged since its last extraction. */
     extract(path: string, reason?: 'manual' | 'study'): Promise<void>
     status(): Promise<import('./graph-types').ExtractorStatus>
-    onChange(cb: (e: { status: import('./graph-types').ExtractorStatus; graph?: import('./graph-types').GraphData }) => void): () => void
+    onChange(
+      cb: (e: {
+        status: import('./graph-types').ExtractorStatus
+        graph?: import('./graph-types').GraphData
+      }) => void
+    ): () => void
     positions(): Promise<GraphPositions>
     savePositions(p: GraphPositions): Promise<void>
   }
@@ -147,11 +150,29 @@ export interface SinapsiApi {
     onStage(cb: (s: 'download' | 'load' | 'transcribe') => void): () => void
   }
   review: {
-    plan(opts?: { conceptIds?: string[]; weakest?: boolean }): Promise<import('../main/memory/review').ReviewPlan>
-    grade(req: { conceptId: string; exercise: import('./exercise-schema').Exercise; answer: string; confidence: number }): Promise<import('../main/memory/review').GradeResult>
+    plan(opts?: {
+      conceptIds?: string[]
+      weakest?: boolean
+    }): Promise<import('../main/memory/review').ReviewPlan>
+    grade(req: {
+      conceptId: string
+      exercise: import('./exercise-schema').Exercise
+      answer: string
+      confidence: number
+    }): Promise<import('../main/memory/review').GradeResult>
     /** "Spiegalo tu": the whole dialogue so far, Andrea's last turn included. */
-    explain(req: { conceptId: string; exercise: import('./exercise-schema').Exercise; turns: import('../main/memory/explain').ExplainTurn[]; confidence: number }): Promise<import('../main/memory/review').ExplainResult>
-    record(r: import('./memory-types').ReviewLine): Promise<{ memory: import('./memory-types').Memory; intervals: Record<import('./memory-types').Grade, string> }>
+    explain(req: {
+      conceptId: string
+      exercise: import('./exercise-schema').Exercise
+      turns: import('../main/memory/explain').ExplainTurn[]
+      confidence: number
+    }): Promise<import('../main/memory/review').ExplainResult>
+    record(
+      r: import('./memory-types').ReviewLine
+    ): Promise<{
+      memory: import('./memory-types').Memory
+      intervals: Record<import('./memory-types').Grade, string>
+    }>
     memory(): Promise<Record<string, import('./memory-types').Memory>>
     intervals(conceptId: string): Promise<Record<import('./memory-types').Grade, string>>
     /** Past Ripasso sittings, newest first. */
@@ -160,23 +181,13 @@ export interface SinapsiApi {
   notebook: {
     list(): Promise<import('./notebook-types').Notebook[]>
     create(name: string): Promise<string>
-    update(id: string, patch: { name?: string; subject?: string | null; link?: string | null }): Promise<void>
+    bucketFor(subject: string): Promise<string>
     remove(id: string): Promise<void>
     addFiles(id: string, paths: string[]): Promise<{ added: string[]; rejected: string[] }>
     chooseFiles(id: string): Promise<{ added: string[]; rejected: string[] }>
     addYoutube(id: string, url: string): Promise<string>
-    addVault(id: string, path: string): Promise<string>
     removeSource(id: string): Promise<void>
     retrySource(id: string): Promise<void>
-    /** Re-reads a vault note added as a source. */
-    refreshSource(id: string): Promise<void>
-    /** A question of this notebook is still waiting for its answer. */
-    busy(id: string): Promise<boolean>
-    text(sourceId: string): Promise<import('./notebook-types').SourceText | null>
-    chat(id: string): Promise<import('./notebook-types').ChatTurn[]>
-    /** Resolves when the answer (or the error) has been written to the chat. */
-    ask(id: string, question: string, sourceIds: string[]): Promise<void>
-    openFile(sourceId: string): Promise<void>
     /** Path of a dropped file (Electron's webUtils). */
     pathForFile(file: File): string
     onUpdate(cb: (e: { notebookId?: string }) => void): () => void
@@ -190,7 +201,11 @@ export interface SinapsiApi {
     get(id: string): Promise<import('../main/practice/events').PracticeState>
     list(): Promise<import('../main/practice/events').PracticeSummary[]>
     /** paper: the sheet and the clock only, answers typed or photographed afterwards. */
-    examStart(material: import('./practice-types').Material, minutes: number, paper?: boolean): Promise<string>
+    examStart(
+      material: import('./practice-types').Material,
+      minutes: number,
+      paper?: boolean
+    ): Promise<string>
     examSave(id: string, answers: Record<string, string>): Promise<void>
     examDeliver(id: string, answers: Record<string, string>): Promise<void>
     /** Paper exam: pens down, the solutions are shown. */

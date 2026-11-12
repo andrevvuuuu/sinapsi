@@ -3,7 +3,6 @@ import { GlassMaterial } from './components/glass'
 import Home from './home/Home'
 import { NotaView } from './nota/NotaView'
 import { NotePicker } from './nota/NotePicker'
-import { NotebookView } from './notebook/NotebookView'
 import { PracticeSetup } from './practice/PracticeSetup'
 import { PracticeView } from './practice/PracticeView'
 import { ReviewView } from './review/ReviewView'
@@ -15,7 +14,6 @@ type View =
   | { view: 'nota'; id: string }
   | { view: 'source'; path: string }
   | { view: 'review'; query?: string; conceptIds?: string[] }
-  | { view: 'notebook'; id: string }
   | { view: 'practice-setup'; text?: string; initial?: { conceptIds: string[]; exam?: boolean } }
   | { view: 'practice'; id: string }
 
@@ -35,10 +33,18 @@ function Views(): React.JSX.Element {
   const openNota = (id: string): void => setV({ view: 'nota', id })
   if (v.view === 'session') return <SessionView id={v.id} onBack={home} onOpenNota={openNota} />
   if (v.view === 'nota') return <NotaView key={v.id} id={v.id} onBack={home} />
-  if (v.view === 'notebook') return <NotebookView key={v.id} id={v.id} onBack={home} />
   const openPractice = (id: string): void => setV({ view: 'practice', id })
-  if (v.view === 'practice-setup') return <PracticeSetup initialText={v.text} initial={v.initial} onBack={home} onStarted={openPractice} />
-  if (v.view === 'practice') return <PracticeView key={v.id} id={v.id} onBack={home} onStarted={openPractice} />
+  if (v.view === 'practice-setup')
+    return (
+      <PracticeSetup
+        initialText={v.text}
+        initial={v.initial}
+        onBack={home}
+        onStarted={openPractice}
+      />
+    )
+  if (v.view === 'practice')
+    return <PracticeView key={v.id} id={v.id} onBack={home} onStarted={openPractice} />
   const study = (topic: string): void =>
     void window.sinapsi.session
       .start(topic)
@@ -61,7 +67,6 @@ function Views(): React.JSX.Element {
       onOpenSession={(id) => setV({ view: 'session', id })}
       onOpenNota={openNota}
       onOpenSource={(path) => setV({ view: 'source', path })}
-      onOpenNotebook={(id) => setV({ view: 'notebook', id })}
       onOpenPractice={(text, initial) => setV({ view: 'practice-setup', text, initial })}
       onOpenPracticeSession={openPractice}
       onOpenReview={(query, conceptIds) =>

@@ -1,18 +1,36 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, powerMonitor, powerSaveBlocker, shell, systemPreferences } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  nativeTheme,
+  powerMonitor,
+  powerSaveBlocker,
+  shell,
+  systemPreferences
+} from 'electron'
 import { join } from 'node:path'
 import { CH } from '../shared/api'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { makeGraphHandlers, makeHandlers, makeNotebookHandlers, makeNoteHandlers, makePracticeHandlers, makeReviewHandlers, makeSessionHandlers, makeVoiceHandlers, practiceTopic } from './ipc-handlers'
+import {
+  makeGraphHandlers,
+  makeHandlers,
+  makeNotebookHandlers,
+  makeNoteHandlers,
+  makePracticeHandlers,
+  makeReviewHandlers,
+  makeSessionHandlers,
+  makeVoiceHandlers,
+  practiceTopic
+} from './ipc-handlers'
 import { createExamService } from './practice/exam'
 import { fakeTutor } from './practice/fake-tutor'
 import { buildCatalog, buildMaterialContext } from './practice/material'
 import { cleanupPhotos, transcribePhoto } from './practice/photo'
 import { createPracticeRunner } from './practice/runner'
-import { createNotebookChat } from './notebook/chat'
 import { fakeMedia } from './notebook/fake-media'
-import { fakeNotebookBridge } from './notebook/fake-notebook'
 import { notebookSourcesFor } from './notebook/for-notes'
 import { ACCEPTED_EXTENSIONS, createIngestor } from './notebook/ingest'
 import { notebookStore } from './notebook/store'
@@ -54,7 +72,10 @@ export function registerIpc(): { bridge: Bridge } {
     engines: async () => (await loadSettings()).engines
   })
   const settings = process.env.SINAPSI_VAULT
-    ? { load: async () => ({ ...(await loadSettings()), vaultPath: process.env.SINAPSI_VAULT! }), save: saveSettings }
+    ? {
+        load: async () => ({ ...(await loadSettings()), vaultPath: process.env.SINAPSI_VAULT! }),
+        save: saveSettings
+      }
     : { load: loadSettings, save: saveSettings }
   const h = makeHandlers({
     loadSettings: settings.load,
@@ -63,11 +84,15 @@ export function registerIpc(): { bridge: Bridge } {
     aiStatus: () => bridge.status(),
     openExternal: (url) => shell.openExternal(url),
     chooseFolder: async () => {
-      const r = await dialog.showOpenDialog({ title: 'Scegli la cartella del vault Obsidian', properties: ['openDirectory'] })
+      const r = await dialog.showOpenDialog({
+        title: 'Scegli la cartella del vault Obsidian',
+        properties: ['openDirectory']
+      })
       return r.canceled ? null : r.filePaths[0]
     }
   })
-  const broadcast = (channel: string, payload: unknown): void => BrowserWindow.getAllWindows().forEach((w) => w.webContents.send(channel, payload))
+  const broadcast = (channel: string, payload: unknown): void =>
+    BrowserWindow.getAllWindows().forEach((w) => w.webContents.send(channel, payload))
 
   const graphDir = join(dataDir(), 'graph')
   const graphStoreForMoves = graphStore(graphDir)
@@ -78,7 +103,9 @@ export function registerIpc(): { bridge: Bridge } {
     const idx = await h.vaultIndex()
     if ('error' in idx) return
     if (lastIndex) {
-      const moves = await detectMoves(lastIndex, idx, (await extractor.graph()).extracted, (p) => readFile(p, 'utf8')).catch(() => [])
+      const moves = await detectMoves(lastIndex, idx, (await extractor.graph()).extracted, (p) =>
+        readFile(p, 'utf8')
+      ).catch(() => [])
       for (const m of moves) await graphStoreForMoves.append('move', { ...m, at: Date.now() })
     }
     lastIndex = idx
@@ -89,7 +116,9 @@ export function registerIpc(): { bridge: Bridge } {
     if ('error' in idx) return
     lastIndex = idx
     // Notes renamed while Sinapsi was closed: their concepts follow them too.
-    const moves = await detectOfflineMoves(idx, (await extractor.graph()).extracted, (p) => readFile(p, 'utf8')).catch(() => [])
+    const moves = await detectOfflineMoves(idx, (await extractor.graph()).extracted, (p) =>
+      readFile(p, 'utf8')
+    ).catch(() => [])
     for (const m of moves) await graphStoreForMoves.append('move', { ...m, at: Date.now() })
   })
   void rewatch()
@@ -111,9 +140,14 @@ export function registerIpc(): { bridge: Bridge } {
   bridge.onStatus((s) => broadcast(CH.aiStatusChanged, s))
 
   const runner = createSessionRunner({
-    bridge: process.env.SINAPSI_FAKE_TEACHER === '1'
-      ? fakeTeacher(process.env.SINAPSI_FAKE_TEACHER_SCRIPT === 'long-measure' ? LONG_MEASURE_SCRIPT : undefined)
-      : bridge,
+    bridge:
+      process.env.SINAPSI_FAKE_TEACHER === '1'
+        ? fakeTeacher(
+            process.env.SINAPSI_FAKE_TEACHER_SCRIPT === 'long-measure'
+              ? LONG_MEASURE_SCRIPT
+              : undefined
+          )
+        : bridge,
     dir: join(dataDir(), 'sessions'),
     vault: async () => {
       const idx = await h.vaultIndex()
@@ -121,14 +155,20 @@ export function registerIpc(): { bridge: Bridge } {
     },
     readNote: (path) => readFile(path, 'utf8'),
     games: async () => (await settings.load()).gamesInSessions,
-    memory: async (notePath) => memoryBrief(await extractor.graph(), memoryOf(await memoryStore(join(dataDir(), 'memory')).read(), Date.now()), notePath),
+    memory: async (notePath) =>
+      memoryBrief(
+        await extractor.graph(),
+        memoryOf(await memoryStore(join(dataDir(), 'memory')).read(), Date.now()),
+        notePath
+      ),
     onUpdate: (s) => {
       broadcast(CH.sessionUpdated, s)
     }
   })
   const sh = makeSessionHandlers(runner)
   // Turns can take a while: the window learns progress through session:updated, so these return at once.
-  const background = (p: Promise<unknown>): void => void p.catch((e) => console.warn('[session]', e))
+  const background = (p: Promise<unknown>): void =>
+    void p.catch((e) => console.warn('[session]', e))
   ipcMain.handle(CH.sessionStart, async (_e, topic) => {
     const id = await sh.start(topic)
     background(sh.retry(id))
@@ -161,29 +201,21 @@ export function registerIpc(): { bridge: Bridge } {
     onChange: nbChanged
   })
   void ingest.fixStale().catch((e) => console.warn('[notebook] fixStale', e))
-  const nbChat = createNotebookChat({
-    bridge: process.env.SINAPSI_FAKE_NOTEBOOK === '1' ? fakeNotebookBridge() : bridge,
-    store: nbStore,
-    workDir: join(dataDir(), 'ai-work'),
-    onTurn: (notebookId) => broadcast(CH.notebookUpdated, { notebookId })
-  })
   const nbh = makeNotebookHandlers({
     store: nbStore,
     ingest,
-    chat: nbChat,
-    vault: vaultIndexOrNull,
     chooseFiles: async () => {
-      const r = await dialog.showOpenDialog({ title: 'Importa fonti', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Fonti', extensions: ACCEPTED_EXTENSIONS }] })
+      const r = await dialog.showOpenDialog({
+        title: 'Importa fonti',
+        properties: ['openFile', 'multiSelections'],
+        filters: [{ name: 'Fonti', extensions: ACCEPTED_EXTENSIONS }]
+      })
       return r.canceled ? [] : r.filePaths
-    },
-    openPath: (p) => shell.openPath(p)
+    }
   })
   ipcMain.handle(CH.notebookList, () => nbh.list())
   ipcMain.handle(CH.notebookCreate, (_e, name) => nbh.create(name))
-  ipcMain.handle(CH.notebookUpdate, async (_e, id, patch) => {
-    await nbh.update(id, patch)
-    nbChanged()
-  })
+  ipcMain.handle(CH.notebookBucketFor, (_e, subject) => nbh.bucketFor(subject))
   ipcMain.handle(CH.notebookRemove, async (_e, id) => {
     await nbh.remove(id)
     nbChanged()
@@ -191,17 +223,10 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.notebookAddFiles, (_e, id, paths) => nbh.addFiles(id, paths))
   ipcMain.handle(CH.notebookChooseFiles, (_e, id) => nbh.chooseFiles(id))
   ipcMain.handle(CH.notebookAddYoutube, (_e, id, url) => nbh.addYoutube(id, url))
-  ipcMain.handle(CH.notebookAddVault, (_e, id, path) => nbh.addVault(id, path))
   ipcMain.handle(CH.notebookRemoveSource, (_e, id) => nbh.removeSource(id))
   ipcMain.handle(CH.notebookRetrySource, (_e, id) => nbh.retrySource(id))
-  ipcMain.handle(CH.notebookRefreshSource, (_e, id) => nbh.refreshSource(id))
-  ipcMain.handle(CH.notebookBusy, (_e, id) => nbh.busy(id))
   // Quitting stops whisper and yt-dlp instead of leaving them running.
   app.on('before-quit', () => ingest.stopAll())
-  ipcMain.handle(CH.notebookText, (_e, id) => nbh.text(id))
-  ipcMain.handle(CH.notebookChat, (_e, id) => nbh.chat(id))
-  ipcMain.handle(CH.notebookAsk, (_e, id, q, ids) => nbh.ask(id, q, ids))
-  ipcMain.handle(CH.notebookOpenFile, (_e, id) => nbh.openFile(id))
 
   const notes = createNoteGenerator({
     sources: notebookSourcesFor({ store: nbStore, vault: vaultIndexOrNull }),
@@ -219,7 +244,9 @@ export function registerIpc(): { bridge: Bridge } {
       if (m.status === 'ready') void extractor.request(m.sourcePath, 'study').catch(() => undefined)
     }
   })
-  const nh = makeNoteHandlers(notes, (a) => appendJsonl(join(dataDir(), 'attempts.jsonl'), { ...a, at: Date.now() }))
+  const nh = makeNoteHandlers(notes, (a) =>
+    appendJsonl(join(dataDir(), 'attempts.jsonl'), { ...a, at: Date.now() })
+  )
   ipcMain.handle(CH.notesCreate, (_e, req) => nh.create(req))
   ipcMain.handle(CH.notesList, () => nh.list())
   ipcMain.handle(CH.notesGet, (_e, id) => nh.get(id))
@@ -245,18 +272,26 @@ export function registerIpc(): { bridge: Bridge } {
     // The graph only changes when a run ends: while one is running, send the status alone.
     onChange: (status) => {
       // A note whose extraction just ended: prepare its Ripasso questions in the background.
-      if (lastRunning && status.running !== lastRunning && process.env.SINAPSI_FAKE_EXTRACT !== '1') void review.prepare(lastRunning).catch(() => undefined)
+      if (lastRunning && status.running !== lastRunning && process.env.SINAPSI_FAKE_EXTRACT !== '1')
+        void review.prepare(lastRunning).catch(() => undefined)
       lastRunning = status.running
       return status.running
         ? broadcast(CH.graphChanged, { status })
-        : void extractor.graph().then((graph) => broadcast(CH.graphChanged, { status, graph }), () => broadcast(CH.graphChanged, { status }))
+        : void extractor.graph().then(
+            (graph) => broadcast(CH.graphChanged, { status, graph }),
+            () => broadcast(CH.graphChanged, { status })
+          )
     },
     eligible: async () => readySources(await notes.list()),
     priorities: async () => {
       const idx = await vaultOrNull()
       if (!idx) return []
       const paths = new Set((await notes.list()).map((m) => m.sourcePath))
-      return [...new Set(idx.notes.filter((n) => paths.has(n.path) && n.subject).map((n) => n.subject as string))]
+      return [
+        ...new Set(
+          idx.notes.filter((n) => paths.has(n.path) && n.subject).map((n) => n.subject as string)
+        )
+      ]
     }
   })
   linkedSync = createLinkedSync({
@@ -298,13 +333,19 @@ export function registerIpc(): { bridge: Bridge } {
     spawn: spawnWhisperServer(whisperServer),
     // With fake media (e2e) only the CLI path runs, against the stand-in tools.
     resolvePython: fakeVoice ? async () => null : () => findWhisperPython(),
-    fallback: (bytes) => transcribeVoice({ run: fakeVoice ? fakeMedia() : nodeSpawn, dir: join(dataDir(), 'ai-work'), bytes }),
+    fallback: (bytes) =>
+      transcribeVoice({
+        run: fakeVoice ? fakeMedia() : nodeSpawn,
+        dir: join(dataDir(), 'ai-work'),
+        bytes
+      }),
     dir: join(dataDir(), 'ai-work')
   })
   app.on('will-quit', () => dictation.dispose())
   const vh = makeVoiceHandlers({
     transcribe: (bytes, onStage) => dictation.transcribe(bytes, onStage),
-    microphone: async () => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true)
+    microphone: async () =>
+      process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true
   })
   ipcMain.handle(CH.voiceTranscribe, (e, bytes) =>
     vh.transcribe(bytes, (s) => {
@@ -319,11 +360,17 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.reviewRecord, (_e, r) => rh.record(r))
   ipcMain.handle(CH.reviewMemory, () => rh.memory())
   ipcMain.handle(CH.reviewIntervals, (_e, id) => rh.intervals(id))
-  ipcMain.handle(CH.reviewSessions, async () => reviewSessions(await memoryStore(memoryDir).read(), new Map((await extractor.graph()).concepts.map((c) => [c.id, c.name]))))
+  ipcMain.handle(CH.reviewSessions, async () =>
+    reviewSessions(
+      await memoryStore(memoryDir).read(),
+      new Map((await extractor.graph()).concepts.map((c) => [c.id, c.name]))
+    )
+  )
 
   const practiceDir = join(dataDir(), 'practice')
   const practiceBridge = process.env.SINAPSI_FAKE_PRACTICE === '1' ? fakeTutor() : bridge
-  const conceptNames = async (): Promise<Map<string, string>> => new Map((await extractor.graph()).concepts.map((c) => [c.id, c.name]))
+  const conceptNames = async (): Promise<Map<string, string>> =>
+    new Map((await extractor.graph()).concepts.map((c) => [c.id, c.name]))
   const practiceDeps = {
     bridge: practiceBridge,
     dir: practiceDir,
@@ -338,7 +385,8 @@ export function registerIpc(): { bridge: Bridge } {
           return src && text ? { title: src.title, text } : null
         }
       }),
-    topic: async (m: import('../shared/practice-types').Material) => practiceTopic(m, await conceptNames()),
+    topic: async (m: import('../shared/practice-types').Material) =>
+      practiceTopic(m, await conceptNames()),
     memory: memoryStore(memoryDir),
     onUpdate: (s: unknown) => broadcast(CH.practiceUpdated, s)
   }
@@ -349,9 +397,18 @@ export function registerIpc(): { bridge: Bridge } {
     runner: practice,
     exam,
     catalog: async () =>
-      buildCatalog({ graph: await extractor.graph(), memory: await review.memory(), practiced: await practice.practiced(), vault: await vaultOrNull(), notebooks: await nbStore.notebooks(), now: Date.now() }),
-    photo: (id, bytes) => transcribePhoto({ bridge: practiceBridge, dir: join(practiceDir, id), bytes }),
-    camera: async () => (process.platform === 'darwin' ? systemPreferences.askForMediaAccess('camera') : true)
+      buildCatalog({
+        graph: await extractor.graph(),
+        memory: await review.memory(),
+        practiced: await practice.practiced(),
+        vault: await vaultOrNull(),
+        notebooks: await nbStore.notebooks(),
+        now: Date.now()
+      }),
+    photo: (id, bytes) =>
+      transcribePhoto({ bridge: practiceBridge, dir: join(practiceDir, id), bytes }),
+    camera: async () =>
+      process.platform === 'darwin' ? systemPreferences.askForMediaAccess('camera') : true
   })
   const bg = (p: Promise<unknown>): void => void p.catch((e) => console.warn('[practice]', e))
   ipcMain.handle(CH.practiceCatalog, () => ph.catalog())
@@ -406,8 +463,13 @@ export function registerIpc(): { bridge: Bridge } {
   // Background extraction: a few notes a day, only while the Mac is idle.
   const tick = async (): Promise<void> => {
     const s = await settings.load()
-    await extractor.backgroundTick({ idleSeconds: powerMonitor.getSystemIdleTime(), enabled: s.backgroundExtraction, dailyLimit: s.dailyExtractionLimit })
+    await extractor.backgroundTick({
+      idleSeconds: powerMonitor.getSystemIdleTime(),
+      enabled: s.backgroundExtraction,
+      dailyLimit: s.dailyExtractionLimit
+    })
   }
-  if (process.env.SINAPSI_FAKE_EXTRACT !== '1') setInterval(() => void tick().catch((e) => console.warn('[graph] background', e)), 10 * 60_000)
+  if (process.env.SINAPSI_FAKE_EXTRACT !== '1')
+    setInterval(() => void tick().catch((e) => console.warn('[graph] background', e)), 10 * 60_000)
   return { bridge }
 }

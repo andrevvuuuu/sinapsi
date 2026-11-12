@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { EXERCISE_TYPES } from './memory-types'
 
-export const TASKS = ['extract', 'note', 'variants', 'notebook', 'teach', 'grade'] as const
+export const TASKS = ['extract', 'note', 'variants', 'teach', 'grade'] as const
 export type Task = (typeof TASKS)[number]
 export type Engine = 'agy' | 'claude'
 
@@ -16,7 +16,6 @@ export const DEFAULT_ENGINES: Record<Task, EngineChoice> = {
   extract: GEMINI_MEDIUM,
   note: GEMINI_MEDIUM,
   variants: GEMINI,
-  notebook: GEMINI,
   teach: CLAUDE,
   grade: CLAUDE
 }
@@ -28,13 +27,21 @@ export function settingsSchema(home: string) {
     vaultPath: z.string().min(1).catch(`${home}/Obsidian Vault`),
     theme: z.enum(['lavagna', 'trattato', 'system']).catch('system'),
     engines: z
-      .object(Object.fromEntries(TASKS.map((t) => [t, EngineChoice.catch(DEFAULT_ENGINES[t])])) as Record<Task, z.ZodCatch<typeof EngineChoice>>)
+      .object(
+        Object.fromEntries(TASKS.map((t) => [t, EngineChoice.catch(DEFAULT_ENGINES[t])])) as Record<
+          Task,
+          z.ZodCatch<typeof EngineChoice>
+        >
+      )
       .catch(DEFAULT_ENGINES),
     excludedFolders: z.array(z.string()).catch(DEFAULT_EXCLUDED),
     backgroundExtraction: z.boolean().catch(true),
     dailyExtractionLimit: z.number().int().min(0).max(50).catch(6),
     reviewSessionSize: z.number().int().min(1).max(20).catch(12),
-    exerciseTypes: z.array(z.enum(EXERCISE_TYPES)).min(1).catch([...EXERCISE_TYPES]),
+    exerciseTypes: z
+      .array(z.enum(EXERCISE_TYPES))
+      .min(1)
+      .catch([...EXERCISE_TYPES]),
     gamesInSessions: z.boolean().catch(true)
   })
 }

@@ -9,6 +9,11 @@ import { focusWhenShown } from '../components/glass-theme'
 
 type Filter = 'weak' | 'due' | 'never' | null
 const norm = (s: string): string => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+const clean = (e: unknown): string =>
+  (e instanceof Error ? e.message : String(e)).replace(
+    /^Error invoking remote method '[^']+': (Error: )?/,
+    ''
+  )
 
 function MemBar({ c }: { c: CatalogConcept }): React.JSX.Element {
   const r = c.R ?? 0
@@ -79,11 +84,22 @@ export function MaterialDialog({
   onConfirm: (concepts: Set<string>, sources: Set<string>) => void
   onClose: () => void
 }): React.JSX.Element {
+  const api = window.sinapsi
+  const [fresh, setFresh] = useState<Catalog | null>(null)
+  const liveCatalog = fresh ?? catalog
   const [c, setC] = useState(new Set(concepts))
   const [s, setS] = useState(new Set(sources))
   const [tab, setTab] = useState<'c' | 'f'>('c')
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>(null)
+  const [subject, setSubject] = useState('')
+  const activeSubject = subject || liveCatalog.subjects[0]?.name || ''
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [addingFiles, setAddingFiles] = useState(false)
+  const [ytOpen, setYtOpen] = useState(false)
+  const [ytUrl, setYtUrl] = useState('')
+  const [addingYt, setAddingYt] = useState(false)
+
   const search = useRef<HTMLInputElement>(null)
   const searchMic = useDictation({
     target: search,
@@ -91,6 +107,67 @@ export function MaterialDialog({
     onChange: setQ,
     maxSeconds: DICTATION_SHORT
   })
+
+  useEffect(() => {
+    if (!api.notebook?.onUpdate || !api.practice?.catalog) return
+    const reloadCatalog = (): void => {
+      void api.practice.catalog().then(setFresh, () => undefined)
+    }
+    return api.notebook.onUpdate(reloadCatalog)
+  }, [api])
+
+  const handleAddFiles = async (): Promise<void> => {
+    const sub = activeSubject
+    if (!sub) {
+      setActionError('Seleziona una materia prima di aggiungere file.')
+      return
+    }
+    setActionError(null)
+    setAddingFiles(true)
+    try {
+      const bucketId = await api.notebook.bucketFor(sub)
+      const res = await api.notebook.chooseFiles(bucketId)
+      if (res.rejected.length > 0) {
+        setActionError(`Non posso importare: ${res.rejected.join(', ')}`)
+      }
+      if (api.practice?.catalog) {
+        const updated = await api.practice.catalog()
+        setFresh(updated)
+      }
+    } catch (err) {
+      setActionError(clean(err))
+    } finally {
+      setAddingFiles(false)
+    }
+  }
+
+  const handleAddYoutube = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault()
+    const url = ytUrl.trim()
+    if (!url || addingYt) return
+    const sub = activeSubject
+    if (!sub) {
+      setActionError('Seleziona una materia prima di aggiungere un video.')
+      return
+    }
+    setActionError(null)
+    setAddingYt(true)
+    try {
+      const bucketId = await api.notebook.bucketFor(sub)
+      await api.notebook.addYoutube(bucketId, url)
+      setYtUrl('')
+      setYtOpen(false)
+      if (api.practice?.catalog) {
+        const updated = await api.practice.catalog()
+        setFresh(updated)
+      }
+    } catch (err) {
+      setActionError(clean(err))
+    } finally {
+      setAddingYt(false)
+    }
+  }
+
   // The dialog's glass shell shows a frame after it mounts: the field takes the focus once it can.
   useEffect(() => focusWhenShown(search.current), [])
   useEffect(() => {
@@ -109,7 +186,7 @@ export function MaterialDialog({
       (filter === 'never' && !x.practiced))
   const tree = useMemo(
     () =>
-      catalog.subjects
+      liveCatalog.subjects
         .map((sub) => ({
           ...sub,
           notes: sub.notes
@@ -118,9 +195,9 @@ export function MaterialDialog({
         }))
         .filter((sub) => sub.notes.length),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [catalog, q, filter]
+    [liveCatalog, q, filter]
   )
-  const all = catalog.subjects.flatMap((x) => x.notes.flatMap((n) => n.concepts))
+  const all = liveCatalog.subjects.flatMap((x) => x.notes.flatMap((n) => n.concepts))
   const toggle = (set: Set<string>, id: string, on: boolean): Set<string> => {
     const next = new Set(set)
     if (on) next.add(id)
@@ -137,7 +214,13 @@ export function MaterialDialog({
 
   return (
     <GlassOverlay className="pr-overlay" onClose={onClose}>
-      <GlassSurface radius={24} className="mt-dlg glass-shell" role="dialog" aria-modal="true" aria-labelledby="mt-dt">
+      <GlassSurface
+        radius={24}
+        className="mt-dlg glass-shell"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mt-dt"
+      >
         <div className="mt-core dlg-core">
           <div className="mt-dh">
             <h2 id="mt-dt">Scegli il materiale</h2>
@@ -156,7 +239,7 @@ export function MaterialDialog({
                 aria-selected={tab === 'f'}
                 onClick={() => setTab('f')}
               >
-                Fonti
+                Materiale del corso
               </button>
             </div>
             <span className="sp" />
@@ -277,7 +360,7 @@ export function MaterialDialog({
                           </button>
                         </li>
                       ))}
-                    {catalog.sources
+                    {liveCatalog.sources
                       .filter((x) => s.has(x.id))
                       .map((x) => (
                         <li key={x.id}>
@@ -292,29 +375,104 @@ export function MaterialDialog({
           ) : (
             <div className="mt-files">
               <p className="lab">
-                Dai tuoi notebook · il tutor usa gli esercizi così come sono oppure ne crea di simili
+                Materiale del corso · il tutor usa gli esercizi così come sono oppure ne crea di
+                simili
               </p>
-              {catalog.sources.length === 0 && (
-                <p className="mt-hint">Nessuna fonte pronta: aggiungile in un notebook.</p>
+              <div className="mt-actions">
+                <select
+                  className="mt-subject-select"
+                  value={activeSubject}
+                  onChange={(e) => {
+                    setSubject(e.target.value)
+                    setActionError(null)
+                  }}
+                  aria-label="Materia"
+                  disabled={liveCatalog.subjects.length === 0}
+                >
+                  {liveCatalog.subjects.map((sub) => (
+                    <option key={sub.name} value={sub.name}>
+                      {sub.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="mt-btn-act"
+                  onClick={() => void handleAddFiles()}
+                  disabled={addingFiles || liveCatalog.subjects.length === 0}
+                >
+                  {addingFiles ? 'Aggiunta…' : 'Aggiungi file…'}
+                </button>
+                {!ytOpen ? (
+                  <button
+                    type="button"
+                    className="mt-btn-act"
+                    onClick={() => {
+                      setYtOpen(true)
+                      setActionError(null)
+                    }}
+                    disabled={liveCatalog.subjects.length === 0}
+                  >
+                    Link YouTube…
+                  </button>
+                ) : (
+                  <form className="mt-yt-form" onSubmit={(e) => void handleAddYoutube(e)}>
+                    <input
+                      type="url"
+                      aria-label="URL video YouTube"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      value={ytUrl}
+                      onChange={(e) => setYtUrl(e.target.value)}
+                      autoFocus
+                    />
+                    <button type="submit" disabled={!ytUrl.trim() || addingYt}>
+                      {addingYt ? 'Aggiunta…' : 'Aggiungi'}
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => {
+                        setYtOpen(false)
+                        setYtUrl('')
+                        setActionError(null)
+                      }}
+                    >
+                      Annulla
+                    </button>
+                  </form>
+                )}
+              </div>
+              {actionError && (
+                <p className="mt-action-alert" role="alert">
+                  {actionError}
+                </p>
               )}
-              {catalog.sources.map((x) => (
-                <label key={x.id} className="mt-file">
-                  <input
-                    type="checkbox"
-                    className="mt-cb"
-                    aria-label={`${x.title} · ${x.notebook}`}
-                    checked={s.has(x.id)}
-                    onChange={(e) => setS((prev) => toggle(prev, x.id, e.target.checked))}
-                  />
-                  <span className="mt-tag">{x.kind}</span>
-                  <span>
-                    <b>{x.title}</b>
-                    <br />
-                    <span className="mt-sub">{x.notebook}</span>
-                  </span>
-                  <span className="pp">{x.info}</span>
-                </label>
-              ))}
+              {liveCatalog.sources.length === 0 && (
+                <p className="mt-hint">
+                  Nessun materiale: aggiungi PDF, slide o registrazioni del corso.
+                </p>
+              )}
+              {liveCatalog.sources.map((x) => {
+                const materia = x.notebook
+                return (
+                  <label key={x.id} className="mt-file">
+                    <input
+                      type="checkbox"
+                      className="mt-cb"
+                      aria-label={`${x.title} · ${x.notebook}`}
+                      checked={s.has(x.id)}
+                      onChange={(e) => setS((prev) => toggle(prev, x.id, e.target.checked))}
+                    />
+                    <span className="mt-tag">{x.kind}</span>
+                    <span>
+                      <b>{x.title}</b>
+                      <br />
+                      <span className="mt-sub">{materia}</span>
+                    </span>
+                    <span className="pp">{x.info}</span>
+                  </label>
+                )
+              })}
             </div>
           )}
           <div className="mt-df">

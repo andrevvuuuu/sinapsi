@@ -17,7 +17,7 @@
 .logo .logo-mark{flex:none;color:var(--ink)}
 .psec{padding:var(--s-2) var(--s-3) var(--s-3);min-height:0}
 /* Section titles of the side panels and the settings: one caption style (11 px, semibold, uppercase), the same distance to what they head. */
-.psec h2,.sec-head h2,.obs-sec h2,.sd-body h3{font:var(--fw-semibold) var(--fs-caption)/1.3 var(--sans);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted)}
+.psec h2,.obs-sec h2,.sd-body h3{font:var(--fw-semibold) var(--fs-caption)/1.3 var(--sans);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted)}
 .psec h2{margin:var(--s-3) var(--s-2)}
 .seg{display:flex;padding:3px;border-radius:var(--r-pill);background:var(--faint);gap:2px}
 .seg button{flex:1;min-width:var(--ctl);min-height:38px;border:0;background:transparent;color:var(--muted);border-radius:var(--r-pill);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;padding:0 var(--s-3);white-space:nowrap;transition:background-color .2s var(--ease-out),color .2s var(--ease-out)}
@@ -95,15 +95,6 @@
 .rt{padding:var(--s-1) var(--s-5) var(--s-4)}
 .rt h1{font:var(--font-display);margin:0 0 var(--s-2)}
 .rt p{margin:0;color:var(--muted);font-size:var(--fs-footnote)}
-/* «Importa fonti»: a secondary pill; without .on it is the disabled state (readable label, no fill). */
-.btn-imp{display:flex;align-items:center;gap:var(--s-2);min-height:var(--ctl);padding:0 var(--s-4) 0 var(--s-3);border-radius:var(--r-pill);border:1px solid var(--btn-disabled-border);background:var(--btn-disabled-bg);color:var(--btn-disabled-ink);cursor:not-allowed;font:var(--fw-medium) var(--fs-footnote) var(--sans);transition:var(--btn-transition)}
-.btn-imp svg{width:16px;height:16px}
-.btn-imp.on{cursor:pointer;color:var(--ink);background:var(--surface);border-color:var(--btn-secondary-border)}
-.btn-imp.on:hover{background:color-mix(in srgb,var(--surface),var(--ink) 6%)}
-.btn-imp.on:active{background:color-mix(in srgb,var(--surface),var(--ink) 12%)}
-.btn-imp:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-pill)}
-.nb-new{display:flex;gap:var(--s-2);padding:var(--s-3) var(--s-2);flex:none}
-.nb-new input{flex:1;min-width:0;min-height:var(--ctl);border-radius:var(--r-md);border:1px solid var(--ctl-edge);background:var(--surface);color:var(--ink);padding:0 var(--s-3);font:400 var(--fs-body) var(--sans)}
 .missing{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:40px;z-index:2;background:var(--bg)}
 .missing h2{font:400 36px/1.1 var(--serif);margin:0 0 var(--s-3)}
 .missing p{color:var(--muted);margin:0 0 var(--s-5)}
@@ -140,25 +131,8 @@
 .nv-leaf .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
 .nv-leaf .dot.nv-ready{background:var(--good)}.nv-leaf .dot.nv-error{background:var(--bad)}
 /* right panel */
-.imp-wrap{position:relative}
-/* The import menu is a GlassMenu (Base UI places it under the button, the library draws and animates the glass). */
-.imp-menu{min-width:220px;padding:var(--s-2);display:flex;flex-direction:column;gap:2px}
-.imp-menu [role="group"]{display:flex;flex-direction:column;gap:2px}
-/* Concentric: 10 px rows inside an 18 px menu with 8 px padding. */
-.imp-menu .lab{font:var(--font-caption);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted);padding:var(--s-1) var(--s-2)}
-.imp-menu [role="menuitem"]{min-height:var(--ctl);border:0;border-radius:10px;background:transparent;text-align:left;padding:0 var(--s-3);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;transition:var(--btn-transition)}
-.imp-menu [role="menuitem"][data-highlighted],.imp-menu [role="menuitem"]:focus-visible{background:color-mix(in srgb,var(--glass-ink) 8%,transparent)}
-.imp-menu [role="menuitem"]:active{background:color-mix(in srgb,var(--glass-ink) 14%,transparent)}
-.imp-menu [role="menuitem"]:focus-visible{outline-offset:-2px;border-radius:10px}
-.imp-menu .new{color:var(--accent)}
 @keyframes imp-in{from{opacity:0;transform:scale(.95)}}
-.nb-sec{padding:var(--s-1) var(--s-3) var(--s-3);display:flex;flex-direction:column;min-height:0;max-height:38vh}
-.sec-head{display:flex;align-items:center;justify-content:space-between;margin:0 var(--s-2)}
-.sec-head h2{margin:var(--s-3) 0}
 .obs-sec h2{margin:var(--s-3) var(--s-2)}
-.nb-sec .sessions{overflow:auto;min-height:0;margin:0}
-.nb-sec .empty{padding:var(--s-1) var(--s-2);overflow:auto;min-height:0}
-.nb-sec .sec-head{flex:none}
 .obs-sec{flex:1;min-height:0}
 /* Small secondary pill of the panels («+ Nuovo», «Cambia cartella del vault»): 44 px to hit, a quieter label. */
 .mini{min-height:var(--ctl);min-width:var(--ctl);padding:0 var(--s-4);border-radius:var(--r-pill);border:1px solid var(--btn-secondary-border);background:var(--btn-secondary-bg);color:var(--btn-secondary-ink);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;white-space:nowrap;transition:var(--btn-transition)}
@@ -166,7 +140,6 @@
 .mini:active{background:var(--btn-secondary-bg-pressed)}
 .mini:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-pill)}
 .mini:disabled{background:var(--btn-disabled-bg);color:var(--btn-disabled-ink);border-color:var(--btn-disabled-border);cursor:not-allowed}
-.panel-alert{margin:0 var(--s-4) var(--s-2);padding:var(--s-2) var(--s-3);border-radius:var(--r-md);background:color-mix(in srgb,var(--bad) 14%,transparent);font-size:var(--fs-footnote)}
 .app aside.right .pf .row{justify-content:space-between}
 /* settings dialog */
 .overlay{position:fixed;inset:0;z-index:30;-webkit-app-region:no-drag;display:grid;place-items:center;padding:var(--s-6)}
@@ -226,6 +199,6 @@
 /* The dialog's close glyph: a 24 px light ×, which draws about as large as the panel's 18 px icons; the body text size would leave it tiny. */
 .sd-head .icon-btn{font:300 24px/1 var(--sans)}
 
-/* The right panel is a scene for the import menu (NotebookPanel): its header, then its sections as the live content. */
+/* The right panel (NotesPanel): its header, then Obsidian notes as the live content. */
 .aside-scene,.lg-content.aside-body{display:flex;flex-direction:column;flex:1;min-height:0}
 .lg-content.aside-body{background:var(--panel)}

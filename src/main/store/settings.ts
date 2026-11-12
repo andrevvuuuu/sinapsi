@@ -1,7 +1,14 @@
 import { readFile, rename, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { DEFAULT_ENGINES, settingsSchema, TASKS, type EngineChoice, type Settings, type Task } from '../../shared/settings-schema'
+import {
+  DEFAULT_ENGINES,
+  settingsSchema,
+  TASKS,
+  type EngineChoice,
+  type Settings,
+  type Task
+} from '../../shared/settings-schema'
 import type { ExerciseType } from '../../shared/memory-types'
 import { dataDir } from './paths'
 
@@ -14,7 +21,6 @@ const LEGACY: Record<Task, object[]> = {
   extract: [OLD_GEMINI],
   note: [OLD_GEMINI],
   variants: [OLD_GEMINI],
-  notebook: [OLD_GEMINI],
   teach: [{ engine: 'claude' }],
   grade: [{ engine: 'claude' }]
 }
@@ -23,7 +29,10 @@ const SETTINGS_VERSION = 3
 const NEW_TYPES: [number, ExerciseType][] = [[3, 'explain']]
 const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
 
-function dropEngines(engines: unknown, isDefault: (t: Task, c: unknown) => boolean): Partial<Record<Task, EngineChoice>> {
+function dropEngines(
+  engines: unknown,
+  isDefault: (t: Task, c: unknown) => boolean
+): Partial<Record<Task, EngineChoice>> {
   if (!engines || typeof engines !== 'object') return {}
   const out: Partial<Record<Task, EngineChoice>> = {}
   for (const t of TASKS) {
@@ -46,8 +55,17 @@ export async function loadSettings(): Promise<Settings> {
   const engines = dropEngines(obj.engines, (t, c) => legacy && LEGACY[t].some((l) => same(l, c)))
   const version = typeof obj.settingsVersion === 'number' ? obj.settingsVersion : 0
   const saved = obj.exerciseTypes
-  const types = Array.isArray(saved) ? [...saved, ...NEW_TYPES.filter(([v, t]) => version < v && !saved.includes(t)).map(([, t]) => t)] : saved
-  return settingsSchema(homedir()).parse({ ...obj, exerciseTypes: types, engines: { ...DEFAULT_ENGINES, ...engines } })
+  const types = Array.isArray(saved)
+    ? [
+        ...saved,
+        ...NEW_TYPES.filter(([v, t]) => version < v && !saved.includes(t)).map(([, t]) => t)
+      ]
+    : saved
+  return settingsSchema(homedir()).parse({
+    ...obj,
+    exerciseTypes: types,
+    engines: { ...DEFAULT_ENGINES, ...engines }
+  })
 }
 
 /** Merges the patch, validates, and writes atomically (temp file + rename). */
@@ -55,7 +73,11 @@ export async function saveSettings(patch: Partial<Settings>): Promise<Settings> 
   const next = settingsSchema(homedir()).parse({ ...(await loadSettings()), ...patch })
   const tmp = file() + '.tmp'
   // Only real choices go to disk, so a future change of default reaches this install too.
-  const stored = { settingsVersion: SETTINGS_VERSION, ...next, engines: dropEngines(next.engines, (t, c) => same(DEFAULT_ENGINES[t], c)) }
+  const stored = {
+    settingsVersion: SETTINGS_VERSION,
+    ...next,
+    engines: dropEngines(next.engines, (t, c) => same(DEFAULT_ENGINES[t], c))
+  }
   await writeFile(tmp, JSON.stringify(stored, null, 2), 'utf8')
   await rename(tmp, file())
   return next

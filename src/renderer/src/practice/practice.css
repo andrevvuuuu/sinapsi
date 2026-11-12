@@ -280,6 +280,21 @@ button.mt-chip:active{background:var(--btn-secondary-bg-pressed)}
 .pr .mt-sel li button:active{background-color:var(--btn-secondary-bg-pressed);color:var(--ink)}
 .pr .mt-sel li button:focus-visible{outline:var(--btn-focus-ring);outline-offset:-6px;border-radius:var(--r-sm)}
 .pr .mt-files{padding:var(--s-4) 13px;display:flex;flex-direction:column;gap:var(--s-2);overflow:auto;grid-row:span 2}
+.pr .mt-actions{display:flex;align-items:center;gap:var(--s-2);flex-wrap:wrap;padding:var(--s-1) 0 var(--s-2)}
+.pr .mt-subject-select{min-height:var(--ctl);border-radius:var(--r-pill);border:1px solid var(--ctl-edge);background:var(--surface);color:var(--ink);padding:0 var(--s-3);font:var(--fw-medium) var(--fs-footnote) var(--sans);cursor:pointer;transition:border-color .15s var(--ease-out)}
+.pr .mt-subject-select:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-color:var(--accent)}
+.pr .mt-btn-act{min-height:var(--ctl);padding:0 var(--s-4);border-radius:var(--r-pill);border:1px solid var(--btn-secondary-border);background:var(--btn-secondary-bg);color:var(--btn-secondary-ink);cursor:pointer;font:var(--fw-medium) var(--fs-footnote) var(--sans);transition:var(--btn-transition);white-space:nowrap}
+.pr .mt-btn-act:hover:not(:disabled){background:var(--btn-secondary-bg-hover);color:var(--ink)}
+.pr .mt-btn-act:active:not(:disabled){background:var(--btn-secondary-bg-pressed)}
+.pr .mt-btn-act:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset)}
+.pr .mt-btn-act:disabled{background:var(--btn-disabled-bg);color:var(--btn-disabled-ink);border-color:var(--btn-disabled-border);cursor:not-allowed}
+.pr .mt-yt-form{display:inline-flex;align-items:center;gap:var(--s-2);flex-wrap:wrap}
+.pr .mt-yt-form input{min-height:var(--ctl);min-width:200px;border-radius:var(--r-pill);border:1px solid var(--ctl-edge);background:var(--surface);color:var(--ink);padding:0 var(--s-3);font:400 var(--fs-footnote) var(--sans)}
+.pr .mt-yt-form input:focus{border-color:var(--accent);outline:none}
+.pr .mt-yt-form button{min-height:var(--ctl);padding:0 var(--s-3);border-radius:var(--r-pill);border:1px solid var(--btn-secondary-border);background:var(--btn-secondary-bg);color:var(--btn-secondary-ink);cursor:pointer;font:var(--fw-medium) var(--fs-footnote) var(--sans);transition:var(--btn-transition)}
+.pr .mt-yt-form button:hover:not(:disabled){background:var(--btn-secondary-bg-hover);color:var(--ink)}
+.pr .mt-yt-form button:disabled{background:var(--btn-disabled-bg);color:var(--btn-disabled-ink);cursor:not-allowed}
+.pr .mt-action-alert{color:var(--bad);font-size:var(--fs-footnote);margin:0 0 var(--s-1);padding:var(--s-1) 0}
 /* A source to pick: an option row, the control outline, an --ink border when chosen. */
 .pr .mt-file{display:flex;align-items:center;gap:var(--s-3);padding:var(--s-3) var(--s-4);border-radius:var(--r-md);border:1px solid var(--btn-secondary-border);cursor:pointer;transition:var(--btn-transition)}
 .pr .mt-file:hover{background:var(--btn-secondary-bg-hover)}
