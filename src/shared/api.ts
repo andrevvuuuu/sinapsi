@@ -99,6 +99,11 @@ export const CH = {
   lessonsSetMastery: 'lessons:set-mastery',
   lessonsArchive: 'lessons:archive',
   lessonsLaunch: 'lessons:launch',
+  examsList: 'exams:list',
+  examsCreate: 'exams:create',
+  examsUpdate: 'exams:update',
+  examsArchive: 'exams:archive',
+  planWeek: 'plan:week',
   suggestGet: 'suggest:get',
   uiTransparency: 'ui:transparency',
   uiTransparencyChanged: 'ui:transparency-changed'
@@ -250,6 +255,15 @@ export interface SinapsiApi {
       id: string,
       mode?: 'practice' | 'review'
     ): Promise<import('./lesson-types').LaunchDestination>
+  }
+  exams: {
+    list(): Promise<import('./exam-types').ExamEntry[]>
+    create(entry: { courseId: string; title?: string; date: string; weight?: number }): Promise<import('./exam-types').ExamEntry>
+    update(id: string, patch: Partial<import('./exam-types').ExamEntry>): Promise<boolean>
+    archive(id: string): Promise<void>
+  }
+  plan: {
+    week(): Promise<{ plan: import('./plan-types').WeekPlan; readiness: import('./plan-types').Readiness[] }>
   }
   /** What to study, review or practise next, each with its reason (no AI). */
   suggest: { get(): Promise<import('../main/suggest/suggest').Suggestions> }

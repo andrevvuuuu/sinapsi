@@ -10,6 +10,8 @@ import type {
   VaultResult
 } from '../../../shared/api'
 import type { Engine, Settings } from '../../../shared/settings-schema'
+import type { WeekPlan } from '../../../shared/plan-types'
+import type { LaunchDestination } from '../../../shared/lesson-types'
 import { buildTree } from './build-tree'
 import { Composer } from './Composer'
 import { EngineStatus } from './EngineStatus'
@@ -38,6 +40,8 @@ type HomeProps = {
   onOpenPractice?: (text: string, initial?: { conceptIds: string[]; exam?: boolean }) => void
   onOpenPracticeSession?: (id: string) => void
   onOpenLessons?: () => void
+  onOpenPlan?: () => void
+  onLaunched?: (result: LaunchDestination) => void
 }
 
 export default function Home({
@@ -47,7 +51,9 @@ export default function Home({
   onOpenReview,
   onOpenPractice,
   onOpenPracticeSession,
-  onOpenLessons
+  onOpenLessons,
+  onOpenPlan,
+  onLaunched
 }: HomeProps = {}): React.JSX.Element {
   const api = window.sinapsi
   const [index, setIndex] = useState<VaultResult | null>(null)
@@ -62,6 +68,7 @@ export default function Home({
   const [notes, setNotes] = useState<NoteMeta[]>([])
   const [due, setDue] = useState(0)
   const [pendingLessons, setPendingLessons] = useState(0)
+  const [weekPlan, setWeekPlan] = useState<WeekPlan | null>(null)
   const [suggestions, setSuggestions] = useState<Suggestions | null>(null)
   // Sizes Andrea dragged, kept across restarts and clamped to the window.
   const [layout, setLayoutState] = useState<Layout>(() =>
@@ -118,6 +125,7 @@ export default function Home({
       ?.list()
       .then((xs) => setPendingLessons(xs.filter((x) => x.pending != null).length))
       .catch(() => undefined)
+    void api.plan?.week().then((result) => setWeekPlan(result.plan)).catch(() => undefined)
     // Several refreshes can overlap (mount, focus, a new nota): only the newest answer counts.
     let asked = 0
     const loadSuggestions = (): void => {
@@ -261,6 +269,32 @@ export default function Home({
               {pendingLessons} {pendingLessons === 1 ? 'digestione da fare' : 'digestioni da fare'}
             </span>
           )}
+          <section className="home-today" aria-label="Piano di oggi">
+            <strong>Oggi</strong>
+            {(weekPlan?.days[0]?.blocks ?? []).length === 0 ? (
+              <span>Niente in programma oggi</span>
+            ) : (
+              weekPlan?.days[0]?.blocks.map((block, index) => (
+                <div className="home-today-block" key={`${block.courseId}-${index}`}>
+                  <span>{block.courseId} · {block.minutes} min</span>
+                  {index === 0 && (
+                    <button type="button" className="mini" onClick={() => {
+                      if (block.kind === 'exam-sim') {
+                        onOpenPractice?.('', { conceptIds: block.conceptIds, exam: true })
+                      } else if (block.lessonIds[0]) {
+                        void api.lessons.launch(block.lessonIds[0]).then((result) => onLaunched?.(result))
+                      }
+                    }}>
+                      Avvia
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+            <button type="button" className="mini" onClick={onOpenPlan}>
+              Piano della settimana
+            </button>
+          </section>
         </div>
         <div className="reopen l">
           <button

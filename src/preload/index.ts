@@ -104,6 +104,13 @@ const api: SinapsiApi = {
     archive: (id) => ipcRenderer.invoke(CH.lessonsArchive, id),
     launch: (id, m) => ipcRenderer.invoke(CH.lessonsLaunch, id, m)
   },
+  exams: {
+    list: () => ipcRenderer.invoke(CH.examsList),
+    create: (entry) => ipcRenderer.invoke(CH.examsCreate, entry),
+    update: (id, patch) => ipcRenderer.invoke(CH.examsUpdate, id, patch),
+    archive: (id) => ipcRenderer.invoke(CH.examsArchive, id)
+  },
+  plan: { week: () => ipcRenderer.invoke(CH.planWeek) },
   suggest: { get: () => ipcRenderer.invoke(CH.suggestGet) },
   ui: {
     reducedTransparency: () => ipcRenderer.invoke(CH.uiTransparency),

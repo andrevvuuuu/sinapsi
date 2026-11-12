@@ -204,3 +204,5 @@
 .lg-content.aside-body{background:var(--panel)}
 .home-lessons{position:absolute;right:var(--s-4);top:var(--s-3);z-index:2;display:flex;align-items:center;gap:var(--s-2)}
 .home-lessons span{font:var(--font-caption);color:var(--muted)}
+.home-today{display:grid;gap:var(--s-1);width:248px;max-width:calc(100vw - var(--s-8));padding:var(--s-2);border:1px solid var(--hair);border-radius:var(--r-md);background:var(--surface);font:var(--font-footnote)}
+.home-today-block{display:flex;align-items:center;justify-content:space-between;gap:var(--s-2)}

@@ -42,7 +42,9 @@ export function settingsSchema(home: string) {
       .array(z.enum(EXERCISE_TYPES))
       .min(1)
       .catch([...EXERCISE_TYPES]),
-    gamesInSessions: z.boolean().catch(true)
+    gamesInSessions: z.boolean().catch(true),
+    studyHours: z.array(z.number().min(0).max(16).multipleOf(0.5)).length(7).catch([3, 3, 3, 3, 3, 2, 1]),
+    planBuffer: z.number().min(0.15).max(0.2).catch(0.15)
   })
 }
 export type Settings = z.infer<ReturnType<typeof settingsSchema>>

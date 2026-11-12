@@ -26,6 +26,7 @@ import {
   makeSessionHandlers,
   makeVoiceHandlers,
   makeLessonHandlers,
+  makeExamHandlers,
   practiceTopic
 } from './ipc-handlers'
 import { createExamService } from './practice/exam'
@@ -60,6 +61,9 @@ import { createSuggester } from './suggest/suggest'
 import { appendJsonl } from './store/jsonl'
 import { dataDir } from './store/paths'
 import { lessonStore } from './lessons/store'
+import { examStore } from './exams/store'
+import { buildWeekPlan } from './planner/plan'
+import { readinessFor } from './planner/readiness'
 import { pendingDigest, reduceLessons } from './lessons/reduce'
 import { loadSettings, saveSettings } from './store/settings'
 import { scanVault } from './vault/scan'
@@ -482,6 +486,58 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.lessonsSetMastery, (_e, id, l) => lh.setMastery(id, l))
   ipcMain.handle(CH.lessonsArchive, (_e, id) => lh.archive(id))
   ipcMain.handle(CH.lessonsLaunch, (_e, id, m) => lh.launch(id, m))
+  const es = examStore(dataDir())
+  const eh = makeExamHandlers(es)
+  ipcMain.handle(CH.examsList, () => eh.list())
+  ipcMain.handle(CH.examsCreate, (_e, entry) => eh.create(entry))
+  ipcMain.handle(CH.examsUpdate, (_e, id, patch) => eh.update(id, patch))
+  ipcMain.handle(CH.examsArchive, (_e, id) => eh.archive(id))
+  ipcMain.handle(CH.planWeek, async () => {
+    const todayDate = new Date()
+    const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`
+    const [exams, lessonEvents, memories, reviews, currentSettings, practiceSessions] = await Promise.all([
+      eh.list(),
+      ls.read(),
+      review.memory(),
+      memoryStore(memoryDir).read(),
+      settings.load(),
+      practice.list()
+    ])
+    const lessons = reduceLessons(lessonEvents)
+    const plan = buildWeekPlan({
+      today,
+      exams,
+      lessons,
+      memories,
+      studyHours: currentSettings.studyHours,
+      buffer: currentSettings.planBuffer
+    })
+    const results = await Promise.all(
+      practiceSessions
+        .filter((item) => item.mode === 'exam')
+        .map(async (item) => {
+          const state = await ph.get(item.id)
+          return state.exam?.grade
+            ? [{ conceptIds: state.material.conceptIds, total: state.exam.grade.total, at: state.updatedAt }]
+            : []
+        })
+    )
+    const examResults = results.flat()
+    const readiness = exams
+      .filter((entry) => entry.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((examEntry) =>
+        readinessFor({
+          exam: examEntry,
+          lessons: lessons.filter((lesson) => lesson.courseId === examEntry.courseId),
+          memories,
+          reviews,
+          examResults,
+          now: Date.now()
+        })
+      )
+    return { plan, readiness }
+  })
   ipcMain.handle(CH.practiceCatalog, () => ph.catalog())
   ipcMain.handle(CH.practiceCreate, async (_e, m) => {
     const id = await ph.create(m)

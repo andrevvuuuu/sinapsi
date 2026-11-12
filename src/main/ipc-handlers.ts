@@ -24,6 +24,8 @@ import { pendingDigest, reduceLessons } from './lessons/reduce'
 import { independentConcepts } from './memory/fading'
 import { resolveLessonLaunch } from './lessons/launch'
 import type { Memory } from '../shared/memory-types'
+import { ExamEntrySchema, type ExamEvent } from '../shared/exam-types'
+import { reduceExams } from './exams/reduce'
 
 const Choice = z
   .object({ engine: z.enum(['agy', 'claude']), model: z.string().optional() })
@@ -45,7 +47,9 @@ const Patch = z
     dailyExtractionLimit: z.number().int().min(0).max(50),
     reviewSessionSize: z.number().int().min(1).max(20),
     exerciseTypes: z.array(z.enum(EXERCISE_TYPES)).min(1),
-    gamesInSessions: z.boolean()
+    gamesInSessions: z.boolean(),
+    studyHours: z.array(z.number().min(0).max(16).multipleOf(0.5)).length(7),
+    planBuffer: z.number().min(0.15).max(0.2)
   })
   .partial()
   .strict()
@@ -92,6 +96,46 @@ export function makeHandlers(d: HandlerDeps) {
 export type Handlers = ReturnType<typeof makeHandlers>
 
 const LessonId = z.string().uuid()
+export function makeExamHandlers(d: {
+  read: () => Promise<ExamEvent[]>
+  append: (event: ExamEvent) => Promise<void>
+  now?: () => number
+  uuid?: () => string
+}) {
+  const now = d.now ?? Date.now
+  const uuid = d.uuid ?? (() => crypto.randomUUID())
+  const list = async (): Promise<ReturnType<typeof reduceExams>> => reduceExams(await d.read())
+  const inputSchema = z.object({
+    courseId: z.string().min(1).max(200),
+    title: z.string().max(200).optional(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    weight: z.number().min(0).max(1).optional()
+  }).strict()
+  const patchSchema = inputSchema.partial().strict()
+  return {
+    list,
+    create: async (input: unknown) => {
+      const parsed = inputSchema.parse(input)
+      const at = new Date(now()).toISOString()
+      const entry = ExamEntrySchema.parse({ ...parsed, id: uuid(), createdAt: at, updatedAt: at })
+      await d.append({ t: 'exam-created', at, entry })
+      return entry
+    },
+    update: async (id: unknown, patch: unknown) => {
+      const examId = LessonId.parse(id)
+      const parsed = patchSchema.parse(patch)
+      if (!(await list()).some((entry) => entry.id === examId)) throw new Error('Esame non trovato')
+      const at = new Date(now()).toISOString()
+      await d.append({ t: 'exam-updated', at, id: examId, patch: { ...parsed, updatedAt: at } })
+      return true
+    },
+    archive: async (id: unknown) => {
+      const examId = LessonId.parse(id)
+      if (!(await list()).some((entry) => entry.id === examId)) throw new Error('Esame non trovato')
+      await d.append({ t: 'exam-archived', at: new Date(now()).toISOString(), id: examId })
+    }
+  }
+}
 const LessonPatch = z
   .object({
     date: z

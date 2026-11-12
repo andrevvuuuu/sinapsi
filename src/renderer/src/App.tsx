@@ -10,6 +10,7 @@ import { SessionView } from './session/SessionView'
 import { LessonLogView } from './lessons/LessonLogView'
 import { LessonDetail } from './lessons/LessonDetail'
 import { LessonEditor } from './lessons/LessonEditor'
+import { PlanView } from './plan/PlanView'
 import type { LaunchDestination } from '../../shared/lesson-types'
 
 type View =
@@ -24,6 +25,7 @@ type View =
   | { view: 'lesson'; id: string }
   | { view: 'lesson-new' }
   | { view: 'lesson-edit'; id: string }
+  | { view: 'plan' }
 
 /** «Riduci trasparenza» lives outside the views, which replace each other (each view has its own glass scene). */
 export default function App(): React.JSX.Element {
@@ -45,12 +47,23 @@ function Views(): React.JSX.Element {
   const launched = (result: LaunchDestination): void => {
     if ('view' in result) setV(result)
   }
+  if (v.view === 'plan')
+    return (
+      <PlanView
+        onBack={home}
+        onOpenPracticeSetup={(conceptIds, exam) =>
+          setV({ view: 'practice-setup', initial: { conceptIds, exam } })
+        }
+        onLaunched={launched}
+      />
+    )
   if (v.view === 'lessons')
     return (
       <LessonLogView
         onOpen={(id) => setV({ view: 'lesson', id })}
         onNew={() => setV({ view: 'lesson-new' })}
         onLaunched={launched}
+        onOpenPlan={() => setV({ view: 'plan' })}
       />
     )
   if (v.view === 'lesson')
@@ -116,6 +129,8 @@ function Views(): React.JSX.Element {
         setV({ view: 'review', query: query || undefined, conceptIds })
       }
       onOpenLessons={() => setV({ view: 'lessons' })}
+      onOpenPlan={() => setV({ view: 'plan' })}
+      onLaunched={launched}
     />
   )
 }

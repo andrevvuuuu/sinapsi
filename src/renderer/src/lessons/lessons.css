@@ -253,3 +253,12 @@
     grid-template-columns: 1fr;
   }
 }
+.lesson-exams{margin:var(--s-5) 0;padding:var(--s-4);border:1px solid var(--hair);border-radius:var(--r-lg);background:var(--surface)}
+.lesson-exams>header,.lesson-exam-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s-3)}
+.lesson-exams h2,.lesson-exams h3{margin:0 0 var(--s-3)}
+.lesson-exam-row{padding:var(--s-2) 0;border-top:1px solid var(--hair)}
+.lesson-exam-status{padding:var(--s-1) var(--s-2);border-radius:var(--r-pill);background:var(--faint);color:var(--accent)}
+.lesson-exam-form{display:grid;grid-template-columns:max-content minmax(140px,1fr);align-items:center;gap:var(--s-2);max-width:680px;margin-top:var(--s-4)}
+.lesson-exam-form h3{grid-column:1/-1}
+.lesson-exam-form input{min-height:var(--ctl-sm);padding:0 var(--s-2);border:1px solid var(--ctl-edge);border-radius:var(--r-sm);background:var(--bg);color:var(--ink)}
+.lesson-exam-form button{grid-column:2;justify-self:start}

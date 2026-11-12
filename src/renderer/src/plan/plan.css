@@ -1,0 +1,127 @@
+.week-plan {
+  height: 100%;
+  overflow: auto;
+  padding: var(--s-6);
+  color: var(--ink);
+}
+.week-plan-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  margin-bottom: var(--s-5);
+}
+.week-plan h1,
+.week-plan h2,
+.week-plan h3 {
+  margin: 0 0 var(--s-2);
+}
+.plan-availability,
+.plan-day,
+.readiness-list article {
+  padding: var(--s-4);
+  margin-bottom: var(--s-4);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.plan-hours {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(54px, 1fr));
+  gap: var(--s-2);
+  margin: var(--s-3) 0 var(--s-4);
+}
+.plan-hours label {
+  display: grid;
+  gap: var(--s-1);
+  font: var(--font-footnote);
+}
+.plan-hours input {
+  min-width: 0;
+  width: 100%;
+  padding: var(--s-2);
+  border: 1px solid var(--ctl-edge);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  color: var(--ink);
+}
+.plan-buffer-control {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  max-width: 320px;
+}
+.plan-buffer-control input {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.plan-days {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--s-3);
+}
+.plan-day > header,
+.readiness-list article > header,
+.readiness-signal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+.plan-day > header span,
+.plan-block p,
+.plan-day > p,
+.readiness-list article > p {
+  color: var(--muted);
+  font: var(--font-footnote);
+}
+.plan-block {
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--hair);
+}
+.plan-block ul {
+  margin: 0 0 var(--s-3);
+  padding-left: var(--s-5);
+}
+.plan-block button,
+.week-plan-header button {
+  min-height: var(--ctl-sm);
+  padding: 0 var(--s-3);
+  border: 1px solid var(--btn-secondary-border);
+  border-radius: var(--r-pill);
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-ink);
+  cursor: pointer;
+}
+.plan-block button:disabled {
+  color: var(--btn-disabled-ink);
+  cursor: default;
+}
+.readiness-list {
+  margin-top: var(--s-6);
+}
+.readiness-list h2 {
+  margin-bottom: var(--s-3);
+}
+.readiness-list article h3 {
+  margin: 0;
+}
+.readiness-signal {
+  margin-top: var(--s-3);
+}
+.readiness-track {
+  height: 6px;
+  margin: var(--s-1) 0;
+  border-radius: var(--r-pill);
+  background: var(--faint);
+  overflow: hidden;
+}
+.readiness-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+.readiness-signal small {
+  color: var(--muted);
+  font: var(--font-footnote);
+}
