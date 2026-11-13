@@ -1493,3 +1493,6 @@ button.sh-brand .sh-brand-tag {
 .sh-suggestions button > span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sh-notes-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--sh-text-2);font:var(--font-body);user-select:none;-webkit-user-select:none}
 .sh-notes-empty p{margin:0}
+.sh-today-scroll{padding-bottom:110px}
+.sh-recent-list{display:flex;flex-direction:column;gap:10px}
+.sh-recent-list .sh-recent-row{margin:0}

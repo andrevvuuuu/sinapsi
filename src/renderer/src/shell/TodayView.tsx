@@ -404,20 +404,22 @@ export function TodayView(p: Props): React.JSX.Element {
               <p>Ultime sessioni e pratiche</p>
             </div>
           </div>
-          {recent.map((x) => (
-            <button
-              type="button"
-              key={`${x.kind}-${x.id}`}
-              className="sh-recent-row"
-              onClick={x.open}
-            >
-              <span className="sh-recent-title">{x.title}</span>
-              <small>
-                {x.kind} ·{' '}
-                {new Date(x.at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
-              </small>
-            </button>
-          ))}
+          <div className="sh-recent-list">
+            {recent.map((x) => (
+              <button
+                type="button"
+                key={`${x.kind}-${x.id}`}
+                className="sh-recent-row"
+                onClick={x.open}
+              >
+                <span className="sh-recent-title">{x.title}</span>
+                <small>
+                  {x.kind} ·{' '}
+                  {new Date(x.at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
+                </small>
+              </button>
+            ))}
+          </div>
         </section>
       )}
       {error && (

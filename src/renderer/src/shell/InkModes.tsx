@@ -1,12 +1,15 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useId, useLayoutEffect, useRef } from 'react'
 import './signature.css'
 
 const MODES = ['Studia', 'Esercitati', 'Ripassa'] as const
 export type Mode = (typeof MODES)[number]
 
-const H = 38 // chip and main pill height
+/** Pill height, horizontal padding of a chip, inset of a 1.5 px outline. */
+const H = 38
+const PAD = 16
+const EDGE = 0.75
 
-/** Analytical damped harmonic oscillator over arbitrary time step dt. */
+/** Analytical damped harmonic oscillator over an arbitrary time step. */
 function solveSpring(
   current: number,
   velocity: number,
@@ -18,35 +21,64 @@ function solveSpring(
   const omega0 = Math.sqrt(stiffness)
   const zeta = damping / (2 * omega0)
   const x = current - target
-
   if (zeta < 1) {
     const omegaD = omega0 * Math.sqrt(1 - zeta * zeta)
     const decay = Math.exp(-zeta * omega0 * dt)
-    const cosVal = Math.cos(omegaD * dt)
-    const sinVal = Math.sin(omegaD * dt)
-
-    const nextX = decay * (x * cosVal + ((velocity + zeta * omega0 * x) / omegaD) * sinVal)
+    const cos = Math.cos(omegaD * dt)
+    const sin = Math.sin(omegaD * dt)
+    const nextX = decay * (x * cos + ((velocity + zeta * omega0 * x) / omegaD) * sin)
     const nextV =
-      decay *
-      (velocity * (cosVal - ((zeta * omega0) / omegaD) * sinVal) -
-        x * ((omega0 * omega0) / omegaD) * sinVal)
-    return [target + nextX, nextV]
-  } else {
-    const decay = Math.exp(-omega0 * dt)
-    const nextX = decay * (x + (velocity + omega0 * x) * dt)
-    const nextV = decay * (velocity * (1 - omega0 * dt) - x * (omega0 * omega0) * dt)
+      decay * (velocity * (cos - ((zeta * omega0) / omegaD) * sin) - x * ((omega0 * omega0) / omegaD) * sin)
     return [target + nextX, nextV]
   }
+  const decay = Math.exp(-omega0 * dt)
+  return [target + decay * (x + (velocity + omega0 * x) * dt), decay * (velocity * (1 - omega0 * dt) - x * omega0 * omega0 * dt)]
 }
 
-/** Digits that roll vertically, one column each, like an odometer. */
+const clamp01 = (v: number): number => Math.min(1, Math.max(0, v))
+const lerp = (a: number, b: number, t: number): number => a + (b - a) * t
+
+/**
+ * A pill from x to x + w, H tall. `dip` pulls the top and bottom edges inward around `cx`: the elastic pinch
+ * under the cursor. Narrower than its height it becomes an ellipse, the shape a drop of ink starts from.
+ */
+function pillPath(x: number, w: number, inset = 0, dip = 0, cx = 0): string {
+  const r = H / 2 - inset
+  if (w <= 0.5) return ''
+  if (w < 2 * r) {
+    const rx = w / 2
+    return `M${(x).toFixed(2)},${H / 2}a${rx.toFixed(2)},${r} 0 1,0 ${w.toFixed(2)},0a${rx.toFixed(2)},${r} 0 1,0 ${(-w).toFixed(2)},0Z`
+  }
+  const x0 = x + r
+  const x1 = x + w - r
+  const top = inset
+  const bot = H - inset
+  const n = dip > 0.05 ? 18 : 1
+  const g = (px: number): number => dip * Math.exp(-(((px - cx) / 18) ** 2))
+  let d = `M${x0.toFixed(2)},${(top + g(x0)).toFixed(2)}`
+  for (let i = 1; i <= n; i++) {
+    const px = x0 + ((x1 - x0) * i) / n
+    d += `L${px.toFixed(2)},${(top + g(px)).toFixed(2)}`
+  }
+  d += `A${r},${r} 0 0 1 ${x1.toFixed(2)},${(bot - g(x1)).toFixed(2)}`
+  for (let i = n - 1; i >= 0; i--) {
+    const px = x0 + ((x1 - x0) * i) / n
+    d += `L${px.toFixed(2)},${(bot - g(px)).toFixed(2)}`
+  }
+  return `${d}A${r},${r} 0 0 1 ${x0.toFixed(2)},${(top + g(x0)).toFixed(2)}Z`
+}
+
+/** Digits that roll vertically, one column each, slightly staggered, like an odometer. */
 function Odometer({ value }: { value: string }): React.JSX.Element {
   return (
     <span className="sg-odo" aria-label={value}>
       {value.split('').map((ch, i) =>
         /\d/.test(ch) ? (
           <span key={`${value.length}-${i}`} className="sg-odo-col" aria-hidden="true">
-            <span className="sg-odo-strip" style={{ transform: `translateY(${-Number(ch)}em)` }}>
+            <span
+              className="sg-odo-strip"
+              style={{ transform: `translateY(${-Number(ch)}em)`, transitionDelay: `${i * 45}ms` }}
+            >
               {'0123456789'.split('').map((d) => (
                 <span key={d}>{d}</span>
               ))}
@@ -62,16 +94,18 @@ function Odometer({ value }: { value: string }): React.JSX.Element {
   )
 }
 
-type Pos = { left: number; width: number }
-type AnimSnapshot = {
-  main: Pos
-  active: Pos
-  chips: Record<Mode, Pos | null>
-  fromMode: Mode
-  toMode: Mode
-  otherMode: Mode
-}
+type Span = { x: number; w: number }
+type Wobble = { amp: number; vel: number; target: number; cx: number }
+type Snapshot = { from: Mode; to: Mode; other: Mode; barW: number; aStart: Span; tStart: Span; oStart: number | null }
 
+/**
+ * The study mode filter of the composer, after the reference video: a results pill (count | active mode) and the
+ * other two modes as outlined chips. Choosing a chip runs two overlapping springs: the active mode detaches (its
+ * ink drains back to the left, the viscous neck to the bar stretches and snaps), then the chosen one slides over
+ * and docks (a neck forms, ink flows in from the contact edge, its letters turn dark as the ink passes). The fills
+ * live on one gooey SVG layer; the text never goes through the filter. Hovering pinches a pill's edge under the
+ * cursor.
+ */
 export function InkModes({
   mode,
   due,
@@ -86,388 +120,279 @@ export function InkModes({
   onChange: (mode: Mode) => void
 }): React.JSX.Element {
   const gooId = `sg-goo-${useId().replace(/:/g, '')}`
+  const rootRef = useRef<HTMLDivElement>(null)
+  const barRef = useRef<HTMLDivElement>(null)
+  const countRef = useRef<HTMLSpanElement>(null)
+  const dividerRef = useRef<HTMLSpanElement>(null)
+  const activeRef = useRef<HTMLButtonElement>(null)
+  const chipRefs = useRef<Partial<Record<Mode, HTMLButtonElement | null>>>({})
+  const edgeRefs = useRef<Partial<Record<Mode, SVGPathElement | null>>>({})
+  const barPathRef = useRef<SVGPathElement>(null)
+  const blobRefs = [useRef<SVGPathElement>(null), useRef<SVGPathElement>(null)]
+  const actorRefs = [useRef<HTMLSpanElement>(null), useRef<HTMLSpanElement>(null)]
+  const wobble = useRef<Record<string, Wobble>>({})
+  const wobbleRaf = useRef(0)
+  const animRaf = useRef(0)
+  const animating = useRef(false)
+  const snap = useRef<Snapshot | null>(null)
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const mainElRef = useRef<HTMLDivElement>(null)
-  const activeBtnRef = useRef<HTMLButtonElement>(null)
-  const inactiveBtnRefs = useRef<Record<Mode, HTMLButtonElement | null>>({
-    Studia: null,
-    Esercitati: null,
-    Ripassa: null
-  })
-
-  const mainShapeRef = useRef<SVGRectElement>(null)
-  const incomingBlobRef = useRef<SVGRectElement>(null)
-  const outgoingBlobRef = useRef<SVGRectElement>(null)
-
-  const [isAnimating, setIsAnimating] = useState(false)
-  const [mainWidth, setMainWidth] = useState<number>(0)
-
-  const animRef = useRef<AnimSnapshot | null>(null)
-  const currentModeRef = useRef<Mode>(mode)
-  const rafRef = useRef<number>(0)
-
-  // Current count and label for the active mode
   const count = mode === 'Ripassa' ? due : mode === 'Esercitati' ? practiceCount : studyCount
   const countText = count == null ? '—' : String(count)
   const label = mode === 'Ripassa' ? 'dovuti' : 'suggerimenti'
+  const outer = MODES.filter((m) => m !== mode)
 
-  // The other 2 modes displayed as inactive chips
-  const inactiveModes = MODES.filter((m) => m !== mode)
-
-  // Track main pill width via ResizeObserver and fonts.ready
-  useLayoutEffect(() => {
-    let mounted = true
-    const updateWidth = (): void => {
-      if (!mounted) return
-      if (mainElRef.current) {
-        const w = Math.ceil(mainElRef.current.getBoundingClientRect().width)
-        if (w > 0) {
-          setMainWidth(w)
-          mainShapeRef.current?.setAttribute('width', String(w))
-        }
-      }
-    }
-
-    updateWidth()
-
-    if (typeof document !== 'undefined' && document.fonts?.ready) {
-      document.fonts.ready.then(() => {
-        if (mounted) updateWidth()
-      })
-    }
-
-    let ro: ResizeObserver | null = null
-    if (typeof ResizeObserver !== 'undefined' && mainElRef.current) {
-      ro = new ResizeObserver(() => {
-        updateWidth()
-      })
-      ro.observe(mainElRef.current)
-    }
-
-    return () => {
-      mounted = false
-      if (ro) ro.disconnect()
-    }
-  }, [countText, label, mode])
-
-  // Cleanup in-flight rAF on unmount
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
-
-  const handleSelect = (targetMode: Mode): void => {
-    if (targetMode === mode) return
-
-    const container = containerRef.current
-    if (!container) {
-      onChange(targetMode)
-      return
-    }
-
-    // Cancel running animation before capturing snapshot
-    cancelAnimationFrame(rafRef.current)
-    rafRef.current = 0
-
-    const cRect = container.getBoundingClientRect()
-    const mainRect = mainElRef.current?.getBoundingClientRect()
-    const activeRect = activeBtnRef.current?.getBoundingClientRect()
-
-    const chipsPos: Record<Mode, Pos | null> = {
-      Studia: null,
-      Esercitati: null,
-      Ripassa: null
-    }
-
-    for (const m of inactiveModes) {
-      const btn = inactiveBtnRefs.current[m]
-      if (btn) {
-        const r = btn.getBoundingClientRect()
-        chipsPos[m] = { left: r.left - cRect.left, width: r.width }
-      }
-    }
-
-    const other = inactiveModes.find((m) => m !== targetMode) || MODES[0]
-
-    animRef.current = {
-      main: mainRect
-        ? { left: mainRect.left - cRect.left, width: mainRect.width }
-        : { left: 0, width: 0 },
-      active: activeRect
-        ? { left: activeRect.left - cRect.left, width: activeRect.width }
-        : { left: 0, width: 0 },
-      chips: chipsPos,
-      fromMode: mode,
-      toMode: targetMode,
-      otherMode: other
-    }
-
-    onChange(targetMode)
+  const rel = (el: Element): Span => {
+    const c = rootRef.current!.getBoundingClientRect()
+    const r = el.getBoundingClientRect()
+    return { x: r.left - c.left, w: r.width }
   }
 
-  // FLIP transition with SVG gooey metaball spring animation
+  /** The resting shapes: the bar's fill and the chips' outlines, with the current pinch. */
+  const drawStatic = (): void => {
+    if (animating.current || !rootRef.current || !barRef.current) return
+    const b = rel(barRef.current)
+    const wb = wobble.current.bar
+    barPathRef.current?.setAttribute('d', pillPath(b.x, b.w, 0, wb?.amp ?? 0, (wb?.cx ?? 0) + b.x))
+    for (const m of MODES) {
+      const btn = chipRefs.current[m]
+      const path = edgeRefs.current[m]
+      if (!btn || !path) continue
+      const wo = wobble.current[m]
+      path.setAttribute('d', pillPath(0, btn.getBoundingClientRect().width, EDGE, wo?.amp ?? 0, wo?.cx ?? 0))
+    }
+  }
+
+  const reduced = (): boolean =>
+    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  /** One loop for every pinch: a soft, bouncy spring towards 3 px while hovered, back to flat after. */
+  const kickWobble = (): void => {
+    if (wobbleRaf.current) return
+    let last = performance.now()
+    const step = (now: number): void => {
+      const dt = Math.min(Math.max((now - last) / 1000, 0.001), 0.033)
+      last = now
+      let moving = false
+      for (const s of Object.values(wobble.current)) {
+        ;[s.amp, s.vel] = solveSpring(s.amp, s.vel, s.target, 420, 13, dt)
+        if (Math.abs(s.amp - s.target) > 0.02 || Math.abs(s.vel) > 0.05) moving = true
+      }
+      drawStatic()
+      wobbleRaf.current = moving ? requestAnimationFrame(step) : 0
+    }
+    wobbleRaf.current = requestAnimationFrame(step)
+  }
+
+  const pinch = (key: string): React.HTMLAttributes<HTMLElement> => ({
+    onPointerMove: (e) => {
+      if (reduced()) return
+      const s = (wobble.current[key] ??= { amp: 0, vel: 0, target: 0, cx: 0 })
+      s.cx = e.clientX - e.currentTarget.getBoundingClientRect().left
+      s.target = 3
+      kickWobble()
+    },
+    onPointerLeave: () => {
+      const s = wobble.current[key]
+      if (!s) return
+      s.target = 0
+      kickWobble()
+    }
+  })
+
+  /** Ends a running transition at once: the real elements take over from the actors. */
+  const finish = (): void => {
+    cancelAnimationFrame(animRaf.current)
+    animRaf.current = 0
+    if (!animating.current) return
+    animating.current = false
+    rootRef.current?.classList.remove('is-animating')
+    for (const a of actorRefs) if (a.current) a.current.style.display = 'none'
+    for (const b of blobRefs) b.current?.setAttribute('d', '')
+    if (activeRef.current) activeRef.current.style.visibility = ''
+    if (dividerRef.current) dividerRef.current.style.opacity = ''
+    for (const m of MODES) {
+      const btn = chipRefs.current[m]
+      if (btn) {
+        btn.style.visibility = ''
+        btn.style.transform = ''
+      }
+    }
+    drawStatic()
+  }
+
+  const select = (target: Mode): void => {
+    if (target === mode) return
+    finish()
+    const bar = barRef.current
+    const act = activeRef.current
+    const tChip = chipRefs.current[target]
+    if (!rootRef.current || !bar || !act || !tChip || reduced()) {
+      onChange(target)
+      return
+    }
+    const other = MODES.find((m) => m !== mode && m !== target)!
+    const oChip = chipRefs.current[other]
+    const a = rel(act)
+    snap.current = {
+      from: mode,
+      to: target,
+      other,
+      barW: rel(bar).w,
+      aStart: { x: a.x - PAD, w: a.w + 2 * PAD },
+      tStart: rel(tChip),
+      oStart: oChip ? rel(oChip).x : null
+    }
+    onChange(target)
+  }
+
+  // Resting shapes after every render, once the fonts are in, and whenever the filter resizes.
   useLayoutEffect(() => {
-    const anim = animRef.current
-    if (!anim || anim.toMode !== mode) {
-      currentModeRef.current = mode
-      return
+    drawStatic()
+  })
+  useLayoutEffect(() => {
+    let alive = true
+    void document.fonts?.ready.then(() => alive && drawStatic())
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => drawStatic()) : null
+    if (rootRef.current) ro?.observe(rootRef.current)
+    return () => {
+      alive = false
+      ro?.disconnect()
+      cancelAnimationFrame(wobbleRaf.current)
+      cancelAnimationFrame(animRaf.current)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-    currentModeRef.current = mode
-    animRef.current = null
+  // The transition, from the snapshot taken before the change to the layout React has just committed.
+  useLayoutEffect(() => {
+    const s = snap.current
+    snap.current = null
+    const root = rootRef.current
+    const bar = barRef.current
+    const act = activeRef.current
+    const countEl = countRef.current
+    const aChip = s ? chipRefs.current[s.from] : null
+    if (!s || s.to !== mode || !root || !bar || !act || !countEl || !aChip) return
+    const oChip = chipRefs.current[s.other]
+    const b = rel(bar)
+    const tIn = rel(act)
+    const aEnd = rel(aChip)
+    const oEnd = oChip ? rel(oChip).x : null
+    const c = rel(countEl)
+    const wCount = c.x + c.w - b.x + PAD
+    const tEnd = tIn.x - PAD
 
-    const prefersReduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const actors = actorRefs.map((r) => r.current)
+    const texts: [Mode, Mode] = [s.from, s.to]
+    actors.forEach((el, i) => {
+      if (!el) return
+      el.style.display = 'flex'
+      // First frame at the start positions, before the loop moves them.
+      const start = i === 0 ? s.aStart : s.tStart
+      el.style.transform = `translate3d(${start.x.toFixed(2)}px,0,0)`
+      el.style.width = `${start.w.toFixed(2)}px`
+      el.querySelectorAll<HTMLElement>('.base, .ink').forEach((t) => (t.textContent = texts[i]))
+    })
+    animating.current = true
+    root.classList.add('is-animating')
+    act.style.visibility = 'hidden'
+    aChip.style.visibility = 'hidden'
 
-    if (prefersReduced) {
-      return
-    }
-
-    cancelAnimationFrame(rafRef.current)
-
-    const container = containerRef.current
-    if (!container) return
-    const cRect = container.getBoundingClientRect()
-    const newMainRect = mainElRef.current?.getBoundingClientRect()
-    const newActiveRect = activeBtnRef.current?.getBoundingClientRect()
-
-    if (!newMainRect || !newActiveRect) return
-
-    const newMain: Pos = { left: newMainRect.left - cRect.left, width: newMainRect.width }
-    const newActive: Pos = { left: newActiveRect.left - cRect.left, width: newActiveRect.width }
-
-    const prevBtn = inactiveBtnRefs.current[anim.fromMode]
-    const prevRect = prevBtn?.getBoundingClientRect()
-    const newPrev: Pos | null = prevRect
-      ? { left: prevRect.left - cRect.left, width: prevRect.width }
-      : null
-
-    const otherBtn = inactiveBtnRefs.current[anim.otherMode]
-    const otherRect = otherBtn?.getBoundingClientRect()
-    const newOther: Pos | null = otherRect
-      ? { left: otherRect.left - cRect.left, width: otherRect.width }
-      : null
-
-    const oldClicked = anim.chips[anim.toMode]
-    const oldActive = anim.active
-    const oldOther = anim.chips[anim.otherMode]
-    const oldMain = anim.main
-
-    if (!oldClicked || !newPrev) return
-
-    // FLIP Deltas
-    const dxIncoming = oldClicked.left - newActive.left
-    const dxOutgoing = oldActive.left - newPrev.left
-    const dxOther = oldOther && newOther ? oldOther.left - newOther.left : 0
-    const dwMain = newMain.width - oldMain.width
-
-    setIsAnimating(true)
-
-    // Initial state at p = 0
-    if (activeBtnRef.current) {
-      activeBtnRef.current.style.transform = `translate3d(${dxIncoming.toFixed(2)}px, 0, 0)`
-      activeBtnRef.current.style.color = 'var(--sh-text)'
-      const label = activeBtnRef.current.firstElementChild as HTMLElement | null
-      if (label) label.style.opacity = '0'
-    }
-    if (prevBtn) {
-      prevBtn.style.transform = `translate3d(${dxOutgoing.toFixed(2)}px, 0, 0)`
-      prevBtn.style.borderColor = 'transparent'
-      prevBtn.style.color = 'var(--sg-ink-active-text, var(--sh-card-solid, #1C1F26))'
-    }
-    if (otherBtn && dxOther !== 0) {
-      otherBtn.style.transform = `translate3d(${dxOther.toFixed(2)}px, 0, 0)`
-    }
-
-    if (mainShapeRef.current) {
-      mainShapeRef.current.setAttribute('width', oldMain.width.toFixed(2))
-    }
-
-    if (incomingBlobRef.current) {
-      incomingBlobRef.current.style.display = 'none'
-      incomingBlobRef.current.setAttribute('x', oldClicked.left.toFixed(2))
-      incomingBlobRef.current.setAttribute('width', '0')
-    }
-
-    if (outgoingBlobRef.current) {
-      outgoingBlobRef.current.style.display = 'block'
-      outgoingBlobRef.current.setAttribute('x', oldActive.left.toFixed(2))
-      outgoingBlobRef.current.setAttribute('width', oldActive.width.toFixed(2))
-      outgoingBlobRef.current.style.opacity = '1'
-    }
-
-    let p = 0
-    let v = 0
-    let lastTime = performance.now()
-    const startTime = lastTime
-
-    // Spring: stiffness 190, damping 22 -> ~450ms duration, slightly underdamped
+    let p1 = 0
+    let v1 = 0
+    let p2 = 0
+    let v2 = 0
+    let docking = false
+    let last = performance.now()
     const tick = (now: number): void => {
-      const dt = Math.min(Math.max((now - lastTime) / 1000, 0.001), 0.033)
-      lastTime = now
+      const dt = Math.min(Math.max((now - last) / 1000, 0.001), 0.033)
+      last = now
+      ;[p1, v1] = solveSpring(p1, v1, 1, 380, 28, dt)
+      if (!docking && p1 > 0.22) docking = true
+      if (docking) [p2, v2] = solveSpring(p2, v2, 1, 380, 33, dt)
 
-      ;[p, v] = solveSpring(p, v, 1.0, 190, 22, dt)
+      // The bar shrinks to the count while the old mode leaves, then grows around the new one.
+      const width = docking ? lerp(wCount, b.w, p2) : lerp(s.barW, wCount, p1)
+      barPathRef.current?.setAttribute('d', pillPath(b.x, width))
+      if (dividerRef.current) dividerRef.current.style.opacity = String(docking ? 0.3 * clamp01(p2) : 0.3 * (1 - clamp01(p1)))
 
-      const progress = p
-      const fillP = Math.min(1.0, Math.max(0, p))
+      // Leaving: slides right, its ink drains back towards the bar (the right side clears first).
+      const xa = lerp(s.aStart.x, aEnd.x, p1)
+      const wa = lerp(s.aStart.w, aEnd.w, clamp01(p1))
+      const fa = 1 - clamp01((p1 - 0.08) / 0.55)
+      blobRefs[0].current?.setAttribute('d', pillPath(xa, wa * fa))
+      // Arriving: slides left over the other chip, ink flows in from the contact edge once it is close.
+      const xt = lerp(s.tStart.x, tEnd, p2)
+      const ft = clamp01((p2 - 0.28) / 0.55)
+      // Until it starts moving it waits at its old place as an outline (the real chip has already left the DOM).
+      blobRefs[1].current?.setAttribute('d', pillPath(xt, s.tStart.w * ft))
 
-      // The two labels slide across each other: each is faded out while they cross, so they never read as one word.
-      const incLabel = activeBtnRef.current?.firstElementChild as HTMLElement | null | undefined
-      const outLabel = prevBtn?.firstElementChild as HTMLElement | null | undefined
-      if (incLabel) incLabel.style.opacity = Math.min(1, Math.max(0, (fillP - 0.5) / 0.3)).toFixed(3)
-      if (outLabel) outLabel.style.opacity = Math.max(Math.min(1, Math.max(0, 1 - fillP / 0.3)), Math.min(1, Math.max(0, (fillP - 0.7) / 0.25))).toFixed(3)
-
-      // 1. Incoming active button
-      const curDxInc = dxIncoming * (1 - progress)
-      if (activeBtnRef.current) {
-        activeBtnRef.current.style.transform = `translate3d(${curDxInc.toFixed(2)}px, 0, 0)`
-        const inkTextP = Math.min(1.0, Math.max(0, (fillP - 0.2) / 0.7))
-        activeBtnRef.current.style.color = `color-mix(in srgb, var(--sg-ink-active-text, var(--sh-card-solid, #1C1F26)) ${(inkTextP * 100).toFixed(0)}%, var(--sh-text))`
-      }
-
-      // 2. Outgoing previous button
-      const curDxOut = dxOutgoing * (1 - progress)
-      if (prevBtn) {
-        prevBtn.style.transform = `translate3d(${curDxOut.toFixed(2)}px, 0, 0)`
-        const detachP = Math.min(1.0, Math.max(0, fillP * 1.4))
-        prevBtn.style.borderColor = `color-mix(in srgb, var(--sh-send-bg, #7664c2) ${(detachP * 100).toFixed(0)}%, transparent)`
-        prevBtn.style.color = `color-mix(in srgb, var(--sh-text) ${(detachP * 100).toFixed(0)}%, var(--sg-ink-active-text, var(--sh-card-solid, #1C1F26)))`
-      }
-
-      // 3. Other chip FLIP
-      if (otherBtn && dxOther !== 0) {
-        const curDxOth = dxOther * (1 - progress)
-        otherBtn.style.transform = `translate3d(${curDxOth.toFixed(2)}px, 0, 0)`
-      }
-
-      // 4. Main pill shape
-      const curMainW = oldMain.width + dwMain * fillP
-      mainShapeRef.current?.setAttribute('width', curMainW.toFixed(2))
-
-      // 5. Incoming blob: slides towards main pill, gooey neck forms at contact, ink fills inwards
-      const curIncX = oldClicked.left + (newActive.left - oldClicked.left) * fillP
-      const curIncW = oldClicked.width + (newActive.width - oldClicked.width) * fillP
-      if (incomingBlobRef.current) {
-        const inkFill = Math.min(1.0, Math.max(0, (fillP - 0.15) / 0.75))
-        if (inkFill > 0) {
-          incomingBlobRef.current.style.display = 'block'
-          incomingBlobRef.current.setAttribute('x', curIncX.toFixed(2))
-          incomingBlobRef.current.setAttribute('width', (curIncW * inkFill).toFixed(2))
-          incomingBlobRef.current.style.opacity = '1'
-        } else {
-          incomingBlobRef.current.style.display = 'none'
+      const place = (el: HTMLSpanElement | null, x: number, w: number, fill: number): void => {
+        if (!el) return
+        el.style.transform = `translate3d(${x.toFixed(2)}px,0,0)`
+        el.style.width = `${w.toFixed(2)}px`
+        // A chip in flight is opaque, so it hides what it slides over (as in the video); its ink is a disc grown
+        // from the contact edge, and the same disc reveals the dark letters.
+        const r = fill * Math.hypot(w, H / 2)
+        el.style.background = `radial-gradient(circle at 0% 50%,var(--sh-send-bg,#7664c2) ${r.toFixed(2)}px,var(--sh-card-solid,#1c1f26) ${(r + 0.8).toFixed(2)}px)`
+        const ink = el.querySelector<HTMLElement>('.ink')
+        if (ink) ink.style.clipPath = `circle(${r.toFixed(2)}px at 0% 50%)`
+        const edge = el.querySelector<SVGPathElement>('path')
+        if (edge) {
+          edge.setAttribute('d', pillPath(0, w, EDGE))
+          edge.style.opacity = (1 - fill).toFixed(3)
         }
       }
-
-      // 6. Outgoing blob: pulls out of main pill, neck snaps, fill fades
-      const curOutX = oldActive.left + (newPrev.left - oldActive.left) * fillP
-      const curOutW = oldActive.width + (newPrev.width - oldActive.width) * fillP
-      if (outgoingBlobRef.current) {
-        const outAlpha = Math.max(0, 1.0 - fillP * 1.5)
-        if (outAlpha > 0.01) {
-          outgoingBlobRef.current.style.display = 'block'
-          outgoingBlobRef.current.setAttribute('x', curOutX.toFixed(2))
-          outgoingBlobRef.current.setAttribute('width', curOutW.toFixed(2))
-          outgoingBlobRef.current.style.opacity = outAlpha.toFixed(3)
-        } else {
-          outgoingBlobRef.current.style.display = 'none'
-        }
+      place(actors[0], xa, wa, fa)
+      place(actors[1], xt, s.tStart.w, ft)
+      if (oChip && s.oStart !== null && oEnd !== null) {
+        oChip.style.transform = `translate3d(${((s.oStart - oEnd) * (1 - p1)).toFixed(2)}px,0,0)`
       }
 
-      const settled =
-        (Math.abs(1.0 - p) < 0.002 && Math.abs(v) < 0.005) || now - startTime > 650
-
-      if (!settled) {
-        rafRef.current = requestAnimationFrame(tick)
-      } else {
-        if (activeBtnRef.current) {
-          activeBtnRef.current.style.transform = ''
-          activeBtnRef.current.style.color = ''
-          ;(activeBtnRef.current.firstElementChild as HTMLElement | null)?.style.removeProperty('opacity')
-        }
-        if (prevBtn) {
-          prevBtn.style.transform = ''
-          prevBtn.style.borderColor = ''
-          prevBtn.style.color = ''
-          ;(prevBtn.firstElementChild as HTMLElement | null)?.style.removeProperty('opacity')
-        }
-        if (otherBtn) otherBtn.style.transform = ''
-        if (incomingBlobRef.current) incomingBlobRef.current.style.display = 'none'
-        if (outgoingBlobRef.current) outgoingBlobRef.current.style.display = 'none'
-        mainShapeRef.current?.setAttribute('width', newMain.width.toFixed(2))
-        setIsAnimating(false)
-        rafRef.current = 0
-      }
+      const settled = p1 > 0.999 && Math.abs(v1) < 0.01 && p2 > 0.999 && Math.abs(v2) < 0.01
+      if (settled) finish()
+      else animRaf.current = requestAnimationFrame(tick)
     }
-
-    rafRef.current = requestAnimationFrame(tick)
+    animRaf.current = requestAnimationFrame(tick)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
 
   return (
     <div
-      ref={containerRef}
-      className={`sg-ink ${isAnimating ? 'is-animating' : ''}`}
+      ref={rootRef}
+      className="sg-ink"
       role="radiogroup"
       aria-label="Modalità di studio"
       onKeyDown={(e) => {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
         e.preventDefault()
-        const n = MODES[(MODES.indexOf(mode) + (e.key === 'ArrowRight' ? 1 : 2)) % 3]
-        handleSelect(n)
+        select(MODES[(MODES.indexOf(mode) + (e.key === 'ArrowRight' ? 1 : 2)) % 3])
       }}
     >
-      {/* Background SVG shape layer behind text: feGaussianBlur + feColorMatrix for metaball gooey */}
       <svg className="sg-ink-shapes" aria-hidden="true">
         <defs>
-          <filter id={gooId} x="-20%" y="-40%" width="140%" height="180%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
-            <feColorMatrix
-              in="blur"
-              mode="matrix"
-              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
-            />
+          <filter id={gooId} x="-20%" y="-60%" width="140%" height="220%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9" />
           </filter>
         </defs>
-        <g filter={`url(#${gooId})`} className="sg-ink-fill">
-          <rect
-            ref={mainShapeRef}
-            x={0}
-            y={0}
-            width={mainWidth || 0}
-            height={H}
-            rx={H / 2}
-          />
-          <rect
-            ref={incomingBlobRef}
-            x={0}
-            y={0}
-            width={0}
-            height={H}
-            rx={H / 2}
-            style={{ display: 'none' }}
-          />
-          <rect
-            ref={outgoingBlobRef}
-            x={0}
-            y={0}
-            width={0}
-            height={H}
-            rx={H / 2}
-            style={{ display: 'none' }}
-          />
+        <g className="sg-ink-fill" filter={`url(#${gooId})`}>
+          <path ref={barPathRef} />
+          <path ref={blobRefs[0]} />
+          <path ref={blobRefs[1]} />
         </g>
       </svg>
 
-      {/* Main purple pill on the left: counter, divider, active mode in normal flow */}
-      <div ref={mainElRef} className="sg-ink-main">
-        <span className="sg-ink-count">
+      <div ref={barRef} className="sg-ink-main" {...pinch('bar')}>
+        <span ref={countRef} className="sg-ink-count">
           <b>
             <Odometer value={countText} />
           </b>
           <span>{label}</span>
         </span>
-        <span className="sg-ink-divider" aria-hidden="true" />
+        <span ref={dividerRef} className="sg-ink-divider" aria-hidden="true" />
         <button
-          ref={activeBtnRef}
+          ref={activeRef}
           type="button"
           role="radio"
           aria-checked="true"
@@ -476,16 +401,15 @@ export function InkModes({
           aria-label={mode}
           className="sg-chip-active"
         >
-          <span>{mode}</span>
+          {mode}
         </button>
       </div>
 
-      {/* The 2 inactive mode chips on the right */}
-      {inactiveModes.map((m) => (
+      {outer.map((m) => (
         <button
           key={m}
           ref={(el) => {
-            inactiveBtnRefs.current[m] = el
+            chipRefs.current[m] = el
           }}
           type="button"
           role="radio"
@@ -494,10 +418,29 @@ export function InkModes({
           tabIndex={-1}
           aria-label={m}
           className="sg-chip-inactive"
-          onClick={() => handleSelect(m)}
+          onClick={() => select(m)}
+          {...pinch(m)}
         >
+          <svg className="sg-chip-edge" aria-hidden="true">
+            <path
+              ref={(el) => {
+                edgeRefs.current[m] = el
+              }}
+            />
+          </svg>
           <span>{m}</span>
         </button>
+      ))}
+
+      {/* The two chips in flight during a change: an outline, the light label and the dark label the ink reveals. */}
+      {[0, 1].map((i) => (
+        <span key={i} ref={actorRefs[i]} className="sg-ink-actor" aria-hidden="true">
+          <svg>
+            <path />
+          </svg>
+          <span className="base" />
+          <span className="ink" />
+        </span>
       ))}
     </div>
   )

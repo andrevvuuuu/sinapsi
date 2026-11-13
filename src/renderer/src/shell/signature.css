@@ -44,29 +44,6 @@
 :root{--sg-ink-active-text:var(--sh-card-solid,#1C1F26)}
 [data-theme="trattato"]{--sg-ink-active-text:#ffffff}
 [data-theme="lavagna"]{--sg-ink-active-text:var(--sh-card-solid,#1C1F26)}
-.sg-ink{position:relative;display:inline-flex;align-items:center;gap:8px;margin:16px 0 12px;font:600 14px/1 var(--sans);letter-spacing:-.01em;user-select:none;-webkit-user-select:none}
-.sg-ink-measure{position:absolute;visibility:hidden;white-space:nowrap;pointer-events:none;left:-9999px;top:-9999px}
-.sg-ink-shapes{position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:0;opacity:0;transition:opacity .15s ease}
-.sg-ink.is-animating .sg-ink-shapes{opacity:1}
-.sg-ink-fill{fill:var(--sh-send-bg,#7664c2)}
-.sg-ink-fill rect{transform-box:fill-box;will-change:transform,opacity}
-.sg-ink-main{position:relative;display:inline-flex;align-items:center;gap:10px;padding:6px 16px;white-space:nowrap;border-radius:999px;height:38px;background:var(--sh-send-bg,#7664c2);color:var(--sg-ink-active-text);box-sizing:border-box;z-index:1;will-change:transform}
-[data-theme="trattato"] .sg-ink-main{color:#ffffff}
-.sg-ink.is-animating .sg-ink-main{background:transparent}
-.sg-ink-count{display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap;color:inherit;pointer-events:none}
-.sg-ink-count b{font:600 15px/1 var(--sans);font-variant-numeric:tabular-nums;color:inherit}
-.sg-ink-count>span{font-weight:500;font-size:14px;color:inherit}
-.sg-ink-divider{display:inline-block;width:1px;height:14px;background-color:currentColor;opacity:.3;flex:none}
-.sg-chip-active{position:relative;display:inline-flex;align-items:center;padding:0;border:0;background:transparent;color:inherit;font:inherit;font-weight:600;white-space:nowrap;cursor:default;outline:none;will-change:transform}
-.sg-chip-active:focus-visible{outline:var(--btn-focus-ring);outline-offset:2px}
-.sg-chip-inactive{position:relative;display:inline-flex;align-items:center;justify-content:center;height:38px;padding:6px 16px;border-radius:999px;background:transparent;border:1.5px solid var(--sh-send-bg,#7664c2);color:var(--sh-text);font:600 14px/1 var(--sans);letter-spacing:-.01em;white-space:nowrap;cursor:pointer;box-sizing:border-box;z-index:1;will-change:transform,opacity;transition:background-color .15s ease,transform .15s ease}
-.sg-chip-inactive:hover{background:color-mix(in srgb,var(--sh-send-bg,#7664c2) 14%,transparent)}
-.sg-chip-inactive:active{transform:scale(.97)}
-.sg-chip-inactive:focus-visible{outline:var(--btn-focus-ring);outline-offset:2px}
-.sg-odo{display:inline-flex}
-.sg-odo-col{display:inline-block;height:1em;overflow:hidden}
-.sg-odo-strip{display:flex;flex-direction:column;transition:transform .55s cubic-bezier(.3,1.35,.5,1)}
-.sg-odo-strip>span{height:1em;line-height:1em}
 
 /* View Transition for theme switch */
 ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
@@ -75,3 +52,30 @@
 @keyframes vt-theme-reveal{from{clip-path:circle(0px at var(--vt-x,50%) var(--vt-y,50%))}to{clip-path:circle(var(--vt-r,150vmax) at var(--vt-x,50%) var(--vt-y,50%))}}
 
 @media (prefers-reduced-motion:reduce){::view-transition-old(root),::view-transition-new(root){animation:none!important}.sg-odo-strip,.sg-dock-ambient,.sg-dock-light{transition:none}.sg-dock-ripple{display:none!important}.sg-dock-item,.sg-dock-icon,.sg-dock-item small{transition:none!important;animation:none!important}.sg-ink-fill{filter:none}}
+
+/* Study mode filter (InkModes): the fills live on one gooey SVG layer behind the text; outlines are SVG paths so a hover can pinch them. */
+.sg-ink{position:relative;display:inline-flex;align-items:center;gap:10px;margin:16px 0 12px;font:600 14px/1 var(--sans);letter-spacing:-.01em;user-select:none;-webkit-user-select:none;isolation:isolate}
+.sg-ink-shapes{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:0}
+.sg-ink-fill{fill:var(--sh-send-bg,#7664c2)}
+.sg-chip-edge path,.sg-ink-actor path{fill:none;stroke:var(--sh-send-bg,#7664c2);stroke-width:1.5}
+.sg-ink-main{position:relative;z-index:1;display:inline-flex;align-items:center;gap:12px;height:38px;padding:0 16px;white-space:nowrap;color:var(--sg-ink-active-text);box-sizing:border-box}
+.sg-ink-count{display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap}
+.sg-ink-count b{font:600 15px/1 var(--sans);font-variant-numeric:tabular-nums}
+.sg-ink-count>span{font-weight:500}
+.sg-ink-divider{display:inline-block;width:1px;height:14px;background:currentColor;opacity:.3;flex:none}
+.sg-chip-active{display:inline-flex;align-items:center;padding:0;border:0;background:none;color:inherit;font:inherit;white-space:nowrap;cursor:default}
+.sg-chip-active:focus-visible,.sg-chip-inactive:focus-visible{outline:var(--btn-focus-ring);outline-offset:2px}
+.sg-chip-inactive{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;height:38px;padding:0 16px;border:0;border-radius:999px;background:none;color:var(--sh-text);font:inherit;white-space:nowrap;cursor:pointer;box-sizing:border-box;transition:transform .12s ease}
+.sg-chip-inactive>span{position:relative}
+.sg-chip-inactive:active{transform:scale(.97)}
+.sg-ink.is-animating .sg-chip-inactive{transition:none}
+.sg-chip-edge{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.sg-ink-actor{position:absolute;top:0;left:0;z-index:2;display:none;border-radius:999px;align-items:center;justify-content:center;height:38px;white-space:nowrap;pointer-events:none;will-change:transform}
+.sg-ink-actor svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.sg-ink-actor .base{position:relative;color:var(--sh-text)}
+.sg-ink-actor .ink{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--sg-ink-active-text)}
+.sg-odo{display:inline-flex}
+.sg-odo-col{display:inline-block;height:1em;overflow:hidden}
+.sg-odo-strip{display:flex;flex-direction:column;transition:transform .55s cubic-bezier(.3,1.35,.5,1)}
+.sg-odo-strip>span{height:1em;line-height:1em}
+@media (prefers-reduced-motion:reduce){.sg-odo-strip{transition:none}}
