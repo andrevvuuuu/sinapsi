@@ -18,10 +18,9 @@ export function Icon({ children, strokeWidth = 1.6 }: { children: ReactNode; str
 
 export const IconToday = (): React.JSX.Element => (
   <Icon strokeWidth={1.75}>
-    <rect x="4" y="4" width="7" height="7" rx="2.5" />
-    <rect x="13" y="4" width="7" height="10" rx="2.5" />
-    <rect x="4" y="13" width="7" height="7" rx="2.5" />
-    <rect x="13" y="16" width="7" height="4" rx="2" />
+    <path d="m3.5 10.5 8.5-6.5 8.5 6.5" />
+    <path d="M5.5 9v9.5A1.5 1.5 0 0 0 7 20h10a1.5 1.5 0 0 0 1.5-1.5V9" />
+    <path d="M10 20v-5h4v5" />
   </Icon>
 )
 
@@ -60,14 +59,9 @@ export const IconStudy = (): React.JSX.Element => (
 
 export const IconReview = (): React.JSX.Element => (
   <Icon strokeWidth={1.75}>
-    <g transform="rotate(-8 10 13)">
-      <rect x="4" y="6" width="12" height="15" rx="2" />
-      <path d="M7 10h6M7 13h6" />
-    </g>
-    <g transform="rotate(4 15 10)">
-      <rect x="9" y="4" width="11" height="14" rx="2" />
-    </g>
-    <path d="m19 2 .7 1.8L21.5 4.5l-1.8.7L19 7l-.7-1.8-1.8-.7 1.8-.7L19 2Z" />
+    <path d="M7 4.5h10M7 19.5h10" />
+    <path d="M7.5 5c0 2.8 1.5 4.8 4.5 7-3 2.2-4.5 4.2-4.5 7M16.5 5c0 2.8-1.5 4.8-4.5 7 3 2.2 4.5 4.2 4.5 7" />
+    <circle cx="12" cy="17" r="0.6" />
   </Icon>
 )
 

@@ -102,6 +102,8 @@ export function AppShell({
             : view === 'notes' || view === 'source'
               ? 'notes'
               : null
+  const dockActive: Destination | null =
+    view === 'home' ? 'Oggi' : view === 'map' ? 'Mappa' : view === 'plan' ? 'Piano' : null
   const setTheme = (t: Settings['theme']): void => {
     // Optimistic: apply theme immediately, persist asynchronously
     setSettings((s) => (s ? { ...s, theme: t } : s))
@@ -169,7 +171,7 @@ export function AppShell({
             children
           )}
         </main>
-        {view === 'home' && <LiquidDock active="Oggi" onChange={onNavigate} />}
+        {dockActive && <LiquidDock active={dockActive} onChange={onNavigate} />}
       </div>
       {settingsOpen && settings && (
         <SettingsDialog
