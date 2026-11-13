@@ -4,23 +4,7 @@ import './signature.css'
 const MODES = ['Studia', 'Esercitati', 'Ripassa'] as const
 export type Mode = (typeof MODES)[number]
 
-/*
- * Ink chips: viscous metaball ink flow between modes.
- * Picking a chip causes ink to surge from the contact edge (facing the previous selection)
- * and flood the inside of the clicked chip with an underdamped spring curve, fusing seamlessly
- * through an SVG metaball filter (feGaussianBlur + feColorMatrix + feComposite atop).
- * The bar expands and chips translate via hardware-accelerated transform: translate3d and scaleX
- * with zero React re-renders per frame in a single rAF loop.
- */
-
-const H = 38 // chip and bar height
-const GAP = 8 // between bar and chips
-const PADX = 16 // chip side padding
-const BAR_PADL = 14
-const DIV_GAP = 12
-
-type Geo = { barW: number; chips: Record<Mode, { x: number; fill: number }> }
-type Widths = { count: number; text: Record<Mode, number> }
+const H = 38 // chip and main pill height
 
 /** Analytical damped harmonic oscillator over arbitrary time step dt. */
 function solveSpring(
@@ -55,23 +39,6 @@ function solveSpring(
   }
 }
 
-/** Where everything sits when `mode` is the chosen one. */
-function layoutFor(mode: Mode, w: Widths): Geo {
-  const chipW = (m: Mode): number => w.text[m] + PADX * 2
-  const inX = BAR_PADL + w.count + DIV_GAP + 1 + DIV_GAP
-  const barW = inX + chipW(mode)
-  let x = barW + GAP
-  const chips = {} as Geo['chips']
-  for (const m of MODES) {
-    if (m === mode) chips[m] = { x: inX, fill: 1 }
-    else {
-      chips[m] = { x, fill: 0 }
-      x += chipW(m) + GAP
-    }
-  }
-  return { barW, chips }
-}
-
 /** Digits that roll vertically, one column each, like an odometer. */
 function Odometer({ value }: { value: string }): React.JSX.Element {
   return (
@@ -95,6 +62,16 @@ function Odometer({ value }: { value: string }): React.JSX.Element {
   )
 }
 
+type Pos = { left: number; width: number }
+type AnimSnapshot = {
+  main: Pos
+  active: Pos
+  chips: Record<Mode, Pos | null>
+  fromMode: Mode
+  toMode: Mode
+  otherMode: Mode
+}
+
 export function InkModes({
   mode,
   due,
@@ -108,275 +85,316 @@ export function InkModes({
   practiceCount: number | null
   onChange: (mode: Mode) => void
 }): React.JSX.Element {
-  const goo = `sg-goo-${useId().replace(/:/g, '')}`
-  const measureRef = useRef<HTMLSpanElement>(null)
-  const countRef = useRef<HTMLSpanElement>(null)
+  const gooId = `sg-goo-${useId().replace(/:/g, '')}`
 
-  const barRectRef = useRef<SVGRectElement>(null)
-  const dividerLineRef = useRef<SVGLineElement>(null)
-  const inkRectRefs = useRef<Record<Mode, SVGRectElement | null>>({
-    Studia: null,
-    Esercitati: null,
-    Ripassa: null
-  })
-  const outlineRectRefs = useRef<Record<Mode, SVGRectElement | null>>({
-    Studia: null,
-    Esercitati: null,
-    Ripassa: null
-  })
-  const labelInkRefs = useRef<Record<Mode, HTMLSpanElement | null>>({
-    Studia: null,
-    Esercitati: null,
-    Ripassa: null
-  })
-  const chipBtn = useRef<Record<Mode, HTMLButtonElement | null>>({
+  const containerRef = useRef<HTMLDivElement>(null)
+  const mainElRef = useRef<HTMLDivElement>(null)
+  const activeBtnRef = useRef<HTMLButtonElement>(null)
+  const inactiveBtnRefs = useRef<Record<Mode, HTMLButtonElement | null>>({
     Studia: null,
     Esercitati: null,
     Ripassa: null
   })
 
-  const [w, setW] = useState<Widths | null>(null)
-  const [geo, setGeo] = useState<Geo | null>(null)
-  const geoRef = useRef<Geo | null>(null)
-  const shown = useRef<Mode>(mode)
+  const mainShapeRef = useRef<SVGRectElement>(null)
+  const incomingBlobRef = useRef<SVGRectElement>(null)
+  const outgoingBlobRef = useRef<SVGRectElement>(null)
 
-  // The bar displays the count for the current mode
-  const [barMode, setBarMode] = useState<Mode>(mode)
-  const count = barMode === 'Ripassa' ? due : barMode === 'Esercitati' ? practiceCount : studyCount
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [mainWidth, setMainWidth] = useState<number>(0)
+
+  const animRef = useRef<AnimSnapshot | null>(null)
+  const currentModeRef = useRef<Mode>(mode)
+  const rafRef = useRef<number>(0)
+
+  // Current count and label for the active mode
+  const count = mode === 'Ripassa' ? due : mode === 'Esercitati' ? practiceCount : studyCount
   const countText = count == null ? '—' : String(count)
-  const label = barMode === 'Ripassa' ? 'dovuti' : 'suggerimenti'
+  const label = mode === 'Ripassa' ? 'dovuti' : 'suggerimenti'
 
-  // Measure label widths with real fonts and ResizeObserver
+  // The other 2 modes displayed as inactive chips
+  const inactiveModes = MODES.filter((m) => m !== mode)
+
+  // Track main pill width via ResizeObserver and fonts.ready
   useLayoutEffect(() => {
-    let ro: ResizeObserver | null = null
     let mounted = true
-
-    const measure = (): void => {
+    const updateWidth = (): void => {
       if (!mounted) return
-      const box = measureRef.current
-      const c = countRef.current
-      if (!box || !c) return
-      const text = {} as Widths['text']
-      box.querySelectorAll<HTMLElement>('[data-m]').forEach((el) => {
-        text[el.dataset.m as Mode] = Math.ceil(el.getBoundingClientRect().width)
-      })
-      const countWidth = Math.ceil(c.getBoundingClientRect().width)
-      if (countWidth > 0 && text.Studia && text.Esercitati && text.Ripassa) {
-        setW((prev) => {
-          if (
-            prev &&
-            prev.count === countWidth &&
-            prev.text.Studia === text.Studia &&
-            prev.text.Esercitati === text.Esercitati &&
-            prev.text.Ripassa === text.Ripassa
-          ) {
-            return prev
-          }
-          return { count: countWidth, text }
-        })
+      if (mainElRef.current) {
+        const w = Math.ceil(mainElRef.current.getBoundingClientRect().width)
+        if (w > 0) {
+          setMainWidth(w)
+          mainShapeRef.current?.setAttribute('width', String(w))
+        }
       }
     }
 
-    measure()
+    updateWidth()
 
     if (typeof document !== 'undefined' && document.fonts?.ready) {
       document.fonts.ready.then(() => {
-        if (mounted) measure()
+        if (mounted) updateWidth()
       })
     }
 
-    if (typeof ResizeObserver !== 'undefined') {
+    let ro: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined' && mainElRef.current) {
       ro = new ResizeObserver(() => {
-        measure()
+        updateWidth()
       })
-      if (countRef.current) ro.observe(countRef.current)
-      if (measureRef.current) ro.observe(measureRef.current)
+      ro.observe(mainElRef.current)
     }
 
     return () => {
       mounted = false
       if (ro) ro.disconnect()
     }
-  }, [countText, label])
+  }, [countText, label, mode])
 
-  // Recalculate layout whenever widths change
-  useEffect(() => {
-    if (!w) return
-    const g = layoutFor(shown.current, w)
-    geoRef.current = g
-    setGeo(g)
-  }, [w])
-
-  const wRef = useRef<Widths | null>(null)
-  const rafRef = useRef(0)
-  useEffect(() => {
-    wRef.current = w
-  }, [w])
+  // Cleanup in-flight rAF on unmount
   useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
 
-  // Ink-flow animation: spring curve from contact edge with direct DOM updates (no React re-render per frame)
-  useEffect(() => {
-    if (mode === shown.current || !geoRef.current || !wRef.current) return
-    const still = matchMedia('(prefers-reduced-motion: reduce)').matches
-    const prevMode = shown.current
-    shown.current = mode
-    const ww = wRef.current
-    const startGeo = geoRef.current
-    const endGeo = layoutFor(mode, ww)
+  const handleSelect = (targetMode: Mode): void => {
+    if (targetMode === mode) return
 
-    if (still) {
-      geoRef.current = endGeo
-      setGeo(endGeo)
-      setBarMode(mode)
+    const container = containerRef.current
+    if (!container) {
+      onChange(targetMode)
+      return
+    }
+
+    // Cancel running animation before capturing snapshot
+    cancelAnimationFrame(rafRef.current)
+    rafRef.current = 0
+
+    const cRect = container.getBoundingClientRect()
+    const mainRect = mainElRef.current?.getBoundingClientRect()
+    const activeRect = activeBtnRef.current?.getBoundingClientRect()
+
+    const chipsPos: Record<Mode, Pos | null> = {
+      Studia: null,
+      Esercitati: null,
+      Ripassa: null
+    }
+
+    for (const m of inactiveModes) {
+      const btn = inactiveBtnRefs.current[m]
+      if (btn) {
+        const r = btn.getBoundingClientRect()
+        chipsPos[m] = { left: r.left - cRect.left, width: r.width }
+      }
+    }
+
+    const other = inactiveModes.find((m) => m !== targetMode) || MODES[0]
+
+    animRef.current = {
+      main: mainRect
+        ? { left: mainRect.left - cRect.left, width: mainRect.width }
+        : { left: 0, width: 0 },
+      active: activeRect
+        ? { left: activeRect.left - cRect.left, width: activeRect.width }
+        : { left: 0, width: 0 },
+      chips: chipsPos,
+      fromMode: mode,
+      toMode: targetMode,
+      otherMode: other
+    }
+
+    onChange(targetMode)
+  }
+
+  // FLIP transition with SVG gooey metaball spring animation
+  useLayoutEffect(() => {
+    const anim = animRef.current
+    if (!anim || anim.toMode !== mode) {
+      currentModeRef.current = mode
+      return
+    }
+
+    currentModeRef.current = mode
+    animRef.current = null
+
+    const prefersReduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (prefersReduced) {
       return
     }
 
     cancelAnimationFrame(rafRef.current)
 
-    // Contact edge: if previous selection is to the left, ink enters from left (0% 50%), otherwise right (100% 50%)
-    const prevIdx = MODES.indexOf(prevMode)
-    const nextIdx = MODES.indexOf(mode)
-    const fromLeft = prevIdx < nextIdx
-    const contactOrigin = fromLeft ? '0% 50%' : '100% 50%'
+    const container = containerRef.current
+    if (!container) return
+    const cRect = container.getBoundingClientRect()
+    const newMainRect = mainElRef.current?.getBoundingClientRect()
+    const newActiveRect = activeBtnRef.current?.getBoundingClientRect()
 
-    let inkP = 0
-    let vInk = 0
-    let slideP = 0
-    let vSlide = 0
+    if (!newMainRect || !newActiveRect) return
+
+    const newMain: Pos = { left: newMainRect.left - cRect.left, width: newMainRect.width }
+    const newActive: Pos = { left: newActiveRect.left - cRect.left, width: newActiveRect.width }
+
+    const prevBtn = inactiveBtnRefs.current[anim.fromMode]
+    const prevRect = prevBtn?.getBoundingClientRect()
+    const newPrev: Pos | null = prevRect
+      ? { left: prevRect.left - cRect.left, width: prevRect.width }
+      : null
+
+    const otherBtn = inactiveBtnRefs.current[anim.otherMode]
+    const otherRect = otherBtn?.getBoundingClientRect()
+    const newOther: Pos | null = otherRect
+      ? { left: otherRect.left - cRect.left, width: otherRect.width }
+      : null
+
+    const oldClicked = anim.chips[anim.toMode]
+    const oldActive = anim.active
+    const oldOther = anim.chips[anim.otherMode]
+    const oldMain = anim.main
+
+    if (!oldClicked || !newPrev) return
+
+    // FLIP Deltas
+    const dxIncoming = oldClicked.left - newActive.left
+    const dxOutgoing = oldActive.left - newPrev.left
+    const dxOther = oldOther && newOther ? oldOther.left - newOther.left : 0
+    const dwMain = newMain.width - oldMain.width
+
+    setIsAnimating(true)
+
+    // Initial state at p = 0
+    if (activeBtnRef.current) {
+      activeBtnRef.current.style.transform = `translate3d(${dxIncoming.toFixed(2)}px, 0, 0)`
+      activeBtnRef.current.style.color = 'var(--sh-text)'
+      const label = activeBtnRef.current.firstElementChild as HTMLElement | null
+      if (label) label.style.opacity = '0'
+    }
+    if (prevBtn) {
+      prevBtn.style.transform = `translate3d(${dxOutgoing.toFixed(2)}px, 0, 0)`
+      prevBtn.style.borderColor = 'transparent'
+      prevBtn.style.color = 'var(--sg-ink-active-text, var(--sh-card-solid, #1C1F26))'
+    }
+    if (otherBtn && dxOther !== 0) {
+      otherBtn.style.transform = `translate3d(${dxOther.toFixed(2)}px, 0, 0)`
+    }
+
+    if (mainShapeRef.current) {
+      mainShapeRef.current.setAttribute('width', oldMain.width.toFixed(2))
+    }
+
+    if (incomingBlobRef.current) {
+      incomingBlobRef.current.style.display = 'none'
+      incomingBlobRef.current.setAttribute('x', oldClicked.left.toFixed(2))
+      incomingBlobRef.current.setAttribute('width', '0')
+    }
+
+    if (outgoingBlobRef.current) {
+      outgoingBlobRef.current.style.display = 'block'
+      outgoingBlobRef.current.setAttribute('x', oldActive.left.toFixed(2))
+      outgoingBlobRef.current.setAttribute('width', oldActive.width.toFixed(2))
+      outgoingBlobRef.current.style.opacity = '1'
+    }
+
+    let p = 0
+    let v = 0
     let lastTime = performance.now()
-    let swappedCount = false
+    const startTime = lastTime
 
-    // Prepare incoming chip styles before animation starts
-    const incomingRect = inkRectRefs.current[mode]
-    if (incomingRect) {
-      incomingRect.style.transformOrigin = contactOrigin
-      incomingRect.style.transform = 'translate3d(0, 0, 0) scaleX(0)'
-      incomingRect.style.opacity = '1'
-    }
-    const incomingOutline = outlineRectRefs.current[mode]
-    if (incomingOutline) {
-      incomingOutline.style.display = 'block'
-      incomingOutline.style.opacity = '1'
-    }
-    const outgoingOutline = outlineRectRefs.current[prevMode]
-    if (outgoingOutline) {
-      outgoingOutline.style.display = 'block'
-      outgoingOutline.style.opacity = '0'
-    }
-
+    // Spring: stiffness 190, damping 22 -> ~450ms duration, slightly underdamped
     const tick = (now: number): void => {
-      const dt = Math.min(Math.max((now - lastTime) / 1000, 0.001), 0.04)
+      const dt = Math.min(Math.max((now - lastTime) / 1000, 0.001), 0.033)
       lastTime = now
 
-      // Solve ink spring: surges from contact edge into clicked chip
-      ;[inkP, vInk] = solveSpring(inkP, vInk, 1.0, 240, 22, dt)
-      // Slide follows smoothly as ink fills
-      const slideTarget = inkP > 0.25 ? 1.0 : 0.0
-      ;[slideP, vSlide] = solveSpring(slideP, vSlide, slideTarget, 210, 23, dt)
+      ;[p, v] = solveSpring(p, v, 1.0, 190, 22, dt)
 
-      const scaleX = Math.min(1.04, Math.max(0, inkP))
-      const clampedSlide = Math.min(1.0, Math.max(0, slideP))
+      const progress = p
+      const fillP = Math.min(1.0, Math.max(0, p))
 
-      // Direct DOM update: bar width
-      const curBarW = startGeo.barW + (endGeo.barW - startGeo.barW) * clampedSlide
-      barRectRef.current?.setAttribute('width', curBarW.toFixed(2))
+      // The two labels slide across each other: each is faded out while they cross, so they never read as one word.
+      const incLabel = activeBtnRef.current?.firstElementChild as HTMLElement | null | undefined
+      const outLabel = prevBtn?.firstElementChild as HTMLElement | null | undefined
+      if (incLabel) incLabel.style.opacity = Math.min(1, Math.max(0, (fillP - 0.5) / 0.3)).toFixed(3)
+      if (outLabel) outLabel.style.opacity = Math.max(Math.min(1, Math.max(0, 1 - fillP / 0.3)), Math.min(1, Math.max(0, (fillP - 0.7) / 0.25))).toFixed(3)
 
-      // Direct DOM update: divider line
-      const divX = BAR_PADL + (ww?.count ?? 0) + DIV_GAP
-      dividerLineRef.current?.setAttribute('x1', divX.toFixed(2))
-      dividerLineRef.current?.setAttribute('x2', divX.toFixed(2))
+      // 1. Incoming active button
+      const curDxInc = dxIncoming * (1 - progress)
+      if (activeBtnRef.current) {
+        activeBtnRef.current.style.transform = `translate3d(${curDxInc.toFixed(2)}px, 0, 0)`
+        const inkTextP = Math.min(1.0, Math.max(0, (fillP - 0.2) / 0.7))
+        activeBtnRef.current.style.color = `color-mix(in srgb, var(--sg-ink-active-text, var(--sh-card-solid, #1C1F26)) ${(inkTextP * 100).toFixed(0)}%, var(--sh-text))`
+      }
 
-      // Direct DOM update: chips translation and ink flow
-      for (const m of MODES) {
-        const startX = startGeo.chips[m].x
-        const endX = endGeo.chips[m].x
-        const transX = (endX - startX) * clampedSlide
+      // 2. Outgoing previous button
+      const curDxOut = dxOutgoing * (1 - progress)
+      if (prevBtn) {
+        prevBtn.style.transform = `translate3d(${curDxOut.toFixed(2)}px, 0, 0)`
+        const detachP = Math.min(1.0, Math.max(0, fillP * 1.4))
+        prevBtn.style.borderColor = `color-mix(in srgb, var(--sh-send-bg, #7664c2) ${(detachP * 100).toFixed(0)}%, transparent)`
+        prevBtn.style.color = `color-mix(in srgb, var(--sh-text) ${(detachP * 100).toFixed(0)}%, var(--sg-ink-active-text, var(--sh-card-solid, #1C1F26)))`
+      }
 
-        const btn = chipBtn.current[m]
-        if (btn) {
-          btn.style.transform = `translate3d(${transX.toFixed(2)}px, 0, 0)`
-        }
+      // 3. Other chip FLIP
+      if (otherBtn && dxOther !== 0) {
+        const curDxOth = dxOther * (1 - progress)
+        otherBtn.style.transform = `translate3d(${curDxOth.toFixed(2)}px, 0, 0)`
+      }
 
-        const outline = outlineRectRefs.current[m]
-        if (outline) {
-          outline.style.transform = `translate3d(${transX.toFixed(2)}px, 0, 0)`
-          if (m === mode) {
-            outline.style.opacity = Math.max(0, 1 - scaleX * 1.15).toFixed(3)
-          } else if (m === prevMode) {
-            outline.style.opacity = Math.min(1, clampedSlide * 1.3).toFixed(3)
-          }
-        }
+      // 4. Main pill shape
+      const curMainW = oldMain.width + dwMain * fillP
+      mainShapeRef.current?.setAttribute('width', curMainW.toFixed(2))
 
-        const inkRect = inkRectRefs.current[m]
-        if (inkRect) {
-          if (m === mode) {
-            inkRect.style.transformOrigin = contactOrigin
-            inkRect.style.transform = `translate3d(${transX.toFixed(2)}px, 0, 0) scaleX(${scaleX.toFixed(3)})`
-            inkRect.style.opacity = '1'
-          } else if (m === prevMode) {
-            inkRect.style.transform = `translate3d(${transX.toFixed(2)}px, 0, 0)`
-            inkRect.style.opacity = Math.max(0, 1 - clampedSlide * 1.4).toFixed(3)
-          } else {
-            inkRect.style.transform = `translate3d(${transX.toFixed(2)}px, 0, 0) scaleX(0)`
-            inkRect.style.opacity = '0'
-          }
-        }
-
-        const labelInk = labelInkRefs.current[m]
-        if (labelInk) {
-          if (m === mode) {
-            const clipP = Math.max(0, Math.min(100, (1 - scaleX) * 100))
-            labelInk.style.clipPath = fromLeft
-              ? `inset(0 ${clipP.toFixed(1)}% 0 0)`
-              : `inset(0 0 0 ${clipP.toFixed(1)}%)`
-          } else if (m === prevMode) {
-            const clipP = Math.max(0, Math.min(100, clampedSlide * 100))
-            labelInk.style.clipPath = fromLeft
-              ? `inset(0 0 0 ${clipP.toFixed(1)}%)`
-              : `inset(0 ${clipP.toFixed(1)}% 0 0)`
-          }
+      // 5. Incoming blob: slides towards main pill, gooey neck forms at contact, ink fills inwards
+      const curIncX = oldClicked.left + (newActive.left - oldClicked.left) * fillP
+      const curIncW = oldClicked.width + (newActive.width - oldClicked.width) * fillP
+      if (incomingBlobRef.current) {
+        const inkFill = Math.min(1.0, Math.max(0, (fillP - 0.15) / 0.75))
+        if (inkFill > 0) {
+          incomingBlobRef.current.style.display = 'block'
+          incomingBlobRef.current.setAttribute('x', curIncX.toFixed(2))
+          incomingBlobRef.current.setAttribute('width', (curIncW * inkFill).toFixed(2))
+          incomingBlobRef.current.style.opacity = '1'
+        } else {
+          incomingBlobRef.current.style.display = 'none'
         }
       }
 
-      if (!swappedCount && clampedSlide > 0.45) {
-        swappedCount = true
-        setBarMode(mode)
+      // 6. Outgoing blob: pulls out of main pill, neck snaps, fill fades
+      const curOutX = oldActive.left + (newPrev.left - oldActive.left) * fillP
+      const curOutW = oldActive.width + (newPrev.width - oldActive.width) * fillP
+      if (outgoingBlobRef.current) {
+        const outAlpha = Math.max(0, 1.0 - fillP * 1.5)
+        if (outAlpha > 0.01) {
+          outgoingBlobRef.current.style.display = 'block'
+          outgoingBlobRef.current.setAttribute('x', curOutX.toFixed(2))
+          outgoingBlobRef.current.setAttribute('width', curOutW.toFixed(2))
+          outgoingBlobRef.current.style.opacity = outAlpha.toFixed(3)
+        } else {
+          outgoingBlobRef.current.style.display = 'none'
+        }
       }
 
       const settled =
-        Math.abs(1.0 - inkP) < 0.005 &&
-        Math.abs(vInk) < 0.008 &&
-        Math.abs(1.0 - slideP) < 0.005 &&
-        Math.abs(vSlide) < 0.008
+        (Math.abs(1.0 - p) < 0.002 && Math.abs(v) < 0.005) || now - startTime > 650
 
       if (!settled) {
         rafRef.current = requestAnimationFrame(tick)
       } else {
-        // Animation finished: clean up inline transforms and sync React state once
-        for (const m of MODES) {
-          const btn = chipBtn.current[m]
-          if (btn) btn.style.transform = ''
-          const outline = outlineRectRefs.current[m]
-          if (outline) {
-            outline.style.transform = ''
-            outline.setAttribute('x', String(endGeo.chips[m].x + 0.75))
-            outline.style.opacity = m === mode ? '0' : '1'
-            outline.style.display = m === mode ? 'none' : 'block'
-          }
-          const inkRect = inkRectRefs.current[m]
-          if (inkRect) {
-            inkRect.style.transform =
-              m === mode ? 'scaleX(1) translate3d(0, 0, 0)' : 'scaleX(0) translate3d(0, 0, 0)'
-            inkRect.style.opacity = m === mode ? '1' : '0'
-          }
-          const labelInk = labelInkRefs.current[m]
-          if (labelInk) {
-            labelInk.style.clipPath = m === mode ? 'inset(0 0% 0 0)' : 'inset(0 100% 0 0)'
-          }
+        if (activeBtnRef.current) {
+          activeBtnRef.current.style.transform = ''
+          activeBtnRef.current.style.color = ''
+          ;(activeBtnRef.current.firstElementChild as HTMLElement | null)?.style.removeProperty('opacity')
         }
-        geoRef.current = endGeo
-        setGeo(endGeo)
-        if (!swappedCount) setBarMode(mode)
+        if (prevBtn) {
+          prevBtn.style.transform = ''
+          prevBtn.style.borderColor = ''
+          prevBtn.style.color = ''
+          ;(prevBtn.firstElementChild as HTMLElement | null)?.style.removeProperty('opacity')
+        }
+        if (otherBtn) otherBtn.style.transform = ''
+        if (incomingBlobRef.current) incomingBlobRef.current.style.display = 'none'
+        if (outgoingBlobRef.current) outgoingBlobRef.current.style.display = 'none'
+        mainShapeRef.current?.setAttribute('width', newMain.width.toFixed(2))
+        setIsAnimating(false)
         rafRef.current = 0
       }
     }
@@ -384,160 +402,103 @@ export function InkModes({
     rafRef.current = requestAnimationFrame(tick)
   }, [mode])
 
-  const chipW = (m: Mode): number => (w ? w.text[m] + PADX * 2 : 0)
-  const totalW = geo ? Math.max(geo.barW, ...MODES.map((m) => geo.chips[m].x + chipW(m))) + 4 : 0
-  const divX = w ? BAR_PADL + w.count + DIV_GAP : 0
-
   return (
-    <div className="sg-ink" style={{ height: H + 8, width: totalW || undefined }}>
-      {/* Hidden measuring copies of the labels. */}
-      <span ref={measureRef} className="sg-ink-measure" aria-hidden="true">
-        {MODES.map((m) => (
-          <span key={m} data-m={m} className="sg-chip-label">
-            {m}
-          </span>
-        ))}
-      </span>
-      <svg className="sg-ink-shapes" width={totalW} height={H + 8} aria-hidden="true">
+    <div
+      ref={containerRef}
+      className={`sg-ink ${isAnimating ? 'is-animating' : ''}`}
+      role="radiogroup"
+      aria-label="Modalità di studio"
+      onKeyDown={(e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+        e.preventDefault()
+        const n = MODES[(MODES.indexOf(mode) + (e.key === 'ArrowRight' ? 1 : 2)) % 3]
+        handleSelect(n)
+      }}
+    >
+      {/* Background SVG shape layer behind text: feGaussianBlur + feColorMatrix for metaball gooey */}
+      <svg className="sg-ink-shapes" aria-hidden="true">
         <defs>
-          <filter id={goo} x="-20%" y="-50%" width="140%" height="200%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+          <filter id={gooId} x="-20%" y="-40%" width="140%" height="180%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
             <feColorMatrix
               in="blur"
               mode="matrix"
-              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9"
-              result="goo"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
             />
-            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
           </filter>
         </defs>
-        {geo && w && (
-          <>
-            <g filter={`url(#${goo})`} className="sg-ink-fill">
-              <rect ref={barRectRef} x={0} y={4} width={geo.barW} height={H} rx={H / 2} />
-              {MODES.map((m) => {
-                const c = geo.chips[m]
-                const cw = chipW(m)
-                const isChosen = m === shown.current
-                return (
-                  <rect
-                    key={m}
-                    ref={(el) => {
-                      inkRectRefs.current[m] = el
-                    }}
-                    x={c.x}
-                    y={4}
-                    width={cw}
-                    height={H}
-                    rx={H / 2}
-                    style={{
-                      transformOrigin: '0% 50%',
-                      transform: isChosen
-                        ? 'scaleX(1) translate3d(0, 0, 0)'
-                        : 'scaleX(0) translate3d(0, 0, 0)',
-                      opacity: isChosen ? 1 : 0
-                    }}
-                  />
-                )
-              })}
-            </g>
-            <g className="sg-ink-outline">
-              {MODES.map((m) => {
-                const c = geo.chips[m]
-                const isCurrent = m === mode
-                const cw = chipW(m)
-                return (
-                  <rect
-                    key={m}
-                    ref={(el) => {
-                      outlineRectRefs.current[m] = el
-                    }}
-                    x={c.x + 0.75}
-                    y={4.75}
-                    width={Math.max(0, cw - 1.5)}
-                    height={H - 1.5}
-                    rx={(H - 1.5) / 2}
-                    style={{
-                      opacity: isCurrent ? 0 : 1,
-                      display: isCurrent ? 'none' : 'block'
-                    }}
-                  />
-                )
-              })}
-            </g>
-            <line
-              ref={dividerLineRef}
-              className="sg-ink-divider"
-              x1={divX}
-              x2={divX}
-              y1={4 + 11}
-              y2={4 + H - 11}
-            />
-          </>
-        )}
+        <g filter={`url(#${gooId})`} className="sg-ink-fill">
+          <rect
+            ref={mainShapeRef}
+            x={0}
+            y={0}
+            width={mainWidth || 0}
+            height={H}
+            rx={H / 2}
+          />
+          <rect
+            ref={incomingBlobRef}
+            x={0}
+            y={0}
+            width={0}
+            height={H}
+            rx={H / 2}
+            style={{ display: 'none' }}
+          />
+          <rect
+            ref={outgoingBlobRef}
+            x={0}
+            y={0}
+            width={0}
+            height={H}
+            rx={H / 2}
+            style={{ display: 'none' }}
+          />
+        </g>
       </svg>
-      <div className="sg-ink-count" style={{ left: BAR_PADL, height: H, top: 4 }}>
-        <span ref={countRef} className="sg-ink-count-inner">
+
+      {/* Main purple pill on the left: counter, divider, active mode in normal flow */}
+      <div ref={mainElRef} className="sg-ink-main">
+        <span className="sg-ink-count">
           <b>
             <Odometer value={countText} />
           </b>
           <span>{label}</span>
         </span>
+        <span className="sg-ink-divider" aria-hidden="true" />
+        <button
+          ref={activeBtnRef}
+          type="button"
+          role="radio"
+          aria-checked="true"
+          aria-pressed="true"
+          tabIndex={0}
+          aria-label={mode}
+          className="sg-chip-active"
+        >
+          <span>{mode}</span>
+        </button>
       </div>
-      <div
-        role="radiogroup"
-        aria-label="Modalità di studio"
-        className="sg-ink-radios"
-        onKeyDown={(e) => {
-          if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
-          e.preventDefault()
-          const n = MODES[(MODES.indexOf(mode) + (e.key === 'ArrowRight' ? 1 : 2)) % 3]
-          onChange(n)
-          chipBtn.current[n]?.focus()
-        }}
-      >
-        {geo &&
-          MODES.map((m) => {
-            const c = geo.chips[m]
-            const cw = chipW(m)
-            const isChosen = m === mode
-            return (
-              <button
-                key={m}
-                ref={(el) => {
-                  chipBtn.current[m] = el
-                }}
-                type="button"
-                role="radio"
-                aria-checked={isChosen}
-                tabIndex={isChosen ? 0 : -1}
-                className={`sg-chip ${isChosen ? 'is-active' : ''}`}
-                style={{
-                  left: c.x,
-                  width: cw,
-                  height: H,
-                  top: 4,
-                  zIndex: isChosen ? 2 : 1
-                }}
-                onClick={() => mode !== m && onChange(m)}
-              >
-                <span className="sg-chip-label">{m}</span>
-                <span
-                  ref={(el) => {
-                    labelInkRefs.current[m] = el
-                  }}
-                  className="sg-chip-label sg-chip-label-ink"
-                  aria-hidden="true"
-                  style={{
-                    clipPath: isChosen ? 'inset(0 0% 0 0)' : 'inset(0 100% 0 0)'
-                  }}
-                >
-                  {m}
-                </span>
-              </button>
-            )
-          })}
-      </div>
+
+      {/* The 2 inactive mode chips on the right */}
+      {inactiveModes.map((m) => (
+        <button
+          key={m}
+          ref={(el) => {
+            inactiveBtnRefs.current[m] = el
+          }}
+          type="button"
+          role="radio"
+          aria-checked="false"
+          aria-pressed="false"
+          tabIndex={-1}
+          aria-label={m}
+          className="sg-chip-inactive"
+          onClick={() => handleSelect(m)}
+        >
+          <span>{m}</span>
+        </button>
+      ))}
     </div>
   )
 }

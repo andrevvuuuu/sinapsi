@@ -30,7 +30,7 @@
   --sh-mark-end: #596bcb;
   --sh-avatar-bg: #6654a9;
   --sh-send-bg: #7664c2;
-  --sh-card-solid: #1b1e25;
+  --sh-card-solid: #1C1F26;
   --sh-ink-pill-bg: #141518;
   --sh-bar-default: #4e5058;
 }
@@ -77,6 +77,7 @@
   --sh-inner-shadow: none;
   --sh-pill-on-bg: #F3F4F6;
   --sh-pill-on-ink: #111318;
+  --sh-card-solid: #1C1F26;
 }
 
 @property --sh-dock-color {
@@ -1490,3 +1491,5 @@ button.sh-brand .sh-brand-tag {
 @media(prefers-reduced-motion:reduce){.sh-tree-panel,.sh-icon-rail .sh-side-action,.sh-icon-rail .sh-settings{transition:none}}
 /* Lesson topics can be long: the chip shows two lines, the full text stays in its title. */
 .sh-suggestions button > span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sh-notes-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--sh-text-2);font:var(--font-body);user-select:none;-webkit-user-select:none}
+.sh-notes-empty p{margin:0}

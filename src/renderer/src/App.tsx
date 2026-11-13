@@ -14,11 +14,13 @@ import type { LaunchDestination } from '../../shared/lesson-types'
 import type { VaultResult } from '../../shared/api'
 import { AppShell } from './shell/AppShell'
 import { TodayView } from './shell/TodayView'
+import { NotesView } from './shell/NotesView'
 import type { Destination } from './shell/LiquidDock'
 
 type View =
   | { view: 'home' }
   | { view: 'map' }
+  | { view: 'notes' }
   | { view: 'session'; id: string }
   | { view: 'nota'; id: string }
   | { view: 'source'; path: string }
@@ -156,6 +158,8 @@ function Views(): React.JSX.Element {
     )
   if (v.view === 'source')
     content = <NotePicker path={v.path} onOpenNota={openNota} onBack={home} />
+  if (v.view === 'notes')
+    content = <NotesView />
   const livePaths = [] as string[]
   return (
     <AppShell
@@ -172,6 +176,7 @@ function Views(): React.JSX.Element {
       onOpenSource={(path) => setV({ view: 'source', path })}
       onLesson={(id) => setV({ view: 'lesson', id })}
       onLessons={() => setV({ view: 'lessons' })}
+      onNotes={() => setV({ view: 'notes' })}
       onSettingsChanged={() => undefined}
       onStudy={study}
       onMapReview={(ids) => setV({ view: 'review', conceptIds: ids })}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { Settings, Engine } from '../../../shared/settings-schema'
 import type { VaultResult, EngineStatus as Status, NoteMeta } from '../../../shared/api'
 import type { LessonEntry } from '../../../shared/lesson-types'
@@ -11,6 +11,7 @@ import './shell.css'
 type ShellView =
   | 'home'
   | 'map'
+  | 'notes'
   | 'plan'
   | 'lessons'
   | 'lesson'
@@ -30,6 +31,7 @@ export function AppShell({
   onOpenSource,
   onLesson,
   onLessons,
+  onNotes,
   index,
   livePaths,
   onSettingsChanged,
@@ -45,6 +47,7 @@ export function AppShell({
   onOpenSource: (path: string) => void
   onLesson: (id: string) => void
   onLessons: () => void
+  onNotes: () => void
   index: VaultResult | null
   livePaths: string[]
   onSettingsChanged: (s: Settings) => void
@@ -87,13 +90,6 @@ export function AppShell({
     }
   }, [])
 
-  // The dock stays identical and persistent across all views, remembering the last destination.
-  const lastDockRef = useRef<Destination>('Oggi')
-  if (view === 'home') lastDockRef.current = 'Oggi'
-  else if (view === 'map') lastDockRef.current = 'Mappa'
-  else if (view === 'plan') lastDockRef.current = 'Piano'
-  const destination: Destination = lastDockRef.current
-
   const current =
     view === 'review'
       ? 'review'
@@ -103,7 +99,9 @@ export function AppShell({
           ? 'lessons'
           : view === 'home'
             ? 'home'
-            : null
+            : view === 'notes' || view === 'source'
+              ? 'notes'
+              : null
   const setTheme = (t: Settings['theme']): void => {
     // Optimistic: apply theme immediately, persist asynchronously
     setSettings((s) => (s ? { ...s, theme: t } : s))
@@ -118,12 +116,7 @@ export function AppShell({
       .catch(() => undefined)
   }
 
-  const dockColor =
-    destination === 'Mappa'
-      ? 'var(--sh-map)'
-      : destination === 'Piano'
-        ? 'var(--sh-plan)'
-        : 'var(--sh-violet)'
+  const dockColor = 'var(--sh-violet)'
 
   return (
     <div className="sh-shell">
@@ -139,6 +132,7 @@ export function AppShell({
         onOpenSource={onOpenSource}
         onLesson={onLesson}
         onLessons={onLessons}
+        onNotes={onNotes}
         onSettings={() => setSettingsOpen(true)}
         subjectPrefs={{
           subjectOrder: settings?.subjectOrder ?? [],
@@ -156,8 +150,6 @@ export function AppShell({
             .catch(() => undefined)
         }}
       />
-      {/* The dock lives beside the keyed <main>: a new screen remounts the content, never the dock,
-          so the dome can travel from the old item to the new one. */}
       <div className="sh-main-wrap" style={{ '--sh-dock-color': dockColor } as React.CSSProperties}>
         <main className="sh-main" key={view}>
           {view === 'map' ? (
@@ -177,7 +169,7 @@ export function AppShell({
             children
           )}
         </main>
-        <LiquidDock active={destination} onChange={onNavigate} />
+        {view === 'home' && <LiquidDock active="Oggi" onChange={onNavigate} />}
       </div>
       {settingsOpen && settings && (
         <SettingsDialog

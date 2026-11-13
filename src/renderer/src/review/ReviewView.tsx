@@ -4,7 +4,7 @@ import type { ExplainTurn } from '../../../main/memory/explain'
 import type { ReviewItem } from '../../../main/memory/review'
 import { proposeGrade, type ExerciseType, type Grade } from '../../../shared/memory-types'
 import { EXERCISE_TYPES } from '../../../shared/memory-types'
-import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
+import { GlassContent } from '@glass-sdk/liquid-glass'
 import { GlassRange, ScrollEdges, ViewScene } from '../components/glass'
 import { RichText } from '../session/RichText'
 import { MODE, TYPE_LABEL } from './labels'
@@ -267,7 +267,7 @@ export function ReviewView({
   }, [i, items])
 
   const top = (
-    <GlassSurface render={<header />} radius={0} className="rv-top drag glass-bar glass-text">
+    <header className="rv-top drag">
       <button type="button" className="pill nodrag back-btn" onClick={onBack}>
         ← Home
       </button>
@@ -289,7 +289,7 @@ export function ReviewView({
           </small>
         </span>
       )}
-    </GlassSurface>
+    </header>
   )
 
   if (!items)

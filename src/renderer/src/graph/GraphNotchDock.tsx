@@ -760,10 +760,11 @@ export function GraphNotchDock({
                   {model ? (
                     <>
                       <div className="gnotch-status-row">
-                        {totalConcepts} concetti da {model.regions.length} note
+                        <span>Concetti</span><strong>{totalConcepts}</strong>
                       </div>
-                      <div className="gnotch-status-row">{chainsCount} catene</div>
-                      <div className="gnotch-status-row">{multi} in più note</div>
+                      <div className="gnotch-status-row"><span>Note</span><strong>{model.regions.length}</strong></div>
+                      <div className="gnotch-status-row"><span>Catene</span><strong>{chainsCount}</strong></div>
+                      <div className="gnotch-status-row"><span>In più note</span><strong>{multi}</strong></div>
                     </>
                   ) : (
                     <div className="gnotch-status-row">Carico il grafo…</div>

@@ -1727,3 +1727,20 @@ button.mt-chip:active {
 
 /* The material dialog is portalled to <body> (out of the shell's paint containment): this wrapper keeps the .pr scope without adding a box. */
 .pr.pr-portal{position:static;inset:auto;display:contents;background:none}
+
+/* Shell palette, glass groups and integrated view header */
+.pr{background:radial-gradient(ellipse 480px 360px at 10% 100%,rgba(174,157,255,.22),transparent 72%),radial-gradient(ellipse 540px 400px at 95% 4%,rgba(132,190,255,.2),transparent 72%),var(--sh-canvas);color:var(--sh-text)}
+[data-theme='lavagna'] .pr{background:radial-gradient(ellipse 460px 320px at 50% 100%,color-mix(in srgb,var(--sh-dock-color,var(--sh-violet)) 14%,transparent),transparent 75%),var(--sh-canvas)}
+.pr-top{background:transparent!important;border:0!important;box-shadow:none!important;color:var(--sh-text)}
+.pr-top h1{font-family:var(--font-display);font-size:28px;font-weight:500;letter-spacing:var(--track-display);color:var(--sh-text)}
+.pr .pr-lead,.pr .lab{color:var(--sh-text-2)}
+.pr .card,.pr .pr-setup > section,.pr .pr-setup > form{border:0;border-radius:22px;background:var(--sh-shell-bg);backdrop-filter:var(--sh-blur);-webkit-backdrop-filter:var(--sh-blur);box-shadow:var(--sh-spec),var(--sh-shell-shadow);color:var(--sh-text)}
+.pr .mode,.pr .mt-chip,.pr .mt-filters button,.pr .pr-plan,.pr .pr-setup .inner{border:0;border-radius:14px;background:var(--sh-inner-bg);box-shadow:var(--sh-inner-shadow);color:var(--sh-text)}
+.pr .mode[aria-checked='true'],.pr .mt-chip.on,.pr .mt-filters button[aria-pressed='true']{background:var(--sh-send-bg);color:#fff;border-color:var(--sh-send-bg)}
+.pr .pri,.pr .startrow .pri{background:var(--sh-send-bg);border-color:var(--sh-send-bg);color:#fff}
+.pr .pri:not(:disabled):hover{background:color-mix(in srgb,var(--sh-send-bg) 84%,white);border-color:color-mix(in srgb,var(--sh-send-bg) 84%,white);color:#fff}
+.pr .pri:focus-visible,.pr .mode:focus-visible,.pr .mt-chip:focus-visible,.pr-top .back-btn:focus-visible{outline:2px solid var(--sh-violet);outline-offset:2px}
+/* The scene content shows the shell canvas (no header glass refracts it any more); the setup card drops its hairline for the shell's specular edge. */
+.pr .lg-content.pr-setup{background:transparent}
+.pr .pr-setup .shell:not(.lg-surface){border:0;border-radius:22px;background:var(--sh-shell-bg);box-shadow:var(--sh-spec),var(--sh-shell-shadow)}
+.pr .pr-setup .shell > .inner{border:0;box-shadow:none}

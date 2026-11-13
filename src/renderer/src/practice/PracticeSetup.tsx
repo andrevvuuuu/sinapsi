@@ -3,7 +3,7 @@ import { matchConcepts } from '../../../shared/practice-match'
 import { PRACTICE_MAX_CONCEPTS, type Catalog } from '../../../shared/practice-types'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
-import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
+import { GlassContent } from '@glass-sdk/liquid-glass'
 import { ScrollEdges, Seg, ViewScene } from '../components/glass'
 import { MaterialDialog } from './MaterialDialog'
 import { clampMinutes, summary } from './summary'
@@ -126,12 +126,12 @@ export function PracticeSetup({
 
   return (
     <ViewScene className="pr">
-      <GlassSurface render={<header />} radius={0} className="pr-top drag glass-bar glass-text">
+      <header className="pr-top drag">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
         <h1>Pratica</h1>
-      </GlassSurface>
+      </header>
       <ScrollEdges target={page} size={72} edges={['top']} />
       <GlassContent layout="scroll" className="pr-setup edge-fade" ref={page}>
         <p className="pr-lead">
