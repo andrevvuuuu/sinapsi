@@ -8,6 +8,8 @@ export type Mode = (typeof MODES)[number]
 const H = 38
 const PAD = 16
 const EDGE = 0.75
+/** How far the count's capsule runs past the divider under the active mode's: the overlap that leaves a slight waist. */
+const WAIST = 14
 
 /** Analytical damped harmonic oscillator over an arbitrary time step. */
 function solveSpring(
@@ -74,7 +76,8 @@ function Odometer({ value }: { value: string }): React.JSX.Element {
     <span className="sg-odo" aria-label={value}>
       {value.split('').map((ch, i) =>
         /\d/.test(ch) ? (
-          <span key={`${value.length}-${i}`} className="sg-odo-col" aria-hidden="true">
+          // Keyed from the right, so the units column keeps rolling when the count gains or loses a digit.
+          <span key={value.length - 1 - i} className="sg-odo-col" aria-hidden="true">
             <span
               className="sg-odo-strip"
               style={{ transform: `translateY(${-Number(ch)}em)`, transitionDelay: `${i * 45}ms` }}
@@ -85,7 +88,7 @@ function Odometer({ value }: { value: string }): React.JSX.Element {
             </span>
           </span>
         ) : (
-          <span key={`${value.length}-${i}`} aria-hidden="true">
+          <span key={`c${value.length - 1 - i}`} aria-hidden="true">
             {ch}
           </span>
         )
@@ -96,7 +99,7 @@ function Odometer({ value }: { value: string }): React.JSX.Element {
 
 type Span = { x: number; w: number }
 type Wobble = { amp: number; vel: number; target: number; cx: number }
-type Snapshot = { from: Mode; to: Mode; other: Mode; barW: number; aStart: Span; tStart: Span; oStart: number | null }
+type Snapshot = { from: Mode; to: Mode; other: Mode; cEnd: number; aStart: Span; tStart: Span; oStart: number | null }
 
 /**
  * The study mode filter of the composer, after the reference video: a results pill (count | active mode) and the
@@ -128,6 +131,7 @@ export function InkModes({
   const chipRefs = useRef<Partial<Record<Mode, HTMLButtonElement | null>>>({})
   const edgeRefs = useRef<Partial<Record<Mode, SVGPathElement | null>>>({})
   const barPathRef = useRef<SVGPathElement>(null)
+  const slotPathRef = useRef<SVGPathElement>(null)
   const blobRefs = [useRef<SVGPathElement>(null), useRef<SVGPathElement>(null)]
   const actorRefs = [useRef<HTMLSpanElement>(null), useRef<HTMLSpanElement>(null)]
   const wobble = useRef<Record<string, Wobble>>({})
@@ -152,7 +156,13 @@ export function InkModes({
     if (animating.current || !rootRef.current || !barRef.current) return
     const b = rel(barRef.current)
     const wb = wobble.current.bar
-    barPathRef.current?.setAttribute('d', pillPath(b.x, b.w, 0, wb?.amp ?? 0, (wb?.cx ?? 0) + b.x))
+    const dip = wb?.amp ?? 0
+    const cx = (wb?.cx ?? 0) + b.x
+    // Two capsules on the gooey layer: the count's, and the active mode's from the divider to the end. Their overlap
+    // reads as one body with a slight waist at the joint, as in the video.
+    const j = dividerRef.current ? rel(dividerRef.current).x + 0.5 : b.x + b.w / 2
+    barPathRef.current?.setAttribute('d', pillPath(b.x, j + WAIST - b.x, 0, dip, cx))
+    slotPathRef.current?.setAttribute('d', pillPath(j - 4, b.x + b.w - (j - 4), 0, dip, cx))
     for (const m of MODES) {
       const btn = chipRefs.current[m]
       const path = edgeRefs.current[m]
@@ -174,7 +184,8 @@ export function InkModes({
       last = now
       let moving = false
       for (const s of Object.values(wobble.current)) {
-        ;[s.amp, s.vel] = solveSpring(s.amp, s.vel, s.target, 420, 13, dt)
+        ;[s.amp, s.vel] = solveSpring(s.amp, s.vel, s.target, 420, s.target > 0 ? 13 : 41, dt)
+        if (s.amp < 0) [s.amp, s.vel] = [0, 0]
         if (Math.abs(s.amp - s.target) > 0.02 || Math.abs(s.vel) > 0.05) moving = true
       }
       drawStatic()
@@ -237,7 +248,7 @@ export function InkModes({
       from: mode,
       to: target,
       other,
-      barW: rel(bar).w,
+      cEnd: (dividerRef.current ? rel(dividerRef.current).x + 0.5 : rel(bar).x + rel(bar).w) + WAIST,
       aStart: { x: a.x - PAD, w: a.w + 2 * PAD },
       tStart: rel(tChip),
       oStart: oChip ? rel(oChip).x : null
@@ -278,9 +289,9 @@ export function InkModes({
     const tIn = rel(act)
     const aEnd = rel(aChip)
     const oEnd = oChip ? rel(oChip).x : null
-    const c = rel(countEl)
-    const wCount = c.x + c.w - b.x + PAD
+    const cEnd = (dividerRef.current ? rel(dividerRef.current).x + 0.5 : tIn.x - 12) + WAIST
     const tEnd = tIn.x - PAD
+    slotPathRef.current?.setAttribute('d', '')
 
     const actors = actorRefs.map((r) => r.current)
     const texts: [Mode, Mode] = [s.from, s.to]
@@ -311,9 +322,8 @@ export function InkModes({
       if (!docking && p1 > 0.22) docking = true
       if (docking) [p2, v2] = solveSpring(p2, v2, 1, 380, 33, dt)
 
-      // The bar shrinks to the count while the old mode leaves, then grows around the new one.
-      const width = docking ? lerp(wCount, b.w, p2) : lerp(s.barW, wCount, p1)
-      barPathRef.current?.setAttribute('d', pillPath(b.x, width))
+      // The count's capsule stays put (it only follows a change of the count's width); the modes come and go.
+      barPathRef.current?.setAttribute('d', pillPath(b.x, lerp(s.cEnd, cEnd, clamp01(p1)) - b.x))
       if (dividerRef.current) dividerRef.current.style.opacity = String(docking ? 0.3 * clamp01(p2) : 0.3 * (1 - clamp01(p1)))
 
       // Leaving: slides right, its ink drains back towards the bar (the right side clears first).
@@ -354,6 +364,8 @@ export function InkModes({
       else animRaf.current = requestAnimationFrame(tick)
     }
     animRaf.current = requestAnimationFrame(tick)
+    // A mode changed from outside mid-flight (or an unmount) ends this transition cleanly instead of orphaning it.
+    return () => finish()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
 
@@ -364,9 +376,10 @@ export function InkModes({
       role="radiogroup"
       aria-label="Modalità di studio"
       onKeyDown={(e) => {
-        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+        const step = ({ ArrowRight: 1, ArrowDown: 1, ArrowLeft: 2, ArrowUp: 2 } as Record<string, number | undefined>)[e.key]
+        if (!step) return
         e.preventDefault()
-        select(MODES[(MODES.indexOf(mode) + (e.key === 'ArrowRight' ? 1 : 2)) % 3])
+        select(MODES[(MODES.indexOf(mode) + step) % 3])
       }}
     >
       <svg className="sg-ink-shapes" aria-hidden="true">
@@ -378,6 +391,7 @@ export function InkModes({
         </defs>
         <g className="sg-ink-fill" filter={`url(#${gooId})`}>
           <path ref={barPathRef} />
+          <path ref={slotPathRef} />
           <path ref={blobRefs[0]} />
           <path ref={blobRefs[1]} />
         </g>
@@ -396,7 +410,6 @@ export function InkModes({
           type="button"
           role="radio"
           aria-checked="true"
-          aria-pressed="true"
           tabIndex={0}
           aria-label={mode}
           className="sg-chip-active"
@@ -414,7 +427,6 @@ export function InkModes({
           type="button"
           role="radio"
           aria-checked="false"
-          aria-pressed="false"
           tabIndex={-1}
           aria-label={m}
           className="sg-chip-inactive"

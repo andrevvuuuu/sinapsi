@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react'
 
-export function Icon({ children }: { children: ReactNode }): React.JSX.Element {
+export function Icon({ children, strokeWidth = 1.6 }: { children: ReactNode; strokeWidth?: number }): React.JSX.Element {
   return (
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.6"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -17,22 +17,26 @@ export function Icon({ children }: { children: ReactNode }): React.JSX.Element {
 }
 
 export const IconToday = (): React.JSX.Element => (
-  <Icon>
-    <path d="M4 11 12 5l8 6v8h-6v-6h-4v6H4z" />
+  <Icon strokeWidth={1.75}>
+    <rect x="4" y="4" width="7" height="7" rx="2.5" />
+    <rect x="13" y="4" width="7" height="10" rx="2.5" />
+    <rect x="4" y="13" width="7" height="7" rx="2.5" />
+    <rect x="13" y="16" width="7" height="4" rx="2" />
   </Icon>
 )
 
 export const IconRegister = (): React.JSX.Element => (
-  <Icon>
-    <path d="M6 4.5h12a2 2 0 0 1 2 2v13H6a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z" />
-    <path d="M8 8h8M8 12h8M8 16h5M4 7h2" />
+  <Icon strokeWidth={1.75}>
+    <path d="m3 9 9-5 9 5-9 5-9-5Z" />
+    <path d="M7 11.2V16c3.1 2.5 6.9 2.5 10 0v-4.8M21 9v6" />
+    <path d="M21 15v3m0 0-.9 1m.9-1 .9 1" />
   </Icon>
 )
 
 export const IconNotes = (): React.JSX.Element => (
-  <Icon>
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <path d="M14 2v6h6M8 13h8M8 17h6M8 9h2" />
+  <Icon strokeWidth={1.75}>
+    <rect x="5" y="3.5" width="14" height="17" rx="2" />
+    <path d="M14 3.5v5l2-1.3 2 1.3M9 12h7M9 16h7" />
   </Icon>
 )
 
@@ -46,14 +50,24 @@ export const IconTree = (): React.JSX.Element => (
 )
 
 export const IconStudy = (): React.JSX.Element => (
-  <Icon>
-    <path d="M4 5.5c3-.7 6-.2 8 1.3v13c-2-1.5-5-2-8-1.3zM20 5.5c-3-.7-6-.2-8 1.3v13c2-1.5 5-2 8-1.3z" />
+  <Icon strokeWidth={1.75}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5.5" />
+    <circle cx="12" cy="12" r="2" />
+    <path d="m20 4-6.6 6.6M16 4h4v4" />
   </Icon>
 )
 
 export const IconReview = (): React.JSX.Element => (
-  <Icon>
-    <path d="M20 8V4m0 4h-4M19 8a8 8 0 1 0 1 6" />
+  <Icon strokeWidth={1.75}>
+    <g transform="rotate(-8 10 13)">
+      <rect x="4" y="6" width="12" height="15" rx="2" />
+      <path d="M7 10h6M7 13h6" />
+    </g>
+    <g transform="rotate(4 15 10)">
+      <rect x="9" y="4" width="11" height="14" rx="2" />
+    </g>
+    <path d="m19 2 .7 1.8L21.5 4.5l-1.8.7L19 7l-.7-1.8-1.8-.7 1.8-.7L19 2Z" />
   </Icon>
 )
 

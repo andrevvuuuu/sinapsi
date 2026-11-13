@@ -127,9 +127,11 @@ export function ReviewView({
     const before = types
     setTypes(next)
     setTypeError(null)
-    api.settings
+    // The plan's questions depend on the chosen types, so it is rebuilt after the save, but in place (reset = false):
+    // the list stays mounted and the scroll where it was.
+    void api.settings
       .set({ exerciseTypes: next })
-      .then(() => load())
+      .then(() => load(undefined, false))
       .catch((e) => {
         setTypes(before)
         setTypeError(`Scelta non salvata: ${remote(e)}`)
@@ -396,7 +398,11 @@ export function ReviewView({
                           key={t}
                           type="button"
                           aria-pressed={types.includes(t)}
-                          onClick={() => toggleType(t)}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            toggleType(t)
+                          }}
                         >
                           {TYPE_LABEL[t]}
                         </button>
