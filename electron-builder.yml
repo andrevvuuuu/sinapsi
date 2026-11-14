@@ -1,4 +1,4 @@
-appId: it.andreaantonelli.sinapsi
+appId: it.sinapsi.app
 productName: Sinapsi
 directories:
   buildResources: build
@@ -8,10 +8,11 @@ files:
   - '!tests/*'
   - '!docs/*'
   - '!scripts/*'
+  - '!secret-api.txt'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{vitest.config.ts,vitest.live.config.ts,playwright.config.ts}'
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,CHANGELOG.md,README.md}'
-  - '!{.env,.env.*,.npmrc}'
+  - '!{.env,.env.*,.npmrc,secret-api.txt}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
