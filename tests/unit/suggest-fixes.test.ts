@@ -18,7 +18,7 @@ const note = (title: string, links: string[] = [], over: Partial<VaultNote> = {}
   ...over
 })
 const input = (notes: VaultNote[], over: Partial<SuggestInput> = {}): SuggestInput => ({ index: { root: '/v', scannedAt: 1, subjects: [], notes }, notes: [], sessions: [], practiced: new Set(), memory: {}, graph: { concepts: [], chains: [], extracted: {} }, now: 1e9, ...over })
-const ready = (...t: string[]) => t.map((x) => ({ sourcePath: `/v/${x}.md`, status: 'ready' as const }))
+const ready = (...t: string[]): { sourcePath: string; status: 'ready' }[] => t.map((x) => ({ sourcePath: `/v/${x}.md`, status: 'ready' as const }))
 const moc = note('Analisi 1 MOC', ['Insiemi', 'Funzione', 'Limite', 'Derivata'], { type: 'MOC' })
 
 describe('final review fixes', () => {

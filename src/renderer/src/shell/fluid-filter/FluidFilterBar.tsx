@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, useId } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useId } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { FilterItem, COLOR_PALETTE, DEFAULT_PHYSICS } from './types';
+import { FilterItem, COLOR_PALETTE, DEFAULT_PHYSICS, DEFAULT_STUDY_ITEMS } from './types';
 import { RollerCounter } from './RollerCounter';
 import { ElasticChip } from './ElasticChip';
 import { GooeyFilterDef } from './GooeyLayer';
@@ -20,11 +20,6 @@ export interface FluidFilterBarProps {
   className?: string;
 }
 
-export const DEFAULT_STUDY_ITEMS: FilterItem[] = [
-  { id: 'Studia', label: 'Studia' },
-  { id: 'Esercitati', label: 'Esercitati' },
-  { id: 'Ripassa', label: 'Ripassa' },
-];
 
 let measurementCanvas: HTMLCanvasElement | null = null;
 let measurementContext: CanvasRenderingContext2D | null = null;
@@ -69,7 +64,9 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
 
   const [currentActiveId, setCurrentActiveId] = useState<string>(activeId);
   const currentActiveRef = useRef<string>(currentActiveId);
-  currentActiveRef.current = currentActiveId;
+  useLayoutEffect(() => {
+    currentActiveRef.current = currentActiveId;
+  }, [currentActiveId]);
 
   // Spatial display order of chip IDs (active first, followed by other inactive)
   const [displayOrder, setDisplayOrder] = useState<string[]>(() => {
@@ -171,7 +168,9 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
     return init;
   });
   const inkStateRef = useRef(inkState);
-  inkStateRef.current = inkState;
+  useLayoutEffect(() => {
+    inkStateRef.current = inkState;
+  });
 
   const [hoverStates, setHoverStates] = useState<{
     [id: string]: { x: number; y: number; intensity: number };
@@ -219,7 +218,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
     const m = DEFAULT_PHYSICS.flipSpring.mass; // 0.9
     const dt = 1 / 60;
 
-    const tick = () => {
+    const tick = (): void => {
       let isSettled = true;
       const nextPos: { [id: string]: number } = { ...positionsRef.current };
 
@@ -342,7 +341,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
       });
       const drainStart = performance.now();
       const drainDuration = DEFAULT_PHYSICS.inkDurationMs * 0.85;
-      const animateDrain = (time: number) => {
+      const animateDrain = (time: number): void => {
         const elapsed = time - drainStart;
         const p = Math.min(1, elapsed / drainDuration);
         const remaining = initialDrainProgress * (1 - p * p);
@@ -375,7 +374,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
       });
       const fillStart = performance.now();
       const fillDuration = DEFAULT_PHYSICS.inkDurationMs;
-      const animateFill = (time: number) => {
+      const animateFill = (time: number): void => {
         const elapsed = time - fillStart;
         const p = Math.min(1, elapsed / fillDuration);
         const easedP = Math.sin((p * Math.PI) / 2);
@@ -425,7 +424,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
   }, [movingId, outgoingMovingId, positions, targets, currentActiveId]);
 
   // Hover handlers for chips
-  const handleChipPointerEnter = (id: string, e: React.PointerEvent<HTMLDivElement>) => {
+  const handleChipPointerEnter = (id: string, e: React.PointerEvent<HTMLDivElement>): void => {
     if (isReduced) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const nx = (e.clientX - rect.left) / rect.width;
@@ -445,7 +444,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
     }
   };
 
-  const handleChipPointerMove = (id: string, e: React.PointerEvent<HTMLDivElement>) => {
+  const handleChipPointerMove = (id: string, e: React.PointerEvent<HTMLDivElement>): void => {
     if (isReduced) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const nx = (e.clientX - rect.left) / rect.width;
@@ -465,7 +464,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
     }
   };
 
-  const handleChipPointerLeave = (id: string) => {
+  const handleChipPointerLeave = (id: string): void => {
     if (id === currentActiveId) {
       setActiveCapsuleHover(null);
     } else {
@@ -477,7 +476,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
   };
 
   // Keyboard navigation for radiogroup
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
     const step = ({
       ArrowRight: 1,
       ArrowDown: 1,

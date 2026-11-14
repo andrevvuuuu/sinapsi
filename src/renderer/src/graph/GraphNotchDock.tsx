@@ -232,6 +232,8 @@ export function GraphNotchDock({
       anim.currentH = targetH
       anim.vx = 0
       anim.vy = 0
+      // Reduced motion: snap to the target at once, no animation frame to wait for.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDims({ w: targetW, h: targetH, isHalfway: targetW > CLOSED_WIDTH })
       return
     }

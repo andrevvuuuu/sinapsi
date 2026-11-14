@@ -396,6 +396,8 @@ export function generateDropletTipPath(
   tipY: number,
   baseX: number,
   height: number,
+  // Kept for callers' readability: the side follows from tipX vs baseX.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _direction: 'pointing-right' | 'pointing-left' = 'pointing-right'
 ): string {
   const halfH = height / 2;

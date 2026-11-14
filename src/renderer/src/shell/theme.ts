@@ -80,7 +80,9 @@ export function applyThemeAnimated(
     root.dataset.theme = resolved
     try {
       localStorage.setItem(themeKey, resolved)
-    } catch {}
+    } catch {
+      // Storage unavailable: the theme still applies for this session.
+    }
   })
 
   void transition.finished

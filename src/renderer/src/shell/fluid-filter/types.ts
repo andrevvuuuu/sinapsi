@@ -62,3 +62,9 @@ export const COLOR_PALETTE = {
   borderInactive: 'var(--sh-send-bg)',
   textInactive: 'var(--sh-text, var(--sh-send-bg))',
 } as const;
+
+export const DEFAULT_STUDY_ITEMS: FilterItem[] = [
+  { id: 'Studia', label: 'Studia' },
+  { id: 'Esercitati', label: 'Esercitati' },
+  { id: 'Ripassa', label: 'Ripassa' },
+];

@@ -1,9 +1,9 @@
 import React from 'react';
 import './signature.css';
-import { FluidFilterBar, DEFAULT_STUDY_ITEMS } from './fluid-filter/FluidFilterBar';
+import { FluidFilterBar } from './fluid-filter/FluidFilterBar';
+import { DEFAULT_STUDY_ITEMS } from './fluid-filter/types';
 
-export const MODES = ['Studia', 'Esercitati', 'Ripassa'] as const;
-export type Mode = (typeof MODES)[number];
+export type Mode = 'Studia' | 'Esercitati' | 'Ripassa';
 
 export interface InkModesProps {
   mode: Mode;

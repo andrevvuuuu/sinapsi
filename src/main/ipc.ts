@@ -109,6 +109,8 @@ export function registerIpc(): { bridge: Bridge } {
   const graphStoreForMoves = graphStore(graphDir)
   // The previous index, to notice notes renamed or moved in Obsidian (their concepts follow them).
   let lastIndex: import('../shared/vault-types').VaultIndex | null = null
+  // Assigned once below, after the handlers that read it are registered.
+  // eslint-disable-next-line prefer-const
   let linkedSync: ReturnType<typeof createLinkedSync> | undefined
   const rewatch = createRewatcher(settings.load, watchVault, async (paths) => {
     const idx = await h.vaultIndex()
