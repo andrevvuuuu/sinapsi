@@ -48,9 +48,12 @@ Rileggere gli appunti dà familiarità, non competenza. Sinapsi costruisce il la
 - **Vault in sola lettura.** Sinapsi legge il vault (`~/Obsidian Vault` o il percorso impostato) e **non scrive mai** nei suoi file. Un errore trovato in una nota diventa un blocco `flag` nella nota viva, con la correzione da copiare in Obsidian. La stessa regola vale per i dati del tutor delle lezioni in `.antigravity/tutor/`.
 - **Registri in sola aggiunta.** I dati sono file JSONL a cui si aggiungono righe. Lo stato (memoria FSRS, grafo, lezioni, esami, sessioni) si **ricostruisce rileggendo i registri**; nessuna riga viene modificata.
 - **Un solo scrittore per registro.** Ogni registro ha un modulo che può scriverci. Le scritture sono serializzate con catene di promesse, quindi due eventi non si intrecciano.
-- **Nessuna chiave API.** I motori sono le CLI già autenticate sul Mac, con i propri abbonamenti:
-  - **Antigravity (`agy`)** per Gemini;
-  - **Claude Code (`claude`)** per Claude.
+- **Unico backend AI via OpenRouter HTTP API.** Tutte le funzionalità AI passano dall'API HTTP di OpenRouter (`https://openrouter.ai/api/v1`) tramite il client `fetch` integrato di Node, senza dipendenze npm aggiuntive né CLI locali:
+  - Chiave API salvata e cifrata nel main process tramite Electron `safeStorage`. Risoluzione: chiave salvata → variabile `OPENROUTER_API_KEY` → file `secret-api.txt` solo in sviluppo locale (`!app.isPackaged`).
+  - Il renderer non riceve mai la chiave: verifica solo lo stato con `hasKey: boolean`.
+  - Output strutturato nativo tramite `response_format: { type: 'json_schema', ... }` e `provider.require_parameters: true`, con fallback al parsing JSON robusto in `json.ts`.
+  - Input visivo tramite base64 `image_url` per la correzione fotografica dei compiti.
+  - Cronologia locale per le conversazioni a più turni (tutor e sessioni), persistita per ID sessione.
 - **Renderer isolato.** `contextIsolation: true`, `sandbox: true`, niente Node nel renderer. Il renderer parla col main solo attraverso i canali dichiarati in `src/shared/api.ts`.
 - **Zod ai confini.** Gli argomenti IPC, i file di dati e le risposte dei modelli passano da schemi Zod. Uno schema con `.catch()` per ogni campo permette di caricare anche un file parziale o rovinato.
 
@@ -64,13 +67,15 @@ graph TD
         Vault["Vault Obsidian (sola lettura)"]
         Tutor[".antigravity/tutor (sola lettura)"]
         Data["~/Library/Application Support/Sinapsi"]
-        AGY["agy (Gemini)"]
-        CLAUDE["claude (Claude)"]
         WHISPER["mlx_whisper"]
     end
 
+    subgraph External ["Servizi cloud"]
+        OpenRouter["OpenRouter HTTP API"]
+    end
+
     subgraph Main ["Main process (src/main)"]
-        AI["ai/ (bridge, engines)"]
+        AI["ai/ (bridge, openrouter, key-storage)"]
         VaultMod["vault/ (scan, watch)"]
         Graph["graph/ (extract, derive, jobs)"]
         Memory["memory/ (fsrs, review, variants)"]
@@ -95,8 +100,7 @@ graph TD
 
     Vault --> VaultMod
     Tutor --> Lessons
-    AI <--> AGY
-    AI <--> CLAUDE
+    AI <--> OpenRouter
     Voice <--> WHISPER
     VaultMod --> Graph
     Graph --> Store
@@ -117,34 +121,23 @@ Il punto d'ingresso è `src/main/index.ts`, che crea la finestra. `src/main/ipc.
 
 `src/main/ai/`:
 
-- `bridge.ts`: l'interfaccia `Bridge` con `ask<T>()` e `converse<T>()`, una coda per motore, la cache e il rilevamento del logout.
-- `engines.ts`: costruisce gli argomenti delle due CLI e avvia i processi.
-- `json.ts`: estrae il JSON dalla risposta, anche dentro i fence Markdown.
-- `errors.ts`: `AuthRequiredError`, `EngineMissingError`, `AiTimeoutError`, `AiSchemaError`.
-- `rigor.ts`: le regole di rigore condivise da ogni prompt che corregge (cercare il primo passaggio non giustificato, non farsi convincere dal tono).
+- `openrouter.ts`: client HTTP basato sul `fetch` nativo di Node per invocare chat completions (`https://openrouter.ai/api/v1/chat/completions`) e verificare la chiave (`/auth/key`). Gestisce header Bearer, formattazione delle richieste (inclusa la modalità multimodale con immagini in base64), output strutturato (`response_format` con `json_schema` e `provider.require_parameters: true`) e fino a 2 tentativi di retry automatico con backoff su codici 429 e 5xx.
+- `key-storage.ts`: memorizzazione sicura della chiave API tramite Electron `safeStorage` (Keychain macOS). Risoluzione prioritaria della chiave: chiave cifrata salvata → variabile `OPENROUTER_API_KEY` → file `secret-api.txt` a livello di repo (solo per build di sviluppo non impacchettate).
+- `conversation-store.ts`: gestione della cronologia dei messaggi per le conversazioni a più turni, indicizzata per ID conversazione con rotazione/trimming conservativo (preserva sempre il prompt di sistema iniziale e gli ultimi turni).
+- `bridge.ts`: implementazione contrattuale stabile di `Bridge` con metodi `ask<T>()` e `converse<T>()`. Gestisce timeout con `AbortController`, caching deterministico delle richieste basato su SHA-256 e normalizzazione delle eccezioni in errori standard dell'applicazione.
+- `json.ts`: estrattore robusto di oggetti JSON dai testi di risposta dei modelli, con supporto per fence Markdown e fallback difensivo.
+- `errors.ts`: gerarchia di errori tipizzati (`AuthRequiredError`, `AiTimeoutError`, `AiOutputError`, ecc.) con messaggi in lingua italiana esplicativi per l'utente.
+- `rigor.ts`: principi didattici e regole di rigore matematico iniettati nei prompt per la verifica passo-passo dei ragionamenti.
 
-Argomenti principali:
+Modelli predefiniti (`DEFAULT_MODELS` in `src/shared/settings-schema.ts`):
 
-- `agy`: `-p <prompt> --output-format json --print-timeout <s> --disable-slash-commands [--conversation <id>] [--model <m>] [--json-schema <s>]`
-- `claude`: `-p <prompt> --output-format json [--resume <id> | --session-id <id>] [--system-prompt <p>] [--model <m>] [--json-schema <s>] [--tools …] [--setting-sources …] [--strict-mcp-config]`
+| Compito | Modello OpenRouter predefinito | Classe |
+| --- | --- | --- |
+| `extract`, `note`, `variants` | `google/gemini-2.5-flash` | Flash-class (o `anthropic/claude-haiku-5.5`) |
+| `teach`, `grade` | `anthropic/claude-sonnet-5.5` | Sonnet-class |
+| `photo` | `google/gemini-2.5-flash` | Vision-capable |
 
-Robustezza:
-
-1. **Una chiamata alla volta per motore.** Ogni motore ha la sua coda di promesse.
-2. **Gruppo di processi.** I figli partono con `detached: true`. A un timeout o a un annullamento l'intero gruppo riceve `SIGTERM` e poi `SIGKILL`, e la promessa si risolve anche se un nipote tiene aperti i pipe.
-3. **Timeout.** Il timeout predefinito è 180 s; le note vive hanno un timeout più lungo.
-4. **Cache.** Le richieste deterministiche con `cache: true` sono indicizzate da SHA-256 di motore, modello, prompt e schema, in `ai-cache/`. L'uso viene registrato in `ai-usage.jsonl`.
-5. **Logout.** `AUTH_RE` riconosce subito le richieste di login e solleva `AuthRequiredError`, così l'interfaccia può dire di aprire la CLI nel terminale.
-
-Motori predefiniti (`DEFAULT_ENGINES` in `src/shared/settings-schema.ts`):
-
-| Compito | Motore e modello |
-| --- | --- |
-| `extract`, `note` | Gemini `gemini-3.8-flash-medium` |
-| `variants` | Gemini `gemini-3.8-flash-high` |
-| `teach`, `grade` | Claude `sonnet` |
-
-Si cambiano per compito in **Impostazioni → Motori AI**.
+I modelli sono configurabili singolarmente per ogni compito in **Impostazioni → OpenRouter**.
 
 ### 4.2 Vault Obsidian
 
@@ -410,7 +403,7 @@ sequenceDiagram
     participant Vault as Vault Obsidian
     participant Watch as vault/watch.ts
     participant Jobs as graph/jobs.ts
-    participant AI as ai/bridge.ts (Gemini)
+    participant AI as ai/bridge.ts (OpenRouter)
     participant Store as graph/store.ts
     participant Derive as graph/derive.ts
     participant UI as Mappa (renderer)
@@ -435,7 +428,7 @@ sequenceDiagram
     participant UI as Nota viva (renderer)
     participant Gen as notes/generator.ts
     participant NB as notebook/for-notes.ts
-    participant AI as ai/bridge.ts (Gemini)
+    participant AI as ai/bridge.ts (OpenRouter)
     participant Store as notes/store.ts
 
     Studente->>UI: «Crea la nota viva»
@@ -456,7 +449,7 @@ sequenceDiagram
     actor Studente
     participant UI as Ripasso (renderer)
     participant Svc as memory/review.ts
-    participant AI as ai/bridge.ts (Claude)
+    participant AI as ai/bridge.ts (OpenRouter)
     participant Store as memory/store.ts
     participant FSRS as memory/fsrs.ts
 
@@ -480,7 +473,7 @@ sequenceDiagram
     actor Studente
     participant UI as Pratica (renderer)
     participant Run as practice/runner.ts
-    participant AI as ai/bridge.ts (Claude)
+    participant AI as ai/bridge.ts (OpenRouter)
 
     Studente->>UI: chiede un indizio senza aver provato
     UI->>Run: practice:submit({ kind: 'hint' })

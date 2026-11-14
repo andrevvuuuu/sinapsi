@@ -8,7 +8,7 @@
 
 **Un'app di studio per macOS che trasforma le tue note di Obsidian in ripasso attivo, pratica socratica e un piano verso l'esame.**
 
-Electron · React 19 · TypeScript · FSRS-5 · macOS
+Electron · React 19 · TypeScript · FSRS-5 · OpenRouter API · macOS
 
 </div>
 
@@ -16,154 +16,182 @@ Electron · React 19 · TypeScript · FSRS-5 · macOS
 
 ## Che cos'è
 
-Rileggere gli appunti dà una sensazione di familiarità che sparisce davanti a un esercizio nuovo. Sinapsi parte dalle note che hai già scritto nel tuo vault Obsidian e ti fa lavorare su di esse: ti chiede di ricordare invece di riconoscere, ti guida con domande invece di darti la soluzione e programma i ripassi quando stai per dimenticare.
+Rileggere gli appunti dà una sensazione illusoria di familiarità che svanisce davanti a un esercizio nuovo. Sinapsi parte dalle note Markdown che hai già scritto nel tuo vault Obsidian e ti fa lavorare attivamente con esse: ti chiede di richiamare alla mente invece di limitarti a riconoscere, ti guida con domande socratiche invece di darti la soluzione pronta e programma i ripassi spaziati esattamente quando stai per dimenticare.
 
-Tre principi reggono tutta l'app:
+Tre principi fondamentali reggono tutta l'applicazione:
 
-- **Il vault è in sola lettura.** Sinapsi legge le note ma non scrive mai nei tuoi file Markdown. Tutto quello che produce sta nella sua cartella dati.
-- **Prima il tentativo, poi l'aiuto.** Il tutor non dà la soluzione: sale una scala di indizi solo dopo che hai provato.
-- **La memoria si misura, non si dichiara.** La padronanza di un concetto è la probabilità di ricordarlo stimata da FSRS sulle tue risposte, non una spunta che metti tu.
+- **Il vault è rigorosamente in sola lettura.** Sinapsi non scrive e non modifica mai i file del tuo vault Obsidian. Tutto ciò che genera risiede nella cartella dati locale dell'applicazione.
+- **Prima il tentativo, poi l'aiuto.** Il tutor non regala mai la soluzione: gli indizi si sbloccano uno scalino alla volta, e solo dopo che hai documentato un tentativo.
+- **La padronanza si misura, non si dichiara.** La ritenzione della memoria è calcolata tramite l'algoritmo matematico FSRS-5 in base alle tue risposte reali negli esercizi, non tramite caselle spuntate a mano.
 
-## Cosa fa
+---
+
+## Privacy e sicurezza
+
+- **Backend AI OpenRouter:** Tutte le funzionalità intelligenti (estrazione dei concetti, generazione delle note vive, tutor socratico, correzione degli esercizi, trascrizione ottica OCR) utilizzano l'API HTTP di OpenRouter (`https://openrouter.ai/api/v1`).
+- **Trasmissione dei dati:** Quando utilizzi una funzione AI, gli estratti pertinenti delle note e le tue risposte di studio vengono inviati in modo sicuro tramite HTTPS a OpenRouter e al fornitore del modello selezionato (ad es. Anthropic o Google).
+- **Archiviazione sicura della chiave:** La chiave API di OpenRouter viene cifrata e memorizzata nel Portachiavi di macOS tramite Electron `safeStorage`. Il processo renderer è isolato e non riceve né memorizza mai la chiave API (riceve solo un booleano `{ hasKey: boolean }`).
+- **Nessuna telemetria:** Sinapsi non raccoglie dati personali, metriche o telemetria.
+
+---
+
+## Funzionalità
 
 ### Oggi, Mappa, Piano
 
-L'interfaccia è una «cabina» con una barra laterale e un dock liquido in basso, con tre destinazioni.
+- **Oggi:** Dashboard operativa con suggerimenti di studio intelligenti, ripassi FSRS in scadenza, lezioni da rielaborare e prontezza per il prossimo esame.
+- **Mappa:** Grafo interattivo orientato dei concetti atomici e delle catene deduttive ($\text{premesse} \implies \text{conclusione}$). Colorato per stato di memoria e filtrabile per concetti in scadenza, fragili o mai studiati.
+- **Piano:** Pianificatore degli esami con date, ore di studio previste e indice di prontezza calcolato in tempo reale.
+- **Materie nella barra laterale:** Rilevate automaticamente dalle cartelle di primo livello del vault, organizzate nelle categorie Universitarie e Personali con ordinamento personalizzabile tramite trascinamento.
 
-- **Oggi.** Cosa studiare adesso: suggerimenti, concetti in scadenza, lezioni da rielaborare, prontezza per il prossimo esame. Il compositore «Cosa vuoi studiare?» avvia una sessione su qualsiasi argomento.
-- **Mappa.** Il grafo dei concetti delle tue note vive. I nodi sono enunciati e gli archi sono catene di deduzione (premesse → conclusione). Si colora per stato di memoria e si può filtrare su ciò che va ripassato, su ciò che non hai mai visto e sulle basi fragili.
-- **Piano.** Gli esami con le date, il piano settimanale sulle tue ore di studio e un indice di prontezza per ogni esame.
+### Sessioni di studio socratico
 
-La barra laterale divide le materie (le cartelle di primo livello del vault) in **universitarie** e **personali**. L'ordine si cambia trascinando o con le frecce, e la scelta resta salvata.
-
-### Studio socratico
-
-Una sessione di studio su una nota o su un argomento libero. Il tutor parte da ciò che sai già (la memoria dei concetti di quella nota), fa domande, chiede spiegazioni e propone giochi brevi (Lampo, Coppie, Ricomponi, Trova l'intruso, Tabù). I nomi delle sessioni si salvano con le iniziali maiuscole.
+Dialogo interattivo in cui il tutor sonda la tua conoscenza delle basi, costruisce una mappa di apprendimento minima e ti guida attraverso cicli di previsione, spiegazione e verifica, arricchiti da minigiochi (Lampo, Coppie, Ricomponi, Trova l'intruso, Tabù).
 
 ### Note vive
 
-Da una nota di Obsidian, Sinapsi scrive una dispensa interattiva a blocchi validati: definizioni e teoremi, la decodifica su tre livelli (formula, lettura in italiano, intuizione), dimostrazioni passo per passo e figure SVG con cursori e punti trascinabili. Le formule sono rese con KaTeX e i diagrammi con Mermaid. Dimostrazioni ed esercizi restano coperti finché non hai provato. Se la nota contiene un errore, la nota viva lo segnala e prepara la correzione da copiare in Obsidian.
+Trasforma una nota di Obsidian in una dispensa interattiva a blocchi validati:
+- Definizioni e teoremi atomizzati.
+- Decodifica su tre livelli: formula formale, lettura in linguaggio naturale e intuizione geometrica.
+- Dimostrazioni passo per passo nascoste, consultabili solo dopo aver provato a ragionarci.
+- Figure SVG interattive con cursori e punti trascinabili.
+- Formule matematiche in KaTeX e diagrammi in Mermaid.
 
-### Ripasso con FSRS-5
+### Ripasso spaziato (FSRS-5)
 
-Ripasso spaziato con `ts-fsrs`. La probabilità di ricordo è calcolata con tempo frazionario, così cambia nel corso della giornata. Per ogni concetto l'AI prepara diverse varianti di domanda: risposta aperta, scelta multipla, vero/falso, riordino dei passaggi, completamento, accoppiamento, controesempio, stima, trova l'errore, grafico, «Spiegalo tu». Prima di rispondere dichiari quanto sei sicuro: una risposta sbagliata data con molta sicurezza segnala una possibile misconcezione.
+Ripasso spaziato a livello di singolo concetto gestito da `ts-fsrs` con decadimento continuo a tempo frazionario. Molteplici formati di verifica:
+- Risposte aperte, scelte multiple, vero/falso con motivazione.
+- Riordino logico dei passaggi di una dimostrazione.
+- Completamento (cloze), abbinamento, controesempi e stime.
+- *«Spiegalo tu»* (spiegazione orale o scritta a libro chiuso valutata da un compagno di corso rigoroso e pignolo).
+- Calibrazione metacognitiva della fiducia (risposta sbagliata con alta fiducia segnala una possibile misconcezione).
 
 ### Pratica e simulazione d'esame
 
-- **Allenamento.** Esercizi su al massimo quattro concetti, con una scala di sei indizi (dall'attenzione alla soluzione) che si sblocca solo dopo un tentativo.
-- **Simulazione d'esame.** A tempo, senza aiuti, con voto in trentesimi. Si può svolgere anche su carta: fotografi il foglio con l'iPhone (Continuity Camera), la correzione legge le formule e tu ti autovaluti.
+- **Allenamento:** Esercizi mirati con una scala di 6 indizi che si sblocca progressivamente.
+- **Simulazione d'esame:** Prove cronometrate senza aiuti con valutazione in trentesimi.
+- **Esame su carta:** Risolvi i problemi su carta fisica, scatta una foto con la fotocamera del Mac o con Continuity Camera dell'iPhone, e lascia che il modello visivo trascriva testo e formule LaTeX per la correzione.
 
-### Registro lezioni e tutor di Sinapsi
+---
 
-Il Registro raccoglie le lezioni del corso. Le lezioni e i concetti di ciascuna arrivano dal tutor delle lezioni del vault (`.antigravity/tutor`, letto e mai modificato). La copertura e la padronanza invece le calcola Sinapsi, solo dai tuoi ripassi e dalle tue pratiche. Ogni concetto della lezione risulta in uno di questi stati:
+## Requisiti
 
-- interiorizzato;
-- in corso;
-- fragile;
-- mai studiato;
-- da estrarre (con un bottone per estrarre i concetti della nota);
-- senza nota.
+- **Sistema operativo:** macOS 13 (Ventura) o successivo (consigliato Apple Silicon).
+- **Runtime:** Node.js 20 o superiore.
+- **Accesso AI:** Un account attivo su [OpenRouter](https://openrouter.ai/) e una chiave API.
+- **Strumenti facoltativi:**
+  - Python 3 con `mlx_whisper` su Apple Silicon per la dettatura vocale locale (`pip install mlx-whisper`).
+  - `yt-dlp` e `ffmpeg` per trascrivere fonti video e audio nei notebook.
 
-### Ritmo di studio
+---
 
-Due opzioni facoltative, spente per impostazione predefinita:
+## Guida all'avvio
 
-- micro-pause di 15 secondi ogni 10 minuti di studio;
-- un limite di durata della sessione (50 minuti, poi 10 di pausa).
-
-Valgono per studio, ripasso e pratica e contano solo il tempo con la finestra visibile.
-
-### Dettatura
-
-In ogni campo di testo si può dettare (anche con ⌥ Spazio). La trascrizione avviene in locale con `mlx_whisper` su Apple Silicon, tramite un piccolo server che tiene il modello caricato.
-
-### Temi
-
-Due temi, **Lavagna** (scuro) e **Trattato** (chiaro), con un interruttore di vetro nelle Impostazioni. Il materiale visivo è Liquid Glass (`@glass-sdk/liquid-glass`) e i contrasti del testo rispettano il livello AA.
-
-## Come funziona
-
-```
-Vault Obsidian (sola lettura) ──► indice delle note ──► estrazione dei concetti (AI)
-                                                              │
-                                    registri JSONL in sola aggiunta (cartella dati)
-                                    proposizioni · catene · ripassi · lezioni · sessioni
-                                                              │
-                       Main process (Node) ◄── IPC tipizzato (src/shared/api.ts) ──► Renderer (React)
-```
-
-- **Main process** (`src/main`): vault e watcher, grafo, memoria FSRS, sessioni, pratica, esami, piano, tutor delle lezioni, dettatura, ponte verso i motori AI.
-- **Preload** (`src/preload`): espone al renderer solo i canali dichiarati in `src/shared/api.ts`.
-- **Renderer** (`src/renderer/src`): la shell (`shell/`) e le viste (`lessons/`, `review/`, `practice/`, `session/`, `nota/`, `graph/`, `plan/`).
-- **Dati**: registri `.jsonl` in sola aggiunta. Lo stato (memoria FSRS, grafo, lezioni) si ricostruisce rileggendoli, e ogni payload passa da uno schema Zod.
-
-La specifica completa è in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-
-## Motori AI
-
-Sinapsi non usa chiavi API: chiama le CLI già installate e collegate ai tuoi abbonamenti.
-
-| Motore | CLI | Usato per (predefinito) |
-| --- | --- | --- |
-| Gemini, tramite Antigravity | `agy` | estrazione dei concetti, note vive, domande del Ripasso |
-| Claude, tramite Claude Code | `claude` | tutor di studio e pratica, correzione e foto del foglio |
-
-Per ogni compito il motore e il modello si cambiano in **Impostazioni → Motori AI**. Se una CLI chiede l'accesso, aprila una volta nel terminale (`agy` o `claude`), completa il login e riapri Sinapsi.
-
-Facoltativi: `pip install mlx-whisper` per la dettatura e `yt-dlp` per le fonti video.
-
-## Avvio
-
-Requisiti: macOS 13 o successivo (Apple Silicon consigliato) e Node.js 20 o superiore.
+### 1. Clonazione e installazione
 
 ```bash
 git clone https://github.com/andrevvuuuu/sinapsi.git
 cd sinapsi
 npm install
+```
+
+### 2. Configurazione del Vault e della chiave OpenRouter
+
+Avvia l'applicazione in modalità sviluppo:
+
+```bash
 npm run dev
 ```
 
-Il vault predefinito è `~/Obsidian Vault`; si cambia dalle Impostazioni.
+1. **Scegli il tuo Vault:** Al primo avvio, apri il pannello destro ("Note di Obsidian") e fai clic su **Scegli cartella del vault** per selezionare la cartella del tuo vault Obsidian. Sinapsi indicizzerà le note in sola lettura e scoprirà le materie.
+2. **Configura OpenRouter:** Apri le Impostazioni (icona ingranaggio in basso a sinistra), vai nella sezione **OpenRouter**, incolla la tua chiave API e premi **Salva**. Puoi testare la connessione con **Verifica chiave**.
 
-### Creare l'app
+### Risoluzione della chiave in sviluppo
+
+Per lo sviluppo e i test automatizzati, la chiave viene risolta con questo ordine di priorità:
+1. Chiave cifrata in Electron `safeStorage` (impostata tramite la finestra Impostazioni).
+2. Variabile d'ambiente: `export OPENROUTER_API_KEY="<tua-chiave-api>"`.
+3. File locale `secret-api.txt` nella radice del repository (funziona solo in locale con build non impacchettate; escluso automaticamente dalle distribuzioni di produzione).
+
+---
+
+## Modelli consigliati
+
+Puoi personalizzare il modello per ogni specifico compito in **Impostazioni → OpenRouter**:
+
+| Compito | Modello predefinito | Descrizione |
+| :--- | :--- | :--- |
+| **Estrazione concetti** (`extract`) | `google/gemini-2.5-flash` | Estrazione veloce di concetti e catene deduttive |
+| **Note vive** (`note`) | `google/gemini-2.5-flash` | Generazione strutturata di dispense interattive |
+| **Varianti di ripasso** (`variants`) | `google/gemini-2.5-flash` | Generazione veloce di varianti di verifica |
+| **Tutor e compiti** (`teach`) | `anthropic/claude-sonnet-5.5` | Dialogo e sessioni di studio socratico |
+| **Correzione risposte** (`grade`) | `anthropic/claude-sonnet-5.5` | Valutazione rigorosa delle risposte aperte |
+| **Lettura foto** (`photo`) | `google/gemini-2.5-flash` | OCR visivo per compiti scritti a mano e formule |
+
+*Nota: Se il tuo workspace OpenRouter ha restrizioni sui modelli Google, `anthropic/claude-haiku-5.5` è l'alternativa consigliata per i compiti flash.*
+
+---
+
+## Creazione dei pacchetti
 
 ```bash
-npm run build:unpack   # dist/mac-arm64/Sinapsi.app, senza installer
-npm run dist           # .app e .dmg in dist/
+# Compilazione applicazione senza installer (dist/mac-arm64/Sinapsi.app)
+npm run build:unpack
+
+# Creazione DMG distribuibile
+npm run dist
 ```
 
-L'app non è firmata con un Developer ID: la prima volta aprila con clic destro → Apri.
+*Nota: Trattandosi di una build non firmata, al primo avvio su macOS fai clic destro sull'app nel Finder e seleziona **Apri**.*
 
-## Sviluppo
+---
+
+## Sviluppo e test
 
 ```bash
-npm test            # test unitari (Vitest)
-npm run typecheck   # TypeScript, main e renderer
-npm run lint        # ESLint
-npm run test:e2e    # end-to-end con Playwright sull'app Electron
-```
+# Esegui test unitari e di integrazione (Vitest)
+npm test
 
-Alcuni test unitari falliscono già sul ramo principale, soprattutto sui moduli in dismissione (notebook e vecchia Home). Prima di unire una modifica, confronta i fallimenti con quelli del ramo principale invece di aspettarti zero.
+# Controllo tipi TypeScript (main e renderer)
+npm run typecheck
+
+# Linting del codice (ESLint)
+npm run lint
+
+# Smoke test live con OpenRouter (richiede OPENROUTER_API_KEY o secret-api.txt)
+npx tsx scripts/openrouter-smoke.ts
+
+# Test end-to-end (Playwright)
+npm run test:e2e
+```
 
 ### Variabili d'ambiente
 
-| Variabile | Effetto |
-| --- | --- |
-| `SINAPSI_DATA` | cartella dati alternativa (predefinita: `~/Library/Application Support/Sinapsi`); serve anche a isolare le istanze di test |
-| `SINAPSI_VAULT` | percorso del vault, al posto di quello delle impostazioni |
-| `SINAPSI_FAKE_EXTRACT`, `SINAPSI_FAKE_NOTE`, `SINAPSI_FAKE_REVIEW`, `SINAPSI_FAKE_TEACHER`, `SINAPSI_FAKE_PRACTICE`, `SINAPSI_FAKE_MEDIA` | con `1`, sostituiscono il motore AI o i media di quel modulo con risposte finte deterministiche, per lavorare offline e nei test |
+| Variabile | Descrizione |
+| :--- | :--- |
+| `OPENROUTER_API_KEY` | Chiave API OpenRouter per le richieste in sviluppo |
+| `SINAPSI_DATA` | Percorso cartella dati personalizzata (default: `~/Library/Application Support/Sinapsi`) |
+| `SINAPSI_VAULT` | Percorso cartella vault personalizzata |
+| `SINAPSI_FAKE_EXTRACT` | Con `1`, usa risposte deterministiche simulate per l'estrazione concetti |
+| `SINAPSI_FAKE_NOTE` | Con `1`, usa risposte simulate per la generazione delle note vive |
+| `SINAPSI_FAKE_REVIEW` | Con `1`, usa risposte simulate per le domande di ripasso |
+| `SINAPSI_FAKE_TEACHER` | Con `1`, usa risposte simulate per il tutor di studio |
+| `SINAPSI_FAKE_PRACTICE`| Con `1`, usa risposte simulate per il tutor della pratica |
+| `SINAPSI_FAKE_MEDIA` | Con `1`, simula le chiamate a whisper/trascrizione locale |
 
-### Regole del codice
-
-1. Non scrivere mai nel vault: i dati prodotti vanno nella cartella dati.
-2. I registri `.jsonl` sono in sola aggiunta: un cambiamento è un nuovo evento, non una riga modificata.
-3. Ogni payload tra main, renderer e risposte AI passa da uno schema Zod.
-4. Il renderer non importa moduli di Node: le operazioni di sistema passano dai canali di `src/shared/api.ts`.
-5. Commit in stile [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`…).
+---
 
 ## Documentazione
 
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): architettura e flussi dei dati
-- [`docs/design.md`](docs/design.md): il progetto iniziale
-- [`docs/ricerca/il-mio-metodo.md`](docs/ricerca/il-mio-metodo.md): il metodo di studio su cui si basa l'app
-- [`reports/ui-reference/STYLE.md`](reports/ui-reference/STYLE.md): lo stile dell'interfaccia
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): Architettura di sistema e flussi di dati
+- [`docs/MIGRATION_AUDIT.md`](docs/MIGRATION_AUDIT.md): Audit di migrazione al backend OpenRouter
+- [`docs/design.md`](docs/design.md): Progetto funzionale originale
+- [`docs/ricerca/il-mio-metodo.md`](docs/ricerca/il-mio-metodo.md): Metodologia didattica di studio attivo
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): Convenzioni di sviluppo e linee guida per le pull request
+- [`SECURITY.md`](SECURITY.md): Politiche di sicurezza e segnalazione vulnerabilità
+
+---
+
+## Licenza
+
+Licenza ISC. Consulta i metadati del repository per maggiori informazioni.
