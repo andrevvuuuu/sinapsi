@@ -16,13 +16,11 @@ describe('notebooks', () => {
   it('creates, updates and lists notebooks, newest first', async () => {
     const a = await s.create('Analisi 1')
     const b = await s.create('Fisiologia')
-    await s.update(a, { link: 'https://notebooklm.google.com/notebook/x', subject: 'Analisi' })
+    await s.update(a, { subject: 'Analisi' })
     await s.update(a, { name: 'Analisi I' })
     const list = await s.notebooks()
     expect(list.map((n) => n.name)).toEqual(['Fisiologia', 'Analisi I'])
-    expect(list[1]).toMatchObject({ id: a, subject: 'Analisi', link: 'https://notebooklm.google.com/notebook/x', sources: [] })
-    await s.update(a, { link: null })
-    expect((await s.notebooks()).find((n) => n.id === a)!.link).toBeNull()
+    expect(list[1]).toMatchObject({ id: a, subject: 'Analisi', sources: [] })
     await s.remove(b)
     expect((await s.notebooks()).map((n) => n.id)).toEqual([a])
   })
@@ -55,16 +53,5 @@ describe('sources', () => {
     await appendFile(join(dir, 'sources.jsonl'), '{"op":"add"\n{"nope":1}\n')
     expect((await s.source('src1'))!.title).toBe('T')
     expect(await s.source('zzz')).toBeNull()
-  })
-})
-
-describe('chat', () => {
-  it('appends and reads the turns of one notebook', async () => {
-    const nb = await s.create('A')
-    await s.appendChat(nb, { role: 'user', text: 'Che cos’è?', at: 1, sourceIds: ['src1'] })
-    await s.appendChat(nb, { role: 'assistant', at: 2, claims: [{ text: 'Questo.', sources: [1] }], missing: null, dropped: 0, excerpts: [{ n: 1, sourceId: 'src1', title: 'T', label: 'p. 1', text: 'Questo.' }] })
-    await s.appendChat(nb, { role: 'error', at: 3, text: 'quota' })
-    expect((await s.chat(nb)).map((x) => x.role)).toEqual(['user', 'assistant', 'error'])
-    expect(await s.chat('altro')).toEqual([])
   })
 })

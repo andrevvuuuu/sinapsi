@@ -82,7 +82,7 @@ export type Plan = z.infer<typeof PlanSchema>
 export type Question = z.infer<typeof QuestionSchema>
 export type TeacherTurn = z.infer<typeof TurnShape>
 
-/** JSON Schema 2020-12 without the "$schema" key (the Claude CLI rejects the remote reference). */
+/** JSON Schema 2020-12 without the "$schema" key (OpenRouter and schema validators reject the remote reference). */
 export function teacherJsonSchema(): object {
   const { $schema: _drop, ...rest } = z.toJSONSchema(TurnShape) as Record<string, unknown>
   return rest

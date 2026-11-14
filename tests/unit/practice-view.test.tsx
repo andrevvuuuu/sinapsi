@@ -117,7 +117,7 @@ describe('PracticeSetup', () => {
     fireEvent.click(within(dlg).getByRole('button', { name: 'Mai praticati' }))
     expect(within(dlg).queryByLabelText('Teorema di Rolle')).toBeNull()
     fireEvent.click(within(dlg).getByLabelText('Teorema di Fermat'))
-    fireEvent.click(within(dlg).getByRole('tab', { name: 'Fonti' }))
+    fireEvent.click(within(dlg).getByRole('tab', { name: 'Materiale del corso' }))
     fireEvent.click(within(dlg).getByLabelText(/Temi d’esame/))
     fireEvent.click(within(dlg).getByRole('button', { name: 'Conferma' }))
     expect(screen.getByText('3 concetti · 1 fonte · ~28 min')).toBeTruthy()
@@ -151,7 +151,7 @@ describe('PracticeView — training', () => {
     await act(async () => fireEvent.click(within(dock).getByRole('button', { name: 'Invia' })))
     expect(a.practice.submit).toHaveBeenLastCalledWith(ID, { kind: 'thinking', text: 'valor medio' })
   })
-  it('lets Andrea pick the wrong line in a spot-the-error problem', async () => {
+  it('lets the student pick the wrong line in a spot-the-error problem', async () => {
     const lines = ['$f$ continua', '$f(-1)=f(1)$', 'per Rolle esiste $c$']
     const { a } = api({ ...open, problems: [{ ...open.problems[0], lines }] })
     render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
@@ -184,7 +184,7 @@ describe('PracticeView — training', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Riprova' }))
     expect(a.practice.retry).toHaveBeenCalledWith(ID)
   })
-  it('reads the photo of the sheet and lets Andrea correct it before sending', async () => {
+  it('reads the photo of the sheet and lets the student correct it before sending', async () => {
     const { a } = api(open)
     render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
     const dock = await screen.findByRole('region', { name: 'Problema' })

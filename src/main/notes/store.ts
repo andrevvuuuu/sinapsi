@@ -1,6 +1,5 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { Engine } from '../../shared/settings-schema'
 import type { Nota } from '../../shared/nota-schema'
 
 export type StoredNote = {
@@ -14,7 +13,7 @@ export type StoredNote = {
   /** sha256 of the Obsidian note it was written from: a different hash means the note changed since. */
   sourceHash?: string
   sessionId?: string
-  engine?: Engine
+  engine?: string
   dropped?: number
   nota?: Nota
 }

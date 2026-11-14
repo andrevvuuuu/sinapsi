@@ -49,7 +49,7 @@ function setup(ask?: ReturnType<typeof vi.fn>, now = () => T0 + 10 * DAY, size =
       vi.fn(async (req: { task: string; prompt: string; schema: { parse(x: unknown): unknown } }) => ({
         data: req.task === 'variants' ? req.schema.parse(variantsFor(req.prompt)) : req.schema.parse({ verdict: 'partial', feedback: 'Manca la prova.' }),
         fromCache: false,
-        engine: 'agy' as const
+        engine: 'openrouter' as const
       }))
   }
   const svc = createReviewService({
@@ -103,7 +103,7 @@ describe('plan', () => {
     expect(p.items[0].exercise).toEqual({ type: 'open', prompt: 'Senza guardare: che cosa dice «nome a1»?', answer: 'enunciato a1' })
     expect(p.items[0].variantId).toBeNull()
   })
-  it('only uses the exercise types Andrea chose', async () => {
+  it('only uses the exercise types the student chose', async () => {
     types = ['truefalse']
     const { svc } = setup()
     for (const i of (await svc.plan()).items) expect(i.exercise.type).toBe('truefalse')
@@ -149,7 +149,7 @@ describe('grade, record and memory', () => {
     expect(call.prompt).toContain('Boh, forse questo')
     expect(call.prompt).toContain('Questo.')
   })
-  it('lets Andrea grade himself when the correction fails', async () => {
+  it('lets the student grade himself when the correction fails', async () => {
     const { svc } = setup(vi.fn(async () => Promise.reject(new Error('timeout'))))
     expect(await svc.grade({ conceptId: 'a1', exercise: { type: 'open', prompt: 'x', answer: 'y' }, answer: 'z', confidence: 50 })).toEqual({
       verdict: 'partial',

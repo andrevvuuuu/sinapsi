@@ -3,7 +3,7 @@ import { norm } from './shared'
 const tokens = (s: string): string[] => norm(s).split(/[^a-z0-9]+/).filter(Boolean)
 
 /**
- * The forbidden words Andrea used. Short words (≤ 4 letters, like "f" or "lim") must match a whole word;
+ * The forbidden words the student used. Short words (≤ 4 letters, like "f" or "lim") must match a whole word;
  * longer ones also catch their endings ("limite" → "limiti", "retta" → "rette", not "rettangolo");
  * several words ("valor medio") match as a phrase; LaTeX ($\lim$) is reduced to its letters.
  */

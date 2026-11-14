@@ -122,6 +122,8 @@ export function notebookStore(dir: string, now: () => number = Date.now) {
       const existing = (await this.notebooks()).find((n) => n.subject === subject)
       return existing?.id ?? this.create(subject, subject)
     },
+    update: (id: string, patch: { name?: string; subject?: string | null; link?: string | null }): Promise<void> =>
+      appendJsonl(nbFile, { op: 'update', id, ...patch }),
     remove: (id: string): Promise<void> => appendJsonl(nbFile, { op: 'delete', id }),
     addSource: (s: NewSource): Promise<void> =>
       appendJsonl(srcFile, { op: 'add', ...s, at: now() }),

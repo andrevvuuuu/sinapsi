@@ -13,7 +13,7 @@ const clean = (e: unknown): string =>
 
 /**
  * "Foto del foglio": the iPhone (Continuity Camera) or the Mac camera, or an image file.
- * Claude reads the sheet; Andrea checks and corrects the text before it is used.
+ * The vision model reads the sheet; the student checks and corrects the text before it is used.
  */
 function PhotoDialog({
   sessionId,
@@ -74,7 +74,7 @@ function PhotoDialog({
     }
   }, [api])
 
-  // The camera runs only while shooting: off while Andrea checks the text, back on for "Rifai la foto".
+  // The camera runs only while shooting: off while the student checks the text, back on for "Rifai la foto".
   const camOn = state.k !== 'read'
   useEffect(() => {
     if (!cam || !camOn || !navigator.mediaDevices) return

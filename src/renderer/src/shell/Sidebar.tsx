@@ -35,7 +35,7 @@ export function Sidebar(p: {
   index: VaultIndex | null
   due: number
   lessons?: LessonEntry[]
-  status: Record<import('../../../shared/settings-schema').Engine, Status> | null
+  status: Status | null
   current: 'home' | 'review' | 'practice' | 'lessons' | 'notes' | null
   onHome: () => void
   onReview: () => void
@@ -206,7 +206,7 @@ export function Sidebar(p: {
           </button>
         </nav>
         <div className="sh-rail-spacer" />
-        <EngineStatus status={p.status} />
+        <EngineStatus status={p.status} onOpenSettings={p.onSettings} />
         <button type="button" className="sh-settings" onClick={p.onSettings} aria-label="Impostazioni" title="Impostazioni"><IconSettings /><span>Impostazioni</span></button>
       </div>
       {hasTree && (
@@ -308,7 +308,7 @@ export function Sidebar(p: {
         </section>
       </div>
       <div className="sh-tree-status" aria-hidden="true">
-        <EngineStatus status={p.status} />
+        <EngineStatus status={p.status} onOpenSettings={p.onSettings} />
       </div>
       </div>
       )}

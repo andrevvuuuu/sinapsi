@@ -5,7 +5,7 @@ import { FigureSchema } from './nota-schema'
 /**
  * Review exercises: each tests one concept from a different angle (richiamo, distinzione,
  * composizione). Everything but `open` and `explain` is graded in the app; those two are graded by Claude.
- * `explain` (Spiegalo tu): Andrea explains a concept or rebuilds a proof with the book closed; `answer` holds
+ * `explain` (Spiegalo tu): the student explains a concept or rebuilds a proof with the book closed; `answer` holds
  * the key steps in the note's order.
  */
 const base = { prompt: z.string().trim().min(1), answer: z.string().trim().min(1) }

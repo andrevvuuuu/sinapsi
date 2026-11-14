@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import type { Settings, Engine } from '../../../shared/settings-schema'
+import type { Settings } from '../../../shared/settings-schema'
 import type { VaultResult, EngineStatus as Status, NoteMeta } from '../../../shared/api'
 import type { LessonEntry } from '../../../shared/lesson-types'
 import { SettingsDialog } from '../home/SettingsDialog'
@@ -56,7 +56,7 @@ export function AppShell({
 }): React.JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false),
     [lessons, setLessons] = useState<LessonEntry[]>([]),
-    [status, setStatus] = useState<Record<Engine, Status> | null>(null),
+    [status, setStatus] = useState<Status | null>(null),
     [settings, setSettings] = useState<Settings | null>(null),
     [due, setDue] = useState(0),
     [notes, setNotes] = useState<NoteMeta[]>([])

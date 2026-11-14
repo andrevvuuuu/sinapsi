@@ -8,7 +8,6 @@ import type {
   VaultResult
 } from '../../../shared/api'
 import type { LessonEntry } from '../../../shared/lesson-types'
-import type { Engine } from '../../../shared/settings-schema'
 import type { WeekPlan } from '../../../shared/plan-types'
 import type { LaunchDestination } from '../../../shared/lesson-types'
 import { useDictation } from '../components/dictation'
@@ -36,7 +35,7 @@ export function TodayView(p: Props): React.JSX.Element {
   )
   const api = window.sinapsi,
     [index, setIndex] = useState<VaultResult | null>(null),
-    [status, setStatus] = useState<Record<Engine, Status> | null>(null),
+    [status, setStatus] = useState<Status | null>(null),
     [sessions, setSessions] = useState<SessionSummary[]>([]),
     [practices, setPractices] = useState<PracticeSummary[]>([]),
     [due, setDue] = useState(0),
@@ -431,7 +430,7 @@ export function TodayView(p: Props): React.JSX.Element {
         <p className="sh-empty">Vault Obsidian non disponibile · {index.path}</p>
       )}
       <span className="sr" aria-live="polite">
-        {status ? `Stato motori aggiornato` : ''}
+        {status ? `Stato OpenRouter aggiornato` : ''}
         {suggestions ? ' Suggerimenti caricati.' : ''}
       </span>
     </div>

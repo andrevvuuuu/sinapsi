@@ -55,7 +55,7 @@ describe('ReviewView', () => {
     expect(within(list).getByText('42%')).toBeTruthy()
     expect(within(list).getByText('nuovo')).toBeTruthy()
   })
-  it('lets Andrea choose the exercise types, keeping at least one', async () => {
+  it('lets the user choose the exercise types, keeping at least one', async () => {
     const { api } = mount([mc])
     await screen.findByRole('heading', { name: /sbiadendo/ })
     const chips = within(screen.getByRole('group', { name: 'Esercizi' })).getAllByRole('button')
@@ -122,9 +122,9 @@ describe('ReviewView', () => {
       exercise: proof.exercise,
       confidence: 70,
       turns: [
-        { by: 'andrea', text: 'Per Weierstrass ha massimo e minimo.' },
-        { by: 'claude', text: 'Perché il massimo è interno?' },
-        { by: 'andrea', text: 'Se fosse sul bordo f sarebbe costante.' }
+        { by: 'learner', text: 'Per Weierstrass ha massimo e minimo.' },
+        { by: 'assistant', text: 'Perché il massimo è interno?' },
+        { by: 'learner', text: 'Se fosse sul bordo f sarebbe costante.' }
       ]
     })
     expect(screen.getByText('Weierstrass, poi Fermat.')).toBeTruthy()

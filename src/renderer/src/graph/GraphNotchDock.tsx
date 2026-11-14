@@ -183,8 +183,8 @@ export function GraphNotchDock({
         setActiveSection(null)
       }
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [activeSection, query, setQuery, setHi])
 
   const closedHeight = Math.max(CLOSED_HEIGHT, railH + 20)

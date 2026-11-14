@@ -43,7 +43,7 @@ describe('formulas in steps to order', () => {
 describe('variants prepared after an extraction', () => {
   it('generates the variants of a freshly extracted note', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-prep-'))
-    const ask = vi.fn(async (req: { prompt: string; schema: { parse(x: unknown): unknown } }) => ({ data: req.schema.parse({ concepts: [{ id: 'n_a', exercises: [{ type: 'open', prompt: 'q', answer: 'a' }] }] }), fromCache: false, engine: 'agy' as const }))
+    const ask = vi.fn(async (req: { prompt: string; schema: { parse(x: unknown): unknown } }) => ({ data: req.schema.parse({ concepts: [{ id: 'n_a', exercises: [{ type: 'open', prompt: 'q', answer: 'a' }] }] }), fromCache: false, engine: 'openrouter' as const }))
     const graph = { concepts: [{ id: 'n_a', name: 'A', statement: 's', aliases: [], birth: '/v/A.md', notes: ['/v/A.md'], sections: {}, depth: 0 }, { id: 'n_b', name: 'B', statement: 's', aliases: [], birth: '/v/B.md', notes: ['/v/B.md'], sections: {}, depth: 0 }], chains: [], extracted: {} }
     const vars = variantsStore(dir)
     const svc = createReviewService({ bridge: { ask } as never, memory: memoryStore(dir), variants: vars, graph: async () => graph, vault: async () => null, readNote: async () => '', settings: async () => ({ reviewSessionSize: 12, exerciseTypes: ['open'] }), workDir: join(dir, 'w') })

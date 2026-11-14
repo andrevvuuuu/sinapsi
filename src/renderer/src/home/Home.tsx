@@ -9,12 +9,13 @@ import type {
   Suggestions,
   VaultResult
 } from '../../../shared/api'
-import type { Engine, Settings } from '../../../shared/settings-schema'
+import type { Settings } from '../../../shared/settings-schema'
 import type { WeekPlan } from '../../../shared/plan-types'
 import type { LaunchDestination } from '../../../shared/lesson-types'
 import { buildTree } from './build-tree'
 import { Composer } from './Composer'
 import { EngineStatus } from './EngineStatus'
+import { SettingsDialog } from './SettingsDialog'
 import { IconPanel } from './icons'
 import { LeftPanel } from './LeftPanel'
 import { NotesPanel } from './NotesPanel'
@@ -58,7 +59,8 @@ export default function Home({
   const api = window.sinapsi
   const [index, setIndex] = useState<VaultResult | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [status, setStatus] = useState<Record<Engine, Status> | null>(null)
+  const [status, setStatus] = useState<Status | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [left, setLeft] = useState(true)
   const [right, setRight] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
@@ -70,7 +72,7 @@ export default function Home({
   const [pendingLessons, setPendingLessons] = useState(0)
   const [weekPlan, setWeekPlan] = useState<WeekPlan | null>(null)
   const [suggestions, setSuggestions] = useState<Suggestions | null>(null)
-  // Sizes Andrea dragged, kept across restarts and clamped to the window.
+  // Sizes the user dragged, kept across restarts and clamped to the window.
   const [layout, setLayoutState] = useState<Layout>(() =>
     clampLayout(loadLayout(), window.innerWidth || 1440, window.innerHeight || 900)
   )
@@ -316,7 +318,7 @@ export default function Home({
             <IconPanel />
           </button>
         </div>
-        <EngineStatus status={status} />
+        <EngineStatus status={status} onOpenSettings={() => setSettingsOpen(true)} />
         {loadError && (
           <div className="missing">
             <div role="alert">
@@ -354,15 +356,36 @@ export default function Home({
               <div className="orb" aria-hidden="true">
                 <i />
               </div>
-              <h2>
-                Il grafo apparirà quando <em>inizi a studiare</em>
-              </h2>
-              <p>
-                {index && 'notes' in index
-                  ? `${index.notes.length} note lette dal tuo vault. `
-                  : ''}
-                Scrivi qui sotto cosa vuoi imparare.
-              </p>
+              {status === 'no-key' ? (
+                <>
+                  <h2>
+                    Configura la <em>chiave OpenRouter</em>
+                  </h2>
+                  <p>
+                    Per iniziare a studiare, apri le Impostazioni e inserisci la tua API key di OpenRouter.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn pri"
+                    style={{ marginTop: 'var(--s-3)' }}
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    Apri Impostazioni
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h2>
+                    Il grafo apparirà quando <em>inizi a studiare</em>
+                  </h2>
+                  <p>
+                    {index && 'notes' in index
+                      ? `${index.notes.length} note lette dal tuo vault. `
+                      : ''}
+                    Scrivi qui sotto cosa vuoi imparare.
+                  </p>
+                </>
+              )}
             </div>
           </GlassContent>
         )}
@@ -392,6 +415,14 @@ export default function Home({
         vaultPath={settings?.vaultPath}
         onChooseVault={() => void chooseVault()}
       />
+      {settingsOpen && settings && (
+        <SettingsDialog
+          settings={settings}
+          onTheme={(t) => void setTheme(t)}
+          onSaved={setSettings}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
   )
 }

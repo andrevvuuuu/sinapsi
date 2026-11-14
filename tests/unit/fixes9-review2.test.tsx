@@ -4,8 +4,9 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { readdir } from 'node:fs/promises'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { EngineMissingError } from '../../src/main/ai/errors'
+import { AuthRequiredError } from '../../src/main/ai/errors'
 import { deriveGraph } from '../../src/main/graph/derive'
 import { detectMoves, detectOfflineMoves } from '../../src/main/graph/moves'
 import { readPdf } from '../../src/main/notebook/readers'
@@ -94,13 +95,13 @@ describe('photos', () => {
   it('a new photo never overwrites a kept one', async () => {
     const dir = await tmp()
     await writeFile(join(dir, 'foglio-2.jpg'), 'vecchia')
-    const ask = vi.fn(async (req: { prompt: string; schema: { parse(x: unknown): unknown } }) => ({ data: req.schema.parse({ readable: true, text: 'ok' }), fromCache: false, engine: 'claude' as const }))
+    const ask = vi.fn(async (req: { schema: { parse(x: unknown): unknown } }) => ({ data: req.schema.parse({ readable: true, text: 'ok' }), fromCache: false, model: 'test-model' }))
     await transcribePhoto({ bridge: { ask } as never, dir, bytes: new Uint8Array([0xff, 0xd8, 0xff]) })
-    expect(ask.mock.calls[0][0].prompt).toContain('«foglio-3.jpg»')
+    expect(await readdir(dir)).toContain('foglio-3.jpg')
   })
-  it('says that Claude is needed when it is missing', async () => {
+  it('reports auth errors clearly', async () => {
     const dir = await tmp()
-    const ask = vi.fn(async () => Promise.reject(new EngineMissingError('claude')))
-    await expect(transcribePhoto({ bridge: { ask } as never, dir, bytes: new Uint8Array([0xff, 0xd8, 0xff]) })).rejects.toThrow(/serve Claude Code/)
+    const ask = vi.fn(async () => Promise.reject(new AuthRequiredError('OpenRouter')))
+    await expect(transcribePhoto({ bridge: { ask } as never, dir, bytes: new Uint8Array([0xff, 0xd8, 0xff]) })).rejects.toThrow(/OpenRouter/)
   })
 })

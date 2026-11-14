@@ -10,6 +10,12 @@ test-results
 playwright-report
 *.tsbuildinfo
 
+# Secrets & environment
+secret-api.txt
+.env
+.env.*
+!.env.example
+
 # Style references (screenshots of other apps): kept locally, not published
 reports/ui-reference/*.png
 reports/ui-reference/*.jpg

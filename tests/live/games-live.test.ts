@@ -5,16 +5,16 @@ import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import type { z } from 'zod'
 import { createBridge } from '../../src/main/ai/bridge'
-import { nodeSpawn } from '../../src/main/ai/engines'
+import { resolveApiKey } from '../../src/main/ai/key-storage'
 import { TEACHER_SYSTEM_PROMPT } from '../../src/main/session/prompt'
-import { DEFAULT_ENGINES } from '../../src/shared/settings-schema'
+import { DEFAULT_MODELS } from '../../src/shared/settings-schema'
 import { TeacherTurnSchema, teacherJsonSchema, type TeacherTurn } from '../../src/shared/teacher-protocol'
 
 // The real tutor, asked mid-lesson for a game: it must answer with a valid game question.
 describe.runIf(process.env.LIVE_AI === '1')('live games', () => {
   it('the tutor proposes a playable game', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-live-games-'))
-    const bridge = createBridge({ spawn: nodeSpawn, cacheDir: join(dir, 'c'), usageFile: join(dir, 'u.jsonl'), engines: async () => DEFAULT_ENGINES })
+    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'u.jsonl'), models: async () => DEFAULT_MODELS, apiKey: async () => resolveApiKey() })
     const t0 = Date.now()
     const r = await bridge.converse<TeacherTurn>({
       task: 'teach',

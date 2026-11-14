@@ -46,7 +46,7 @@ export function buildCatalog(input: { graph: GraphData; memory: Record<string, M
 
 export { matchConcepts } from '../../shared/practice-match'
 
-/** Everything the tutor works from, in Italian: concepts, chains, Andrea's notes, his sources, his words. */
+/** Everything the tutor works from, in Italian: concepts, chains, student's notes, sources, words. */
 export async function buildMaterialContext(input: {
   material: Material
   graph: GraphData
@@ -70,7 +70,7 @@ export async function buildMaterialContext(input: {
       if (!text) continue
       const cut = text.slice(0, Math.min(NOTE_CAP, NOTES_TOTAL - used))
       used += cut.length
-      parts.push(`NOTA OBSIDIAN DI ANDREA (${path.split('/').pop()!.replace(/\.md$/, '')})\n${cut}${cut.length < text.length ? '\n[…nota troncata]' : ''}`)
+      parts.push(`NOTA OBSIDIAN DELLO STUDENTE (${path.split('/').pop()!.replace(/\.md$/, '')})\n${cut}${cut.length < text.length ? '\n[…nota troncata]' : ''}`)
     }
   } else parts.push('Materiale libero: nessun concetto della mappa, quindi i problemi non hanno target ("targets": []).')
   if (material.sourceIds.length) {
@@ -88,6 +88,6 @@ export async function buildMaterialContext(input: {
     }
     if (lines.length) parts.push(`FONTI DAI NOTEBOOK (esercizi e materiale del corso: usali così come sono o creane di simili)\n${lines.join('\n')}`)
   }
-  if (material.free.trim()) parts.push(`ARGOMENTO O PROBLEMA PORTATO DA ANDREA\n${material.free.trim()}`)
+  if (material.free.trim()) parts.push(`ARGOMENTO O PROBLEMA PORTATO DALLO STUDENTE\n${material.free.trim()}`)
   return parts.join('\n\n---\n\n')
 }

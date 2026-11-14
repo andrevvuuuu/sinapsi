@@ -24,11 +24,17 @@
 
 /* AI Engines Grid */
 .settings-dlg .sd-engines{display:flex;flex-direction:column;gap:var(--s-2);margin-top:var(--s-1)}
-.settings-dlg .sd-engine{display:grid;grid-template-columns:minmax(120px,1fr) 110px minmax(160px,210px);gap:var(--s-2);align-items:center}
+.settings-dlg .sd-engine{display:grid;grid-template-columns:minmax(160px,1fr) minmax(200px,1.4fr);gap:var(--s-2);align-items:center}
 .settings-dlg .sd-engine-task{font:var(--font-footnote);color:var(--ink);font-weight:var(--fw-medium)}
 .settings-dlg .sd-engine select,.settings-dlg .sd-engine input,.settings-dlg .sd-input-row input[type="number"]{min-height:var(--ctl-sm);border-radius:var(--r-sm);border:1px solid var(--ctl-edge);background:var(--bg);color:var(--ink);padding:0 var(--s-3);font:400 var(--fs-footnote) var(--sans);transition:border-color .15s var(--ease-out)}
 .settings-dlg .sd-engine select:focus-visible,.settings-dlg .sd-engine input:focus-visible,.settings-dlg .sd-input-row input[type="number"]:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-color:var(--accent)}
 .settings-dlg .sd-engine input{font-family:var(--mono)}
+.settings-dlg .sd-key-row{display:flex;align-items:center;gap:var(--s-2);min-width:0;margin-top:var(--s-1)}
+.settings-dlg .sd-key-input{flex:1;min-width:0;height:var(--ctl);padding:0 var(--s-3);border:0;border-radius:var(--sh-r-inner);background:var(--sh-inner-bg);box-shadow:var(--sh-inner-shadow);color:var(--sh-text);font:400 var(--fs-footnote) var(--mono)}
+.settings-dlg .sd-key-input:focus-visible{outline:var(--btn-focus-ring);outline-offset:2px}
+.settings-dlg .sd-key-status{margin:var(--s-1) 0 0;font-size:var(--fs-footnote);color:var(--sh-text-2)}
+.settings-dlg .sd-key-status.ok{color:var(--good)}
+.settings-dlg .sd-key-status.bad{color:var(--bad)}
 
 /* iOS-like Toggle Switches for Checkboxes */
 .settings-dlg .sd-toggle-row{display:flex;align-items:center;justify-content:space-between;min-height:var(--ctl);gap:var(--s-3);padding:var(--s-1) 0;cursor:pointer;user-select:none}

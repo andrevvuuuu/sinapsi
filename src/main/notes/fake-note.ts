@@ -60,7 +60,7 @@ export function fakeNoteBridge(): Pick<Bridge, 'ask'> {
   return {
     ask: (async () => {
       await new Promise((r) => setTimeout(r, 300))
-      return { data: parseNota(FAKE_NOTA), fromCache: false, engine: 'agy' as const }
+      return { data: parseNota(FAKE_NOTA), fromCache: false, model: 'fake-note', engine: 'fake-note' }
     }) as Bridge['ask']
   }
 }

@@ -20,7 +20,7 @@ beforeAll(() => {
 })
 afterEach(cleanup)
 
-const LONG = '/Users/andreaantonelli/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian Vault/Matematica/Teorema di Lagrange del Valor Medio.md'
+const LONG = '/Users/student/Documents/Obsidian Vault/Matematica/Teorema di Lagrange del Valor Medio.md'
 const vnote = (title: string, available = true, path = `/v/${title}.md`): VaultNote => ({ path, title, folder: '', tags: [], aliases: [], links: [], headings: [], blockIds: [], subject: 'matematica', mtime: 1, size: 1, available })
 const index: VaultIndex = { root: '/v', scannedAt: 1, subjects: [], notes: [vnote('Lagrange', true, LONG), vnote('Nuvola', false)] }
 const empty: GraphData = { concepts: [], chains: [], extracted: {} }
@@ -98,7 +98,7 @@ describe('no-op background checks do not use up the daily limit', () => {
     const store = graphStore(dir)
     const day = new Date(2026, 9, 27, 15).getTime()
     for (let i = 0; i < 3; i++) await store.append('extraction', { notePath: `/v/x${i}.md`, hash: 'h', at: day, reason: 'background', nodes: 0, chains: 0, dropped: 0, ok: true, skipped: true })
-    const ask = vi.fn(async () => ({ data: { propositions: [{ id: 'p1', name: 'A', statement: 'A vale.' }], chains: [], dropped: 0 }, fromCache: false, engine: 'agy' as const }))
+    const ask = vi.fn(async () => ({ data: { propositions: [{ id: 'p1', name: 'A', statement: 'A vale.' }], chains: [], dropped: 0 }, fromCache: false, engine: 'openrouter' as const }))
     const idx: VaultIndex = { root: '/v', scannedAt: 1, subjects: [], notes: [vnote('A')] }
     const x = createExtractor({ bridge: { ask } as never, store, vault: async () => idx, readNote: async () => 'testo', workDir: join(dir, 'w'), now: () => day, onChange: () => undefined })
     expect(await x.backgroundTick({ idleSeconds: 600, enabled: true, dailyLimit: 3 })).toBe('/v/A.md')

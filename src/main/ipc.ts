@@ -17,6 +17,8 @@ import { createSinapsiTutorService } from './tutor/sinapsi-tutor'
 import { confidenceCalibration } from '../shared/confidence'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
+import { createKeyManager } from './ai/key-storage'
+import { fetchOpenRouterModels, verifyOpenRouterKey } from './ai/openrouter'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import {
   makeGraphHandlers,
@@ -76,11 +78,8 @@ export function registerIpc(): { bridge: Bridge } {
   // Assigned below; the session and note hooks only run after registration.
   // eslint-disable-next-line prefer-const
   let extractor: Extractor
-  const bridge = createBridge({
-    spawn: nodeSpawn,
-    cacheDir: join(dataDir(), 'ai-cache'),
-    usageFile: join(dataDir(), 'ai-usage.jsonl'),
-    engines: async () => (await loadSettings()).engines
+  const keyManager = createKeyManager({
+    storageFile: join(dataDir(), 'openrouter-key.enc')
   })
   const settings = process.env.SINAPSI_VAULT
     ? {
@@ -88,11 +87,37 @@ export function registerIpc(): { bridge: Bridge } {
         save: saveSettings
       }
     : { load: loadSettings, save: saveSettings }
+  const bridge = createBridge({
+    cacheDir: join(dataDir(), 'ai-cache'),
+    usageFile: join(dataDir(), 'ai-usage.jsonl'),
+    conversationsDir: join(dataDir(), 'ai-conversations'),
+    models: async () => (await settings.load()).models,
+    apiKey: () => keyManager.getKey()
+  })
   const h = makeHandlers({
     loadSettings: settings.load,
     saveSettings: settings.save,
     scan: scanVault,
-    aiStatus: () => bridge.status(),
+    aiStatus: async () => {
+      await bridge.refreshStatus()
+      return bridge.status()
+    },
+    hasKey: () => keyManager.hasKey(),
+    setKey: async (key: string) => {
+      await keyManager.setKey(key)
+      const has = await keyManager.hasKey()
+      await bridge.refreshStatus()
+      broadcast(CH.aiStatusChanged, bridge.status())
+      return has
+    },
+    verifyKey: async (key?: string) => {
+      const k = key || (await keyManager.getKey()) || ''
+      return verifyOpenRouterKey(k)
+    },
+    listModels: async () => {
+      const models = await fetchOpenRouterModels()
+      return models.map((m) => ({ id: m.id, name: m.name }))
+    },
     openExternal: (url) => shell.openExternal(url),
     chooseFolder: async () => {
       const r = await dialog.showOpenDialog({
@@ -149,6 +174,10 @@ export function registerIpc(): { bridge: Bridge } {
   })
   ipcMain.handle(CH.vaultIndex, () => h.vaultIndex())
   ipcMain.handle(CH.aiStatus, () => h.aiStatus())
+  ipcMain.handle(CH.aiHasKey, () => h.hasKey())
+  ipcMain.handle(CH.aiSetKey, (_e, key) => h.setKey(key))
+  ipcMain.handle(CH.aiVerifyKey, (_e, key) => h.verifyKey(key))
+  ipcMain.handle(CH.aiListModels, () => h.listModels())
   ipcMain.handle(CH.openExternal, (_e, url) => h.openExternal(url))
   bridge.onStatus((s) => broadcast(CH.aiStatusChanged, s))
 

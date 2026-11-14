@@ -186,7 +186,7 @@ test('Liquid Glass on the controls, solid surfaces under the text, content scrol
   await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toHaveCount(0)
 
   // Opening the settings, and walking them with Tab, never changes the theme: the picker takes the focus, focus never selects.
-  // Trattato chosen in the dialog itself, as Andrea does, then the dialog opened again.
+  // Trattato chosen in the dialog itself, as the user does, then the dialog opened again.
   await win.getByRole('button', { name: 'Impostazioni', exact: true }).click()
   await win.getByRole('dialog', { name: 'Impostazioni' }).getByRole('tab', { name: 'Trattato' }).click()
   await win.keyboard.press('Escape')

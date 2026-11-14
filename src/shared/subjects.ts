@@ -1,17 +1,17 @@
 /**
  * The sidebar's subjects: the vault's top folders, split into university and personal ones and
- * kept in the order Andrea chooses. Preferences live in settings (`subjectOrder`,
+ * kept in the order the user chooses. Preferences live in settings (`subjectOrder`,
  * `universitySubjects`); a subject never placed keeps the default order after the placed ones.
  */
 
 export type SubjectPrefs = {
   /** Subject names in the chosen order (both groups together). */
   subjectOrder: string[]
-  /** Names of the university subjects; null until Andrea chooses (a default is guessed). */
+  /** Names of the university subjects; null until chosen (a default is guessed). */
   universitySubjects: string[] | null
 }
 
-/** The university subjects shown until Andrea chooses his own. */
+/** The university subjects shown until the user chooses. */
 export const DEFAULT_UNIVERSITY = [
   'Matematica',
   'Intelligenza Artificiale',
@@ -26,7 +26,7 @@ export type SubjectGroups = { university: Subject[]; personal: Subject[] }
 /**
  * Splits and orders the subjects.
  * @param names the subjects in their default order (e.g. most notes first)
- * @param guess the university subjects to assume while Andrea has not chosen (the fixed default list)
+ * @param guess the university subjects to assume while the user has not chosen (the fixed default list)
  */
 export function arrangeSubjects(names: string[], prefs: SubjectPrefs, guess: string[] = DEFAULT_UNIVERSITY): SubjectGroups {
   const uni = new Set(prefs.universitySubjects ?? guess)

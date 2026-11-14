@@ -39,7 +39,7 @@ describe('checkTurnAgainst', () => {
 })
 
 describe('submissions', () => {
-  it('validates and formats what Andrea sends, in Italian', () => {
+  it('validates and formats what the student sends, in Italian', () => {
     expect(SubmissionSchema.safeParse({ kind: 'thinking', text: 'x'.repeat(20_001) }).success).toBe(false)
     const lines = { ...problem, lines: ['f continua', 'f(-1)=f(1)', 'per Rolle esiste c'] }
     expect(formatSubmission({ kind: 'thinking', text: 'uso il valor medio' })).toBe('Il mio ragionamento: uso il valor medio')

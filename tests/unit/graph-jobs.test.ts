@@ -4,14 +4,14 @@ import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createExtractor } from '../../src/main/graph/jobs'
 import { graphStore, type GraphStore } from '../../src/main/graph/store'
-import { DEFAULT_ENGINES, settingsSchema } from '../../src/shared/settings-schema'
+import { DEFAULT_MODELS, settingsSchema } from '../../src/shared/settings-schema'
 import type { VaultIndex, VaultNote } from '../../src/shared/vault-types'
 
 const vnote = (title: string, subject: string | null, available = true): VaultNote => ({
   path: `/v/${title}.md`, title, folder: '', tags: [], aliases: [], links: [], headings: [], blockIds: [], subject, mtime: 1, size: 1, available
 })
 const index: VaultIndex = { root: '/v', scannedAt: 1, subjects: [], notes: [vnote('Alfa', 'storia'), vnote('Rolle', 'matematica'), vnote('Nuvola', 'matematica', false)] }
-const reply = (name: string) => ({ data: { propositions: [{ id: 'p1', name, statement: `${name} vale.` }], chains: [], dropped: 0 }, fromCache: false, engine: 'agy' as const })
+const reply = (name: string) => ({ data: { propositions: [{ id: 'p1', name, statement: `${name} vale.` }], chains: [], dropped: 0 }, fromCache: false, engine: 'openrouter' as const })
 
 let dir: string
 let store: GraphStore
@@ -137,6 +137,6 @@ describe('settings for extraction', () => {
     const s = settingsSchema('/Users/x').parse({})
     expect(s.backgroundExtraction).toBe(true)
     expect(s.dailyExtractionLimit).toBe(6)
-    expect(DEFAULT_ENGINES.extract).toEqual({ engine: 'agy', model: 'gemini-3.8-flash-medium' })
+    expect(DEFAULT_MODELS.extract).toBe('google/gemini-2.5-flash')
   })
 })

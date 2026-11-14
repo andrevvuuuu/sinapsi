@@ -4,7 +4,7 @@ import { DictationError, MicButton } from '../../components/MicButton'
 import type { ExerciseState } from './shared'
 
 /**
- * "Spiegalo tu": Andrea explains with the book closed, aloud or in writing. A recording is transcribed
+ * "Spiegalo tu": the student explains with the book closed, aloud or in writing. A recording is transcribed
  * (mlx_whisper) into the text box, where he can fix it before sending.
  */
 export function Explain({

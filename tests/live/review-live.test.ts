@@ -1,24 +1,25 @@
 import { mkdtemp, readFile } from 'node:fs/promises'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createBridge } from '../../src/main/ai/bridge'
-import { nodeSpawn } from '../../src/main/ai/engines'
+import { resolveApiKey } from '../../src/main/ai/key-storage'
 import { deriveGraph } from '../../src/main/graph/derive'
 import { graphStore } from '../../src/main/graph/store'
 import { createReviewService } from '../../src/main/memory/review'
 import { memoryStore } from '../../src/main/memory/store'
 import { variantsStore } from '../../src/main/memory/variants'
 import { scanVault } from '../../src/main/vault/scan'
-import { DEFAULT_ENGINES, DEFAULT_EXCLUDED } from '../../src/shared/settings-schema'
+import { DEFAULT_MODELS, DEFAULT_EXCLUDED } from '../../src/shared/settings-schema'
 import { EXERCISE_TYPES } from '../../src/shared/memory-types'
 
-// Real variants (Gemini) and grading (Claude) on concepts already extracted into LIVE_GRAPH_DIR.
+// Real variants and grading on concepts already extracted into LIVE_GRAPH_DIR.
 describe.runIf(process.env.LIVE_AI === '1' && !!process.env.LIVE_GRAPH_DIR)('live review', () => {
   it('writes varied exercises for Rolle and grades open answers', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-live-review-'))
-    const bridge = createBridge({ spawn: nodeSpawn, cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), engines: async () => DEFAULT_ENGINES })
-    const vault = await scanVault(join(homedir(), 'Obsidian Vault'), DEFAULT_EXCLUDED)
+    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), models: async () => DEFAULT_MODELS, apiKey: async () => resolveApiKey() })
+    const vaultDir = process.env.SINAPSI_TEST_VAULT ?? join(process.cwd(), 'tests/fixtures/vault')
+    const vault = await scanVault(vaultDir, DEFAULT_EXCLUDED)
     const g = deriveGraph(await graphStore(process.env.LIVE_GRAPH_DIR!).read())
     const rolle = vault.notes.find((n) => n.title === 'Teorema di Rolle')!.path
     const ids = g.concepts.filter((c) => c.birth === rolle).map((c) => c.id)

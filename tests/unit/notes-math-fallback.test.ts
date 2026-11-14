@@ -4,17 +4,24 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import { createBridge, type SpawnFn } from '../../src/main/ai/bridge'
+import { createBridge } from '../../src/main/ai/bridge'
 import { AiSchemaError } from '../../src/main/ai/errors'
 import { createNoteGenerator } from '../../src/main/notes/generator'
-import { DEFAULT_ENGINES } from '../../src/shared/settings-schema'
+import { DEFAULT_MODELS } from '../../src/shared/settings-schema'
 import type { VaultIndex } from '../../src/shared/vault-types'
+import * as openrouter from '../../src/main/ai/openrouter'
+
+vi.mock('../../src/main/ai/openrouter', async (importOriginal) => {
+  const actual = await importOriginal<typeof openrouter>()
+  return {
+    ...actual,
+    chatCompletion: vi.fn()
+  }
+})
 
 /** The real Lagrange note: plain-text formulas and blanks inside $…$, so it fails the math check. */
 const lagrange = JSON.parse(readFileSync(join(__dirname, '../fixtures/nota-lagrange.json'), 'utf8')).nota
 const clean = JSON.parse(readFileSync(join(__dirname, '../fixtures/nota-min.json'), 'utf8'))
-const agyOk = (response: string): string => JSON.stringify({ status: 'SUCCESS', response, usage: { input_tokens: 1, output_tokens: 1 } })
-const reply = (text: string): Awaited<ReturnType<SpawnFn>> => ({ stdout: agyOk(text), stderr: '', code: 0, timedOut: false })
 
 const SOURCE = '/vault/Matematica/Teorema di Lagrange del Valor Medio.md'
 const index: VaultIndex = {
@@ -29,6 +36,7 @@ let warn: ReturnType<typeof vi.spyOn>
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), 'sinapsi-math-'))
   warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  vi.clearAllMocks()
 })
 afterEach(() => warn.mockRestore())
 
@@ -36,8 +44,22 @@ afterEach(() => warn.mockRestore())
 type Setup = { g: ReturnType<typeof createNoteGenerator>; prompts: string[] }
 function setup(replies: string[]): Setup {
   const prompts: string[] = []
-  const spawn: SpawnFn = async (_cmd, args) => (prompts.push(args[1]), reply(replies.shift() ?? '…'))
-  const bridge = createBridge({ spawn, cacheDir: join(dir, 'cache'), usageFile: join(dir, 'usage.jsonl'), engines: async () => DEFAULT_ENGINES })
+  vi.mocked(openrouter.chatCompletion).mockImplementation(async (opts) => {
+    const lastMsg = opts.messages.at(-1)?.content
+    prompts.push(typeof lastMsg === 'string' ? lastMsg : '')
+    return {
+      text: replies.shift() ?? '…',
+      inputTokens: 1,
+      outputTokens: 1,
+      model: 'test-model'
+    }
+  })
+  const bridge = createBridge({
+    cacheDir: join(dir, 'cache'),
+    usageFile: join(dir, 'usage.jsonl'),
+    models: async () => DEFAULT_MODELS,
+    apiKey: async () => 'test-key'
+  })
   const g = createNoteGenerator({ bridge, dir: join(dir, 'notes'), workDir: join(dir, 'work'), vault: async () => index, readNote: async () => '## 1. Enunciato\ntesto', session: async () => null, onUpdate: () => undefined })
   return { g, prompts }
 }
@@ -84,10 +106,37 @@ describe('math formatting never costs a note', () => {
     const loose = z.object({ n: z.number() })
     const replies = ['{"n":9}', '{"n":7}']
     const prompts: string[] = []
-    const b = createBridge({ spawn: async (_c, args) => (prompts.push(args[1]), reply(replies.shift()!)), cacheDir: join(dir, 'c'), usageFile: join(dir, 'u.jsonl'), engines: async () => DEFAULT_ENGINES })
+    vi.mocked(openrouter.chatCompletion).mockImplementation(async (opts) => {
+      const lastMsg = opts.messages.at(-1)?.content
+      prompts.push(typeof lastMsg === 'string' ? lastMsg : '')
+      return {
+        text: replies.shift() ?? '',
+        inputTokens: 1,
+        outputTokens: 1,
+        model: 'test-model'
+      }
+    })
+    const b = createBridge({
+      cacheDir: join(dir, 'c'),
+      usageFile: join(dir, 'u.jsonl'),
+      models: async () => DEFAULT_MODELS,
+      apiKey: async () => 'test-key'
+    })
     expect((await b.ask({ task: 'extract', prompt: 'p', schema: strict, fallback: loose })).data).toEqual({ n: 7 })
     expect(prompts).toHaveLength(2)
-    const b2 = createBridge({ spawn: async () => reply('{"n":"x"}'), cacheDir: join(dir, 'c2'), usageFile: join(dir, 'u2.jsonl'), engines: async () => DEFAULT_ENGINES })
+
+    vi.mocked(openrouter.chatCompletion).mockResolvedValue({
+      text: '{"n":"x"}',
+      inputTokens: 1,
+      outputTokens: 1,
+      model: 'test-model'
+    })
+    const b2 = createBridge({
+      cacheDir: join(dir, 'c2'),
+      usageFile: join(dir, 'u2.jsonl'),
+      models: async () => DEFAULT_MODELS,
+      apiKey: async () => 'test-key'
+    })
     await expect(b2.ask({ task: 'extract', prompt: 'p', schema: strict, fallback: loose })).rejects.toBeInstanceOf(AiSchemaError)
   })
 })

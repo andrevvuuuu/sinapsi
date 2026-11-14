@@ -2,7 +2,6 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SettingsDialog } from '../../src/renderer/src/home/SettingsDialog'
-import { NotebookPanel } from '../../src/renderer/src/home/NotebookPanel'
 import { GraphView } from '../../src/renderer/src/graph/GraphView'
 import { asMath } from '../../src/renderer/src/nota/math'
 import { settingsSchema } from '../../src/shared/settings-schema'
@@ -34,28 +33,6 @@ describe('settings dialog', () => {
     const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
     window.dispatchEvent(esc)
     expect(esc.defaultPrevented).toBe(true)
-  })
-  it('the switched engine gets that task’s default model', () => {
-    const set = vi.fn(async () => settings)
-    window.sinapsi = { settings: { set } } as never
-    const s = { ...settings, engines: { ...settings.engines, variants: { engine: 'claude' as const, model: 'sonnet' } } }
-    render(<SettingsDialog settings={s} onTheme={vi.fn()} onSaved={vi.fn()} onClose={vi.fn()} />)
-    fireEvent.change(screen.getByLabelText('Motore · Domande del Ripasso'), { target: { value: 'agy' } })
-    expect((screen.getByLabelText('Modello · Domande del Ripasso') as HTMLInputElement).value).toBe('gemini-3.8-flash-high')
-  })
-})
-
-describe('Importa fonti cancelled', () => {
-  it('removes the notebook it had just created', async () => {
-    const NB = '22222222-2222-4222-8222-222222222222'
-    const api = { list: vi.fn(async () => []), create: vi.fn(async () => NB), remove: vi.fn(async () => undefined), chooseFiles: vi.fn(async () => ({ added: [], rejected: [] })), onUpdate: () => () => undefined }
-    window.sinapsi = { notebook: api } as never
-    const onOpen = vi.fn()
-    render(<NotebookPanel onClose={vi.fn()} onOpen={onOpen} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Importa fonti' }))
-    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: 'Nuovo notebook…' })))
-    expect(api.remove).toHaveBeenCalledWith(NB)
-    expect(onOpen).not.toHaveBeenCalled()
   })
 })
 

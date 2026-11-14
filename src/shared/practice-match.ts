@@ -7,7 +7,7 @@ const norm = (s: string): string =>
     .replace(/[̀-ͯ]/g, '')
 const FILLER = new Set(['tutto', 'tutta', 'tutti', 'tutte', 'gli', 'della', 'delle', 'degli', 'dei', 'del'])
 
-/** Concepts whose name or note title contains every meaningful word of Andrea's text. */
+/** Concepts whose name or note title contains every meaningful word of the student's text. */
 export function matchConcepts(catalog: Catalog, text: string): string[] {
   const words = norm(text)
     .split(/[^a-z0-9]+/)

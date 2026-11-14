@@ -10,9 +10,10 @@ export function fakeReviewBridge(): Pick<Bridge, 'ask'> {
         return {
           data: req.schema.parse(req.prompt.includes('Tu (domanda):') ? { action: 'grade', verdict: 'partial', feedback: 'Manca il passaggio da $f(a)=f(b)$ al punto interno.' } : { action: 'ask', question: 'Perché il massimo è in un punto interno?' }),
           fromCache: false,
-          engine: 'claude' as const
+          model: 'fake-review',
+          engine: 'fake-review'
         }
-      if (req.task === 'grade') return { data: req.schema.parse({ verdict: 'partial', feedback: 'Manca il perché.' }), fromCache: false, engine: 'claude' as const }
+      if (req.task === 'grade') return { data: req.schema.parse({ verdict: 'partial', feedback: 'Manca il perché.' }), fromCache: false, model: 'fake-review', engine: 'fake-review' }
       const ids = [...req.prompt.matchAll(/^(n_[0-9a-f]{12}) \|/gm)].map((m) => m[1])
       const raw = {
         concepts: ids.map((id) => ({
@@ -24,7 +25,7 @@ export function fakeReviewBridge(): Pick<Bridge, 'ask'> {
           ]
         }))
       }
-      return { data: req.schema.parse(raw), fromCache: false, engine: 'agy' as const }
+      return { data: req.schema.parse(raw), fromCache: false, model: 'fake-review', engine: 'fake-review' }
     }) as Bridge['ask']
   }
 }

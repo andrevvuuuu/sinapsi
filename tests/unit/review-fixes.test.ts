@@ -1,29 +1,57 @@
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import { createBridge, type SpawnFn } from '../../src/main/ai/bridge'
+import { createBridge } from '../../src/main/ai/bridge'
 import { nodeSpawn } from '../../src/main/ai/engines'
 import { scanVault } from '../../src/main/vault/scan'
-import { DEFAULT_ENGINES } from '../../src/shared/settings-schema'
+import { DEFAULT_MODELS } from '../../src/shared/settings-schema'
+import * as openrouter from '../../src/main/ai/openrouter'
 
-const agyOk = (response: string) => ({ stdout: JSON.stringify({ status: 'SUCCESS', response, usage: { input_tokens: 1, output_tokens: 1 } }), stderr: '', code: 0, timedOut: false })
-async function mk(spawn: SpawnFn, usageFile?: string) {
+vi.mock('../../src/main/ai/openrouter', async (importOriginal) => {
+  const actual = await importOriginal<typeof openrouter>()
+  return {
+    ...actual,
+    chatCompletion: vi.fn()
+  }
+})
+
+const orOk = (text: string) => ({
+  text,
+  inputTokens: 1,
+  outputTokens: 1,
+  model: 'test-model'
+})
+
+async function mk(usageFile?: string) {
   const dir = await mkdtemp(join(tmpdir(), 'sinapsi-fix-'))
-  return { dir, b: createBridge({ spawn, cacheDir: join(dir, 'cache'), usageFile: usageFile ?? join(dir, 'u.jsonl'), engines: async () => DEFAULT_ENGINES }) }
+  return {
+    dir,
+    b: createBridge({
+      cacheDir: join(dir, 'cache'),
+      usageFile: usageFile ?? join(dir, 'u.jsonl'),
+      models: async () => DEFAULT_MODELS,
+      apiKey: async () => 'test-key'
+    })
+  }
 }
 
 describe('review fixes', () => {
   it('accepts a successful answer that mentions "log in"', async () => {
-    const { b } = await mk(async () => agyOk('Usa il log in base 2 per stimare'))
+    vi.mocked(openrouter.chatCompletion).mockResolvedValueOnce(orOk('Usa il log in base 2 per stimare'))
+    const { b } = await mk()
     await expect(b.ask({ task: 'extract', prompt: 'x' })).resolves.toMatchObject({ data: 'Usa il log in base 2 per stimare' })
-    expect(b.status().agy).toBe('idle')
+    expect(b.status()).toBe('idle')
   })
 
   it('validates cached data against the schema and refetches on mismatch', async () => {
     let calls = 0
-    const { b } = await mk(async () => (calls++, agyOk('{"n":1}')))
+    vi.mocked(openrouter.chatCompletion).mockImplementation(async () => {
+      calls++
+      return orOk('{"n":1}')
+    })
+    const { b } = await mk()
     const A = z.object({ n: z.number() })
     const B = z.object({ s: z.string() })
     await b.ask({ task: 'extract', prompt: 'p', schema: A, cache: true })
@@ -32,9 +60,10 @@ describe('review fixes', () => {
   })
 
   it('keeps a paid answer when the usage log cannot be written', async () => {
+    vi.mocked(openrouter.chatCompletion).mockResolvedValueOnce(orOk('ciao'))
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-fix-'))
     await mkdir(join(dir, 'usage-is-a-dir'))
-    const { b } = await mk(async () => agyOk('ciao'), join(dir, 'usage-is-a-dir'))
+    const { b } = await mk(join(dir, 'usage-is-a-dir'))
     await expect(b.ask({ task: 'extract', prompt: 'x' })).resolves.toMatchObject({ data: 'ciao' })
   })
 

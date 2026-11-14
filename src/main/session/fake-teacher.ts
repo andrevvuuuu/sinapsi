@@ -52,7 +52,7 @@ export const FAKE_SCRIPT: TeacherTurn[] = [
   { phase: 'done', blocks: [{ type: 'text', md: 'Ecco cosa resta.' }], summary: { learned: ['Pendenza della corda'], shaky: ['Funzione ausiliaria g'], misconceptions: [] } }
 ]
 
-/** e2e only (SINAPSI_FAKE_TEACHER_SCRIPT=long-measure): the Misura question of Andrea's screenshot, after a long tutor message — four options of two or three lines with math. */
+/** e2e only (SINAPSI_FAKE_TEACHER_SCRIPT=long-measure): a long question with math and options. */
 export const LONG_MEASURE_SCRIPT: TeacherTurn[] = [
   FAKE_SCRIPT[0],
   {
@@ -95,7 +95,7 @@ export function fakeTeacher(script: TeacherTurn[] = FAKE_SCRIPT): Pick<Bridge, '
       const n = counts.get(key) ?? 0
       counts.set(key, n + 1)
       await new Promise((r) => setTimeout(r, 300))
-      return { data: script[Math.min(n, script.length - 1)] as never, conversationId: key, engine: 'claude' }
+      return { data: script[Math.min(n, script.length - 1)] as never, conversationId: key, model: 'fake-teacher', engine: 'fake-teacher' }
     }
   }
 }

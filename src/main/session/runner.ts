@@ -27,8 +27,8 @@ export type SessionRunner = {
 const AnyEvent = z.custom<SessionEvent>((v) => !!v && typeof v === 'object' && typeof (v as { t?: unknown }).t === 'string')
 
 function friendly(e: unknown): string {
-  if (e instanceof AuthRequiredError) return `${e.engine === 'claude' ? 'Claude' : 'Gemini'} chiede di rifare l'accesso: apri il Terminale e scrivi ${e.engine}, poi premi Riprova.`
-  if (e instanceof EngineMissingError) return `${e.engine} non è installato su questo Mac.`
+  if (e instanceof AuthRequiredError) return 'Chiave OpenRouter richiesta: configurala nelle Impostazioni.'
+  if (e instanceof EngineMissingError) return 'OpenRouter non configurato: inserisci la chiave API nelle Impostazioni.'
   return `Il tutor non ha risposto correttamente (${e instanceof Error ? e.message : String(e)}). Premi Riprova.`
 }
 
@@ -162,7 +162,7 @@ export function createSessionRunner(deps: {
       }),
     get: (id) => load(id),
     async list() {
-      let names: string[] = []
+      let names: string[]
       try {
         names = (await readdir(deps.dir)).filter((n) => n.endsWith('.jsonl'))
       } catch {

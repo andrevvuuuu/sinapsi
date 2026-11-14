@@ -65,7 +65,7 @@ describe('variants follow the chosen types and do not block each other', () => {
       await new Promise((r) => setTimeout(r, 50))
       running--
       const id = /^(\w+) \| /m.exec(req.prompt)![1]
-      return { data: req.schema.parse({ concepts: [{ id, exercises: [{ type: 'mc', prompt: 'q', options: ['a', 'b'], correct: 0, answer: 'a' }] }] }), fromCache: false, engine: 'agy' as const }
+      return { data: req.schema.parse({ concepts: [{ id, exercises: [{ type: 'mc', prompt: 'q', options: ['a', 'b'], correct: 0, answer: 'a' }] }] }), fromCache: false, engine: 'openrouter' as const }
     })
     const svc = createReviewService({ bridge: { ask } as never, memory: memoryStore(dir), variants: variantsStore(dir), graph: async () => graph, vault: async () => index, readNote: async () => '', settings: async () => ({ reviewSessionSize: 12, exerciseTypes: ['mc'] }), workDir: join(dir, 'w'), now: () => T0 })
     const [p1, p2] = await Promise.all([svc.plan(), svc.plan()])

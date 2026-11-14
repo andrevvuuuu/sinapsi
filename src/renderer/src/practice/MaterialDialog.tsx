@@ -99,10 +99,10 @@ export function MaterialDialog({
   // The vault's subject names ("Educazione Civica"): the catalogue's folder names are shown as these.
   const [knownSubjects, setKnownSubjects] = useState<string[]>([])
   useEffect(() => {
-    void window.sinapsi.vault
-      .index()
+    void window.sinapsi?.vault
+      ?.index?.()
       // The vault's top folders carry the readable names the sidebar shows ("Educazione Civica").
-      .then((r) =>
+      ?.then((r) =>
         setKnownSubjects(
           'notes' in r ? [...new Set(r.notes.map((n) => n.path.slice(r.root.length + 1).split('/')[0]).filter(Boolean))] : []
         )

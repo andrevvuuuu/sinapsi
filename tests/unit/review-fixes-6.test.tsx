@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -159,21 +159,23 @@ describe('training rules the app enforces', () => {
 })
 
 describe('photos', () => {
-  it('converts an iPhone HEIC photo to JPEG before Claude reads it', async () => {
+  it('converts an iPhone HEIC photo to JPEG before vision model reads it', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-rf6p-'))
     const heic = new Uint8Array([0, 0, 0, 24, ...new TextEncoder().encode('ftypheic'), 1, 2, 3])
-    const convert = vi.fn(async () => undefined)
-    const ask = vi.fn(async (req: { prompt: string; schema: { parse(x: unknown): unknown } }) => ({ data: req.schema.parse({ readable: true, text: 'ok' }), fromCache: false, engine: 'claude' as const }))
+    const convert = vi.fn(async (_src, dest) => {
+      await writeFile(dest, new Uint8Array([0xff, 0xd8, 0xff]))
+    })
+    const ask = vi.fn(async (req: { schema: { parse(x: unknown): unknown } }) => ({ data: req.schema.parse({ readable: true, text: 'ok' }), fromCache: false, model: 'test-model' }))
     await transcribePhoto({ bridge: { ask } as never, dir, bytes: heic, convert })
     expect(convert).toHaveBeenCalledWith(join(dir, 'foglio-1.heic'), join(dir, 'foglio-1.jpg'))
-    expect((ask.mock.calls[0][0] as unknown as { prompt: string }).prompt).toContain('«foglio-1.jpg»')
+    expect((ask.mock.calls[0][0] as unknown as { images: string[] }).images[0]).toContain('data:image/jpeg;base64,')
   })
 })
 
 describe('exam delivery', () => {
   const sheetPub = { title: 'T', problems: [{ id: 'e1', statement: 'a', points: 30, targets: [] }] }
   const examState: PracticeState = { ...base, mode: 'exam', awaiting: 'learner', durationMin: 30, exam: { sheet: sheetPub, endsAt: Date.now() + 1_800_000, answers: {}, delivered: false } }
-  it('saves on leaving, and says so when delivery fails so Andrea can try again', async () => {
+  it('saves on leaving, and says so when delivery fails so the user can try again', async () => {
     const api = mountView(examState)
     api.practice.examDeliver.mockRejectedValueOnce(new Error("Error invoking remote method 'practice:exam-deliver': Error: risposta troppo lunga"))
     vi.spyOn(window, 'confirm').mockReturnValue(true)
@@ -197,7 +199,7 @@ describe('exam delivery', () => {
 })
 
 describe('camera', () => {
-  it('turns the camera off while Andrea checks the text, and back on for "Rifai la foto"', async () => {
+  it('turns the camera off while the student checks the text, and back on for "Rifai la foto"', async () => {
     const stop = vi.fn()
     const streams: object[] = []
     const getUserMedia = vi.fn(async () => {

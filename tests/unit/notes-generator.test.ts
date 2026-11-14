@@ -34,7 +34,7 @@ beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), 'sinapsi-notes-'))
 })
 
-function setup(ask: Bridge['ask'] = vi.fn(async () => ({ data: parseNota(raw), fromCache: false, engine: 'agy' as const })) as never, readNote = async (): Promise<string> => '## 1. Enunciato\ntesto') {
+function setup(ask: Bridge['ask'] = vi.fn(async () => ({ data: parseNota(raw), fromCache: false, engine: 'openrouter' as const })) as never, readNote = async (): Promise<string> => '## 1. Enunciato\ntesto') {
   const updates: NoteMeta[] = []
   const g = createNoteGenerator({
     bridge: { ask },
@@ -99,8 +99,8 @@ describe('note generator', () => {
   it('records a friendly error when the engine times out, and retry recovers', async () => {
     let n = 0
     const ask = vi.fn(async () => {
-      if (n++ === 0) throw new AiTimeoutError('agy', 480_000)
-      return { data: parseNota(raw), fromCache: false, engine: 'agy' as const }
+      if (n++ === 0) throw new AiTimeoutError('openrouter', 480_000)
+      return { data: parseNota(raw), fromCache: false, engine: 'openrouter' as const }
     })
     const { g } = setup(ask as never)
     const id = await g.create({ sourcePath: '/vault/Matematica/Teorema di Rolle.md' })
@@ -125,8 +125,8 @@ describe('note generator', () => {
     let text = '## 1. Enunciato\ntesto'
     let fail = false
     const ask = vi.fn(async () => {
-      if (fail) throw new AiTimeoutError('agy', 480_000)
-      return { data: parseNota(raw), fromCache: false, engine: 'agy' as const }
+      if (fail) throw new AiTimeoutError('openrouter', 480_000)
+      return { data: parseNota(raw), fromCache: false, engine: 'openrouter' as const }
     })
     const { g } = setup(ask as never, async () => text)
     const id = await g.create({ sourcePath: '/vault/Matematica/Teorema di Rolle.md' })

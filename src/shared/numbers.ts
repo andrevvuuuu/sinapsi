@@ -1,5 +1,5 @@
 /**
- * A number as Andrea types it: "1.000,5", "1000,5", "3,05", "3.05", "1 000". A dot followed by groups
+ * A number as typed: "1.000,5", "1000,5", "3,05", "3.05", "1 000". A dot followed by groups
  * of three digits is a thousands separator; with both, the last one is the decimal mark.
  */
 export function parseItalianNumber(raw: string): number {

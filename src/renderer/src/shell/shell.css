@@ -1180,6 +1180,7 @@
 
 .status .pill.auth i,
 .status .pill.missing i,
+.status .pill.no-key i,
 .status .pill.error i {
   background: var(--bad);
 }
@@ -1462,7 +1463,7 @@ button.sh-brand .sh-brand-tag {
 .sh-icon-rail .status .pill b,.sh-icon-rail .status .pill small{display:none}
 .sh-icon-rail .status .pill i{width:6px;height:6px;border-radius:50%;background:var(--sh-green);box-shadow:0 0 0 3px rgba(95,211,138,.16),0 0 8px rgba(95,211,138,.55)}
 .sh-icon-rail .status .pill.busy i{background:var(--sh-amber);box-shadow:none}
-.sh-icon-rail .status .pill.auth i,.sh-icon-rail .status .pill.missing i,.sh-icon-rail .status .pill.error i{background:#ed756e;box-shadow:none}
+.sh-icon-rail .status .pill.auth i,.sh-icon-rail .status .pill.missing i,.sh-icon-rail .status .pill.no-key i,.sh-icon-rail .status .pill.error i{background:#ed756e;box-shadow:none}
 .sh-tree-status{flex:none;padding:10px 4px 0;border-top:1px solid color-mix(in srgb,var(--sh-text) 8%,transparent);overflow:hidden}
 .sh-tree-status:empty{display:none}
 .sh-tree-status .status{display:flex;align-items:center;gap:12px;margin:0;padding:0;overflow:hidden}

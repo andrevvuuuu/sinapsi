@@ -72,7 +72,7 @@ describe('memory for the tutor', () => {
   it('goes into the first message, and the system prompt says how to use it', () => {
     expect(firstMessage('Lagrange', { title: 'L', text: 'testo' }, 'Stato di memoria…')).toMatch(/testo\n\nStato di memoria…$/)
     expect(firstMessage('Lagrange')).toBe('Voglio studiare: Lagrange')
-    expect(TEACHER_SYSTEM_PROMPT).toContain('# Memoria di Andrea')
+    expect(TEACHER_SYSTEM_PROMPT).toContain('# Memoria dello studente')
   })
   it('the runner sends it with the note', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-fade-'))

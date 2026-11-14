@@ -63,7 +63,7 @@ export function ReviewView({
   const [state, setState] = useState<ExerciseState>({ answer: '', correct: null, ready: false })
   const [confidence, setConfidence] = useState(50)
   const [verdict, setVerdict] = useState<Verdict | null>(null)
-  // "Spiegalo tu": the dialogue with the picky student, Andrea's turns and its questions.
+  // "Spiegalo tu": the dialogue with the picky student, the learner's turns and its questions.
   const [turns, setTurns] = useState<ExplainTurn[]>([])
   const [checking, setChecking] = useState(false)
   const [grade, setGrade] = useState<Grade>(3)
@@ -157,7 +157,7 @@ export function ReviewView({
         // Past the first turn "Non lo so" is an answer to the question, and the picky student concludes.
         const said: ExplainTurn[] = [
           ...turns,
-          { by: 'andrea', text: dontKnow ? 'Non lo so.' : state.answer.trim() }
+          { by: 'learner', text: dontKnow ? 'Non lo so.' : state.answer.trim() }
         ]
         const g = await api.review.explain({
           conceptId: item.conceptId,
@@ -166,7 +166,7 @@ export function ReviewView({
           confidence
         })
         if (g.kind === 'question') {
-          setTurns([...said, { by: 'claude', text: g.question }])
+          setTurns([...said, { by: 'assistant', text: g.question }])
           setState({ answer: '', correct: null, ready: false })
           return
         }
@@ -541,7 +541,7 @@ export function ReviewView({
               <ol className="rv-dialog" aria-label="Dialogo">
                 {turns.map((t, k) => (
                   <li key={k} className={t.by}>
-                    <span className="lab">{t.by === 'andrea' ? 'Tu' : 'Studente pignolo'}</span>
+                    <span className="lab">{t.by === 'learner' ? 'Tu' : 'Studente pignolo'}</span>
                     <RichText md={t.text} />
                   </li>
                 ))}

@@ -5,12 +5,12 @@ import Home from '../../src/renderer/src/home/Home'
 import type { SinapsiApi, VaultResult } from '../../src/shared/api'
 import { settingsSchema } from '../../src/shared/settings-schema'
 
-function mockApi(index: VaultResult, status = { agy: 'idle', claude: 'idle' } as const): SinapsiApi {
+function mockApi(index: VaultResult, status: any = 'idle'): SinapsiApi {
   const settings = settingsSchema('/Users/x').parse({})
   return {
     settings: { get: vi.fn(async () => settings), set: vi.fn(async () => settings), chooseVault: vi.fn(async () => settings) },
     vault: { index: vi.fn(async () => index), onChange: () => () => undefined },
-    ai: { status: vi.fn(async () => ({ ...status })), onStatus: () => () => undefined },
+    ai: { status: vi.fn(async () => status), onStatus: () => () => undefined },
     app: { openExternal: vi.fn(async () => undefined) }
   }
 }
@@ -36,10 +36,10 @@ describe('Home', () => {
     expect(window.sinapsi.settings.chooseVault).toHaveBeenCalled()
   })
 
-  it('says when an engine needs a new login', async () => {
-    window.sinapsi = mockApi(idx, { agy: 'auth', claude: 'idle' } as never)
+  it('says when OpenRouter needs an API key', async () => {
+    window.sinapsi = mockApi(idx, 'no-key' as never)
     render(<Home />)
-    expect(await screen.findByText(/serve l'accesso/)).toBeTruthy()
+    expect(await screen.findByText(/serve la chiave/)).toBeTruthy()
   })
 
   it('opens an Obsidian note from the tree inside the app', async () => {

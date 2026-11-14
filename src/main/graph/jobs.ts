@@ -25,8 +25,8 @@ const hash = (t: string): string => createHash('sha256').update(t).digest('hex')
 const day = (ms: number): string => new Date(ms).toDateString()
 
 function friendly(e: unknown): string {
-  if (e instanceof AuthRequiredError) return `${e.engine === 'claude' ? 'Claude' : 'Gemini'} chiede di rifare l'accesso: apri il Terminale e scrivi ${e.engine}.`
-  if (e instanceof EngineMissingError) return `${e.engine} non è installato su questo Mac.`
+  if (e instanceof AuthRequiredError) return 'Chiave OpenRouter richiesta: configurala nelle Impostazioni.'
+  if (e instanceof EngineMissingError) return 'OpenRouter non configurato: inserisci la chiave API nelle Impostazioni.'
   return `Estrazione non riuscita (${e instanceof Error ? e.message.slice(0, 200) : String(e)}).`
 }
 

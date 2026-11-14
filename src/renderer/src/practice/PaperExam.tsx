@@ -67,7 +67,7 @@ export function AnswerBox({
   )
 }
 
-/** The points Andrea gives a problem, on the grader's scale, before writing out the answer. Once given they stay. */
+/** The points the student gives a problem, on the grader's scale, before writing out the answer. Once given they stay. */
 function SelfGrade({
   index,
   max,

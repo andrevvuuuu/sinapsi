@@ -59,14 +59,12 @@ describe('photos', () => {
     await cleanupPhotos(dir, Date.now())
     expect(await readdir(join(dir, 's1'))).toEqual(['foglio-2.jpg'])
   })
-  it('are always read by Claude, with the read-only lockdown, whatever engine "grade" uses', async () => {
-    const spawn = vi.fn(async () => ({ stdout: JSON.stringify({ is_error: false, result: '{"readable":true,"text":"ok"}' }), stderr: '', code: 0, timedOut: false }))
+  it('are read with task photo using vision', async () => {
+    const ask = vi.fn(async (req: { schema: { parse(x: unknown): unknown } }) => ({ data: req.schema.parse({ readable: true, text: 'ok' }), fromCache: false, model: 'test-model' }))
     const dir = await tmp()
-    const bridge = createBridge({ spawn, cacheDir: join(dir, 'c'), usageFile: join(dir, 'u'), engines: async () => ({ ...DEFAULT_ENGINES, grade: { engine: 'agy', model: 'gemini-3.8-flash-high' } }) })
+    const bridge = { ask } as never
     expect(await transcribePhoto({ bridge, dir, bytes: new Uint8Array([0xff, 0xd8, 0xff, 1]) })).toBe('ok')
-    const [cmd, args] = spawn.mock.calls[0] as unknown as [string, string[]]
-    expect(cmd).toBe('claude')
-    expect(args).toEqual(expect.arrayContaining(['--tools', 'Read', '--allowedTools', 'Read']))
+    expect(ask).toHaveBeenCalledWith(expect.objectContaining({ task: 'photo' }))
   })
 })
 

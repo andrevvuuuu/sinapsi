@@ -36,14 +36,14 @@ export function sessionDigest(s: SessionState): string {
 
 export function buildNotePrompt(input: { noteTitle: string; noteText: string; session?: SessionState; sources?: Excerpt[] }): string {
   const parts = [
-    `Sei l'autore delle note vive di Sinapsi per Andrea, studente di Scienze matematiche per l'intelligenza artificiale (si interessa anche di bodybuilding: fisiologia, nutrizione). Una nota viva è una nota completa da cui studiare, interattiva, costruita sulla sua nota Obsidian.`,
+    `Sei l'autore delle note vive di Sinapsi per uno studente universitario. Una nota viva è una nota completa da cui studiare, interattiva, costruita sulla sua nota Obsidian.`,
     `REGOLE
-- Base: la nota Obsidian di Andrea qui sotto. Tieni le sue sezioni, nello stesso ordine e con gli stessi titoli (i titoli "##"). Non riassumere: la nota viva deve bastare per studiare.
+- Base: la nota Obsidian dello studente qui sotto. Tieni le sue sezioni, nello stesso ordine e con gli stessi titoli (i titoli "##"). Non riassumere: la nota viva deve bastare per studiare.
 - Non correggere mai in silenzio. Se qualcosa è impreciso o sbagliato, lascialo com'è nel testo e aggiungi un blocco "flag" che spiega il problema, con "correction" = il testo corretto da copiare in Obsidian. Elenca le segnalazioni anche in provenance.flagged.
 - Quiz e flashcard già presenti nella nota (per esempio nella "Palestra"): trasformali in blocchi "quiz" / "flashcard" con fromNote: true e mettili accanto alla sezione giusta, non tutti in fondo.
 - Figure: sono il cuore della nota viva. Metti una figura in ogni sezione dove c'è qualcosa da vedere (definizioni con secanti e tangenti, enunciato, ruolo dei teoremi usati, controesempi, corollari, esercizi): per una nota su un teorema di analisi di solito 5–9 figure, al massimo una per sezione. Ogni figura si deve poter toccare: un cursore o un punto trascinabile. La dimostrazione principale ha la sua figura dentro proof, con stepParams che la fanno cambiare a ogni passo. Quando qualcosa "diventa vero" in certi punti (una tangente parallela, una derivata nulla, un segno che cambia) usa greenWhen e aggiungi "points" con label "Mostra i punti". Scegli finestre x/y in cui la curva si vede bene.
 - Enunciati con "theorem", decodifica logico-formale con "decode" quando la nota la contiene, tabelle di simboli con "glossary".
-- Dimostrazioni con "proof": un passo per step, con tryPrompt ("Prima prova tu") sui passi che Andrea può ricostruire da solo; se una figura aiuta, mettila dentro proof con stepParams (un oggetto per passo).
+- Dimostrazioni con "proof": un passo per step, con tryPrompt ("Prima prova tu") sui passi che lo studente può ricostruire da solo; se una figura aiuta, mettila dentro proof con stepParams (un oggetto per passo).
 - Esercizi a difficoltà crescente: "svolto", poi "completa" (con le scelte {{…|*giusta|…}}), poi "solo".
 - I blocchi "session" vengono SOLO dalla sessione qui sotto, se c'è; non inventarli.
 - Italiano. Matematica in LaTeX: $…$ in linea, $$…$$ in blocco. Nelle stringhe JSON i backslash vanno raddoppiati (\\\\frac).
@@ -56,7 +56,7 @@ export function buildNotePrompt(input: { noteTitle: string; noteText: string; se
   ]
   if (input.sources?.length)
     parts.push(
-      `FONTI DEL NOTEBOOK (estratti dalle fonti che Andrea ha caricato: usali per completare e precisare, ma la nota Obsidian resta la base; quando usi un estratto cita la fonte tra parentesi, per esempio (Dispensa, p. 12))\n\n${input.sources.map((e) => `(${e.title}, ${e.label}) ${e.text}`).join('\n')}`
+      `FONTI DEL NOTEBOOK (estratti dalle fonti caricate: usali per completare e precisare, ma la nota Obsidian resta la base; quando usi un estratto cita la fonte tra parentesi, per esempio (Dispensa, p. 12))\n\n${input.sources.map((e) => `(${e.title}, ${e.label}) ${e.text}`).join('\n')}`
     )
   if (input.session) parts.push(`SESSIONE DI STUDIO (usala per i blocchi "session" e per dare più spazio a ciò che è rimasto incerto)\n\n${sessionDigest(input.session)}`)
   parts.push('Non usare strumenti né file. Rispondi solo con l\'oggetto JSON della nota viva, senza testo prima o dopo.')

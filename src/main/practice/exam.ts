@@ -31,11 +31,11 @@ export function normalizePoints(points: number[]): number[] {
 }
 
 function sheetPrompt(context: string, minutes: number): string {
-  return `Prepara una prova scritta d'esame universitario (stile italiano) da svolgere in ${minutes} minuti, sul materiale qui sotto, per Andrea (Scienze matematiche per l'IA).
+  return `Prepara una prova scritta d'esame universitario (stile italiano) da svolgere in ${minutes} minuti, sul materiale qui sotto, per uno studente universitario.
 Regole:
 - Da 2 a 8 problemi, calibrati sul tempo: tutti risolvibili in ${minutes} minuti da uno studente preparato. Mescola gli argomenti; alterna calcolo, dimostrazione, applicazione. Se nel materiale ci sono temi d'esame o esercizi del corso, imitane lo stile.
 - Non chiedere nulla oltre il materiale. Non annunciare quale teorema usare.
-- Risolvi tu ogni problema PRIMA di scriverlo e verifica che sia corretto e senza scorciatoie: metti la soluzione completa in "modelSolution" (Andrea la vede solo dopo la correzione).
+- Risolvi tu ogni problema PRIMA di scriverlo e verifica che sia corretto e senza scorciatoie: metti la soluzione completa in "modelSolution" (lo studente la vede solo dopo la correzione).
 - "points": il peso di ogni problema; il totale verrà portato a 30.
 - "targets": gli id dei concetti scelti che il problema esercita ([] se il materiale è libero).
 - Testo in italiano, matematica in LaTeX con $...$ e $$...$$.
@@ -50,7 +50,7 @@ const PAPER = `- La prova è stata scritta a mano, a macchina spenta, e trascrit
 
 function gradePrompt(sheet: ExamSheet, answers: Record<string, string>, paper: boolean): string {
   const parts = sheet.problems.map(
-    (p, i) => `## Esercizio ${i + 1} (id ${p.id}, ${p.points} punti)\n${p.statement}\n\nSOLUZIONE DI RIFERIMENTO\n${p.modelSolution}\n\nRISPOSTA DI ANDREA\n${answers[p.id]?.trim() || '(nessuna risposta)'}`
+    (p, i) => `## Esercizio ${i + 1} (id ${p.id}, ${p.points} punti)\n${p.statement}\n\nSOLUZIONE DI RIFERIMENTO\n${p.modelSolution}\n\nRISPOSTA DELLO STUDENTE\n${answers[p.id]?.trim() || '(nessuna risposta)'}`
   )
   return `Correggi questa prova d'esame come un docente universitario severo ma giusto.
 - Per ogni esercizio dai i punti (da 0 al massimo indicato, anche mezzi punti; credito parziale per i passaggi corretti) e un commento breve e onesto che localizza il primo errore o la parte mancante. Una soluzione diversa da quella di riferimento ma corretta vale quanto quella.

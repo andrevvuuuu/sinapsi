@@ -1,10 +1,9 @@
 import { execFile } from 'node:child_process'
-import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
 import type { Bridge } from '../ai/bridge'
 import { unescapeOver } from '../ai/json'
-import { EngineMissingError } from '../ai/errors'
 
 export const PHOTO_MAX = 15 * 1024 * 1024
 const PhotoSchema = z.object({ readable: z.boolean(), text: z.string() })
@@ -18,7 +17,7 @@ function kindOf(b: Uint8Array): 'png' | 'jpg' | 'heic' | null {
   return null
 }
 
-/** Saves the photo of Andrea's sheet beside the session and has Claude transcribe it (text + LaTeX), nothing more. */
+/** Saves the photo of the student's sheet beside the session and transcribes it (text + LaTeX), nothing more. */
 const sipsToJpeg = (from: string, to: string): Promise<void> =>
   new Promise((resolve, reject) =>
     execFile('/usr/bin/sips', ['-s', 'format', 'jpeg', from, '--out', to], (e) =>
@@ -44,31 +43,24 @@ export async function transcribePhoto(input: {
     ) + 1
   let name = `foglio-${n}.${ext}`
   await writeFile(join(input.dir, name), input.bytes)
-  // Claude reads JPEG and PNG, not the iPhone's HEIC.
+  // The model reads JPEG and PNG, not the iPhone's HEIC.
   if (ext === 'heic') {
     await (input.convert ?? sipsToJpeg)(join(input.dir, name), join(input.dir, `foglio-${n}.jpg`))
     name = `foglio-${n}.jpg`
   }
-  const r = await input.bridge
-    .ask({
-      task: 'grade',
-      // Always Claude: only its CLI runs with the read-only lockdown.
-      engine: { engine: 'claude', model: 'sonnet' },
-      readOnly: true,
-      cwd: input.dir,
-      timeoutMs: 120_000,
-      schema: PhotoSchema,
-      prompt: `Nella cartella di lavoro c'è l'immagine «${name}»: la foto di un foglio su cui Andrea ha scritto a mano il suo ragionamento. Aprila con lo strumento Read e trascrivila fedelmente: testo in italiano, matematica in LaTeX con $...$ e $$...$$, un a capo per ogni riga del foglio. Non correggere, non completare, non commentare. Le parti illeggibili segnale con [illeggibile]. Se non è un foglio scritto o è del tutto illeggibile, "readable": false.
+  const savedFile = join(input.dir, name)
+  const imageBytes = await readFile(savedFile)
+  const mime = ext === 'png' ? 'image/png' : 'image/jpeg'
+  const dataUrl = `data:${mime};base64,${Buffer.from(imageBytes).toString('base64')}`
+
+  const r = await input.bridge.ask({
+    task: 'photo',
+    images: [dataUrl],
+    timeoutMs: 120_000,
+    schema: PhotoSchema,
+    prompt: `Ecco l'immagine della foto di un foglio su cui lo studente ha scritto a mano il suo ragionamento. Trascrivila fedelmente: testo in italiano, matematica in LaTeX con $...$ e $$...$$, un a capo per ogni riga del foglio. Non correggere, non completare, non commentare. Le parti illeggibili segnale con [illeggibile]. Se non è un foglio scritto o è del tutto illeggibile, "readable": false.
 Rispondi solo con JSON: {"readable":true,"text":"..."}`
-    })
-    .catch((e: unknown) => {
-      if (e instanceof EngineMissingError)
-        throw new Error(
-          'Per leggere le foto serve Claude Code (il comando claude) installato su questo Mac.',
-          { cause: e }
-        )
-      throw e
-    })
+  })
   const out = r.data as z.infer<typeof PhotoSchema>
   if (!out.readable || !out.text.trim())
     throw new Error('Non riesco a leggere il foglio: rifai la foto più da vicino e con più luce.')

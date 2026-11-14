@@ -2,44 +2,38 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
-import type { Engine, EngineChoice, Task } from '../../shared/settings-schema'
+import type { Task } from '../../shared/settings-schema'
 import { appendJsonl } from '../store/jsonl'
-import { buildArgs, parseOutput, type CallOptions } from './engines'
-import { AiOutputError, AiSchemaError, AiTimeoutError, AuthRequiredError, EngineMissingError } from './errors'
+import { createConversationStore, type ConversationStore } from './conversation-store'
+import { AiSchemaError, AuthRequiredError } from './errors'
 import { extractJson } from './json'
+import { chatCompletion, type OpenRouterMessage, type OpenRouterContent } from './openrouter'
 
-export type SpawnFn = (
-  cmd: string,
-  args: string[],
-  opts: { timeoutMs: number; cwd?: string; onOutput?: (chunk: string) => void; signal?: AbortSignal }
-) => Promise<{ stdout: string; stderr: string; code: number | null; timedOut: boolean }>
-
-export type EngineStatus = 'idle' | 'busy' | 'auth' | 'missing' | 'error'
+export type OpenRouterStatus = 'idle' | 'busy' | 'no-key' | 'error'
 
 export interface AskRequest<T> {
   task: Task
   prompt: string
   schema?: z.ZodType<T>
   schemaName?: string
-  /**
-   * Accepted when the retry still fails `schema`: a looser schema for checks that only ask for a cleaner answer
-   * (the note writer's math formatting), so they can never cost a reply that is otherwise valid. The retry is
-   * preferred; if it fails even this, a first answer that passed it is kept.
-   */
   fallback?: z.ZodType<T>
   cache?: boolean
   timeoutMs?: number
   cwd?: string
   noTools?: boolean
   readOnly?: boolean
-  /** Pins the engine for this call, whatever the settings say (the photo needs Claude's Read tool). */
-  engine?: EngineChoice
+  model?: string
+  images?: string[]
 }
+
 export interface AskResult<T> {
   data: T | string
   fromCache: boolean
-  engine: Engine
+  model: string
+  /** Kept for backward compatibility with callers storing note metadata */
+  engine?: string
 }
+
 export interface ConverseRequest<T> {
   task: Task
   conversationId: string
@@ -50,75 +44,63 @@ export interface ConverseRequest<T> {
   jsonSchema: object
   cwd?: string
   timeoutMs?: number
-}
-export interface Bridge {
-  ask<T>(req: AskRequest<T>): Promise<AskResult<T>>
-  converse<T>(req: ConverseRequest<T>): Promise<{ data: T; conversationId: string; engine: Engine }>
-  status(): Record<Engine, EngineStatus>
-  onStatus(cb: (s: Record<Engine, EngineStatus>) => void): () => void
+  model?: string
 }
 
-// Only CLI-specific phrases, checked only when the call did not succeed: answers may say "log in base 2".
-const AUTH_RE = /Opening authentication page|Please run \/login|Invalid API key|not logged in|login required|authentication required/i
+export interface Bridge {
+  ask<T>(req: AskRequest<T>): Promise<AskResult<T>>
+  converse<T>(
+    req: ConverseRequest<T>
+  ): Promise<{ data: T; conversationId: string; model: string; engine?: string }>
+  status(): OpenRouterStatus
+  onStatus(cb: (s: OpenRouterStatus) => void): () => void
+  refreshStatus(): Promise<OpenRouterStatus>
+}
+
 const DEFAULT_TIMEOUT = 180_000
 
 export function createBridge(deps: {
-  spawn: SpawnFn
   cacheDir: string
   usageFile: string
-  engines: () => Promise<Record<Task, EngineChoice>>
+  conversationsDir?: string
+  models: () => Promise<Record<Task, string>>
+  apiKey: () => Promise<string | null>
   now?: () => number
 }): Bridge {
   const now = deps.now ?? Date.now
-  const state: Record<Engine, EngineStatus> = { agy: 'idle', claude: 'idle' }
-  const queues: Record<Engine, Promise<unknown>> = { agy: Promise.resolve(), claude: Promise.resolve() }
-  const listeners = new Set<(s: Record<Engine, EngineStatus>) => void>()
-  const setState = (e: Engine, s: EngineStatus): void => {
-    state[e] = s
-    listeners.forEach((l) => l({ ...state }))
+  let currentStatus: OpenRouterStatus = 'idle'
+  const listeners = new Set<(s: OpenRouterStatus) => void>()
+  const convStore: ConversationStore = createConversationStore(
+    deps.conversationsDir ?? join(deps.cacheDir, 'conversations')
+  )
+
+  const setStatus = (s: OpenRouterStatus): void => {
+    currentStatus = s
+    listeners.forEach((l) => l(currentStatus))
   }
 
-  // One call at a time per engine: each call waits for the previous one on the same queue.
-  function enqueue<R>(engine: Engine, job: () => Promise<R>): Promise<R> {
-    const run = queues[engine].then(job, job)
-    queues[engine] = run.catch(() => undefined)
+  const refreshStatus = async (): Promise<OpenRouterStatus> => {
+    const key = await deps.apiKey()
+    if (!key) {
+      setStatus('no-key')
+      return 'no-key'
+    }
+    if (currentStatus === 'no-key') {
+      setStatus('idle')
+      return 'idle'
+    }
+    return currentStatus
+  }
+
+  void refreshStatus()
+
+  let queue: Promise<unknown> = Promise.resolve()
+  function enqueue<R>(job: () => Promise<R>): Promise<R> {
+    const run = queue.then(job, job)
+    queue = run.catch(() => undefined)
     return run
   }
 
-  async function callOnce(task: Task, engine: Engine, prompt: string, timeoutMs: number, opts: CallOptions & { cwd?: string } = {}): Promise<{ text: string; conversationId?: string }> {
-    const model = opts.model
-    const { cmd, args } = buildArgs(engine, prompt, { ...opts, timeoutMs })
-    const t0 = now()
-    setState(engine, 'busy')
-    let res
-    try {
-      res = await deps.spawn(cmd, args, { timeoutMs, cwd: opts.cwd })
-    } catch (e) {
-      const missing = (e as NodeJS.ErrnoException).code === 'ENOENT'
-      setState(engine, missing ? 'missing' : 'error')
-      throw missing ? new EngineMissingError(engine) : e
-    }
-    if (!res.timedOut && res.code === 0) {
-      try {
-        const out = parseOutput(engine, res.stdout)
-        await logUsage({ ts: t0, task, engine, model, inputTokens: out.inputTokens, outputTokens: out.outputTokens, ms: now() - t0, ok: true })
-        setState(engine, 'idle')
-        return { text: out.text, conversationId: out.conversationId }
-      } catch {
-        /* not a valid reply: fall through to the failure checks */
-      }
-    }
-    if (AUTH_RE.test(res.stdout) || AUTH_RE.test(res.stderr)) {
-      setState(engine, 'auth')
-      throw new AuthRequiredError(engine)
-    }
-    setState(engine, 'error')
-    await logUsage({ ts: t0, task, engine, model, inputTokens: 0, outputTokens: 0, ms: now() - t0, ok: false })
-    if (res.timedOut) throw new AiTimeoutError(engine, timeoutMs)
-    throw new AiOutputError(`${engine}: risposta non valida (codice ${res.code})`)
-  }
-
-  // Bookkeeping must never cost the user an answer they already paid for.
   async function logUsage(rec: Record<string, unknown>): Promise<void> {
     try {
       await appendJsonl(deps.usageFile, rec)
@@ -127,79 +109,285 @@ export function createBridge(deps: {
     }
   }
 
-  async function converse<T>(req: ConverseRequest<T>): Promise<{ data: T; conversationId: string; engine: Engine }> {
-    const { engine, model } = (await deps.engines())[req.task]
+  async function resolveModel(task: Task, override?: string): Promise<string> {
+    if (override) return override
+    const mapping = await deps.models()
+    return mapping[task]
+  }
+
+  async function converse<T>(
+    req: ConverseRequest<T>
+  ): Promise<{ data: T; conversationId: string; model: string; engine?: string }> {
+    const apiKey = await deps.apiKey()
+    if (!apiKey) {
+      setStatus('no-key')
+      throw new AuthRequiredError('OpenRouter')
+    }
+    const model = await resolveModel(req.task, req.model)
     const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT
-    return enqueue(engine, async () => {
-      const base = { model, systemPrompt: req.systemPrompt, jsonSchema: req.jsonSchema, cwd: req.cwd }
-      const first = await callOnce(req.task, engine, req.prompt, timeoutMs, { ...base, conversation: { id: req.conversationId, resume: req.resume } })
-      const convId = first.conversationId ?? req.conversationId
-      const v1 = validate(req.schema, first.text)
-      if (v1.ok) return { data: v1.value, conversationId: convId, engine }
-      const retry = `La risposta precedente non era valida: ${v1.error}. Rispondi di nuovo, solo con JSON valido secondo lo schema.`
-      const second = await callOnce(req.task, engine, retry, timeoutMs, { ...base, conversation: { id: convId, resume: true } })
-      const v2 = validate(req.schema, second.text)
-      if (v2.ok) return { data: v2.value, conversationId: second.conversationId ?? convId, engine }
-      throw new AiSchemaError(v2.error)
+    const t0 = now()
+
+    return enqueue(async () => {
+      setStatus('busy')
+      let history: OpenRouterMessage[] = []
+      if (req.resume) {
+        history = await convStore.load(req.conversationId)
+      }
+
+      if (req.systemPrompt) {
+        if (history.length === 0 || history[0]?.role !== 'system') {
+          history.unshift({ role: 'system', content: req.systemPrompt })
+        } else {
+          history[0] = { role: 'system', content: req.systemPrompt }
+        }
+      }
+
+      history.push({ role: 'user', content: req.prompt })
+
+      try {
+        const key = apiKey ?? (await deps.apiKey()) ?? ''
+        const first = await chatCompletion({
+          model,
+          messages: [...history],
+          jsonSchema: req.jsonSchema,
+          timeoutMs,
+          apiKey: key
+        })
+
+        await logUsage({
+          ts: t0,
+          task: req.task,
+          model,
+          inputTokens: first.inputTokens,
+          outputTokens: first.outputTokens,
+          ms: now() - t0,
+          ok: true
+        })
+
+        const v1 = validate(req.schema, first.text)
+        if (v1.ok) {
+          history.push({ role: 'assistant', content: first.text })
+          await convStore.save(req.conversationId, history)
+          setStatus('idle')
+          return { data: v1.value, conversationId: req.conversationId, model, engine: model }
+        }
+
+        // Schema validation failed: single retry
+        const retryPrompt = `La risposta precedente non era valida: ${v1.error}. Rispondi di nuovo, solo con JSON valido secondo lo schema.`
+        const retryMessages: OpenRouterMessage[] = [
+          ...history,
+          { role: 'assistant', content: first.text },
+          { role: 'user', content: retryPrompt }
+        ]
+
+        const tRetry = now()
+        const second = await chatCompletion({
+          model,
+          messages: retryMessages,
+          jsonSchema: req.jsonSchema,
+          timeoutMs,
+          apiKey: key
+        })
+
+        await logUsage({
+          ts: tRetry,
+          task: req.task,
+          model,
+          inputTokens: second.inputTokens,
+          outputTokens: second.outputTokens,
+          ms: now() - tRetry,
+          ok: true
+        })
+
+        const v2 = validate(req.schema, second.text)
+        if (v2.ok) {
+          history.push({ role: 'assistant', content: second.text })
+          await convStore.save(req.conversationId, history)
+          setStatus('idle')
+          return { data: v2.value, conversationId: req.conversationId, model, engine: model }
+        }
+
+        setStatus('error')
+        throw new AiSchemaError(v2.error)
+      } catch (e) {
+        setStatus('error')
+        await logUsage({
+          ts: t0,
+          task: req.task,
+          model,
+          inputTokens: 0,
+          outputTokens: 0,
+          ms: now() - t0,
+          ok: false
+        })
+        throw e
+      }
     })
   }
 
+  async function ask<T>(req: AskRequest<T>): Promise<AskResult<T>> {
+    const apiKey = await deps.apiKey()
+    if (!apiKey) {
+      setStatus('no-key')
+      throw new AuthRequiredError('OpenRouter')
+    }
+    const model = await resolveModel(req.task, req.model)
+    const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT
+    const t0 = now()
+
+    const schemaFingerprint = req.schemaName ?? schemaId(req.schema)
+    const cacheKey = createHash('sha256')
+      .update([model, req.prompt, schemaFingerprint].join('|'))
+      .digest('hex')
+    const cacheFile = join(deps.cacheDir, `${cacheKey}.json`)
+
+    if (req.cache) {
+      try {
+        const cached = JSON.parse(await readFile(cacheFile, 'utf8'))
+        if (!req.schema) return { data: cached, fromCache: true, model, engine: model }
+        const ok = req.schema.safeParse(cached)
+        if (ok.success) return { data: ok.data, fromCache: true, model, engine: model }
+      } catch {
+        // cache miss
+      }
+    }
+
+    const data = await enqueue(async () => {
+      setStatus('busy')
+      try {
+        const key = apiKey ?? (await deps.apiKey()) ?? ''
+        let userContent: OpenRouterContent = req.prompt
+        if (req.images && req.images.length > 0) {
+          userContent = [
+            { type: 'text', text: req.prompt },
+            ...req.images.map((img) => ({
+              type: 'image_url' as const,
+              image_url: { url: img }
+            }))
+          ]
+        }
+
+        const messages: OpenRouterMessage[] = [{ role: 'user', content: userContent }]
+        const jsonSchema = req.schema ? schemaJson(req.schema) : undefined
+
+        const first = await chatCompletion({
+          model,
+          messages,
+          jsonSchema,
+          timeoutMs,
+          apiKey: key
+        })
+
+        await logUsage({
+          ts: t0,
+          task: req.task,
+          model,
+          inputTokens: first.inputTokens,
+          outputTokens: first.outputTokens,
+          ms: now() - t0,
+          ok: true
+        })
+
+        if (!req.schema) {
+          setStatus('idle')
+          return first.text
+        }
+
+        const firstResult = validate(req.schema, first.text)
+        if (firstResult.ok) {
+          setStatus('idle')
+          return firstResult.value
+        }
+
+        const firstLoose = req.fallback ? validate(req.fallback, first.text) : null
+        const retryPrompt = `${req.prompt}\n\nLa risposta precedente non era valida: ${firstResult.error}. Rispondi solo con JSON valido.`
+        const tRetry = now()
+
+        const secondMessages: OpenRouterMessage[] = [
+          { role: 'user', content: userContent },
+          { role: 'assistant', content: first.text },
+          { role: 'user', content: retryPrompt }
+        ]
+
+        const second = await chatCompletion({
+          model,
+          messages: secondMessages,
+          jsonSchema,
+          timeoutMs,
+          apiKey: key
+        })
+
+        await logUsage({
+          ts: tRetry,
+          task: req.task,
+          model,
+          inputTokens: second.inputTokens,
+          outputTokens: second.outputTokens,
+          ms: now() - tRetry,
+          ok: true
+        })
+
+        const secondResult = validate(req.schema, second.text)
+        if (secondResult.ok) {
+          setStatus('idle')
+          return secondResult.value
+        }
+
+        const loose = req.fallback ? validate(req.fallback, second.text) : null
+        const kept = loose?.ok ? loose : firstLoose?.ok ? firstLoose : null
+        if (kept) {
+          console.warn(
+            `[ai] ${req.task}: ${loose?.ok ? 'seconda' : 'prima'} risposta accettata senza i controlli facoltativi (${secondResult.error})`
+          )
+          setStatus('idle')
+          return kept.value
+        }
+
+        setStatus('error')
+        throw new AiSchemaError(secondResult.error)
+      } catch (e) {
+        setStatus('error')
+        await logUsage({
+          ts: t0,
+          task: req.task,
+          model,
+          inputTokens: 0,
+          outputTokens: 0,
+          ms: now() - t0,
+          ok: false
+        })
+        throw e
+      }
+    })
+
+    if (req.cache) {
+      try {
+        await mkdir(deps.cacheDir, { recursive: true })
+        await writeFile(cacheFile, JSON.stringify(data), 'utf8')
+      } catch (e) {
+        console.warn('[ai] cache non scritta', e)
+      }
+    }
+
+    return { data: data as T | string, fromCache: false, model, engine: model }
+  }
+
   return {
+    ask,
     converse,
-    status: () => ({ ...state }),
+    status: () => currentStatus,
     onStatus(cb) {
       listeners.add(cb)
       return () => listeners.delete(cb)
     },
-    async ask<T>(req: AskRequest<T>): Promise<AskResult<T>> {
-      const choice = req.engine ?? (await deps.engines())[req.task]
-      const { engine, model } = choice
-      const key = createHash('sha256').update([engine, model ?? '', req.prompt, req.schemaName ?? schemaId(req.schema)].join('|')).digest('hex')
-      const cacheFile = join(deps.cacheDir, `${key}.json`)
-      if (req.cache) {
-        try {
-          const cached = JSON.parse(await readFile(cacheFile, 'utf8'))
-          if (!req.schema) return { data: cached, fromCache: true, engine }
-          const ok = req.schema.safeParse(cached)
-          if (ok.success) return { data: ok.data, fromCache: true, engine }
-        } catch {
-          /* not cached yet */
-        }
-      }
-      const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT
-      const data = await enqueue(engine, async () => {
-        const text = (await callOnce(req.task, engine, req.prompt, timeoutMs, { model, cwd: req.cwd, noTools: req.noTools, readOnly: req.readOnly })).text
-        if (!req.schema) return text
-        const first = validate(req.schema, text)
-        if (first.ok) return first.value
-        // Kept aside: if the retry comes back worse, a first answer that only failed the optional checks still counts.
-        const firstLoose = req.fallback ? validate(req.fallback, text) : null
-        const retryPrompt = `${req.prompt}\n\nLa risposta precedente non era valida: ${first.error}. Rispondi solo con JSON valido.`
-        const secondText = (await callOnce(req.task, engine, retryPrompt, timeoutMs, { model, cwd: req.cwd, noTools: req.noTools, readOnly: req.readOnly })).text
-        const second = validate(req.schema, secondText)
-        if (second.ok) return second.value
-        const loose = req.fallback ? validate(req.fallback, secondText) : null
-        const kept = loose?.ok ? loose : firstLoose?.ok ? firstLoose : null
-        if (kept) {
-          console.warn(`[ai] ${req.task}: ${loose?.ok ? 'seconda' : 'prima'} risposta accettata senza i controlli facoltativi (${second.error})`)
-          return kept.value
-        }
-        throw new AiSchemaError(second.error)
-      })
-      if (req.cache) {
-        try {
-          await mkdir(deps.cacheDir, { recursive: true })
-          await writeFile(cacheFile, JSON.stringify(data), 'utf8')
-        } catch (e) {
-          console.warn('[ai] cache non scritta', e)
-        }
-      }
-      return { data: data as T | string, fromCache: false, engine }
-    }
+    refreshStatus
   }
 }
 
-function validate<T>(schema: z.ZodType<T>, text: string): { ok: true; value: T } | { ok: false; error: string } {
+function validate<T>(
+  schema: z.ZodType<T>,
+  text: string
+): { ok: true; value: T } | { ok: false; error: string } {
   let json: unknown
   try {
     json = extractJson(text)
@@ -207,7 +395,9 @@ function validate<T>(schema: z.ZodType<T>, text: string): { ok: true; value: T }
     return { ok: false, error: 'non contiene JSON' }
   }
   const r = schema.safeParse(json)
-  return r.success ? { ok: true, value: r.data } : { ok: false, error: r.error.message.slice(0, 300) }
+  return r.success
+    ? { ok: true, value: r.data }
+    : { ok: false, error: r.error.message.slice(0, 300) }
 }
 
 function schemaId(schema?: z.ZodType<unknown>): string {
@@ -216,5 +406,15 @@ function schemaId(schema?: z.ZodType<unknown>): string {
     return JSON.stringify(z.toJSONSchema(schema))
   } catch {
     return 'schema'
+  }
+}
+
+function schemaJson(schema: z.ZodType<unknown>): object | undefined {
+  try {
+    const raw = { ...(z.toJSONSchema(schema) as Record<string, unknown>) }
+    delete raw.$schema
+    return raw
+  } catch {
+    return undefined
   }
 }

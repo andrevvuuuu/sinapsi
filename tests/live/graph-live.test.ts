@@ -1,20 +1,21 @@
 import { mkdtemp, readFile } from 'node:fs/promises'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createBridge } from '../../src/main/ai/bridge'
-import { nodeSpawn } from '../../src/main/ai/engines'
+import { resolveApiKey } from '../../src/main/ai/key-storage'
 import { createExtractor } from '../../src/main/graph/jobs'
 import { graphStore } from '../../src/main/graph/store'
 import { scanVault } from '../../src/main/vault/scan'
-import { DEFAULT_ENGINES, DEFAULT_EXCLUDED } from '../../src/shared/settings-schema'
+import { DEFAULT_MODELS, DEFAULT_EXCLUDED } from '../../src/shared/settings-schema'
 
 // Real extraction of three linked notes. LIVE_AI=1; LIVE_GRAPH_DIR=<folder> keeps the ledgers.
 describe.runIf(process.env.LIVE_AI === '1')('live extraction', () => {
   it('extracts Fermat, Rolle and Lagrange and links the same ideas across notes', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-live-graph-'))
-    const bridge = createBridge({ spawn: nodeSpawn, cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), engines: async () => DEFAULT_ENGINES })
-    const vault = await scanVault(join(homedir(), 'Obsidian Vault'), DEFAULT_EXCLUDED)
+    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), models: async () => DEFAULT_MODELS, apiKey: async () => resolveApiKey() })
+    const vaultDir = process.env.SINAPSI_TEST_VAULT ?? join(process.cwd(), 'tests/fixtures/vault')
+    const vault = await scanVault(vaultDir, DEFAULT_EXCLUDED)
     const store = graphStore(process.env.LIVE_GRAPH_DIR ?? join(dir, 'graph'))
     const x = createExtractor({ bridge, store, vault: async () => vault, readNote: (p) => readFile(p, 'utf8'), workDir: join(dir, 'w'), onChange: () => undefined })
     const titles = ['Teorema di Fermat sui Punti Stazionari', 'Teorema di Rolle', 'Teorema di Lagrange del Valor Medio']
