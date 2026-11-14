@@ -355,10 +355,12 @@
   border-radius: var(--r-md);
   font-size: var(--fs-body);
 }
-.rv-dialog li.andrea {
+.rv-dialog li.learner,
+.rv-dialog li.user {
   background: var(--faint);
 }
-.rv-dialog li.claude {
+.rv-dialog li.assistant,
+.rv-dialog li.bot {
   border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--hair));
   background: color-mix(in srgb, var(--warn) 6%, transparent);
 }

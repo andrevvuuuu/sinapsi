@@ -10,14 +10,14 @@ export const RUNG_IT = ['Attenzione', 'Schema', 'Candidati', 'Proposizione', 'Mo
 const BlockSchema = z.object({ type: z.literal('text'), md: z.string() })
 export const ProblemSchema = z.object({
   id: z.string().min(1),
-  /** What Andrea sees: markdown + LaTeX. Never names the target. */
+  /** What the learner sees: markdown + LaTeX. Never names the target. */
   statement: z.string().min(1),
   mode: z.enum(PRACTICE_MODES),
   /** Concept ids from the material; empty when the material is a free topic. */
   targets: z.array(z.string()),
   /** The tutor's own worked solution, fixed before posing; hidden until the problem is concluded. */
   modelSolution: z.string().min(1),
-  /** Spot-the-error problems: the lines Andrea can pick from. */
+  /** Spot-the-error problems: the lines the learner can pick from. */
   lines: z.array(z.string()).optional()
 })
 export type Problem = z.infer<typeof ProblemSchema>
@@ -41,7 +41,7 @@ export const PracticeTurnSchema = TurnShape.superRefine((t, ctx) => {
   if (t.problem?.lines && t.problem.lines.length < 2) ctx.addIssue({ code: 'custom', message: '"lines" ha almeno due righe' })
 })
 
-/** Whether Andrea has sent any reasoning on the open problem. */
+/** Whether the learner has sent any reasoning on the open problem. */
 export function hasAttempt(state: { active?: string; problems?: { id: string; attempts?: number }[] }): boolean {
   return (state.problems?.find((p) => p.id === state.active)?.attempts ?? 0) > 0
 }
@@ -57,17 +57,17 @@ export function hintBlocked(p: { hints: number; attempts: number }): boolean {
   return hintGate(p) === 'attempt'
 }
 
-/** The rules a turn must also satisfy against the session so far and what Andrea just asked. null when fine. */
+/** The rules a turn must also satisfy against the session so far and what the learner just asked. null when fine. */
 export function checkTurnAgainst(state: { active?: string; problems?: { id: string; attempts?: number }[] }, t: PracticeTurn, asked?: Submission['kind']): string | null {
   if (t.problem && state.active) return `c'è già un problema aperto (${state.active}): concludilo prima di proporne un altro`
   if (t.problem && state.problems?.some((p) => p.id === t.problem!.id)) return `l'id "${t.problem.id}" è già stato usato: dai al problema un id nuovo`
   if ((t.conclude || t.hint) && !state.active) return 'non c\'è nessun problema aperto: proponi un problema con "problem"'
-  if (asked === 'dismiss' && !t.conclude) return 'Andrea ha lasciato il problema: concludi con "conclude" e outcome "surrendered"'
-  if ((asked === 'start' || asked === 'next') && !t.problem && t.phase !== 'done') return 'Andrea aspetta il prossimo problema: proponilo con "problem" (oppure chiudi con "done")'
-  if (asked === 'end' && t.phase !== 'done') return 'Andrea ha chiuso la sessione: rispondi con phase "done" e "summary"'
-  if (asked === 'compass' && (!t.hint || t.problem || t.conclude)) return 'Andrea ha chiesto un indizio mirato con la Bussola: rispondi con "hint"'
-  if (asked === 'restate' && (t.hint || t.problem)) return 'Andrea ha riformulato l’indizio: commenta la riformulazione nei "blocks" senza aggiungere indizi o problemi'
-  if (asked !== 'compass' && t.hint && t.hint.rung > 0 && !hasAttempt(state)) return 'Andrea non ha ancora scritto un tentativo: l\'indizio resta al gradino 0 (attenzione o chiarimento del testo)'
+  if (asked === 'dismiss' && !t.conclude) return 'Lo studente ha lasciato il problema: concludi con "conclude" e outcome "surrendered"'
+  if ((asked === 'start' || asked === 'next') && !t.problem && t.phase !== 'done') return 'Lo studente aspetta il prossimo problema: proponilo con "problem" (oppure chiudi con "done")'
+  if (asked === 'end' && t.phase !== 'done') return 'Lo studente ha chiuso la sessione: rispondi con phase "done" e "summary"'
+  if (asked === 'compass' && (!t.hint || t.problem || t.conclude)) return 'Lo studente ha chiesto un indizio mirato con la Bussola: rispondi con "hint"'
+  if (asked === 'restate' && (t.hint || t.problem)) return 'Lo studente ha riformulato l’indizio: commenta la riformulazione nei "blocks" senza aggiungere indizi o problemi'
+  if (asked !== 'compass' && t.hint && t.hint.rung > 0 && !hasAttempt(state)) return 'Lo studente non ha ancora scritto un tentativo: l\'indizio resta al gradino 0 (attenzione o chiarimento del testo)'
   return null
 }
 
@@ -89,7 +89,7 @@ export const SubmissionSchema = z.object({
 })
 export type Submission = z.infer<typeof SubmissionSchema>
 
-/** What Andrea sent, as the tutor reads it. */
+/** What the learner sent, as the tutor reads it. */
 export function formatSubmission(s: Submission, problem?: Pick<Problem, 'lines'> & { attempts?: number }): string {
   switch (s.kind) {
     case 'hint':

@@ -9,9 +9,9 @@ export type PracticeEvent =
   | { t: 'exam'; sheet: ExamSheet; endsAt: number; at: number }
   | { t: 'answers'; answers: Record<string, string>; final: boolean; at: number }
   | { t: 'graded'; grade: ExamGrade; at: number }
-  /** Paper exam: the time is over (or Andrea handed in), the sheet is put down and the solutions shown. */
+  /** Paper exam: the time is over (or student handed in), the sheet is put down and the solutions shown. */
   | { t: 'handed'; at: number }
-  /** Paper exam: the points Andrea gives one problem, before writing out the answer and before the correction. */
+  /** Paper exam: the points the student gives one problem, before writing out the answer and before the correction. */
   | { t: 'self'; id: string; points: number; at: number }
 
 type PublicProblem = Omit<Problem, 'modelSolution'>
@@ -25,7 +25,7 @@ export type PracticeProblem = PublicProblem & {
   phase: PracticeTurn['phase']
   hints: number
   maxRung: number | null
-  /** Reasoning Andrea sent on this problem: until the first one, hints stop at the first rung. */
+  /** Reasoning the student sent on this problem: until the first one, hints stop at the first rung. */
   attempts: number
   compass?: { known: string; stuck: string; question: string }
   needsRestate: boolean

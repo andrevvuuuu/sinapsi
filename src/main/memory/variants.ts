@@ -51,7 +51,7 @@ export function fallbackExercise(c: Concept): Exercise {
 const FORMAT: Record<ExerciseType, string> = {
   open: '  { "type": "open" }                                                    // risposta aperta',
   mc: '  { "type": "mc", "options": ["…","…"], "correct": 0 }                  // 2–6 opzioni, indice da 0',
-  truefalse: '  { "type": "truefalse", "statement": "…", "value": true }              // vero/falso: Andrea spiega anche perché',
+  truefalse: '  { "type": "truefalse", "statement": "…", "value": true }              // vero/falso: lo studente spiega anche perché',
   order: '  { "type": "order", "steps": ["…","…","…"] }                           // 3–8 passi NELL\'ORDINE GIUSTO (l\'app li mescola)',
   fill: '  { "type": "fill", "text": "… {{sbagliata|*giusta|sbagliata}} …" }     // l\'asterisco segna quella giusta',
   match: '  { "type": "match", "pairs": [["sinistra","destra"], …] }              // 2–6 coppie giuste (l\'app mescola la destra)',
@@ -62,14 +62,14 @@ const FORMAT: Record<ExerciseType, string> = {
   explain: '  { "type": "explain" }                                                 // spiegalo tu: "answer" = i passaggi chiave nell\'ordine della nota'
 }
 
-const EXPLAIN_RULE = `- "explain" (spiegalo tu: Andrea spiega a libro chiuso, a voce o per iscritto, e Claude lo corregge confrontando con la nota) solo per i concetti che hanno una dimostrazione da ricostruire o che sono una definizione importante, mai per fatti minori o calcoli; al massimo uno per concetto. Il "prompt" chiede di ricostruire la dimostrazione o di spiegare il concetto come a un compagno ("A libro chiuso: ricostruisci la dimostrazione di…", "Spiega a un compagno che cos'è… e perché serve…"); "answer" elenca i passaggi chiave, con le ipotesi, nell'ordine della nota.`
+const EXPLAIN_RULE = `- "explain" (spiegalo tu: lo studente spiega a libro chiuso, a voce o per iscritto, e l'AI lo corregge confrontando con la nota) solo per i concetti che hanno una dimostrazione da ricostruire o che sono una definizione importante, mai per fatti minori o calcoli; al massimo uno per concetto. Il "prompt" chiede di ricostruire la dimostrazione o di spiegare il concetto come a un compagno ("A libro chiuso: ricostruisci la dimostrazione di…", "Spiega a un compagno che cos'è… e perché serve…"); "answer" elenca i passaggi chiave, con le ipotesi, nell'ordine della nota.`
 
 export function buildVariantsPrompt(input: { noteTitle: string; noteText: string; concepts: Concept[]; types?: ExerciseType[]; depth?: boolean }): string {
   const types = input.types?.length ? input.types : [...EXERCISE_TYPES]
   // Concepts that already have their other variants only need the check for a "Spiegalo tu".
   const explainOnly = types.length === 1 && types[0] === 'explain'
   return [
-    `Prepari le domande di ripasso di Sinapsi per Andrea (Scienze matematiche per l'IA). Il ripasso a intervalli chiede un concetto quando sta per dimenticarlo, e ogni volta in una forma nuova: per questo ti chiedo più varianti per ogni concetto.`,
+    `Prepari le domande di ripasso di Sinapsi per uno studente universitario. Il ripasso a intervalli chiede un concetto quando sta per dimenticarlo, e ogni volta in una forma nuova: per questo ti chiedo più varianti per ogni concetto.`,
     `REGOLE
 ${
   explainOnly
@@ -78,7 +78,7 @@ ${
 }${types.includes('explain') ? `\n${EXPLAIN_RULE}` : ''}
 - Mai la stessa domanda riformulata: ogni esercizio deve chiedere qualcosa di diverso. Mai rivelare la risposta nel testo della domanda.
 ${input.depth ? '- Punta su catene causa-effetto, condizioni in cui il risultato non vale e differenze con concetti simili; evita il puro richiamo mnemonico.' : ''}
-- "answer" è la risposta di riferimento, completa e precisa, mostrata dopo che Andrea ha risposto.
+- "answer" è la risposta di riferimento, completa e precisa, mostrata dopo che lo studente ha risposto.
 - Usa "graph" solo se il concetto riguarda la forma di una funzione (tangenti, crescenza, massimi…): la figura segue il formato delle figure delle note vive e "target" è un'espressione del parametro che vale 0 nel punto giusto.
 - Italiano; matematica in LaTeX con $…$; dentro le stringhe JSON ogni backslash va raddoppiato (\\\\frac).`,
     `CONCETTI (id | nome | enunciato)
@@ -88,7 +88,7 @@ ${input.concepts.map((c) => `${c.id} | ${c.name} | ${c.statement.replace(/\s+/g,
 Usa SOLO questi tipi: ${types.map((t) => `"${t}"`).join(', ')}.${types.length < 3 && !explainOnly ? ' (Qui bastano anche tipi ripetuti, con domande diverse.)' : ''}
 Esercizio, tutti con "prompt" e "answer":
 ${types.map((t) => FORMAT[t]).join('\n')}`,
-    `NOTA DI ORIGINE «${input.noteTitle}» (per il contesto e la notazione di Andrea)\n\n${capNote(input.noteText)}`,
+    `NOTA DI ORIGINE «${input.noteTitle}» (per il contesto e la notazione dello studente)\n\n${capNote(input.noteText)}`,
     `Non usare strumenti né file. Rispondi solo con l'oggetto JSON, senza testo prima o dopo.`
   ].join('\n\n---\n\n')
 }

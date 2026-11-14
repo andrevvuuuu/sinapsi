@@ -13,14 +13,14 @@ Un'app per Mac per studiare in modo attivo e ricordare a lungo: niente "leggi e 
 - il **grafo** che unisce Obsidian (note e link) e Learn Harness (concetti, catene di ragionamento, profondità);
 - una sezione **Notebook** simile a NotebookLM: fonti caricate e chat sulle fonti.
 
-È personale (per Andrea: Scienze matematiche per l'IA + bodybuilding), ma progettata per poter diventare un prodotto.
+Progettata per essere usata con qualsiasi vault Obsidian e qualsiasi percorso di studio.
 
 ## 2. Decisioni prese
 
 | Tema | Decisione |
 |---|---|
 | Piattaforma | App desktop **solo Mac** (Electron) |
-| Motore AI | **Antigravity CLI (`agy`)** con Gemini 3.8 come motore principale, **Claude Code (`claude -p`)** come secondario. Si usano gli abbonamenti, **nessuna chiave API**. Verificato il 26/10: entrambi rispondono in automatico in formato JSON |
+| Motore AI | **OpenRouter API** via HTTP (`https://openrouter.ai/api/v1`). Chiave API memorizzata in modo sicuro tramite Electron `safeStorage`. |
 | Obsidian | L'app **legge** il vault `~/Obsidian Vault` e **non lo modifica mai**. Le correzioni proposte si copiano a mano |
 | Fonti grezze | PDF, slide, audio, YouTube si caricano **nell'app** (Notebook), non in Obsidian |
 | Sessione di Apprendimento | **Stile chat** (prototipo A): sondaggio iniziale → piano → passi prevedi/spiega/verifica → "svuota la testa" |

@@ -1,6 +1,6 @@
 /**
  * Sinapsi's own tutor. The lessons and the concepts each one introduced come from the Obsidian
- * lesson tutor (read-only); coverage and mastery come only from what Andrea did in Sinapsi.
+ * lesson tutor (read-only); coverage and mastery come only from what the student did in Sinapsi.
  */
 
 /** How well Sinapsi thinks one lesson concept is internalised. */
@@ -9,7 +9,7 @@ export type TutorItemState =
   | 'scollegato'
   /** It has a note, but Sinapsi has not extracted that note's concepts yet. */
   | 'da estrarre'
-  /** Sinapsi knows its concepts but Andrea has never practised them here. */
+  /** Sinapsi knows its concepts but the student has never practised them here. */
   | 'mai studiato'
   /** Average recall below 60%. */
   | 'fragile'

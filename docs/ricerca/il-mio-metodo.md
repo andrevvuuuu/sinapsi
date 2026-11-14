@@ -1,65 +1,59 @@
-# Il mio metodo di studio (bozza)
+# Metodo di studio di Sinapsi
 
-Bozza scritta da Claude il 2 novembre 2026 leggendo l'automazione Obsidian e Sinapsi. Serve come base per la revisione dopo le deep research.
-Correggi tutto ciò che è sbagliato. I punti segnati **[DA CONFERMARE]** sono ipotesi mie.
+Sintesi dei principi pedagogici e del flusso di studio attivo implementato nell'applicazione Sinapsi.
 
-## Chi sono e cosa studio
+## Profilo dello studente e obiettivi
 
-- Primo anno di Scienze matematiche per l'IA. Ora sto facendo Analisi 1 (numeri, completezza, induzione, combinatoria) e Algebra lineare. Le 56 note di Matematica sono quasi tutto il vault.
-- Studio anche per interesse personale: bodybuilding, nutrizione, farmacologia, arte e altro. Lì non c'è un esame: voglio capire e ricordare.
-- I primi esami sono a febbraio 2027, cioè tra circa 3 mesi. Le modifiche al sistema devono essere finite in tempo per usarlo davvero prima degli esami.
-- Il mio problema storico: rileggevo o ricopiavo e dopo l'esame dimenticavo tutto.
-- Non mi va di scrivere le note a mano. Se servisse, terrei un vault separato per le note scritte da me.
+- Percorso universitario scientifico/matematico e studio continuo.
+- Problema pedagogico fondamentale: la rilettura passiva o la ricopiatura portano a rapido oblio dopo l'esame.
+- Obiettivo: comprensione profonda (capacità di ricostruire dimostrazioni e applicare concetti in situazioni nuove) e ritenzione a lungo termine.
+- Flusso di studio digitale: note strutturate in Markdown, consultate in sola lettura da Sinapsi.
 
-## Il flusso, dalla fonte all'esame
+## Flusso di studio: dalla fonte all'esame
 
 ### 1. Raccolta delle fonti
 
-Le fonti sono lezioni (PDF, slide, registrazioni), libri, video YouTube, siti e notebook di NotebookLM.
-Le scelgo dal menu Antigravity in Obsidian: NotebookLM, YouTube, sito o file locali.
+Le fonti di studio comprendono lezioni universitarie (PDF, slide, trascrizioni audio), libri di testo, video YouTube, dispense e link esterni.
+I materiali vengono organizzati per materia e resi accessibili come materiale di contesto.
 
-### 2. Generazione delle note (Obsidian + Antigravity/Gemini)
+### 2. Note di base in Markdown (Obsidian)
 
-- Scelgo materia e azione: nuova nota, MOC (mappa) o migliora una nota esistente. Posso anche creare in batch tutte le note mancanti di un MOC.
-- Gemini scrive la nota seguendo `core-guidelines.md` e le regole della materia. Le note sono:
-  - complete ed esaustive, senza limite di lunghezza;
-  - scritte "a sforzo cognitivo zero": frasi brevi e lessico tecnico spiegato subito;
-  - con tutti i passaggi esplicitati, compresa ogni riga di calcolo con il suo perché;
-  - con il callout "Decodifica Logico-Formale" su ogni definizione o teorema e le dimostrazioni in 3 atti;
-  - divise per tipo: una nota per concetto, teorema o metodo, collegate con wikilink e raccolte nei MOC;
-  - con un pannello di flashcard e quiz in fondo (`study_panel.js`).
-- Le flashcard vanno anche in Anki (`anki_sync.py`), che uso ancora. Quindi ho due sistemi di ripasso a intervalli: Anki (sulle flashcard delle note) e il Ripasso di Sinapsi (sui concetti).
-- Le note Obsidian non le leggo e non le controllo: le uso solo come base per Sinapsi. Le eventuali imprecisioni le vedo solo se Sinapsi le segnala nella nota viva.
+- Le note fungono da base di conoscenza: definizioni, teoremi, dimostrazioni passo-passo e mappe concettuali.
+- Ogni nota contiene definizioni formali, enunciati chiari e dimostrazioni strutturate.
+- Il vault rimane rigorosamente **in sola lettura** per l'applicazione: Sinapsi non modifica mai i file sorgente dell'utente.
 
-### 3. Studio attivo (Sinapsi)
+### 3. Studio attivo in Sinapsi
 
-Sinapsi legge il vault ma non lo modifica mai. Per ogni nota posso:
+Per ciascun argomento o nota, Sinapsi offre un percorso a livelli crescenti di difficoltà e padronanza:
 
-- fare una **sessione di Apprendimento** con il tutor (Claude): obiettivo, misura di cosa so, piano, ciclo prevedi → spiega → verifica, giochi e "svuota la testa" finale;
-- generare la **nota viva**: la nota Obsidian rifatta da Gemini con figure interattive, quiz accanto ai paragrafi e "Prova da solo";
-- fare il **Ripasso** FSRS per concetto, con domande riformulate ogni volta, fiducia, voto proposto e segnalazione delle misconcezioni;
-- fare **Pratica**: allenamento o simulazione d'esame, anche con foto del foglio corretta da Claude;
-- usare il **Notebook**: fonti grezze e chat sulle fonti;
-- guardare il **grafo** dei concetti con i colori della memoria.
+- **Sessione di Apprendimento (Tutor socratico)**:
+  - Definizione dell'obiettivo della sessione.
+  - Misurazione diagnostica delle conoscenze pregresse (ricerca binaria di pavimento e soffitto cognitivo).
+  - Generazione di una mappa concettuale minima.
+  - Ciclo attivo: previsione → spiegazione → verifica.
+  - Giochi formativi mirati (Lampo, Coppie, Ricomponi, Trova l'intruso, Tabù).
+  - Consolidamento finale a libro chiuso ("svuota la testa").
 
-Le uso tutte. Per una nota nuova l'ordine è: sessione → nota viva → Pratica → Ripasso.
+- **Nota viva**:
+  - Trasformazione interattiva della nota con figure manipolabili (cursori, punti trascinabili).
+  - Quiz contestuali a fianco dei paragrafi.
+  - Dimostrazioni guidate passo-passo con prompt di autoverifica ("Prima prova tu").
 
-## Cosa voglio ottenere
+- **Ripasso spaziato (FSRS-5)**:
+  - Algoritmo di ripetizione spaziata per concetto (non per singola scheda statica).
+  - Domande riformulate a ogni ripetizione per evitare il riconoscimento mnemonico superficiale.
+  - Valutazione della fiducia (0-100%) per rilevare misconcezioni e conoscenze fragili.
 
-- Capire davvero, cioè ricostruire una dimostrazione e applicare un concetto a un caso nuovo, non solo riconoscerlo.
-- Ricordare a lungo, non fino al giorno dopo l'esame.
-- Faticare il giusto: lo sforzo deve stare dove serve per imparare, non nella scrittura delle note o nella gestione del sistema.
+- **Pratica e simulazione d'esame**:
+  - Problemi calibrati su compiti d'esame con scala di indizi mirati a 6 gradini (rung ladder).
+  - Modalità prova scritta temporizzata, con possibilità di trascrizione manuale o foto del foglio svolto corretta dal modello.
 
-## Vincoli
+- **Grafo della conoscenza**:
+  - Mappa visiva delle relazioni logiche (premesse ⇒ conclusioni) con colorazione dinamica basata sullo stato della memoria.
 
-- Le note non le scrivo io (al massimo in un vault separato).
-- Uso gli abbonamenti di Gemini (Antigravity, `agy`) e di Claude (Claude Code, `claude`), niente chiavi API. La quota è limitata.
-- Lavoro su un solo Mac.
+## Principi pedagogici guida
 
-## Dubbi aperti da verificare con la ricerca
-
-1. Studiare da note complete generate dall'AI mi dà l'illusione di aver capito? Cosa compensa senza dover scrivere le note?
-2. Le note possono contenere errori dell'AI e io non le leggo: come me ne accorgo prima di impararli?
-3. Anki e il Ripasso di Sinapsi insieme: è un doppio carico? Conviene tenerne uno solo?
-4. Il mio sistema ha troppe funzioni? Quali contano davvero e quali posso togliere?
-5. Come misuro se il metodo funziona prima di febbraio?
+1. **Verità incondizionate e basi stabili**: partire sempre da definizioni certe e verificate prima di costruire concetti derivati.
+2. **Motivazione intrinseca di ogni passaggio**: ogni mossa deduttiva deve rispondere alla domanda "come avrei potuto scoprirlo io?", rendendo naturale la struttura logica.
+3. **Calibrazione della fiducia**: distinguere nettamente tra errore insicuro (lacuna sanabile) e errore con alta fiducia (misconcezione radicata da sradicare prioritariamente).
+4. **Separazione tra memorizzazione e comprensione**: l'apprendimento autentico richiede transfer e applicazione sotto carico, non mera riproduzione verbale.

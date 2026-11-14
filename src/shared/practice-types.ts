@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { MISSES } from './practice-protocol'
 export const PRACTICE_MAX_CONCEPTS = 4
 
-/** What a practice session is about: concepts from the graph, notebook sources, and/or Andrea's own words. */
+/** What a practice session is about: concepts from the graph, notebook sources, and/or the student's own words. */
 export const MaterialSchema = z.object({
   conceptIds: z.array(z.string().min(1).max(64)).max(200),
   sourceIds: z.array(z.string().uuid()).max(100),
@@ -26,7 +26,7 @@ export const ExamGradeReplySchema = z.object({
   note: z.string()
 })
 type ExamGradeReply = z.infer<typeof ExamGradeReplySchema>
-/** In a paper exam each item also keeps the points Andrea gave before the correction. */
+/** In a paper exam each item also keeps the points the student gave before the correction. */
 export type ExamGrade = { items: (ExamGradeReply['items'][number] & { self?: number })[]; note: string; total: number; lode: boolean }
 
 export type CatalogConcept = { id: string; name: string; R: number | null; due: boolean; practiced: boolean }

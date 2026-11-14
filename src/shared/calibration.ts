@@ -1,5 +1,5 @@
 /**
- * Calibration of a paper exam: the points Andrea gives each problem before the correction, against
+ * Calibration of a paper exam: the points the student gives each problem before the correction, against
  * the grader's. Tutors make students overestimate what they can do alone; this is the measure of it.
  */
 export type CalibrationItem = { id: string; max: number; self: number; ai: number }

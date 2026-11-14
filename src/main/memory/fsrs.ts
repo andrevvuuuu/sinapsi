@@ -45,7 +45,7 @@ const curve = (days: number, stability: number): number => Math.pow(1 + (FACTOR 
 
 /**
  * Right after a lapse the card is in (re)learning: the curve still says ~100% for minutes,
- * but what Andrea should see is the answer he just gave. "Di nuovo" shows as weak, "Difficile" as uncertain.
+ * but what the student should see is the answer just given. "Di nuovo" shows as weak, "Difficile" as uncertain.
  */
 function displayedR(card: Card, lastGrade: Grade, now: number): number {
   const since = card.last_review ? (now - card.last_review.getTime()) / DAY : 0

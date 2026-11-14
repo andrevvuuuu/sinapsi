@@ -1,4 +1,4 @@
-/** Sizes of the home sections Andrea can drag (px): side panels, sessions list. */
+/** Sizes of the home sections the user can drag (px): side panels, sessions list. */
 export type Layout = { left: number; right: number; sessions: number }
 export const DEFAULT_LAYOUT: Layout = { left: 288, right: 320, sessions: 300 }
 export const LIMITS = { left: [272, 480], right: [260, 520], sessions: [120, 900] } as const
