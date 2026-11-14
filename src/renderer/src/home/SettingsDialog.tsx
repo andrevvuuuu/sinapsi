@@ -56,6 +56,11 @@ export function SettingsDialog({
   const [limitMin, setLimitMin] = useState(String(settings.sessionLimitMinutes ?? 50))
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [vaultPath, setVaultPath] = useState(settings.vaultPath ?? '')
+  const [savedVaultPath, setSavedVaultPath] = useState(settings.vaultPath ?? '')
+  const [vaultStatus, setVaultStatus] = useState<string | null>(null)
+  const [vaultError, setVaultError] = useState<string | null>(null)
+  const [linkingVault, setLinkingVault] = useState(false)
   const first = useRef<HTMLButtonElement>(null)
   const close = useRef(onClose)
   useEffect(() => {
@@ -107,6 +112,38 @@ export function SettingsDialog({
       setSaved(true)
     } catch (e) {
       setError(clean(e))
+    }
+  }
+
+  const chooseVault = async (): Promise<void> => {
+    try {
+      const next = await window.sinapsi.settings.chooseVault()
+      setVaultPath(next.vaultPath ?? '')
+      setSavedVaultPath(next.vaultPath ?? '')
+      setVaultStatus(null)
+      setVaultError(null)
+      onSaved(next)
+    } catch (e) {
+      setVaultError(clean(e))
+    }
+  }
+
+  const linkVault = async (): Promise<void> => {
+    const path = vaultPath.trim()
+    if (!path || path === savedVaultPath) return
+    setLinkingVault(true)
+    setVaultStatus(null)
+    setVaultError(null)
+    try {
+      const next = await window.sinapsi.settings.set({ vaultPath: path })
+      setSavedVaultPath(next.vaultPath ?? path)
+      onSaved(next)
+      const result = await window.sinapsi.vault.index()
+      setVaultStatus('error' in result ? result.error === 'missing' ? 'Cartella non trovata' : 'Cartella non leggibile' : `Collegato: ${result.notes.length} note`)
+    } catch (e) {
+      setVaultError(clean(e))
+    } finally {
+      setLinkingVault(false)
     }
   }
 
@@ -171,6 +208,21 @@ export function SettingsDialog({
                   bare
                 />
               </div>
+            </section>
+
+            {/* Vault Obsidian */}
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h3>Vault Obsidian</h3>
+              </div>
+              <label className="sd-vault-label" htmlFor="sd-vault-path">Percorso del vault</label>
+              <div className="sd-vault-row">
+                <input id="sd-vault-path" className="sd-vault-path" type="text" value={vaultPath} onChange={(e) => { setVaultPath(e.target.value); setVaultStatus(null); setVaultError(null) }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void linkVault() } }} />
+                <button type="button" className="btn" onClick={() => void chooseVault()}>Sfoglia…</button>
+                <button type="button" className="btn pri" disabled={!vaultPath.trim() || vaultPath.trim() === savedVaultPath || linkingVault} onClick={() => void linkVault()}>{linkingVault ? 'Collego…' : 'Collega'}</button>
+              </div>
+              {vaultStatus && <p className="sd-vault-status" role="status">{vaultStatus}</p>}
+              {vaultError && <p className="sd-error" role="alert">{vaultError}</p>}
             </section>
 
             {/* 2. Motori AI */}

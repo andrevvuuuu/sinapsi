@@ -1426,7 +1426,7 @@ button.sh-brand .sh-brand-tag {
 .sh-shell .sh-sidebar{position:relative;width:64px;flex:0 0 64px;padding:12px 8px;background:transparent;border:0;overflow:visible;z-index:12;color:var(--sh-text)}
 .sh-shell .sh-sidebar.tree-open{width:304px;flex-basis:304px}
 .sh-shell .sh-sidebar.tree-closed{width:64px;flex-basis:64px}
-.sh-icon-rail{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;width:48px;height:100%;padding:4px 0}
+.sh-icon-rail{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;width:48px;flex:0 0 48px;align-self:flex-start;height:100%;padding:4px 0}
 .sh-icon-rail .sh-brand{justify-content:center;width:40px;height:40px;margin:0 0 8px;padding:0;border-radius:50%;background:transparent}
 .sh-icon-rail .sh-brand strong,.sh-icon-rail .sh-brand-tag{display:none}
 .sh-icon-rail .sh-brand .logo-mark{width:25px;height:25px}
@@ -1440,13 +1440,13 @@ button.sh-brand .sh-brand-tag {
 .sh-icon-rail .sh-side-action.is-current svg{color:inherit}
 .sh-icon-rail .sh-tree-trigger{margin-top:4px}
 .sh-rail-spacer{flex:1}
-.sh-tree-panel{position:absolute;z-index:1;left:64px;top:8px;bottom:8px;width:240px;padding:12px 12px 14px;border-radius:var(--sh-r-shell);background:var(--sh-shell-bg);backdrop-filter:var(--sh-blur);-webkit-backdrop-filter:var(--sh-blur);box-shadow:var(--sh-spec),var(--sh-shell-shadow);color:var(--sh-text);transform:translate3d(0,0,0);opacity:1;transition:transform .42s var(--sh-spring),opacity .2s ease;contain:paint;overflow:hidden}
+.sh-tree-panel{position:absolute;z-index:1;left:64px;top:8px;bottom:8px;display:flex;flex-direction:column;width:240px;padding:12px 12px 14px;border-radius:var(--sh-r-shell);background:var(--sh-shell-bg);backdrop-filter:var(--sh-blur);-webkit-backdrop-filter:var(--sh-blur);box-shadow:var(--sh-spec),var(--sh-shell-shadow);color:var(--sh-text);transform:translate3d(0,0,0);opacity:1;transition:transform .42s var(--sh-spring),opacity .2s ease;contain:paint;overflow:hidden}
 .sh-sidebar.tree-closed .sh-tree-panel{transform:translate3d(-18px,0,0);opacity:0;pointer-events:none}
 .sh-tree-panel .sh-sidebar-top{position:relative;margin:0;padding:0;border:0}
 .sh-tree-close{position:absolute;right:0;top:0;display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--sh-text-2)}
 .sh-tree-close:hover{background:color-mix(in srgb,var(--sh-text) 8%,transparent);color:var(--sh-text)}
 .sh-tree-close svg{width:14px;height:14px}
-.sh-tree-panel .sh-sidebar-scroll{height:100%;margin:0;padding:8px 0 48px;overflow-y:auto}
+.sh-tree-panel .sh-sidebar-scroll{flex:1;min-height:0;margin:0;padding:8px 0 8px;overflow-y:auto}
 .sh-tree-panel .sh-sidebar-scroll::after{display:none}
 .sh-tree-panel .sh-side-heading{color:var(--sh-text-2)}
 .sh-tree-panel .sh-register-all,.sh-tree-panel .sh-register-row,.sh-tree-panel .tree details>summary,.sh-tree-panel .tree .leaf,.sh-tree-panel .sh-show-more{color:var(--sh-text-2)}
@@ -1463,11 +1463,13 @@ button.sh-brand .sh-brand-tag {
 .sh-icon-rail .status .pill i{width:6px;height:6px;border-radius:50%;background:var(--sh-green);box-shadow:0 0 0 3px rgba(95,211,138,.16),0 0 8px rgba(95,211,138,.55)}
 .sh-icon-rail .status .pill.busy i{background:var(--sh-amber);box-shadow:none}
 .sh-icon-rail .status .pill.auth i,.sh-icon-rail .status .pill.missing i,.sh-icon-rail .status .pill.error i{background:#ed756e;box-shadow:none}
-.sh-sidebar.tree-open .sh-icon-rail>.status{position:absolute;left:64px;bottom:12px;z-index:4;display:grid;width:216px;gap:8px;margin:0;padding:0 12px}
-.sh-sidebar.tree-open .sh-icon-rail>.status .pill{display:flex;align-items:center;gap:8px;width:auto;height:24px;padding:0;border:0;background:transparent;color:var(--sh-text);font-size:12px}
-.sh-sidebar.tree-open .sh-icon-rail>.status .pill b,.sh-sidebar.tree-open .sh-icon-rail>.status .pill small{display:inline;font:var(--font-caption)}
-.sh-sidebar.tree-open .sh-icon-rail>.status .pill small{color:var(--sh-text-2)}
-.sh-sidebar.tree-open .sh-icon-rail>.status .pill i{flex:none}
+.sh-tree-status{flex:none;padding:10px 4px 0;border-top:1px solid color-mix(in srgb,var(--sh-text) 8%,transparent);overflow:hidden}
+.sh-tree-status:empty{display:none}
+.sh-tree-status .status{display:flex;align-items:center;gap:12px;margin:0;padding:0;overflow:hidden}
+.sh-tree-status .pill{display:flex;align-items:center;gap:5px;min-width:0;padding:0;border:0;background:transparent;color:var(--sh-text);font:var(--font-caption);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-tree-status .pill b{flex:none;color:var(--sh-text);font:inherit}
+.sh-tree-status .pill small{min-width:0;color:var(--sh-text-2);font:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-tree-status .pill i{flex:none}
 .sh-sidebar-bottom{display:none}
 .sh-main{color:var(--sh-text);background:radial-gradient(ellipse 480px 360px at 10% 100%,rgba(174,157,255,.22),transparent 72%),radial-gradient(ellipse 540px 400px at 95% 4%,rgba(132,190,255,.2),transparent 72%),var(--sh-canvas);transition:background-color .3s ease}
 [data-theme='lavagna'] .sh-main{background:radial-gradient(ellipse 460px 320px at 50% 100%,color-mix(in srgb,var(--sh-dock-color,var(--sh-violet)) 14%,transparent),transparent 75%),var(--sh-canvas)}

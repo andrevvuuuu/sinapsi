@@ -79,3 +79,8 @@
 .settings-dlg .sd-head,.settings-dlg .sd-foot{border-color:color-mix(in srgb,var(--sh-text) 8%,transparent)}
 .settings-dlg .sd-foot{background:transparent}
 .settings-dlg .sd-card-head h3,.settings-dlg .sd-theme-info h3,.settings-dlg .sd-hint,.settings-dlg .sd-head-subtitle{color:var(--sh-text-2)}
+.settings-dlg .sd-vault-label{font:var(--font-footnote);color:var(--sh-text-2)}
+.settings-dlg .sd-vault-row{display:flex;align-items:center;gap:var(--s-2);min-width:0}
+.settings-dlg .sd-vault-path{flex:1;min-width:0;height:var(--ctl);padding:0 var(--s-3);border:0;border-radius:var(--sh-r-inner);background:var(--sh-inner-bg);box-shadow:var(--sh-inner-shadow);color:var(--sh-text);font:400 var(--fs-footnote) var(--sans);text-overflow:ellipsis}
+.settings-dlg .sd-vault-path:focus-visible{outline:var(--btn-focus-ring);outline-offset:2px}
+.settings-dlg .sd-vault-status{margin:0;font-size:var(--fs-footnote);color:var(--sh-text-2)}

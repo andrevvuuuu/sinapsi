@@ -307,6 +307,9 @@ export function Sidebar(p: {
           )}
         </section>
       </div>
+      <div className="sh-tree-status" aria-hidden="true">
+        <EngineStatus status={p.status} />
+      </div>
       </div>
       )}
     </aside>
