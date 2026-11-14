@@ -54,6 +54,7 @@ export interface Bridge {
   ): Promise<{ data: T; conversationId: string; model: string; engine?: string }>
   status(): OpenRouterStatus
   onStatus(cb: (s: OpenRouterStatus) => void): () => void
+  refreshStatus(): Promise<OpenRouterStatus>
 }
 
 const DEFAULT_TIMEOUT = 180_000
@@ -77,6 +78,21 @@ export function createBridge(deps: {
     currentStatus = s
     listeners.forEach((l) => l(currentStatus))
   }
+
+  const refreshStatus = async (): Promise<OpenRouterStatus> => {
+    const key = await deps.apiKey()
+    if (!key) {
+      setStatus('no-key')
+      return 'no-key'
+    }
+    if (currentStatus === 'no-key') {
+      setStatus('idle')
+      return 'idle'
+    }
+    return currentStatus
+  }
+
+  void refreshStatus()
 
   let queue: Promise<unknown> = Promise.resolve()
   function enqueue<R>(job: () => Promise<R>): Promise<R> {
@@ -105,6 +121,7 @@ export function createBridge(deps: {
     const apiKey = await deps.apiKey()
     if (!apiKey) {
       setStatus('no-key')
+      throw new AuthRequiredError('OpenRouter')
     }
     const model = await resolveModel(req.task, req.model)
     const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT
@@ -117,10 +134,12 @@ export function createBridge(deps: {
         history = await convStore.load(req.conversationId)
       }
 
-      if (history.length === 0 && req.systemPrompt) {
-        history.push({ role: 'system', content: req.systemPrompt })
-      } else if (req.systemPrompt && history[0]?.role === 'system') {
-        history[0] = { role: 'system', content: req.systemPrompt }
+      if (req.systemPrompt) {
+        if (history.length === 0 || history[0]?.role !== 'system') {
+          history.unshift({ role: 'system', content: req.systemPrompt })
+        } else {
+          history[0] = { role: 'system', content: req.systemPrompt }
+        }
       }
 
       history.push({ role: 'user', content: req.prompt })
@@ -360,7 +379,8 @@ export function createBridge(deps: {
     onStatus(cb) {
       listeners.add(cb)
       return () => listeners.delete(cb)
-    }
+    },
+    refreshStatus
   }
 }
 

@@ -60,7 +60,7 @@ export interface HandlerDeps {
   loadSettings(): Promise<Settings>
   saveSettings(patch: Partial<Settings>): Promise<Settings>
   scan(root: string, excluded: string[]): Promise<VaultIndex>
-  aiStatus(): OpenRouterStatus
+  aiStatus(): OpenRouterStatus | Promise<OpenRouterStatus>
   openExternal(url: string): Promise<void>
   chooseFolder(): Promise<string | null>
   hasKey(): Promise<boolean>

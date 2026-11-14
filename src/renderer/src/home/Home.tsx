@@ -15,6 +15,7 @@ import type { LaunchDestination } from '../../../shared/lesson-types'
 import { buildTree } from './build-tree'
 import { Composer } from './Composer'
 import { EngineStatus } from './EngineStatus'
+import { SettingsDialog } from './SettingsDialog'
 import { IconPanel } from './icons'
 import { LeftPanel } from './LeftPanel'
 import { NotesPanel } from './NotesPanel'
@@ -59,6 +60,7 @@ export default function Home({
   const [index, setIndex] = useState<VaultResult | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [status, setStatus] = useState<Status | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [left, setLeft] = useState(true)
   const [right, setRight] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
@@ -316,7 +318,7 @@ export default function Home({
             <IconPanel />
           </button>
         </div>
-        <EngineStatus status={status} />
+        <EngineStatus status={status} onOpenSettings={() => setSettingsOpen(true)} />
         {loadError && (
           <div className="missing">
             <div role="alert">
@@ -362,6 +364,14 @@ export default function Home({
                   <p>
                     Per iniziare a studiare, apri le Impostazioni e inserisci la tua API key di OpenRouter.
                   </p>
+                  <button
+                    type="button"
+                    className="btn pri"
+                    style={{ marginTop: 'var(--s-3)' }}
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    Apri Impostazioni
+                  </button>
                 </>
               ) : (
                 <>
@@ -405,6 +415,14 @@ export default function Home({
         vaultPath={settings?.vaultPath}
         onChooseVault={() => void chooseVault()}
       />
+      {settingsOpen && settings && (
+        <SettingsDialog
+          settings={settings}
+          onTheme={(t) => void setTheme(t)}
+          onSaved={setSettings}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
   )
 }

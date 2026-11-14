@@ -25,7 +25,7 @@ Teorema di Rolle ⇒ Teorema di Lagrange`
 describe.runIf(process.env.LIVE_AI === '1')('live practice', () => {
   it('trains, examines and reads a sheet', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-live-practice-'))
-    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), models: async () => DEFAULT_MODELS, apiKey: async () => resolveApiKey(null) })
+    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), models: async () => DEFAULT_MODELS, apiKey: async () => resolveApiKey() })
     const memory = memoryStore(join(dir, 'm'))
     const deps = { bridge, dir: join(dir, 'p'), material: async () => CONTEXT, topic: async () => 'Rolle, Lagrange, Fermat', memory, onUpdate: () => undefined }
     const runner = createPracticeRunner(deps)

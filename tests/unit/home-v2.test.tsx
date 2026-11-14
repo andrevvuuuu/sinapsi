@@ -16,7 +16,7 @@ function mount(over: Record<string, unknown> = {}) {
   const api = {
     settings: { get: vi.fn(async () => settings), set: vi.fn(async (p: object) => ({ ...settings, ...p })), chooseVault: vi.fn(async () => settings) },
     vault: { index: vi.fn(async () => idx), onChange: () => () => undefined },
-    ai: { status: vi.fn(async () => ({ agy: 'idle', claude: 'idle' })), onStatus: () => () => undefined },
+    ai: { status: vi.fn(async () => 'idle'), onStatus: () => () => undefined },
     app: { openExternal: vi.fn() },
     session: { list: vi.fn(async () => [{ id: 's1', topic: 'Derivate', phase: 'done', updatedAt: 3 }]), start: vi.fn() },
     practice: { list: vi.fn(async () => [{ id: 'p1', topic: 'Rolle, Lagrange', mode: 'train', done: true, updatedAt: 2 }]) },
@@ -141,5 +141,17 @@ describe('composer', () => {
     expect(send).toHaveProperty('disabled', false)
     fireEvent.click(send)
     expect(onSubmit).toHaveBeenCalledWith('Apprendimento', 'Limiti')
+  })
+
+  it('shows clear empty state pointing to Settings when no key is configured', async () => {
+    mount({
+      ai: { status: vi.fn(async () => 'no-key'), onStatus: () => () => undefined },
+      vault: {
+        index: vi.fn(async () => ({ root: '/v', scannedAt: 0, subjects: [], notes: [] })),
+        onChange: () => () => undefined
+      }
+    })
+    expect(await screen.findByText(/Configura la/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Apri Impostazioni' })).toBeTruthy()
   })
 })

@@ -1,5 +1,5 @@
 import { mkdtemp, readFile } from 'node:fs/promises'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createBridge } from '../../src/main/ai/bridge'
@@ -17,8 +17,9 @@ import { EXERCISE_TYPES } from '../../src/shared/memory-types'
 describe.runIf(process.env.LIVE_AI === '1' && !!process.env.LIVE_GRAPH_DIR)('live review', () => {
   it('writes varied exercises for Rolle and grades open answers', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-live-review-'))
-    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), models: async () => DEFAULT_MODELS, apiKey: async () => resolveApiKey(null) })
-    const vault = await scanVault(join(homedir(), 'Obsidian Vault'), DEFAULT_EXCLUDED)
+    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), models: async () => DEFAULT_MODELS, apiKey: async () => resolveApiKey() })
+    const vaultDir = process.env.SINAPSI_TEST_VAULT ?? join(process.cwd(), 'tests/fixtures/vault')
+    const vault = await scanVault(vaultDir, DEFAULT_EXCLUDED)
     const g = deriveGraph(await graphStore(process.env.LIVE_GRAPH_DIR!).read())
     const rolle = vault.notes.find((n) => n.title === 'Teorema di Rolle')!.path
     const ids = g.concepts.filter((c) => c.birth === rolle).map((c) => c.id)

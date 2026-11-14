@@ -1,5 +1,5 @@
 import { mkdtemp, readFile } from 'node:fs/promises'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createBridge } from '../../src/main/ai/bridge'
@@ -14,8 +14,9 @@ describe.runIf(process.env.LIVE_AI === '1')('live nota viva', () => {
   it('writes the Lagrange note with the Obsidian sections, figures and quizzes', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-live-nota-'))
     const models = { ...DEFAULT_MODELS, ...(process.env.LIVE_NOTE_MODEL ? { note: process.env.LIVE_NOTE_MODEL } : {}) }
-    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), models: async () => models, apiKey: async () => resolveApiKey(null) })
-    const vault = await scanVault(join(homedir(), 'Obsidian Vault'), DEFAULT_EXCLUDED)
+    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), models: async () => models, apiKey: async () => resolveApiKey() })
+    const vaultDir = process.env.SINAPSI_TEST_VAULT ?? join(process.cwd(), 'tests/fixtures/vault')
+    const vault = await scanVault(vaultDir, DEFAULT_EXCLUDED)
     const source = vault.notes.find((n) => n.title === 'Teorema di Lagrange del Valor Medio')!
     expect(source?.available).toBe(true)
     let done: (m: NoteMeta) => void = () => undefined

@@ -162,7 +162,7 @@ export function createSessionRunner(deps: {
       }),
     get: (id) => load(id),
     async list() {
-      let names: string[] = []
+      let names: string[]
       try {
         names = (await readdir(deps.dir)).filter((n) => n.endsWith('.jsonl'))
       } catch {

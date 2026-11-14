@@ -1,3 +1,8 @@
+/**
+ * Process spawning helper retained solely for local voice tools (yt-dlp, mlx_whisper).
+ * AI operations run exclusively via the OpenRouter HTTP fetch API.
+ */
+
 import { spawn } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { homedir } from 'node:os'

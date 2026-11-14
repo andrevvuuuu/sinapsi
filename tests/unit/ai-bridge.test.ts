@@ -40,9 +40,26 @@ function bridge(apiKey: string | null = 'test-key') {
 }
 
 describe('AI bridge', () => {
-  it('throws AuthRequiredError when no key is configured', async () => {
+  it('initializes status to no-key when no key is configured', async () => {
+    const b = bridge(null)
+    await b.refreshStatus()
+    expect(b.status()).toBe('no-key')
+  })
+
+  it('throws AuthRequiredError when no key is configured on ask and converse', async () => {
     const b = bridge(null)
     await expect(b.ask({ task: 'extract', prompt: 'ciao' })).rejects.toBeInstanceOf(AuthRequiredError)
+    expect(b.status()).toBe('no-key')
+    await expect(
+      b.converse({
+        task: 'teach',
+        conversationId: 'c1',
+        resume: false,
+        prompt: 'test',
+        schema: z.object({ ok: z.boolean() }),
+        jsonSchema: { type: 'object' }
+      })
+    ).rejects.toBeInstanceOf(AuthRequiredError)
     expect(b.status()).toBe('no-key')
   })
 

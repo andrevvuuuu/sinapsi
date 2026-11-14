@@ -14,7 +14,7 @@ import { TeacherTurnSchema, teacherJsonSchema, type TeacherTurn } from '../../sr
 describe.runIf(process.env.LIVE_AI === '1')('live games', () => {
   it('the tutor proposes a playable game', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-live-games-'))
-    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'u.jsonl'), models: async () => DEFAULT_MODELS, apiKey: async () => resolveApiKey(null) })
+    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'u.jsonl'), models: async () => DEFAULT_MODELS, apiKey: async () => resolveApiKey() })
     const t0 = Date.now()
     const r = await bridge.converse<TeacherTurn>({
       task: 'teach',

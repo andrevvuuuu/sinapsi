@@ -17,7 +17,7 @@ const SETTINGS_VERSION = 4
 const NEW_TYPES: [number, ExerciseType][] = [[3, 'explain']]
 
 export async function loadSettings(): Promise<Settings> {
-  let raw: unknown = {}
+  let raw: unknown
   try {
     raw = JSON.parse(await readFile(file(), 'utf8'))
   } catch {

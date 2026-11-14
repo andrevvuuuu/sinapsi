@@ -43,7 +43,7 @@ export async function transcribePhoto(input: {
     ) + 1
   let name = `foglio-${n}.${ext}`
   await writeFile(join(input.dir, name), input.bytes)
-  // Claude reads JPEG and PNG, not the iPhone's HEIC.
+  // The model reads JPEG and PNG, not the iPhone's HEIC.
   if (ext === 'heic') {
     await (input.convert ?? sipsToJpeg)(join(input.dir, name), join(input.dir, `foglio-${n}.jpg`))
     name = `foglio-${n}.jpg`

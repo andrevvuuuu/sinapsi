@@ -98,11 +98,15 @@ export function registerIpc(): { bridge: Bridge } {
     loadSettings: settings.load,
     saveSettings: settings.save,
     scan: scanVault,
-    aiStatus: () => bridge.status(),
+    aiStatus: async () => {
+      await bridge.refreshStatus()
+      return bridge.status()
+    },
     hasKey: () => keyManager.hasKey(),
     setKey: async (key: string) => {
       await keyManager.setKey(key)
       const has = await keyManager.hasKey()
+      await bridge.refreshStatus()
       broadcast(CH.aiStatusChanged, bridge.status())
       return has
     },

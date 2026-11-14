@@ -24,7 +24,7 @@ async function run(): Promise<void> {
     console.error('[smoke] ERRORE: Chiave API non valida o crediti esauriti:', auth.error)
     process.exit(1)
   }
-  console.log('[smoke] Verifica riuscita! Etichetta:', auth.label ?? '—', 'Limite:', auth.limit ?? 'illimitato')
+  console.log('[smoke] Verifica riuscita! Etichetta:', auth.label ? '[ok]' : '—', 'Limite:', auth.limit ?? 'illimitato')
 
   // Call 1: Structured JSON
   console.log('[smoke] 3. Test chiamata Structured JSON...')
