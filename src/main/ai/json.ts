@@ -1,10 +1,24 @@
 // \b, \f and \r followed by a letter are always LaTeX (models never mean backspace, form feed or CR there).
 // \n and \t are real escapes too often: only these commands are read as LaTeX.
-const LATEX_N = new Set('nabla neq ne nu not notin neg nexists nmid nleq ngeq nsubseteq nsupseteq newline nleftarrow nrightarrow'.split(' '))
-const LATEX_T = new Set('theta tau times to text textbf textit textrm texttt tan tanh tilde top triangle triangleq tfrac tbinom therefore'.split(' '))
+const LATEX_N = new Set(
+  'nabla neq ne nu not notin neg nexists nmid nleq ngeq nsubseteq nsupseteq newline nleftarrow nrightarrow'.split(
+    ' '
+  )
+)
+const LATEX_T = new Set(
+  'theta tau times to text textbf textit textrm texttt tan tanh tilde top triangle triangleq tfrac tbinom therefore'.split(
+    ' '
+  )
+)
 
 const isLatex = (letter: string, word: string): boolean =>
-  'bfr'.includes(letter) ? word.length > 1 : letter === 'n' ? LATEX_N.has(word) : letter === 't' ? LATEX_T.has(word) : false
+  'bfr'.includes(letter)
+    ? word.length > 1
+    : letter === 'n'
+      ? LATEX_N.has(word)
+      : letter === 't'
+        ? LATEX_T.has(word)
+        : false
 
 /** Models often write LaTeX with single backslashes inside JSON strings: double the ones that are not real escapes. */
 function repairBackslashes(t: string): string {

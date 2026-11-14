@@ -75,7 +75,7 @@ describe('ingest', () => {
     await ing.idle()
     const call = run.mock.calls.find((c) => c[0] === 'mlx_whisper')!
     expect(call[1].slice(-2)).toEqual(['--', join(store.filesDir(added[0]), 'lezione.m4a')])
-    expect(call[1]).toEqual(expect.arrayContaining(['--model', 'mlx-community/whisper-large-v3-turbo', '--output-format', 'json']))
+    expect(call[1]).toEqual(expect.arrayContaining(['--model', 'mlx-community/whisper-large-v3-turbo', '-f', 'json']))
     const s = (await sources())[0]
     expect(s).toMatchObject({ kind: 'audio', status: 'ready' })
     expect(s.info).toMatch(/min/)

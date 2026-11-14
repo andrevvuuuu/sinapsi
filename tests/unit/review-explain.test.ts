@@ -30,16 +30,16 @@ const turn = (by: ExplainTurn['by'], text: string): ExplainTurn => ({ by, text }
 describe('the picky student prompt', () => {
   const base = { concept: { name: 'Rolle', statement: 'f continua…' }, exercise: explain, noteTitle: 'Rolle', confidence: 70 }
   it('compares with the note, flagged errors included, and with the reviewer rigour', () => {
-    const p = buildExplainPrompt({ ...base, noteText: `testo della nota\n${VERIFY_MARK}`, turns: [turn('andrea', 'Per Weierstrass ha massimo e minimo.')] })
+    const p = buildExplainPrompt({ ...base, noteText: `testo della nota\n${VERIFY_MARK}`, turns: [turn('learner', 'Per Weierstrass ha massimo e minimo.')] })
     expect(p).toContain('testo della nota')
     expect(p).toContain('Verifica di correttezza')
     expect(p).toContain(GRADING_RIGOR)
     expect(p).toContain('PRIMO passaggio mancante')
-    expect(p).toContain('Andrea: Per Weierstrass ha massimo e minimo.')
+    expect(p).toContain('Studente: Per Weierstrass ha massimo e minimo.')
     expect(p).toContain('"action": "ask"')
   })
   it('stops asking after the last allowed question', () => {
-    const turns = [turn('andrea', 'spiegazione'), turn('claude', 'Perché interno?'), turn('andrea', 'Perché…'), turn('claude', 'E se è costante?'), turn('andrea', 'Allora…')]
+    const turns = [turn('learner', 'spiegazione'), turn('assistant', 'Perché interno?'), turn('learner', 'Perché…'), turn('assistant', 'E se è costante?'), turn('learner', 'Allora…')]
     const p = buildExplainPrompt({ ...base, noteText: 'n', turns })
     expect(p).toContain(`Hai già fatto ${MAX_QUESTIONS} domande`)
     expect(p).toContain('Tu (domanda): E se è costante?')
@@ -77,11 +77,11 @@ beforeEach(async () => {
 /** Gemini writes one mc for every concept and, when asked, a Spiegalo tu; the grader replies with `grade`. */
 function setup(grade: (prompt: string) => unknown = () => ({ action: 'grade', verdict: 'ok', feedback: 'Il punto fragile è Fermat.' })): { svc: ReviewService; ask: ReturnType<typeof vi.fn> } {
   const ask = vi.fn(async (req: { task: string; prompt: string; schema: { parse(x: unknown): unknown } }) => {
-    if (req.task === 'grade') return { data: req.schema.parse(grade(req.prompt)), fromCache: false, engine: 'claude' as const }
+    if (req.task === 'grade') return { data: req.schema.parse(grade(req.prompt)), fromCache: false, engine: 'openrouter' as const }
     const ids = [...req.prompt.matchAll(/^(\w+) \| nome/gm)].map((m) => m[1])
     const only = req.prompt.includes('"exercises": []')
     const raw = { concepts: ids.map((id) => ({ id, exercises: [...(only ? [] : [{ type: 'mc', prompt: `mc ${id}`, options: ['sì', 'no'], correct: 0, answer: 'sì' }]), ...(req.prompt.includes('"explain"') ? [{ ...explain, prompt: `spiega ${id}` }] : [])] })) }
-    return { data: req.schema.parse(raw), fromCache: false, engine: 'agy' as const }
+    return { data: req.schema.parse(raw), fromCache: false, engine: 'openrouter' as const }
   })
   const svc = createReviewService({
     bridge: { ask } as never,
@@ -121,7 +121,7 @@ describe('plan with Spiegalo tu', () => {
     await again.svc.plan({ conceptIds: ['a1'] })
     expect(again.ask).not.toHaveBeenCalled()
   })
-  it('does not ask about it when Andrea turned it off', async () => {
+  it('does not ask about it when the student turned it off', async () => {
     types = ['mc']
     const { svc, ask } = setup()
     await svc.plan()
@@ -132,20 +132,20 @@ describe('plan with Spiegalo tu', () => {
 describe('explain', () => {
   it('asks the first missing step, reading the concept note', async () => {
     const { svc, ask } = setup(() => ({ action: 'ask', question: 'Perché il massimo è interno?' }))
-    const r = await svc.explain({ conceptId: 'a1', exercise: explain, turns: [turn('andrea', 'Weierstrass e basta.')], confidence: 60 })
+    const r = await svc.explain({ conceptId: 'a1', exercise: explain, turns: [turn('learner', 'Weierstrass e basta.')], confidence: 60 })
     expect(r).toEqual({ kind: 'question', question: 'Perché il massimo è interno?' })
     const call = ask.mock.calls.at(-1)![0]
     expect(call.task).toBe('grade')
     expect(call.prompt).toContain('nota di /v/A.md')
-    expect(call.prompt).toContain('NOTA DI ANDREA «A»')
+    expect(call.prompt).toContain('NOTA DI RIFERIMENTO «A»')
   })
   it('gives a verdict that proposes a grade like the other types', async () => {
     const { svc } = setup(() => ({ action: 'grade', verdict: 'partial', feedback: 'Manca Fermat.' }))
-    expect(await svc.explain({ conceptId: 'a1', exercise: explain, turns: [turn('andrea', 'x')], confidence: 90 })).toEqual({ kind: 'verdict', verdict: 'partial', feedback: 'Manca Fermat.', proposed: 2 })
+    expect(await svc.explain({ conceptId: 'a1', exercise: explain, turns: [turn('learner', 'x')], confidence: 90 })).toEqual({ kind: 'verdict', verdict: 'partial', feedback: 'Manca Fermat.', proposed: 2 })
   })
   it('refuses a third question: the reply must be a verdict', async () => {
     const { svc } = setup(() => ({ action: 'ask', question: 'Ancora?' }))
-    const turns = [turn('andrea', 'a'), turn('claude', 'q1'), turn('andrea', 'b'), turn('claude', 'q2'), turn('andrea', 'c')]
+    const turns = [turn('learner', 'a'), turn('assistant', 'q1'), turn('learner', 'b'), turn('assistant', 'q2'), turn('learner', 'c')]
     const r = await svc.explain({ conceptId: 'a1', exercise: explain, turns, confidence: 50 })
     expect(r.kind).toBe('verdict')
     expect(r).toMatchObject({ verdict: 'partial', proposed: 2 })
@@ -176,7 +176,7 @@ describe('handlers', () => {
   it('validates the dialogue', async () => {
     await expect(h.explain({ conceptId: 'a1', exercise: explain, turns: [], confidence: 50 })).rejects.toThrow()
     await expect(h.explain({ conceptId: 'a1', exercise: explain, turns: [{ by: 'tutor', text: 'x' }], confidence: 50 })).rejects.toThrow()
-    await expect(h.explain({ conceptId: 'a1', exercise: explain, turns: [turn('andrea', 'x')], confidence: 50 })).resolves.toEqual({ kind: 'question', question: 'q' })
+    await expect(h.explain({ conceptId: 'a1', exercise: explain, turns: [turn('learner', 'x')], confidence: 50 })).resolves.toEqual({ kind: 'question', question: 'q' })
   })
   it('has no voice channel of its own: Spiegalo tu dictates through voice:transcribe', () => {
     expect(Object.keys(h)).not.toContain('voice')

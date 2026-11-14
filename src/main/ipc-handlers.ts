@@ -7,8 +7,8 @@ import type { Extractor } from './graph/jobs'
 import type { NoteGenerator } from './notes/generator'
 import { access } from 'node:fs/promises'
 import { z } from 'zod'
-import type { EngineStatus, VaultResult } from '../shared/api'
-import { TASKS, type Engine, type Settings } from '../shared/settings-schema'
+import type { OpenRouterStatus, VaultResult } from '../shared/api'
+import { TASKS, type Settings } from '../shared/settings-schema'
 import { LearnerAnswerSchema, type LearnerAnswer } from '../shared/teacher-protocol'
 import type { SessionRunner } from './session/runner'
 import type { VaultIndex } from '../shared/vault-types'
@@ -27,21 +27,18 @@ import type { Memory } from '../shared/memory-types'
 import { ExamEntrySchema, type ExamEvent } from '../shared/exam-types'
 import { reduceExams } from './exams/reduce'
 
-const Choice = z
-  .object({ engine: z.enum(['agy', 'claude']), model: z.string().optional() })
-  .strict()
 const Patch = z
   .object({
-    vaultPath: z.string().min(1),
+    vaultPath: z.string().catch(''),
     theme: z.enum(['lavagna', 'trattato', 'system']),
-    engines: z
+    models: z
       .object(
-        Object.fromEntries(TASKS.map((t) => [t, Choice])) as Record<
+        Object.fromEntries(TASKS.map((t) => [t, z.string().min(1)])) as Record<
           (typeof TASKS)[number],
-          typeof Choice
+          z.ZodString
         >
       )
-      .strict(),
+      .partial(),
     excludedFolders: z.array(z.string()),
     backgroundExtraction: z.boolean(),
     dailyExtractionLimit: z.number().int().min(0).max(50),
@@ -63,9 +60,13 @@ export interface HandlerDeps {
   loadSettings(): Promise<Settings>
   saveSettings(patch: Partial<Settings>): Promise<Settings>
   scan(root: string, excluded: string[]): Promise<VaultIndex>
-  aiStatus(): Record<Engine, EngineStatus>
+  aiStatus(): OpenRouterStatus
   openExternal(url: string): Promise<void>
   chooseFolder(): Promise<string | null>
+  hasKey(): Promise<boolean>
+  setKey(key: string): Promise<boolean>
+  verifyKey(key?: string): Promise<{ ok: boolean; label?: string; usage?: number; limit?: number | null; error?: string }>
+  listModels(): Promise<Array<{ id: string; name: string }>>
 }
 
 /** Pure handlers: every payload from the window is validated here before use. */
@@ -91,6 +92,10 @@ export function makeHandlers(d: HandlerDeps) {
       }
     },
     aiStatus: async () => d.aiStatus(),
+    hasKey: async () => d.hasKey(),
+    setKey: async (key: unknown) => d.setKey(z.string().parse(key)),
+    verifyKey: async (key: unknown) => d.verifyKey(key ? z.string().parse(key) : undefined),
+    listModels: async () => d.listModels(),
     async openExternal(url: unknown): Promise<void> {
       const u = z.string().parse(url)
       if (!/^(obsidian|https):\/\//.test(u)) throw new Error('link non consentito')
@@ -413,7 +418,7 @@ const ExplainReq = z.object({
   turns: z
     .array(
       z
-        .object({ by: z.enum(['andrea', 'claude']), text: z.string().trim().min(1).max(10_000) })
+        .object({ by: z.enum(['learner', 'assistant']), text: z.string().trim().min(1).max(10_000) })
         .strict()
     )
     .min(1)

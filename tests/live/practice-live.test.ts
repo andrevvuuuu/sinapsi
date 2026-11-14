@@ -4,12 +4,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createBridge } from '../../src/main/ai/bridge'
-import { nodeSpawn } from '../../src/main/ai/engines'
+import { resolveApiKey } from '../../src/main/ai/key-storage'
 import { memoryStore } from '../../src/main/memory/store'
 import { createExamService } from '../../src/main/practice/exam'
 import { transcribePhoto } from '../../src/main/practice/photo'
 import { createPracticeRunner } from '../../src/main/practice/runner'
-import { DEFAULT_ENGINES } from '../../src/shared/settings-schema'
+import { DEFAULT_MODELS } from '../../src/shared/settings-schema'
 import { makePdf } from '../unit/helpers/pdf'
 
 const CONTEXT = `CONCETTI SCELTI (id | nome | enunciato) — usa questi id in "targets"
@@ -21,11 +21,11 @@ CATENE DI RAGIONAMENTO (premesse ⇒ conclusione)
 Teorema di Fermat ⇒ Teorema di Rolle
 Teorema di Rolle ⇒ Teorema di Lagrange`
 
-// Real Claude through the CLI: training turns, an exam sheet and its grading, the photo of a sheet.
+// Real OpenRouter: training turns, an exam sheet and its grading, the photo of a sheet.
 describe.runIf(process.env.LIVE_AI === '1')('live practice', () => {
   it('trains, examines and reads a sheet', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-live-practice-'))
-    const bridge = createBridge({ spawn: nodeSpawn, cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), engines: async () => DEFAULT_ENGINES })
+    const bridge = createBridge({ cacheDir: join(dir, 'c'), usageFile: join(dir, 'usage.jsonl'), models: async () => DEFAULT_MODELS, apiKey: async () => resolveApiKey(null) })
     const memory = memoryStore(join(dir, 'm'))
     const deps = { bridge, dir: join(dir, 'p'), material: async () => CONTEXT, topic: async () => 'Rolle, Lagrange, Fermat', memory, onUpdate: () => undefined }
     const runner = createPracticeRunner(deps)

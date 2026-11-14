@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  DEFAULT_ENGINES,
+  DEFAULT_MODELS,
   MICRO_PAUSE_EVERY,
   MICRO_PAUSE_SECONDS,
   SESSION_BREAK_MINUTES,
@@ -26,7 +26,8 @@ const TASK_IT: Record<Task, string> = {
   note: 'Note vive',
   variants: 'Domande del Ripasso',
   teach: 'Tutor (Apprendimento e Pratica)',
-  grade: 'Correzione e foto del foglio'
+  grade: 'Correzione compiti ed esami',
+  photo: 'Trascrizione foto del foglio'
 }
 const clean = (e: unknown): string =>
   (e instanceof Error ? e.message : String(e)).replace(
@@ -46,7 +47,15 @@ export function SettingsDialog({
   onSaved: (s: Settings) => void
   onClose: () => void
 }): React.JSX.Element {
-  const [engines, setEngines] = useState(settings.engines)
+  const [models, setModels] = useState<Record<Task, string>>({
+    ...DEFAULT_MODELS,
+    ...(settings.models ?? {})
+  })
+  const [apiKey, setApiKey] = useState('')
+  const [hasKey, setHasKey] = useState<boolean | null>(null)
+  const [keyVerifying, setKeyVerifying] = useState(false)
+  const [keyStatus, setKeyStatus] = useState<{ ok: boolean; text: string } | null>(null)
+  const [availableModels, setAvailableModels] = useState<Array<{ id: string; name: string }>>([])
   const [bg, setBg] = useState(settings.backgroundExtraction)
   const [daily, setDaily] = useState(String(settings.dailyExtractionLimit))
   const [size, setSize] = useState(String(settings.reviewSessionSize))
@@ -77,11 +86,49 @@ export function SettingsDialog({
       }
     }
     window.addEventListener('keydown', onKey)
+    void window.sinapsi?.ai?.hasKey?.().then(setHasKey)
+    void window.sinapsi?.ai
+      ?.listModels?.()
+      .then(setAvailableModels)
+      .catch(() => undefined)
     return () => {
       unfocus()
       window.removeEventListener('keydown', onKey)
     }
   }, [])
+
+  const handleSaveKey = async (): Promise<void> => {
+    if (!apiKey.trim()) return
+    try {
+      await window.sinapsi.ai.setKey(apiKey.trim())
+      setHasKey(true)
+      setApiKey('')
+      setKeyStatus({ ok: true, text: 'Chiave salvata in modo sicuro nel portachiavi.' })
+    } catch (e) {
+      setKeyStatus({ ok: false, text: `Errore nel salvataggio: ${clean(e)}` })
+    }
+  }
+
+  const handleVerifyKey = async (): Promise<void> => {
+    setKeyVerifying(true)
+    setKeyStatus(null)
+    try {
+      const res = await window.sinapsi.ai.verifyKey(apiKey.trim() || undefined)
+      if (res.ok) {
+        const parts = ['Chiave valida']
+        if (res.label) parts.push(res.label)
+        if (res.limit != null) parts.push(`limite: $${res.limit}`)
+        if (res.usage != null) parts.push(`uso: $${res.usage.toFixed(2)}`)
+        setKeyStatus({ ok: true, text: parts.join(' · ') })
+      } else {
+        setKeyStatus({ ok: false, text: res.error || 'Chiave non valida' })
+      }
+    } catch (e) {
+      setKeyStatus({ ok: false, text: clean(e) })
+    } finally {
+      setKeyVerifying(false)
+    }
+  }
 
   const save = async (): Promise<void> => {
     if (!daily.trim()) return setError('Note al giorno: un numero da 0 a 50.')
@@ -98,7 +145,7 @@ export function SettingsDialog({
     try {
       onSaved(
         await window.sinapsi.settings.set({
-          engines,
+          models,
           backgroundExtraction: bg,
           dailyExtractionLimit: d,
           reviewSessionSize: n,
@@ -225,44 +272,80 @@ export function SettingsDialog({
               {vaultError && <p className="sd-error" role="alert">{vaultError}</p>}
             </section>
 
-            {/* 2. Motori AI */}
+            {/* 2. OpenRouter */}
             <section className="sd-card">
               <div className="sd-card-head">
-                <h3>Motori AI</h3>
+                <h3>OpenRouter</h3>
                 <p className="sd-hint">
-                  Gemini (Antigravity) e Claude (Claude Code) con i tuoi abbonamenti. Il modello si
-                  può lasciare com’è.
+                  Chiave API e modelli utilizzati per ciascun compito di studio.
                 </p>
               </div>
+
+              <div className="sd-card-fields">
+                <label className="sd-vault-label" htmlFor="sd-or-key">
+                  Chiave API {hasKey ? '(configurata)' : '(mancante)'}
+                </label>
+                <div className="sd-key-row">
+                  <input
+                    id="sd-or-key"
+                    className="sd-key-input"
+                    type="password"
+                    placeholder={hasKey ? '••••••••••••••••••••••••' : 'Incolla la chiave API...'}
+                    value={apiKey}
+                    onChange={(e) => {
+                      setApiKey(e.target.value)
+                      setKeyStatus(null)
+                    }}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={!apiKey.trim()}
+                    onClick={() => void handleSaveKey()}
+                  >
+                    Salva chiave
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={keyVerifying || (!apiKey.trim() && !hasKey)}
+                    onClick={() => void handleVerifyKey()}
+                  >
+                    {keyVerifying ? 'Verifico…' : 'Verifica chiave'}
+                  </button>
+                </div>
+                {keyStatus && (
+                  <p
+                    className={`sd-key-status ${keyStatus.ok ? 'ok' : 'bad'}`}
+                    role={keyStatus.ok ? 'status' : 'alert'}
+                  >
+                    {keyStatus.text}
+                  </p>
+                )}
+              </div>
+
               <div className="sd-engines">
+                <datalist id="or-models-list">
+                  {availableModels.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </datalist>
                 {TASKS.map((t) => (
                   <div key={t} className="sd-engine">
                     <span className="sd-engine-task">{TASK_IT[t]}</span>
-                    <select
-                      aria-label={`Motore · ${TASK_IT[t]}`}
-                      value={engines[t].engine}
-                      onChange={(e) => {
-                        const engine = e.target.value as 'agy' | 'claude'
-                        const model =
-                          DEFAULT_ENGINES[t].engine === engine
-                            ? DEFAULT_ENGINES[t].model
-                            : engine === 'claude'
-                              ? 'sonnet'
-                              : 'gemini-3.8-flash-medium'
-                        setEngines({ ...engines, [t]: { engine, model } })
-                        setSaved(false)
-                      }}
-                    >
-                      <option value="agy">Gemini</option>
-                      <option value="claude">Claude</option>
-                    </select>
                     <input
                       aria-label={`Modello · ${TASK_IT[t]}`}
-                      value={engines[t].model ?? ''}
+                      list="or-models-list"
+                      placeholder={DEFAULT_MODELS[t]}
+                      value={models[t] ?? ''}
                       onChange={(e) => {
-                        setEngines({
-                          ...engines,
-                          [t]: { ...engines[t], model: e.target.value || undefined }
+                        setModels({
+                          ...models,
+                          [t]: e.target.value
                         })
                         setSaved(false)
                       }}

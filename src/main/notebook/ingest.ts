@@ -188,6 +188,8 @@ export function createIngestor(deps: {
         origin: canonical
       })
     },
+    addVaultNote: (notebookId: string, path: string, title: string): Promise<string> =>
+      add({ id: randomUUID(), notebookId, kind: 'vault', title, origin: path }),
     async retry(id: string): Promise<void> {
       if (pending.has(id)) return
       pending.add(id)
@@ -214,7 +216,7 @@ export function createIngestor(deps: {
       await store.removeSource(id)
       deps.onChange()
     },
-    /** Work left half-done by a quit cannot resume on its own: say so and let Andrea retry. */
+    /** Work left half-done by a quit cannot resume on its own: say so and let the user retry. */
     async fixStale(): Promise<void> {
       for (const nb of await store.notebooks())
         for (const s of nb.sources)

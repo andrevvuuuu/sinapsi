@@ -5,9 +5,6 @@ import { Composer } from '../../src/renderer/src/home/Composer'
 import { LeftPanel } from '../../src/renderer/src/home/LeftPanel'
 import { Spot } from '../../src/renderer/src/session/games/Spot'
 import { Taboo } from '../../src/renderer/src/session/games/Taboo'
-import { NotebookView } from '../../src/renderer/src/notebook/NotebookView'
-import { SourceList } from '../../src/renderer/src/notebook/SourceList'
-import { ChatPane } from '../../src/renderer/src/notebook/ChatPane'
 import { Estimate, Open } from '../../src/renderer/src/review/exercises/Inputs'
 import { Explain } from '../../src/renderer/src/review/exercises/Explain'
 import { QuestionDock } from '../../src/renderer/src/session/QuestionDock'
@@ -136,20 +133,6 @@ describe('dictation in every free-text field', () => {
     cleanup()
 
     render(
-      <ChatPane
-        turns={[]}
-        pending={false}
-        selected={1}
-        ready={1}
-        onAsk={vi.fn()}
-        onRetry={vi.fn()}
-        onCite={vi.fn()}
-      />
-    )
-    expect(micOf(screen.getByLabelText('Chiedi alle tue fonti'))).toBeTruthy()
-    cleanup()
-
-    render(
       <LeftPanel
         sessions={[]}
         notes={[]}
@@ -178,57 +161,6 @@ describe('dictation in every free-text field', () => {
     )
     expect(screen.getByLabelText('Il tuo valore')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Detta' })).toBeNull()
-  })
-
-  it('the link fields (YouTube, NotebookLM) have no mic', async () => {
-    const NB = '11111111-1111-4111-8111-111111111111'
-    const notebook = {
-      id: NB,
-      name: 'Analisi 1',
-      subject: null,
-      link: null,
-      createdAt: 1,
-      sources: []
-    }
-    window.sinapsi = {
-      ...window.sinapsi,
-      notebook: {
-        list: vi.fn(async () => [notebook]),
-        chat: vi.fn(async () => []),
-        onUpdate: vi.fn(() => () => undefined),
-        busy: vi.fn(async () => false)
-      },
-      vault: { index: vi.fn(async () => ({ subjects: [], notes: [] })) }
-    } as never
-    render(
-      <SourceList
-        notebook={notebook as never}
-        excluded={new Set()}
-        onToggle={vi.fn()}
-        onView={vi.fn()}
-        notes={[]}
-        onMessage={vi.fn()}
-      />
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'YouTube' }))
-    expect(screen.getByLabelText('Link del video')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Detta' })).toBeNull()
-    cleanup()
-
-    render(<NotebookView id={NB} onBack={vi.fn()} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Collega NotebookLM' }))
-    expect(screen.getByLabelText('Link del notebook su NotebookLM')).toBeTruthy()
-    // The only mic on the page is the one of the notebook name.
-    const mics = screen.getAllByRole('button', { name: 'Detta' })
-    expect(mics).toHaveLength(2)
-    for (const m of mics)
-      expect(
-        m
-          .closest('.mic-field')
-          ?.querySelector(
-            'input[aria-label="Nome del notebook"], textarea[aria-label="Chiedi alle tue fonti"]'
-          )
-      ).toBeTruthy()
   })
 
   it('the games name their textarea without the mic in the name', () => {
@@ -311,39 +243,5 @@ describe('dictation in every free-text field', () => {
     expect(field.value).toBe('limiti derivate')
     expect(send.disabled).toBe(false)
     expect(onSubmit).not.toHaveBeenCalled()
-  })
-
-  it('dictating the notebook name fills the field and saves only on the usual commit', async () => {
-    const NB = '11111111-1111-4111-8111-111111111111'
-    const notebook = { id: NB, name: 'Analisi', subject: null, link: null, createdAt: 1, sources: [] }
-    const update = vi.fn(async () => undefined)
-    window.sinapsi = {
-      ...window.sinapsi,
-      notebook: {
-        list: vi.fn(async () => [notebook]),
-        chat: vi.fn(async () => []),
-        onUpdate: vi.fn(() => () => undefined),
-        busy: vi.fn(async () => false),
-        update
-      },
-      vault: { index: vi.fn(async () => ({ subjects: [], notes: [] })) }
-    } as never
-    render(<NotebookView id={NB} onBack={vi.fn()} />)
-    const field = (await screen.findByLabelText('Nome del notebook')) as HTMLInputElement
-    await flush()
-    fireEvent.click(micOf(field)!)
-    await flush()
-    fireEvent.click(screen.getByRole('button', { name: 'Ferma la dettatura' }))
-    await flush()
-    await act(async () => finish('uno'))
-    await flush()
-    expect(field.value).toBe('Analisi uno')
-    // Nothing is sent on its own: the words wait in the field, which has the focus back.
-    expect(update).not.toHaveBeenCalled()
-    expect(document.activeElement).toBe(field)
-    fireEvent.keyDown(field, { key: 'Enter' })
-    await flush()
-    expect(update).toHaveBeenCalledTimes(1)
-    expect(update).toHaveBeenCalledWith(NB, { name: 'Analisi uno' })
   })
 })

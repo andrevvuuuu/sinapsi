@@ -1,5 +1,5 @@
 /**
- * Shared by every prompt that judges Andrea's work. Models tend to validate fluent but wrong
+ * Shared by every prompt that judges the student's work. Models tend to validate fluent but wrong
  * reasoning (BrokenMath, 2025): the grader must look for the first unjustified step, not for a reason to pass.
  */
 export const GRADING_RIGOR = `Rigore nella correzione:

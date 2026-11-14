@@ -27,7 +27,7 @@ export function fakeExtractBridge(): Pick<Bridge, 'ask'> {
           chains: rolle ? [{ premises: [rolle], conclusion: 'p1' }] : []
         }
       }
-      return { data: ExtractReplySchema.parse(raw), fromCache: false, engine: 'agy' as const }
+      return { data: ExtractReplySchema.parse(raw), fromCache: false, model: 'fake-extract', engine: 'fake-extract' }
     }) as Bridge['ask']
   }
 }

@@ -19,7 +19,11 @@ const api: SinapsiApi = {
   },
   ai: {
     status: () => ipcRenderer.invoke(CH.aiStatus),
-    onStatus: (cb) => subscribe(CH.aiStatusChanged, cb)
+    onStatus: (cb) => subscribe(CH.aiStatusChanged, cb),
+    hasKey: () => ipcRenderer.invoke(CH.aiHasKey),
+    setKey: (key: string) => ipcRenderer.invoke(CH.aiSetKey, key),
+    verifyKey: (key?: string) => ipcRenderer.invoke(CH.aiVerifyKey, key),
+    listModels: () => ipcRenderer.invoke(CH.aiListModels)
   },
   app: { openExternal: (url) => ipcRenderer.invoke(CH.openExternal, url) },
   session: {

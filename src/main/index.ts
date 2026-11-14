@@ -51,7 +51,7 @@ function createWindow(): void {
 app.setName(APP_NAME)
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('it.andreaantonelli.sinapsi')
+  electronApp.setAppUserModelId('it.sinapsi.app')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
   registerIpc()
   createWindow()

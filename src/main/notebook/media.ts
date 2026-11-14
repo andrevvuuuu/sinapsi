@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import type { SpawnFn } from '../ai/bridge'
+import type { SpawnFn } from '../ai/engines'
 import type { SourceText } from '../../shared/notebook-types'
 import { parseVtt, parseWhisperJson } from './readers'
 
@@ -79,7 +79,7 @@ export async function transcribe(
   await tool(
     run,
     'mlx_whisper',
-    ['--model', WHISPER_MODEL, '--output-format', 'json', '--output-dir', outDir, '--output-name', 'trascrizione', '--verbose', 'False', ...(language ? ['--language', language] : []), '--', file],
+    ['--model', WHISPER_MODEL, '-f', 'json', '--output-dir', outDir, '--output-name', 'trascrizione', '--verbose', 'False', ...(language ? ['--language', language] : []), '--', file],
     TRANSCRIBE_TIMEOUT,
     (chunk) => {
       if (stage === 'download' && /frames/.test(chunk)) {

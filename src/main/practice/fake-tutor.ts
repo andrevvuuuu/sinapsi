@@ -27,7 +27,7 @@ export function fakeTutor(): Pick<Bridge, 'converse' | 'ask'> {
       await new Promise((r) => setTimeout(r, 50))
       const st = state.get(req.conversationId) ?? { posed: 0, hints: 0, target: [...req.prompt.matchAll(/^(n_\w+) \|/gm)].map((m) => m[1]).slice(0, 1) }
       state.set(req.conversationId, st)
-      return { data: req.schema.parse(turn(req.prompt, st)), conversationId: req.conversationId, engine: 'claude' as const }
+      return { data: req.schema.parse(turn(req.prompt, st)), conversationId: req.conversationId, model: 'fake-tutor', engine: 'fake-tutor' }
     }) as Bridge['converse'],
     ask: (async (req: { prompt: string; schema?: { parse(x: unknown): unknown } }) => {
       await new Promise((r) => setTimeout(r, 50))
@@ -42,11 +42,12 @@ export function fakeTutor(): Pick<Bridge, 'converse' | 'ask'> {
             ]
           }),
           fromCache: false,
-          engine: 'claude' as const
+          model: 'fake-tutor',
+          engine: 'fake-tutor'
         }
       if (req.prompt.startsWith('Correggi questa prova'))
-        return { data: parse({ items: [{ id: 'e1', points: 12, comment: 'Corretto.' }, { id: 'e2', points: 9, comment: 'Manca la derivabilità.', miss: 'execution' }], note: 'Riprendi le ipotesi di Rolle.' }), fromCache: false, engine: 'claude' as const }
-      return { data: parse({ readable: true, text: '$|\\sin a - \\sin b| = |\\cos c|\\,|a-b| \\le |a-b|$' }), fromCache: false, engine: 'claude' as const }
+        return { data: parse({ items: [{ id: 'e1', points: 12, comment: 'Corretto.' }, { id: 'e2', points: 9, comment: 'Manca la derivabilità.', miss: 'execution' }], note: 'Riprendi le ipotesi di Rolle.' }), fromCache: false, model: 'fake-tutor', engine: 'fake-tutor' }
+      return { data: parse({ readable: true, text: '$|\\sin a - \\sin b| = |\\cos c|\\,|a-b| \\le |a-b|$' }), fromCache: false, model: 'fake-tutor', engine: 'fake-tutor' }
     }) as Bridge['ask']
   }
 }

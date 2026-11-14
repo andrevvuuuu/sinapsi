@@ -4,7 +4,6 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildArgs } from '../../src/main/ai/engines'
 import { navigationDecision } from '../../src/main/navigation'
 import { matchNote } from '../../src/main/session/note-match'
 import { createSessionRunner } from '../../src/main/session/runner'
@@ -59,11 +58,5 @@ describe('phase 2 review fixes', () => {
     const n = (title: string) => ({ path: `/v/${title}.md`, title, folder: '', tags: [], aliases: [], links: [], headings: [], blockIds: [], subject: null, mtime: 0, size: 0, available: true })
     const idx: VaultIndex = { root: '/v', scannedAt: 0, subjects: [], notes: [n('Teorema 3.8'), n('Numeri Naturali')] }
     expect(matchNote(idx, 'Teorema di Lagrange')).toBeNull()
-  })
-
-  it('locks the tutor out of every tool and MCP server', () => {
-    const { args } = buildArgs('claude', 'x', { conversation: { id: 'a', resume: false } })
-    expect(args[args.indexOf('--tools') + 1]).toBe('')
-    expect(args).toContain('--strict-mcp-config')
   })
 })

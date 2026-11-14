@@ -54,7 +54,7 @@ describe('review fixes (phase 3)', () => {
       calls++
       if (calls === 1) throw new Error('prima')
       await gate
-      return { data: parseNota(raw), fromCache: false, engine: 'agy' as const }
+      return { data: parseNota(raw), fromCache: false, engine: 'openrouter' as const }
     })
     const note = { path: '/v/a.md', title: 'A', folder: '', tags: [], aliases: [], links: [], headings: [], blockIds: [], subject: null, mtime: 1, size: 1, available: true }
     const g = createNoteGenerator({

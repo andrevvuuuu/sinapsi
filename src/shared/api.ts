@@ -1,4 +1,4 @@
-import type { Engine, Settings } from './settings-schema'
+import type { Settings } from './settings-schema'
 import type { VaultIndex } from './vault-types'
 import type { LearnerAnswer } from './teacher-protocol'
 import type { SessionState, SessionSummary } from '../main/session/events'
@@ -24,7 +24,8 @@ export type { LessonEntry, LessonEvent, LaunchDestination, PacerType, MasteryLev
 export type GraphPositions = Record<string, [number, number]>
 export type NoteRequest = { sourcePath?: string; sessionId?: string }
 
-export type EngineStatus = 'idle' | 'busy' | 'auth' | 'missing' | 'error'
+export type OpenRouterStatus = 'idle' | 'busy' | 'no-key' | 'error'
+export type EngineStatus = OpenRouterStatus
 export type VaultResult = VaultIndex | { error: 'missing' | 'unreadable'; path: string }
 
 export const CH = {
@@ -35,6 +36,10 @@ export const CH = {
   vaultChanged: 'vault:changed',
   aiStatus: 'ai:status',
   aiStatusChanged: 'ai:status-changed',
+  aiHasKey: 'ai:has-key',
+  aiSetKey: 'ai:set-key',
+  aiVerifyKey: 'ai:verify-key',
+  aiListModels: 'ai:list-models',
   openExternal: 'app:open-external',
   sessionStart: 'session:start',
   sessionList: 'session:list',
@@ -123,8 +128,12 @@ export interface SinapsiApi {
     onChange(cb: (index: VaultIndex) => void): () => void
   }
   ai: {
-    status(): Promise<Record<Engine, EngineStatus>>
-    onStatus(cb: (s: Record<Engine, EngineStatus>) => void): () => void
+    status(): Promise<OpenRouterStatus>
+    onStatus(cb: (s: OpenRouterStatus) => void): () => void
+    hasKey(): Promise<boolean>
+    setKey(key: string): Promise<boolean>
+    verifyKey(key?: string): Promise<{ ok: boolean; label?: string; usage?: number; limit?: number | null; error?: string }>
+    listModels(): Promise<Array<{ id: string; name: string }>>
   }
   app: { openExternal(url: string): Promise<void> }
   session: {
@@ -180,7 +189,7 @@ export interface SinapsiApi {
       answer: string
       confidence: number
     }): Promise<import('../main/memory/review').GradeResult>
-    /** "Spiegalo tu": the whole dialogue so far, Andrea's last turn included. */
+    /** "Spiegalo tu": the whole dialogue so far, the learner's last turn included. */
     explain(req: {
       conceptId: string
       exercise: import('./exercise-schema').Exercise

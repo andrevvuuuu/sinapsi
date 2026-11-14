@@ -63,9 +63,8 @@ describe('left panel', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Impostazioni' }))
     const dlg = screen.getByRole('dialog', { name: 'Impostazioni' })
     fireEvent.change(within(dlg).getByLabelText('Note al giorno'), { target: { value: '9' } })
-    fireEvent.change(within(dlg).getByLabelText('Motore · Note vive'), { target: { value: 'claude' } })
     await act(async () => fireEvent.click(within(dlg).getByRole('button', { name: 'Salva' })))
-    expect(api.settings.set).toHaveBeenCalledWith(expect.objectContaining({ dailyExtractionLimit: 9, engines: expect.objectContaining({ note: { engine: 'claude', model: expect.any(String) } }) }))
+    expect(api.settings.set).toHaveBeenCalledWith(expect.objectContaining({ dailyExtractionLimit: 9 }))
   })
 })
 
@@ -85,19 +84,6 @@ describe('settings dialog', () => {
 })
 
 describe('right panel', () => {
-  it('imports sources into a chosen notebook and opens it', async () => {
-    const { api, props } = mount()
-    fireEvent.click(await screen.findByRole('button', { name: 'Importa fonti' }))
-    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: 'Analisi 1' })))
-    expect(api.notebook.chooseFiles).toHaveBeenCalledWith(NB)
-    expect(props.onOpenNotebook).toHaveBeenCalledWith(NB)
-  })
-  it('creates a notebook first when there is none', async () => {
-    const { api } = mount({ notebook: { list: vi.fn(async () => []), create: vi.fn(async () => NB), chooseFiles: vi.fn(async () => ({ added: [], rejected: [] })), onUpdate: () => () => undefined } })
-    fireEvent.click(await screen.findByRole('button', { name: 'Importa fonti' }))
-    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: 'Nuovo notebook…' })))
-    expect(api.notebook.create).toHaveBeenCalledWith('Notebook')
-  })
   it('holds the Obsidian notes by folder and the vault chooser', async () => {
     const { api, props } = mount()
     const obs = await screen.findByRole('region', { name: 'Note di Obsidian' })

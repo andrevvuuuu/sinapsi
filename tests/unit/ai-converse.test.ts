@@ -1,65 +1,128 @@
 import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import { createBridge, type SpawnFn } from '../../src/main/ai/bridge'
-import { DEFAULT_ENGINES } from '../../src/shared/settings-schema'
+import { createBridge } from '../../src/main/ai/bridge'
+import { DEFAULT_MODELS } from '../../src/shared/settings-schema'
+import * as openrouter from '../../src/main/ai/openrouter'
+
+vi.mock('../../src/main/ai/openrouter', async (importOriginal) => {
+  const actual = await importOriginal<typeof openrouter>()
+  return {
+    ...actual,
+    chatCompletion: vi.fn()
+  }
+})
 
 const Schema = z.object({ n: z.number() })
 const JS = { type: 'object' }
-const claudeOut = (extra: object) => ({ stdout: JSON.stringify({ is_error: false, result: '', session_id: 'sid-1', usage: { input_tokens: 1, output_tokens: 1 }, ...extra }), stderr: '', code: 0, timedOut: false })
-const agyOut = (response: string) => ({ stdout: JSON.stringify({ status: 'SUCCESS', response, conversation_id: 'conv-9', usage: { input_tokens: 1, output_tokens: 1 } }), stderr: '', code: 0, timedOut: false })
+const orOk = (text: string, model = 'anthropic/claude-sonnet-5.5') => ({
+  text,
+  inputTokens: 10,
+  outputTokens: 5,
+  model
+})
 
-async function make(spawn: SpawnFn, engines = DEFAULT_ENGINES) {
-  const dir = await mkdtemp(join(tmpdir(), 'sinapsi-conv-'))
-  return createBridge({ spawn, cacheDir: join(dir, 'c'), usageFile: join(dir, 'u.jsonl'), engines: async () => engines })
+let dir: string
+beforeEach(async () => {
+  dir = await mkdtemp(join(tmpdir(), 'sinapsi-conv-'))
+  vi.clearAllMocks()
+})
+
+async function make(apiKey = 'test-key') {
+  return createBridge({
+    cacheDir: join(dir, 'c'),
+    conversationsDir: join(dir, 'convs'),
+    usageFile: join(dir, 'u.jsonl'),
+    models: async () => DEFAULT_MODELS,
+    apiKey: async () => apiKey
+  })
 }
 
 describe('converse', () => {
-  it('starts a Claude conversation with id, system prompt, schema and no tools', async () => {
-    const calls: string[][] = []
-    const b = await make(async (_c, args) => (calls.push(args), claudeOut({ structured_output: { n: 1 } })))
-    const r = await b.converse({ task: 'teach', conversationId: 'sid-1', resume: false, systemPrompt: 'SYS', prompt: 'ciao', schema: Schema, jsonSchema: JS })
-    expect(r).toMatchObject({ data: { n: 1 }, conversationId: 'sid-1', engine: 'claude' })
-    const a = calls[0]
-    expect(a.slice(0, 2)).toEqual(['-p', 'ciao'])
-    expect(a[a.indexOf('--session-id') + 1]).toBe('sid-1')
-    expect(a[a.indexOf('--system-prompt') + 1]).toBe('SYS')
-    expect(JSON.parse(a[a.indexOf('--json-schema') + 1])).toEqual(JS)
-    expect(a[a.indexOf('--model') + 1]).toBe('sonnet')
-    expect(a).toContain('--disallowedTools')
-    expect(a[a.indexOf('--setting-sources') + 1]).toBe('')
+  it('starts an OpenRouter conversation with system prompt, schema and stores history', async () => {
+    vi.mocked(openrouter.chatCompletion).mockResolvedValueOnce(orOk('{"n":1}'))
+    const b = await make()
+    const r = await b.converse({
+      task: 'teach',
+      conversationId: 'sid-1',
+      resume: false,
+      systemPrompt: 'SYS',
+      prompt: 'ciao',
+      schema: Schema,
+      jsonSchema: JS
+    })
+    expect(r).toMatchObject({ data: { n: 1 }, conversationId: 'sid-1', model: DEFAULT_MODELS.teach })
+    expect(openrouter.chatCompletion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: DEFAULT_MODELS.teach,
+        messages: [
+          { role: 'system', content: 'SYS' },
+          { role: 'user', content: 'ciao' }
+        ]
+      })
+    )
   })
 
-  it('resumes without resending the system prompt', async () => {
-    const calls: string[][] = []
-    const b = await make(async (_c, args) => (calls.push(args), claudeOut({ result: '{"n":2}' })))
-    await b.converse({ task: 'teach', conversationId: 'sid-1', resume: true, systemPrompt: 'SYS', prompt: 'avanti', schema: Schema, jsonSchema: JS })
-    expect(calls[0][calls[0].indexOf('--resume') + 1]).toBe('sid-1')
-    expect(calls[0]).not.toContain('--system-prompt')
+  it('resumes with existing history and appends the new turn', async () => {
+    vi.mocked(openrouter.chatCompletion)
+      .mockResolvedValueOnce(orOk('{"n":1}'))
+      .mockResolvedValueOnce(orOk('{"n":2}'))
+
+    const b = await make()
+    await b.converse({
+      task: 'teach',
+      conversationId: 'sid-1',
+      resume: false,
+      systemPrompt: 'SYS',
+      prompt: 'ciao',
+      schema: Schema,
+      jsonSchema: JS
+    })
+
+    const r2 = await b.converse({
+      task: 'teach',
+      conversationId: 'sid-1',
+      resume: true,
+      systemPrompt: 'SYS',
+      prompt: 'avanti',
+      schema: Schema,
+      jsonSchema: JS
+    })
+    expect(r2.data).toEqual({ n: 2 })
+    expect(openrouter.chatCompletion).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        messages: [
+          { role: 'system', content: 'SYS' },
+          { role: 'user', content: 'ciao' },
+          { role: 'assistant', content: '{"n":1}' },
+          { role: 'user', content: 'avanti' }
+        ]
+      })
+    )
   })
 
-  it('retries an invalid reply inside the same conversation', async () => {
-    const calls: string[][] = []
-    const replies = [claudeOut({ result: 'boh' }), claudeOut({ result: '{"n":3}' })]
-    const b = await make(async (_c, args) => (calls.push(args), replies.shift()!))
-    const r = await b.converse({ task: 'teach', conversationId: 'sid-1', resume: false, systemPrompt: 'SYS', prompt: 'x', schema: Schema, jsonSchema: JS })
+  it('retries an invalid reply inside the conversation', async () => {
+    vi.mocked(openrouter.chatCompletion)
+      .mockResolvedValueOnce(orOk('invalid-json'))
+      .mockResolvedValueOnce(orOk('{"n":3}'))
+
+    const b = await make()
+    const r = await b.converse({
+      task: 'teach',
+      conversationId: 'sid-1',
+      resume: false,
+      systemPrompt: 'SYS',
+      prompt: 'x',
+      schema: Schema,
+      jsonSchema: JS
+    })
     expect(r.data).toEqual({ n: 3 })
-    expect(calls[1]).toContain('--resume')
-    expect(calls[1][1]).toContain('non era valida')
+    expect(openrouter.chatCompletion).toHaveBeenCalledTimes(2)
   })
 
-  it('uses --conversation to resume with agy', async () => {
-    const calls: string[][] = []
-    const engines = { ...DEFAULT_ENGINES, teach: { engine: 'agy' as const } }
-    const b = await make(async (_c, args) => (calls.push(args), agyOut('{"n":4}')), engines)
-    const r = await b.converse({ task: 'teach', conversationId: 'conv-9', resume: true, systemPrompt: 'SYS', prompt: 'x', schema: Schema, jsonSchema: JS })
-    expect(r).toMatchObject({ data: { n: 4 }, conversationId: 'conv-9', engine: 'agy' })
-    expect(calls[0][calls[0].indexOf('--conversation') + 1]).toBe('conv-9')
-  })
-
-  it('defaults the teacher to Claude Sonnet', () => {
-    expect(DEFAULT_ENGINES.teach).toEqual({ engine: 'claude', model: 'sonnet' })
+  it('defaults the teacher to the configured model', () => {
+    expect(DEFAULT_MODELS.teach).toBe('anthropic/claude-sonnet-5.5')
   })
 })
