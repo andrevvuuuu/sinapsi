@@ -1744,3 +1744,14 @@ button.mt-chip:active {
 .pr .lg-content.pr-setup{background:transparent}
 .pr .pr-setup .shell:not(.lg-surface){border:0;border-radius:22px;background:var(--sh-shell-bg);box-shadow:var(--sh-spec),var(--sh-shell-shadow)}
 .pr .pr-setup .shell > .inner{border:0;box-shadow:none}
+
+/* Session mode cards follow the shell palette in both themes. */
+.pr .mode:not([aria-checked='true']){border:0;background:color-mix(in srgb,var(--sh-inner-bg) 55%,transparent);box-shadow:var(--sh-inner-shadow);color:var(--sh-text)}
+.pr .mode:not([aria-checked='true']) b{color:var(--sh-text)}
+.pr .mode:not([aria-checked='true']) small{color:var(--sh-text-2,#8E95A5)}
+.pr .mode:not([aria-checked='true']) .tick{border:1.5px solid var(--sh-text-2,#8E95A5);background:transparent;box-shadow:none}
+.pr .mode:not([aria-checked='true']):hover{background:color-mix(in srgb,var(--sh-inner-bg) 72%,transparent);border:0}
+.pr .mode[aria-checked='true'],.pr .mode.exam[aria-checked='true']{border:0;background:var(--sh-send-bg);color:#fff}
+.pr .mode[aria-checked='true'] b,.pr .mode.exam[aria-checked='true'] b{color:#fff}
+.pr .mode[aria-checked='true'] small,.pr .mode.exam[aria-checked='true'] small{color:rgba(255,255,255,.78)}
+.pr .mode[aria-checked='true'] .tick,.pr .mode.exam[aria-checked='true'] .tick{border:1.5px solid #fff;background:#fff;box-shadow:inset 0 0 0 3px var(--sh-send-bg)}

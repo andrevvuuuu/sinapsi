@@ -3,7 +3,6 @@ import type { VaultIndex } from '../../../shared/vault-types'
 import type { EngineStatus as Status, LessonEntry } from '../../../shared/api'
 import { NoteTree } from '../home/NoteTree'
 import { buildTree } from '../home/build-tree'
-import { EngineStatus } from '../home/EngineStatus'
 import { AIStatusPopover } from './AIStatusPopover'
 import { LogoMark } from '../home/LogoMark'
 import {
@@ -307,9 +306,6 @@ export function Sidebar(p: {
             </button>
           )}
         </section>
-      </div>
-      <div className="sh-tree-status" aria-hidden="true">
-        <EngineStatus status={p.status} />
       </div>
       </div>
       )}
