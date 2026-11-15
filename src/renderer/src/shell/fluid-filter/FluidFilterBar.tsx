@@ -8,6 +8,7 @@ import {
   generateCapsuleSilhouettePath,
   generateMetaballBridgePath,
   generateDropletTipPath,
+  generateInactivePillPath,
 } from './motionMath';
 
 export interface FluidFilterBarProps {
@@ -19,7 +20,6 @@ export interface FluidFilterBarProps {
   height?: number;
   className?: string;
 }
-
 
 let measurementCanvas: HTMLCanvasElement | null = null;
 let measurementContext: CanvasRenderingContext2D | null = null;
@@ -84,6 +84,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
   const counterFontSize = Math.max(13, Math.round(height * 0.395));
   const labelFontSize = Math.max(12, Math.round(height * 0.34));
   const gap = Math.max(8, Math.round(height * 0.26));
+  const maxBridgeDistance = Math.round(height * 0.61);
 
   const [fontsLoaded, setFontsLoaded] = useState(false);
   useEffect(() => {
@@ -96,7 +97,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
   const chipWidths = useMemo(() => {
     const map: { [id: string]: number } = {};
     const font = getAppSansFont(600, chipFontSize);
-    const horizontalPadding = Math.round(height * 0.84); // 32px at height 38 (16px per side)
+    const horizontalPadding = Math.round(height * 0.84); // 32px at height 38
 
     for (const item of items) {
       const textWidth = measureTextWidth(item.label, font);
@@ -105,7 +106,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
     return map;
   }, [items, height, chipFontSize, fontsLoaded]);
 
-  // Compute width for results badge by measuring counter digits + label
+  // Compute width for results badge by measuring counter digits + label with scratch baseline
   const resultsWidth = useMemo(() => {
     const font = getAppSansFont(500, labelFontSize);
     const countText = count != null ? String(count) : '—';
@@ -114,8 +115,9 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
     const labelWidth = measureTextWidth(label, font);
     const padLeft = Math.round(height * 0.38);
     const padRight = Math.round(height * 0.28);
-
-    return Math.ceil(digitsWidth + gapBetween + labelWidth + padLeft + padRight);
+    const measured = Math.ceil(digitsWidth + gapBetween + labelWidth + padLeft + padRight);
+    const baseline = Math.round(height * 3.0);
+    return Math.max(baseline, measured);
   }, [count, label, height, counterFontSize, labelFontSize, fontsLoaded]);
 
   // Total intrinsic width of the component (no horizontal overflow)
@@ -210,7 +212,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
     [currentActiveId, displayOrder, computeTargetPositions]
   );
 
-  // Spring animation loop
+  // Spring animation loop (identical physics constants to scratch)
   useEffect(() => {
     let animId: number;
     const k = DEFAULT_PHYSICS.flipSpring.stiffness; // 420
@@ -223,6 +225,10 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
       const nextPos: { [id: string]: number } = { ...positionsRef.current };
 
       for (const id of Object.keys(targets)) {
+        if (inkRafRef.current[id]) {
+          // Lockstep with fluid wave glide
+          continue;
+        }
         const targetX = targets[id];
         let currentX = nextPos[id] ?? targetX;
         let v = velocitiesRef.current[id] ?? 0;
@@ -233,7 +239,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
         v += a * dt;
         currentX += v * dt;
 
-        if (Math.abs(dist) > 0.4 || Math.abs(v) > 0.4) {
+        if (Math.abs(dist) > 0.3 || Math.abs(v) > 0.3) {
           isSettled = false;
         } else {
           currentX = targetX;
@@ -247,12 +253,12 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
       positionsRef.current = nextPos;
       setPositions(nextPos);
 
-      // Handle droplet tip snap recoil decay synchronously
+      // Droplet tip snap recoil decay (0.70 factor identical to scratch)
       let recoilChanged = false;
       const nextRecoil: { [k: string]: number } = {};
       for (const [kId, val] of Object.entries(snapRecoilRef.current)) {
-        if (val > 0.5) {
-          nextRecoil[kId] = val * 0.72; // spring recoil decay
+        if (val > 0.4) {
+          nextRecoil[kId] = val * 0.70;
           recoilChanged = true;
           isSettled = false;
         }
@@ -265,16 +271,18 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
       if (!isSettled) {
         animId = requestAnimationFrame(tick);
       } else {
-        setMovingId(null);
-        setOutgoingMovingId(null);
+        if (movingId && !inkRafRef.current[movingId]) {
+          setMovingId(null);
+          setOutgoingMovingId(null);
+        }
       }
     };
 
     animId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animId);
-  }, [targets]);
+  }, [targets, movingId]);
 
-  // Single-select mode switcher
+  // Single-select mode switcher matching scratch fluid physics
   const selectMode = useCallback(
     (id: string, isUserAction: boolean) => {
       const incomingId = id;
@@ -312,23 +320,24 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
         return;
       }
 
-      // Reorder display order: [nuova, ...altre inattive, vecchia]
-      setDisplayOrder((prev) => {
-        const otherInactive = prev.filter((item) => item !== incomingId && item !== outgoingId);
-        return [incomingId, ...otherInactive, outgoingId];
-      });
+      // Reorder display order: [incoming, ...otherInactive, outgoing]
+      const otherInactive = displayOrder.filter((item) => item !== incomingId && item !== outgoingId);
+      const nextOrder = [incomingId, ...otherInactive, outgoingId];
+      setDisplayOrder(nextOrder);
 
       // Set moving chips
       setMovingId(incomingId);
       setOutgoingMovingId(outgoingId);
 
-      // Trigger meniscus snap recoil for outgoing chip
-      snapRecoilRef.current = { [outgoingId]: 18 };
-      setSnapRecoil({ [outgoingId]: 18 });
+      // Trigger meniscus snap recoil for outgoing chip matching scratch height * 0.16
+      const recoilVal = Math.round(height * 0.16);
+      snapRecoilRef.current = { [outgoingId]: recoilVal };
+      setSnapRecoil({ [outgoingId]: recoilVal });
 
-      // Animate ink drain on outgoing chip
+      // Animate ink drain on outgoing chip (duration 0.85 * 380ms)
       if (inkRafRef.current[outgoingId]) {
         cancelAnimationFrame(inkRafRef.current[outgoingId]);
+        delete inkRafRef.current[outgoingId];
       }
       const initialDrainProgress = inkStateRef.current[outgoingId]?.progress ?? 1;
       setInkState((prev) => {
@@ -355,14 +364,22 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
         });
         if (p < 1) {
           inkRafRef.current[outgoingId] = requestAnimationFrame(animateDrain);
+        } else {
+          delete inkRafRef.current[outgoingId];
         }
       };
       inkRafRef.current[outgoingId] = requestAnimationFrame(animateDrain);
 
-      // Animate ink fill on incoming chip
+      // Animate ink fill and physical glide on incoming chip
       if (inkRafRef.current[incomingId]) {
         cancelAnimationFrame(inkRafRef.current[incomingId]);
+        delete inkRafRef.current[incomingId];
       }
+
+      const nextTargets = computeTargetPositions(incomingId, nextOrder);
+      const startX = positionsRef.current[incomingId] ?? nextTargets[incomingId] ?? 0;
+      const targetX = nextTargets[incomingId] ?? startX;
+
       const initialFillProgress = inkStateRef.current[incomingId]?.progress ?? 0;
       setInkState((prev) => {
         const next = {
@@ -378,6 +395,12 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
         const elapsed = time - fillStart;
         const p = Math.min(1, elapsed / fillDuration);
         const easedP = Math.sin((p * Math.PI) / 2);
+
+        // Smooth physical glide in lockstep with ink wave (matching scratch)
+        const currentX = startX + (targetX - startX) * easedP;
+        positionsRef.current[incomingId] = currentX;
+        setPositions((prev) => ({ ...prev, [incomingId]: currentX }));
+
         const progress = initialFillProgress + (1 - initialFillProgress) * easedP;
         setInkState((prev) => {
           const next = {
@@ -389,6 +412,12 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
         });
         if (p < 1) {
           inkRafRef.current[incomingId] = requestAnimationFrame(animateFill);
+        } else {
+          delete inkRafRef.current[incomingId];
+          positionsRef.current[incomingId] = targetX;
+          setPositions((prev) => ({ ...prev, [incomingId]: targetX }));
+          setMovingId(null);
+          setOutgoingMovingId(null);
         }
       };
       inkRafRef.current[incomingId] = requestAnimationFrame(animateFill);
@@ -397,7 +426,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
         onSelect?.(incomingId);
       }
     },
-    [isReduced, computeTargetPositions, onSelect]
+    [isReduced, displayOrder, height, computeTargetPositions, onSelect]
   );
 
   // Sync external controlled prop activeId without echoing back to onSelect
@@ -465,7 +494,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
   };
 
   const handleChipPointerLeave = (id: string): void => {
-    if (id === currentActiveId) {
+    if (id === currentActiveId && isCurrentActiveDocked) {
       setActiveCapsuleHover(null);
     } else {
       setHoverStates((prev) => ({
@@ -504,11 +533,10 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
   }, [isCurrentActiveDocked, currentActiveId, resultsWidth, chipWidths]);
 
   const dividerPositions = useMemo(() => {
-    if (!isCurrentActiveDocked) return [];
     return [resultsWidth];
-  }, [isCurrentActiveDocked, resultsWidth]);
+  }, [resultsWidth]);
 
-  // Compute metaball bridges and droplet recoil
+  // Compute metaball bridges and droplet recoil matching scratch
   const bridgeData = useMemo(() => {
     if (!movingId && !outgoingMovingId) return null;
 
@@ -517,28 +545,71 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
     let dropletLeft = '';
     let dropletRight = '';
 
-    // Incoming chip metaball bridge (Frame 34 & 66)
+    // Incoming chip: circular tangency coalescence
     if (movingId) {
-      const movingX = positions[movingId] ?? 0;
+      const movingX = positions[movingId] ?? targets[movingId] ?? 0;
+      const ink = inkState[movingId] || { progress: 0, direction: 'fill' };
+      const p = Math.max(0, Math.min(1, ink.progress));
+
+      const alpha = Math.min(Math.PI / 2, (p / 0.40) * (Math.PI / 2));
+      const cosA = Math.cos(alpha);
+      const sinA = Math.sin(alpha);
+
+      // Contact points on the semicircular caps
+      const leftX = capsuleEdge - radius * (1 - cosA);
+      const rightX = movingX + radius * (1 - cosA);
+      const anchorTopY = radius * (1 - sinA);
+      const anchorBotY = height - anchorTopY;
+
+      // Waist grows smoothly from initial contact to full height
+      const minWaist = Math.max(16, Math.round(height * 0.15));
+      const easeW = Math.sin(alpha);
+      const waist = minWaist + (height - minWaist) * easeW;
+
+      if (alpha >= Math.PI / 2 - 0.001) {
+        // FULLY COALESCED: strictly horizontal top and bottom, 100% flush
+        bridgePath = `M ${leftX.toFixed(1)} 0 H ${rightX.toFixed(1)} V ${height} H ${leftX.toFixed(1)} Z`;
+      } else {
+        const waistTopY = (height - waist) / 2;
+        const waistBotY = height - waistTopY;
+        const midX = (leftX + rightX) / 2;
+        const cp1x = leftX + (midX - leftX) * 0.45;
+        const cp2x = midX - (midX - leftX) * 0.45;
+        const cp3x = midX + (rightX - midX) * 0.45;
+        const cp4x = rightX - (rightX - midX) * 0.45;
+
+        bridgePath = [
+          `M ${leftX.toFixed(1)} ${anchorTopY.toFixed(1)}`,
+          `C ${cp1x.toFixed(1)} ${anchorTopY.toFixed(1)}, ${cp2x.toFixed(1)} ${waistTopY.toFixed(1)}, ${midX.toFixed(1)} ${waistTopY.toFixed(1)}`,
+          `C ${cp3x.toFixed(1)} ${waistTopY.toFixed(1)}, ${cp4x.toFixed(1)} ${anchorTopY.toFixed(1)}, ${rightX.toFixed(1)} ${anchorTopY.toFixed(1)}`,
+          `L ${rightX.toFixed(1)} ${anchorBotY.toFixed(1)}`,
+          `C ${cp4x.toFixed(1)} ${anchorBotY.toFixed(1)}, ${cp3x.toFixed(1)} ${waistBotY.toFixed(1)}, ${midX.toFixed(1)} ${waistBotY.toFixed(1)}`,
+          `C ${cp2x.toFixed(1)} ${waistBotY.toFixed(1)}, ${cp1x.toFixed(1)} ${anchorBotY.toFixed(1)}, ${leftX.toFixed(1)} ${anchorBotY.toFixed(1)}`,
+          'Z',
+        ].join(' ');
+      }
+    } else if (outgoingMovingId) {
+      // Outgoing chip undock bridge
+      const movingX = positions[outgoingMovingId] ?? 0;
       const dist = movingX - capsuleEdge;
-      if (dist > 0 && dist <= 85) {
-        bridgePath = generateMetaballBridgePath(capsuleEdge, movingX, height / 2, height, 85);
+      if (dist > 0.01 && dist <= maxBridgeDistance) {
+        bridgePath = generateMetaballBridgePath(capsuleEdge, movingX, height / 2, height, maxBridgeDistance, 'undock');
       }
     }
 
-    // Outgoing chip meniscus snap droplets (Frame 70)
+    // Outgoing chip meniscus snap droplets (Frames 70-74)
     const recoilId = outgoingMovingId || movingId;
     if (recoilId) {
       const recoil = snapRecoil[recoilId] || 0;
       const recoilX = positions[recoilId] ?? 0;
-      if (recoil > 0.5) {
+      if (recoil > 0.4) {
         dropletLeft = generateDropletTipPath(capsuleEdge + recoil, height / 2, capsuleEdge, height, 'pointing-right');
         dropletRight = generateDropletTipPath(recoilX - recoil, height / 2, recoilX, height, 'pointing-left');
       }
     }
 
     return { bridgePath, dropletLeft, dropletRight };
-  }, [movingId, outgoingMovingId, positions, resultsWidth, height, snapRecoil]);
+  }, [movingId, outgoingMovingId, positions, targets, resultsWidth, height, maxBridgeDistance, radius, snapRecoil, inkState]);
 
   const capsuleSilhouette = generateCapsuleSilhouettePath(
     capsuleWidth,
@@ -567,8 +638,8 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
         outline: 'none',
       }}
     >
-      {/* SVG Gooey Filter Definition */}
-      <GooeyFilterDef id={filterId} stdDeviation={(10 * height) / 140} />
+      {/* SVG Gooey Filter Definition (stdDeviation 6 identical to scratch) */}
+      <GooeyFilterDef id={filterId} stdDeviation="6" />
 
       {/* =========================================================================
           LAYER 1: LIQUID SILHOUETTE CANVAS (GOOEY / METABALL FILTER)
@@ -597,19 +668,34 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
           }}
         >
           {/* Active Unified Capsule Silhouette */}
-          <path d={capsuleSilhouette} style={{ fill: COLOR_PALETTE.ink }} />
+          <path d={capsuleSilhouette} fill={COLOR_PALETTE.ink} />
 
-          {/* Dynamic Metaball Bridge between capsule and moving chip (Frame 34 & 66) */}
-          {bridgeData?.bridgePath && (
-            <path d={bridgeData.bridgePath} style={{ fill: COLOR_PALETTE.ink }} />
+          {/* Liquid fill of moving chip while mid-flight so bridge melts organically into it */}
+          {movingId && (
+            <g transform={`translate(${positions[movingId] ?? 0}, 0)`}>
+              <path
+                d={generateInactivePillPath(
+                  chipWidths[movingId] || Math.round(height * 2),
+                  height,
+                  radius
+                )}
+                clipPath={`url(#clip-ink-${movingId})`}
+                fill={COLOR_PALETTE.ink}
+              />
+            </g>
           )}
 
-          {/* Snapping Meniscus Droplet Tips upon detachment (Frame 70) */}
+          {/* Dynamic Metaball Bridge between capsule and moving chip */}
+          {bridgeData?.bridgePath && (
+            <path d={bridgeData.bridgePath} fill={COLOR_PALETTE.ink} />
+          )}
+
+          {/* Snapping Meniscus Droplet Tips upon detachment */}
           {bridgeData?.dropletLeft && (
-            <path d={bridgeData.dropletLeft} style={{ fill: COLOR_PALETTE.ink }} />
+            <path d={bridgeData.dropletLeft} fill={COLOR_PALETTE.ink} />
           )}
           {bridgeData?.dropletRight && (
-            <path d={bridgeData.dropletRight} style={{ fill: COLOR_PALETTE.ink }} />
+            <path d={bridgeData.dropletRight} fill={COLOR_PALETTE.ink} />
           )}
         </svg>
       </div>
@@ -650,32 +736,47 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
             digitHeight={Math.round(height * 0.52)}
             fontSize={counterFontSize}
             labelFontSize={labelFontSize}
+            digitColor={COLOR_PALETTE.textActive}
+            labelColor={COLOR_PALETTE.activeSecondary}
           />
         </div>
 
         {/* Vertical Divider */}
         <AnimatePresence>
-          {isCurrentActiveDocked && (
-            <motion.div
-              key="capsule-divider"
-              initial={{ opacity: 0, scaleY: 0 }}
-              animate={{ opacity: 1, scaleY: 1 }}
-              exit={{ opacity: 0, scaleY: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              style={{
-                position: 'absolute',
-                left: `${resultsWidth}px`,
-                top: `${Math.round(height * 0.24)}px`,
-                width: '1.5px',
-                height: `${Math.round(height * 0.52)}px`,
-                backgroundColor: COLOR_PALETTE.divider,
-                borderRadius: '9999px',
-                zIndex: 25,
-                transformOrigin: 'center',
-                pointerEvents: 'none',
-              }}
-            />
-          )}
+          {dividerPositions.map((xPos) => {
+            let opacity = 1;
+            if (movingId && movingId === currentActiveId) {
+              const movingTargetX = targets[movingId];
+              if (Math.abs(xPos - movingTargetX) < 2) {
+                const p = inkState[movingId]?.progress ?? 0;
+                if (p < 0.35) opacity = 0;
+                else opacity = Math.min(1, (p - 0.35) / 0.40);
+              }
+            }
+            if (opacity <= 0.01) return null;
+
+            return (
+              <motion.div
+                key={`capsule-divider-${xPos}`}
+                initial={{ opacity: 0, scaleY: 0 }}
+                animate={{ opacity, scaleY: 1 }}
+                exit={{ opacity: 0, scaleY: 0 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                style={{
+                  position: 'absolute',
+                  left: `${xPos}px`,
+                  top: `${Math.round(height * 0.25)}px`,
+                  width: height >= 120 ? '3.5px' : '3px',
+                  height: `${Math.round(height * 0.50)}px`,
+                  backgroundColor: COLOR_PALETTE.divider,
+                  borderRadius: '9999px',
+                  zIndex: 25,
+                  transformOrigin: 'center',
+                  pointerEvents: 'none',
+                }}
+              />
+            );
+          })}
         </AnimatePresence>
 
         {/* Interactive Filter Chips in Spatial Display Order */}
@@ -704,7 +805,7 @@ export const FluidFilterBar: React.FC<FluidFilterBarProps> = ({
               }}
             >
               <ElasticChip
-                ref={(el) => {
+                chipRef={(el) => {
                   chipRefs.current[id] = el;
                 }}
                 id={id}

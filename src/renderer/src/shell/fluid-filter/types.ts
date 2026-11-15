@@ -5,31 +5,25 @@ export interface FilterItem {
 }
 
 export interface MouseCoords {
-  x: number; // normalized 0 to 1 across width
-  y: number; // normalized 0 to 1 across height
-  px: number; // pixel x within chip
-  py: number; // pixel y within chip
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+}
+
+export interface SpringConfig {
+  stiffness: number;
+  damping: number;
+  mass: number;
 }
 
 export interface PhysicalConstants {
   // FLIP spatial reordering physics
-  flipSpring: {
-    stiffness: number;
-    damping: number;
-    mass: number;
-  };
+  flipSpring: SpringConfig;
   // Roller counter digit scroll physics
-  rollerSpring: {
-    stiffness: number;
-    damping: number;
-    mass: number;
-  };
+  rollerSpring: SpringConfig;
   // Elastic hover deformation spring
-  hoverSpring: {
-    stiffness: number;
-    damping: number;
-    mass: number;
-  };
+  hoverSpring: SpringConfig;
   // Ink wave speed and duration
   inkDurationMs: number;
 }
@@ -42,7 +36,7 @@ export const DEFAULT_PHYSICS: PhysicalConstants = {
   },
   rollerSpring: {
     stiffness: 320,
-    damping: 24,
+    damping: 16.6,
     mass: 0.8,
   },
   hoverSpring: {
@@ -53,18 +47,30 @@ export const DEFAULT_PHYSICS: PhysicalConstants = {
   inkDurationMs: 380,
 };
 
+export interface ThemeColors {
+  background: string;
+  chipBackground: string;
+  activeCapsule: string;
+  activeText: string;
+  activeSecondary: string;
+  activeDivider: string;
+  inactiveBorder: string;
+  inactiveText: string;
+}
+
 export const COLOR_PALETTE = {
-  background: 'var(--sh-card-solid)',
-  ink: 'var(--sh-send-bg)',
-  textActive: 'var(--sh-card-solid)',
-  textSecondary: 'color-mix(in srgb, var(--sh-card-solid) 70%, transparent)',
-  divider: 'color-mix(in srgb, var(--sh-card-solid) 35%, transparent)',
-  borderInactive: 'var(--sh-send-bg)',
-  textInactive: 'var(--sh-text, var(--sh-send-bg))',
+  background: 'var(--sh-card-solid, #1C1F26)',
+  ink: 'var(--sh-send-bg, #7664c2)',
+  textActive: 'var(--sg-ink-active-text, #ffffff)',
+  textSecondary: 'var(--sh-text-2, rgba(236,236,239,0.7))',
+  activeSecondary: 'color-mix(in srgb, var(--sg-ink-active-text, #ffffff) 72%, transparent)',
+  divider: 'color-mix(in srgb, var(--sh-send-bg, #7664c2) 40%, transparent)',
+  borderInactive: 'var(--sh-send-bg, #7664c2)',
+  textInactive: 'var(--sh-text, #F3F4F6)',
 } as const;
 
 export const DEFAULT_STUDY_ITEMS: FilterItem[] = [
-  { id: 'Studia', label: 'Studia' },
-  { id: 'Esercitati', label: 'Esercitati' },
-  { id: 'Ripassa', label: 'Ripassa' },
+  { id: 'Studia', label: 'Studia', delta: 0 },
+  { id: 'Esercitati', label: 'Esercitati', delta: 1 },
+  { id: 'Ripassa', label: 'Ripassa', delta: 1 },
 ];

@@ -1426,11 +1426,11 @@ button.sh-brand .sh-brand-tag {
 .sh-shell .sh-sidebar{position:relative;width:64px;flex:0 0 64px;padding:12px 8px;background:transparent;border:0;overflow:visible;z-index:12;color:var(--sh-text)}
 .sh-shell .sh-sidebar.tree-open{width:304px;flex-basis:304px}
 .sh-shell .sh-sidebar.tree-closed{width:64px;flex-basis:64px}
-.sh-icon-rail{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;width:48px;flex:0 0 48px;align-self:flex-start;height:100%;padding:4px 0}
+.sh-icon-rail{position:relative;z-index:2;display:grid;grid-template-rows:1fr auto 1fr;justify-items:center;width:48px;flex:1 1 auto;min-height:0;height:100%;padding:4px 0}.sh-icon-rail > .sh-brand{align-self:start}.sh-icon-rail > .sh-rail-bottom{align-self:end}
 .sh-icon-rail .sh-brand{justify-content:center;width:40px;height:40px;margin:0 0 8px;padding:0;border-radius:50%;background:transparent}
 .sh-icon-rail .sh-brand strong,.sh-icon-rail .sh-brand-tag{display:none}
 .sh-icon-rail .sh-brand .logo-mark{width:25px;height:25px}
-.sh-icon-rail .sh-side-actions{display:flex;flex-direction:column;gap:8px;margin:auto 0}
+.sh-icon-rail .sh-side-actions{display:flex;flex-direction:column;gap:8px;margin-top:auto;margin-bottom:auto}
 .sh-icon-rail .sh-side-action,.sh-icon-rail .sh-settings{display:grid;place-items:center;flex:none;width:40px;height:40px;min-height:40px;padding:0;border:0;border-radius:50%;background:transparent;color:var(--sh-text-2);transition:background-color .18s ease,color .18s ease,transform .18s ease}
 .sh-icon-rail .sh-side-action span,.sh-icon-rail .sh-side-action small,.sh-icon-rail .sh-settings span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .sh-icon-rail .sh-side-action svg,.sh-icon-rail .sh-settings svg{width:19px;height:19px}
@@ -1439,7 +1439,8 @@ button.sh-brand .sh-brand-tag {
 .sh-icon-rail .sh-side-action.is-current{background:var(--sh-pill-on-bg);color:var(--sh-pill-on-ink)}
 .sh-icon-rail .sh-side-action.is-current svg{color:inherit}
 .sh-icon-rail .sh-tree-trigger{margin-top:4px}
-.sh-rail-spacer{flex:1}
+.sh-rail-spacer{flex:0}
+.sh-icon-rail .sh-rail-bottom{display:flex;flex-direction:column;align-items:center;gap:8px;flex:none;padding-bottom:4px}
 .sh-tree-panel{position:absolute;z-index:1;left:64px;top:8px;bottom:8px;display:flex;flex-direction:column;width:240px;padding:12px 12px 14px;border-radius:var(--sh-r-shell);background:var(--sh-shell-bg);backdrop-filter:var(--sh-blur);-webkit-backdrop-filter:var(--sh-blur);box-shadow:var(--sh-spec),var(--sh-shell-shadow);color:var(--sh-text);transform:translate3d(0,0,0);opacity:1;transition:transform .42s var(--sh-spring),opacity .2s ease;contain:paint;overflow:hidden}
 .sh-sidebar.tree-closed .sh-tree-panel{transform:translate3d(-18px,0,0);opacity:0;pointer-events:none}
 .sh-tree-panel .sh-sidebar-top{position:relative;margin:0;padding:0;border:0}

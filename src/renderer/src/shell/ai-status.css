@@ -1,0 +1,36 @@
+.ai-status-trigger{width:40px;height:40px;min-height:40px;flex:none;border-radius:50%;border:0;padding:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;position:relative;transition:background-color .18s ease,transform .18s ease;outline:none}
+.ai-status-trigger:hover{background:color-mix(in srgb,var(--sh-text,#ececef) 8%,transparent)}
+.ai-status-trigger:active{transform:scale(.95)}
+.ai-status-trigger:focus-visible{outline:var(--btn-focus-ring,2px solid var(--accent,#a596f0));outline-offset:2px}
+.ai-status-trigger[aria-expanded="true"]{background:color-mix(in srgb,var(--accent,#a596f0) 14%,transparent);box-shadow:0 0 0 1.5px var(--accent,#a596f0)}
+.ai-status-trigger-dot{width:5px;height:5px;border-radius:50%;flex:none;transition:background-color .2s ease,box-shadow .2s ease}
+.ai-status-popover{pointer-events:auto;user-select:none;-webkit-user-select:none;max-height:calc(100vh - 24px);display:flex;flex-direction:column}
+.ai-status-shell{width:280px;box-sizing:border-box;padding:6px;border-radius:20px;max-height:calc(100vh - 24px);overflow-y:auto;background:var(--sh-shell-bg,rgba(28,31,38,.75));backdrop-filter:var(--sh-blur,blur(20px) saturate(160%));-webkit-backdrop-filter:var(--sh-blur,blur(20px) saturate(160%));box-shadow:0 4px 6px -1px rgba(0,0,0,.2),0 20px 40px -8px rgba(0,0,0,.55),0 0 28px -4px color-mix(in srgb,var(--sh-violet,#a58bff) 14%,transparent),inset 0 1px 0 rgba(255,255,255,.08);color:var(--sh-text,var(--ink,#ececef));font-family:var(--sans)}
+[data-theme="trattato"] .ai-status-shell{box-shadow:0 4px 6px -1px rgba(0,0,0,.06),0 20px 40px -8px rgba(0,0,0,.14),0 0 24px -4px color-mix(in srgb,var(--accent,#5a48a8) 10%,transparent),inset 0 1px 0 rgba(255,255,255,.9)}
+.ai-status-core{border-radius:14px;background:var(--sh-inner-bg,rgba(40,44,54,.88));box-shadow:inset 0 1px 0 rgba(255,255,255,.05);padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+[data-theme="trattato"] .ai-status-core{box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+.ai-status-section{display:flex;flex-direction:column;gap:8px}
+.ai-status-header{display:flex;align-items:center;justify-content:space-between}
+.ai-status-title{font:600 11px/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--sh-text-2,var(--muted,#8E95A5))}
+.ai-status-engines{display:flex;flex-direction:column;gap:6px}
+.ai-status-engine-row{display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.ai-status-engine-name{font-weight:500;color:var(--sh-text,var(--ink,#ececef))}
+.ai-status-engine-pill{display:inline-flex;align-items:center;gap:6px}
+.ai-status-dot{width:6px;height:6px;border-radius:50%;flex:none}
+.ai-status-engine-status-text{font-size:12px;color:var(--sh-text-2,var(--muted,#8E95A5))}
+.ai-status-divider{height:1px;background:rgba(255,255,255,.06);margin:0 -4px}
+[data-theme="trattato"] .ai-status-divider{background:rgba(0,0,0,.08)}
+.ai-status-meters{display:flex;flex-direction:column;gap:10px}
+.ai-status-meter-item{display:flex;flex-direction:column;gap:4px}
+.ai-status-meter-info{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+.ai-status-meter-name{font-weight:500;color:var(--sh-text,var(--ink,#ececef))}
+.ai-status-meter-val{font-weight:600;font-family:var(--mono,'Geist Mono',monospace);font-variant-numeric:tabular-nums;font-size:12px}
+.ai-status-progress-track{width:100%;height:5px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;position:relative}
+[data-theme="trattato"] .ai-status-progress-track{background:rgba(0,0,0,.08)}
+.ai-status-progress-fill{height:100%;border-radius:999px;transition:width .3s ease}
+.ai-status-reset-hint{font-size:11px;color:var(--sh-text-2,var(--muted,#8E95A5));margin-top:1px;font-family:var(--sans)}
+.ai-status-rem-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 10px}
+.ai-status-rem-cell{display:flex;align-items:baseline;gap:6px}
+.ai-status-rem-num{font-family:var(--mono,'Geist Mono',monospace);font-weight:600;font-size:14px;color:var(--sh-text,var(--ink,#ececef));font-variant-numeric:tabular-nums}
+.ai-status-rem-label{font-size:12px;color:var(--sh-text-2,var(--muted,#8E95A5))}
+@media(prefers-reduced-motion:reduce){.ai-status-trigger,.ai-status-progress-fill{transition:none}}

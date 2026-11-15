@@ -4,6 +4,7 @@ import type { EngineStatus as Status, LessonEntry } from '../../../shared/api'
 import { NoteTree } from '../home/NoteTree'
 import { buildTree } from '../home/build-tree'
 import { EngineStatus } from '../home/EngineStatus'
+import { AIStatusPopover } from './AIStatusPopover'
 import { LogoMark } from '../home/LogoMark'
 import {
   IconArrange,
@@ -166,7 +167,6 @@ export function Sidebar(p: {
         >
           <LogoMark />
         </button>
-        <div className="sh-rail-spacer" />
         <nav className="sh-side-actions" aria-label="Azioni rapide">
           <button className={`sh-side-action ${p.current === 'home' ? 'is-current' : ''}`} aria-current={p.current === 'home' ? 'page' : undefined} type="button" onClick={p.onHome} aria-label="Oggi" title="Oggi"><IconToday /><span>Oggi</span></button>
           <button
@@ -205,9 +205,10 @@ export function Sidebar(p: {
             <span>Note</span>
           </button>
         </nav>
-        <div className="sh-rail-spacer" />
-        <EngineStatus status={p.status} />
-        <button type="button" className="sh-settings" onClick={p.onSettings} aria-label="Impostazioni" title="Impostazioni"><IconSettings /><span>Impostazioni</span></button>
+        <div className="sh-rail-bottom">
+          <AIStatusPopover status={p.status} />
+          <button type="button" className="sh-settings" onClick={p.onSettings} aria-label="Impostazioni" title="Impostazioni"><IconSettings /><span>Impostazioni</span></button>
+        </div>
       </div>
       {hasTree && (
         <div id="sh-tree-panel" className="sh-tree-panel">

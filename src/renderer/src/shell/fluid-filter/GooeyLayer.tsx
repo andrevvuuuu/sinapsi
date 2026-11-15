@@ -2,8 +2,7 @@ import React from 'react';
 
 export interface GooeyFilterDefProps {
   id?: string;
-  /** Blur radius, scaled from the scratch value (10 at 140 px) to the bar height. */
-  stdDeviation?: number;
+  stdDeviation?: number | string;
 }
 
 /**
@@ -15,7 +14,10 @@ export interface GooeyFilterDefProps {
  *
  * CRITICAL: Kept strictly separated from typography and divider layers to preserve 100% vector sharpness.
  */
-export const GooeyFilterDef: React.FC<GooeyFilterDefProps> = ({ id = 'gooey-filter', stdDeviation = 10 }) => {
+export const GooeyFilterDef: React.FC<GooeyFilterDefProps> = ({
+  id = 'gooey-filter',
+  stdDeviation = '6',
+}) => {
   return (
     <svg
       style={{
@@ -28,7 +30,7 @@ export const GooeyFilterDef: React.FC<GooeyFilterDefProps> = ({ id = 'gooey-filt
       aria-hidden="true"
     >
       <defs>
-        <filter id={id} x="-20%" y="-40%" width="140%" height="180%" colorInterpolationFilters="sRGB">
+        <filter id={id} colorInterpolationFilters="sRGB" x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur in="SourceGraphic" stdDeviation={stdDeviation} result="blur" />
           <feColorMatrix
             in="blur"
@@ -36,7 +38,7 @@ export const GooeyFilterDef: React.FC<GooeyFilterDefProps> = ({ id = 'gooey-filt
             values="1 0 0 0 0
                     0 1 0 0 0
                     0 0 1 0 0
-                    0 0 0 28 -10"
+                    0 0 0 22 -9"
             result="goo"
           />
           <feComposite in="SourceGraphic" in2="goo" operator="atop" />

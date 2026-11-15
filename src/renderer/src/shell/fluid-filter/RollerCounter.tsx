@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { COLOR_PALETTE, DEFAULT_PHYSICS } from './types';
+import { COLOR_PALETTE, DEFAULT_PHYSICS, SpringConfig } from './types';
 
 export interface RollerCounterProps {
   count: number | null;
@@ -8,6 +8,9 @@ export interface RollerCounterProps {
   digitHeight?: number;
   fontSize?: number;
   labelFontSize?: number;
+  digitColor?: string;
+  labelColor?: string;
+  springConfig?: SpringConfig;
 }
 
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -18,35 +21,46 @@ export const RollerCounter: React.FC<RollerCounterProps> = ({
   digitHeight = 20,
   fontSize = 15,
   labelFontSize = 13,
+  digitColor,
+  labelColor,
+  springConfig,
 }) => {
   const shouldReduce = useReducedMotion();
   const isReduced = Boolean(shouldReduce);
 
-  const digits = count != null ? Math.max(0, count).toString().split('').map(Number) : null;
+  const spring = springConfig ?? DEFAULT_PHYSICS.rollerSpring;
+  const safeCount = count != null ? Math.max(0, Math.round(count)) : null;
+  const digits = safeCount != null ? safeCount.toString().split('').map(Number) : null;
+  const totalDigits = digits ? digits.length : 1;
 
   return (
     <div
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: `${fontSize * 0.22}px`,
+        gap: `${Math.round(fontSize * 0.35)}px`,
         userSelect: 'none',
         lineHeight: 1,
+        fontVariantNumeric: 'tabular-nums',
+        fontFeatureSettings: '"tnum"',
         fontFamily: 'var(--sans)',
       }}
-      aria-label={count != null ? `${count} ${label}` : `— ${label}`}
+      aria-label={safeCount != null ? `${safeCount} ${label}` : `— ${label}`}
+      role="status"
     >
-      {/* Digit columns container */}
+      {/* Digit columns container with place-value stable keys */}
       <div style={{ display: 'inline-flex', alignItems: 'center' }}>
         {digits !== null ? (
           digits.map((digit, index) => {
-            const columnKey = `col-${digits.length - 1 - index}`;
+            const placeIndex = totalDigits - 1 - index;
+            const colKey = `digit-place-${placeIndex}`;
+
             return (
               <div
-                key={columnKey}
+                key={colKey}
                 style={{
                   height: `${digitHeight}px`,
-                  width: `${fontSize * 0.64}px`,
+                  width: `${Math.round(fontSize * 0.55)}px`,
                   overflow: 'hidden',
                   position: 'relative',
                   display: 'inline-block',
@@ -60,9 +74,11 @@ export const RollerCounter: React.FC<RollerCounterProps> = ({
                       ? { duration: 0 }
                       : {
                           type: 'spring',
-                          stiffness: DEFAULT_PHYSICS.rollerSpring.stiffness,
-                          damping: DEFAULT_PHYSICS.rollerSpring.damping,
-                          mass: DEFAULT_PHYSICS.rollerSpring.mass,
+                          stiffness: spring.stiffness,
+                          damping: spring.damping,
+                          mass: spring.mass,
+                          restDelta: 0.001,
+                          restSpeed: 0.01,
                         }
                   }
                   style={{
@@ -82,11 +98,13 @@ export const RollerCounter: React.FC<RollerCounterProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: COLOR_PALETTE.textActive,
+                        color: digitColor ?? COLOR_PALETTE.textActive,
                         fontSize: `${fontSize}px`,
                         fontWeight: 800,
                         lineHeight: `${digitHeight}px`,
-                        letterSpacing: '-0.03em',
+                        letterSpacing: '-0.025em',
+                        fontVariantNumeric: 'tabular-nums',
+                        fontFeatureSettings: '"tnum"',
                         fontFamily: 'var(--sans)',
                       }}
                     >
@@ -101,15 +119,17 @@ export const RollerCounter: React.FC<RollerCounterProps> = ({
           <div
             style={{
               height: `${digitHeight}px`,
-              width: `${fontSize * 0.64}px`,
+              width: `${Math.round(fontSize * 0.55)}px`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: COLOR_PALETTE.textActive,
+              color: digitColor ?? COLOR_PALETTE.textActive,
               fontSize: `${fontSize}px`,
               fontWeight: 800,
               lineHeight: `${digitHeight}px`,
-              letterSpacing: '-0.03em',
+              letterSpacing: '-0.025em',
+              fontVariantNumeric: 'tabular-nums',
+              fontFeatureSettings: '"tnum"',
               fontFamily: 'var(--sans)',
             }}
           >
@@ -121,13 +141,12 @@ export const RollerCounter: React.FC<RollerCounterProps> = ({
       {/* Label */}
       <span
         style={{
-          color: COLOR_PALETTE.textSecondary,
+          color: labelColor ?? COLOR_PALETTE.textSecondary,
           fontSize: `${labelFontSize}px`,
           fontWeight: 500,
-          letterSpacing: '-0.02em',
+          letterSpacing: '-0.01em',
           lineHeight: `${digitHeight}px`,
           display: 'inline-block',
-          transform: 'translateY(-1px)',
           fontFamily: 'var(--sans)',
         }}
       >
