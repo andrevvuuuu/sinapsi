@@ -132,6 +132,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
   }
 
   const isChoice = q.kind === 'choice'
+  const isGoal = q.role === 'goal'
   const ready = !answerBusy && (isChoice ? pick !== null : text.trim().length > 0)
   const send = (): void => {
     if (!ready) return
@@ -140,8 +141,10 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
       if (pick === 'idk') a.dontKnow = true
       else {
         a.choice = pick as number
-        a.confidence = confidence
-        if (text.trim()) a.text = text.trim()
+        if (!isGoal) {
+          a.confidence = confidence
+          if (text.trim()) a.text = text.trim()
+        }
       }
     } else a.text = text.trim()
     if (thoughts.trim()) a.thoughts = thoughts.trim()
@@ -192,7 +195,7 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
                   Non lo so
                 </button>
               </div>
-              {pick !== 'idk' && (
+              {!isGoal && pick !== 'idk' && (
                 <div className="conf">
                   <span className="lab" id="cf-l">
                     Fiducia
@@ -211,30 +214,32 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
               )}
             </>
           )}
-          <div className="think">
-            <label className="lab" htmlFor="th">
-              {isChoice ? 'Il tuo ragionamento' : 'La tua risposta'}
-            </label>
-            <div className="mic-field">
-              <textarea
-                id="th"
-                ref={answerField}
-                readOnly={answerBusy}
-                placeholder={
-                  isChoice
-                    ? 'Perché questa risposta? Quello che ti passa per la testa.'
-                    : q.role === 'recall'
-                      ? 'Tutto quello che ricordi, senza guardare.'
-                      : 'Scrivi come ti viene.'
-                }
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={onKey}
-              />
-              <MicButton dictation={answerMic} />
+          {(!isGoal || !isChoice) && (
+            <div className="think">
+              <label className="lab" htmlFor="th">
+                {isGoal ? 'Il tuo obiettivo' : isChoice ? 'Il tuo ragionamento' : 'La tua risposta'}
+              </label>
+              <div className="mic-field">
+                <textarea
+                  id="th"
+                  ref={answerField}
+                  readOnly={answerBusy}
+                  placeholder={
+                    isChoice
+                      ? 'Perché questa risposta? Quello che ti passa per la testa.'
+                      : q.role === 'recall'
+                        ? 'Tutto quello che ricordi, senza guardare.'
+                        : 'Scrivi come ti viene.'
+                  }
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={onKey}
+                />
+                <MicButton dictation={answerMic} />
+              </div>
+              <DictationError dictation={answerMic} />
             </div>
-            <DictationError dictation={answerMic} />
-          </div>
+          )}
         </div>
         <div className="act">
           <span className="hint">↵ invia · ⇧↵ a capo</span>

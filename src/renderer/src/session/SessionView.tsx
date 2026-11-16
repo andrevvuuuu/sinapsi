@@ -5,7 +5,7 @@ import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { useDockHeight } from '../components/useDockHeight'
 import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
-import { GlassShell, ScrollEdges, ViewScene } from '../components/glass'
+import { GlassShell, ViewScene } from '../components/glass'
 import { AnswerCard } from './AnswerCard'
 import { PlanMap } from './PlanMap'
 import { QuestionDock } from './QuestionDock'
@@ -91,27 +91,34 @@ export function SessionView({
     setFree('')
   }
 
+  const hasOperative = Boolean(
+    q || (s.awaiting === 'learner' && s.phase !== 'done') || s.phase === 'done'
+  )
+
   return (
     <ViewScene className="sess">
       <StudyPacer onEnd={onBack} />
       <GlassSurface render={<header />} radius={0} className="top drag glass-bar glass-text">
-        <button type="button" className="pill nodrag back-btn" onClick={onBack}>
+        <button type="button" className="nodrag back-btn" onClick={onBack}>
           ← Home
         </button>
         <h1>{s.topic}</h1>
-        <span className="phase">
+        <span className="phase mono">
           {s.items.length <= 1 && !s.hasTeacherTurn ? 'Obiettivo' : PHASE[s.phase]}
         </span>
         <span className="sp" />
         {(score.points > 0 || score.games > 0) && (
-          <span className="score-pill" aria-label="Punteggio">
+          <span className="score score-pill" aria-label="Punteggio">
             {`★ ${score.points} · serie ${score.streak}`}
           </span>
         )}
         {s.noteTitle && <span className="notechip">Dalla tua nota: {s.noteTitle}</span>}
       </GlassSurface>
-      <div className="body">
-        <GlassContent layout="scroll" className="scroll edge-fade" ref={scroller}>
+
+      <PlanMap plan={s.plan} current={s.currentNodeId} done={s.doneNodeIds} />
+
+      <main className="body split">
+        <GlassContent layout="scroll" className="scroll edge-fade" ref={scroller} aria-label="La lezione">
           <div className="col" aria-live="polite">
             {s.items.map((it, i) => {
               if (it.kind === 'teacher')
@@ -199,16 +206,13 @@ export function SessionView({
                   <i />
                   <i />
                 </span>
-                <span className="lab">Il tutor sta pensando…</span>
+                <span className="lab mono">Il tutor sta pensando…</span>
               </div>
             )}
           </div>
         </GlassContent>
-        {/* The library's scroll edge where the conversation passes under the bar and the dock. */}
-        {/* Top edge only, like every other view: a bottom edge under the question dock refracted the cards' borders into bright bands. */}
-        <ScrollEdges target={scroller} size={72} edges={['top']} />
-        {/* Floats over the bottom of the conversation, which reserves its height (--dock-h). */}
-        <div className="dockwrap" ref={dockwrap}>
+
+        <aside className="dockwrap ops" ref={dockwrap}>
           <div className="dock">
             {q && (
               <QuestionDock
@@ -276,13 +280,14 @@ export function SessionView({
                 </div>
               </GlassShell>
             )}
+            {!hasOperative && (
+              <div className="ops-empty">
+                <p>Il tutor sta preparando il prossimo passo.</p>
+              </div>
+            )}
           </div>
-        </div>
-        <aside className="side" aria-label="Il piano">
-          <h2 className="lab">Il piano</h2>
-          <PlanMap plan={s.plan} current={s.currentNodeId} done={s.doneNodeIds} />
         </aside>
-      </div>
+      </main>
     </ViewScene>
   )
 }

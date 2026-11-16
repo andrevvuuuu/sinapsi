@@ -1,17 +1,17 @@
 /* Settings dialog */
 .settings-dlg{width:min(640px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;border-radius:24px;animation:imp-in .2s var(--ease-out)}
-.settings-dlg .sd-core{display:flex;flex-direction:column;max-height:calc(100vh - 60px);overflow:hidden}
-.settings-dlg .sd-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s-3);padding:var(--s-4) var(--s-5) var(--s-3);border-bottom:1px solid var(--hair)}
+.settings-dlg .sd-core{display:flex;flex-direction:column;min-height:0;max-height:calc(100vh - 60px);overflow:hidden}
+.settings-dlg .sd-head{position:sticky;top:0;z-index:50;display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s-3);padding:var(--s-4) var(--s-5) var(--s-3);border-bottom:1px solid var(--hair);border-radius:18px 18px 0 0;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:var(--sh-blur);-webkit-backdrop-filter:var(--sh-blur)}
 .settings-dlg .sd-head-title-group{display:flex;flex-direction:column}
 .settings-dlg .sd-head h2{font:var(--font-title);font-size:22px;letter-spacing:var(--track-title);margin:0}
 .settings-dlg .sd-head-subtitle{font:var(--font-footnote);color:var(--muted);margin:2px 0 0}
-.settings-dlg .icon-btn{width:var(--ctl);height:var(--ctl);display:grid;place-items:center;border-radius:var(--r-md);border:0;background:var(--btn-text-bg);color:var(--muted);cursor:pointer;font:300 24px/1 var(--sans);transition:var(--btn-transition),transform .12s var(--ease-out)}
+.settings-dlg .sd-head .icon-btn{position:relative;z-index:51}.settings-dlg .icon-btn{width:var(--ctl);height:var(--ctl);display:grid;place-items:center;border-radius:var(--r-md);border:0;background:var(--btn-text-bg);color:var(--muted);cursor:pointer;font:300 24px/1 var(--sans);transition:var(--btn-transition),transform .12s var(--ease-out)}
 .settings-dlg .icon-btn:hover{background:var(--btn-secondary-bg-hover);color:var(--ink)}
 .settings-dlg .icon-btn:active{background:var(--btn-secondary-bg-pressed);color:var(--ink);transform:scale(.95)}
 .settings-dlg .icon-btn:focus-visible{outline:var(--btn-focus-ring);outline-offset:var(--btn-focus-offset);border-radius:var(--r-md)}
 
 /* Dialog Body & Card Sections */
-.settings-dlg .sd-body{flex:1;overflow-y:auto;padding:var(--s-4) var(--s-5);display:flex;flex-direction:column;gap:var(--s-3);scrollbar-width:thin}
+.settings-dlg .sd-body{flex:1;min-height:0;overflow:auto;padding:var(--s-4) var(--s-5);display:flex;flex-direction:column;gap:var(--s-3);scrollbar-width:thin}
 .settings-dlg .sd-card{background:var(--surface-raised);border:1px solid var(--hair);border-radius:var(--r-md);padding:var(--s-3) var(--s-4);display:flex;flex-direction:column;gap:var(--s-2);box-shadow:var(--inner)}
 .settings-dlg .sd-card-head{display:flex;flex-direction:column;gap:2px}
 .settings-dlg .sd-card-head h3,.settings-dlg .sd-theme-info h3{font:var(--font-caption);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--muted);margin:0}
