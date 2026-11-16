@@ -2,7 +2,9 @@ import type { Plan } from '../../../shared/teacher-protocol'
 
 /** The plan in dependency order: what is needed first sits on top, the goal at the end. */
 function ordered(plan: Plan): Plan['nodes'] {
-  const deps = new Map(plan.nodes.map((n) => [n.id, plan.edges.filter(([, to]) => to === n.id).map(([from]) => from)]))
+  const deps = new Map(
+    plan.nodes.map((n) => [n.id, plan.edges.filter(([, to]) => to === n.id).map(([from]) => from)])
+  )
   const out: Plan['nodes'] = []
   const seen = new Set<string>()
   const visit = (id: string): void => {
@@ -17,23 +19,66 @@ function ordered(plan: Plan): Plan['nodes'] {
   return out
 }
 
-export function PlanMap({ plan, current, done }: { plan?: Plan; current?: string; done: string[] }): React.JSX.Element {
-  if (!plan) return <p className="empty">Il piano compare dopo la misura.</p>
+export function PlanMap({
+  plan,
+  current,
+  done = []
+}: {
+  plan?: Plan | null
+  current?: string | null
+  done?: string[]
+}): React.JSX.Element {
+  if (!plan || !plan.nodes || plan.nodes.length === 0) {
+    return (
+      <aside className="tl-a plan-timeline" aria-label="Il piano">
+        <span className="mono lab">Il piano</span>
+        <p className="empty">Il piano compare dopo la misura.</p>
+      </aside>
+    )
+  }
+
+  const nodes = ordered(plan)
   return (
-    <ol className="map">
-      {ordered(plan).map((n) => {
-        const cls = [n.status === 'known' ? 'own' : '', n.status === 'goal' ? 'goal' : '', done.includes(n.id) ? 'done' : '', n.id === current ? 'cur' : ''].join(' ')
-        const sub = n.id === current ? 'adesso' : done.includes(n.id) ? 'fatto' : n.status === 'known' ? 'già tuo' : n.status === 'goal' ? 'obiettivo' : 'da fare'
-        return (
-          <li key={n.id} className={'node ' + cls}>
-            <i aria-hidden="true" />
-            <div>
-              {n.title}
-              <small>{sub}</small>
-            </div>
-          </li>
-        )
-      })}
-    </ol>
+    <aside className="tl-a plan-timeline" aria-label="Il piano">
+      <span className="mono lab">Il piano</span>
+      <ol className="map">
+        {nodes.map((n) => {
+          const isCurrent = n.id === current
+          const isDone = done.includes(n.id)
+          const isKnown = n.status === 'known'
+          const isGoal = n.status === 'goal'
+
+          const classes = [
+            'node',
+            isKnown ? 'own' : '',
+            isGoal ? 'goal' : '',
+            isDone ? 'done' : '',
+            isCurrent ? 'cur' : ''
+          ]
+            .filter(Boolean)
+            .join(' ')
+
+          const subtitle = isCurrent
+            ? 'adesso'
+            : isDone
+              ? 'fatto'
+              : isKnown
+                ? 'già tuo'
+                : isGoal
+                  ? 'obiettivo'
+                  : 'da fare'
+
+          return (
+            <li key={n.id} className={classes}>
+              <i aria-hidden="true" />
+              <div>
+                {n.title}
+                <small>{subtitle}</small>
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+    </aside>
   )
 }

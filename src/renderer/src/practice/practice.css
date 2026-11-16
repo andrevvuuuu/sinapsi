@@ -1755,3 +1755,14 @@ button.mt-chip:active {
 .pr .mode[aria-checked='true'] b,.pr .mode.exam[aria-checked='true'] b{color:#fff}
 .pr .mode[aria-checked='true'] small,.pr .mode.exam[aria-checked='true'] small{color:rgba(255,255,255,.78)}
 .pr .mode[aria-checked='true'] .tick,.pr .mode.exam[aria-checked='true'] .tick{border:1.5px solid #fff;background:#fff;box-shadow:inset 0 0 0 3px var(--sh-send-bg)}
+.pr{--accent-purple:var(--sh-send-bg)}
+.pr .pri.exam,.pr .startrow .pri.exam{background:var(--accent-purple);border-color:var(--accent-purple);color:#fff}
+.pr .pri.exam:not(:disabled):hover,.pr .startrow .pri.exam:not(:disabled):hover{background:color-mix(in srgb,var(--accent-purple) 84%,white);border-color:color-mix(in srgb,var(--accent-purple) 84%,white);color:#fff}
+.pr .pri.exam:not(:disabled):active,.pr .startrow .pri.exam:not(:disabled):active{background:color-mix(in srgb,var(--accent-purple) 78%,white);border-color:color-mix(in srgb,var(--accent-purple) 78%,white);color:#fff}
+.pr .pri.exam:disabled,.pr .startrow .pri.exam:disabled{background:var(--btn-disabled-bg);border-color:var(--btn-disabled-border);color:var(--btn-disabled-ink)}
+.pr .dur{border:1px solid color-mix(in srgb,var(--ink) 10%,transparent);background:color-mix(in srgb,var(--sh-shell-bg) 64%,color-mix(in srgb,var(--ink) 3%,transparent));box-shadow:inset 0 1px 0 color-mix(in srgb,var(--ink) 4%,transparent)}
+.pr .dur .lg-tab{position:relative;z-index:1;color:var(--sh-text-2);transition:color .15s var(--ease-out),transform .15s var(--ease-out),background .15s var(--ease-out)}
+.pr .dur .lg-tab:hover{color:var(--sh-text);background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.pr .dur .lg-tab:active{transform:scale(.97)}
+.pr .dur .lg-tab[data-active]{color:#fff;background:var(--sh-send-bg);box-shadow:0 2px 6px color-mix(in srgb,var(--sh-send-bg) 26%,transparent),inset 0 1px 0 rgba(255,255,255,.2)}
+.pr .dur .lg-tab:focus-visible{outline:2px solid var(--sh-violet);outline-offset:2px}
