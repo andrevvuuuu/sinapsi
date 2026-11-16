@@ -758,7 +758,7 @@
 .sess :is(.ops, .dockwrap) .opt .k { flex: none; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: 12px; font-weight: 600; background: var(--faint); color: var(--ink); }
 .sess :is(.ops, .dockwrap) .opt[aria-pressed='true'] .k { background: var(--accent); color: #fff; }
 .sess :is(.ops, .dockwrap) .opt.idk { color: var(--muted); border-style: dashed; padding-left: 12px; }
-.sess :is(.ops, .dockwrap) .conf { display: flex; align-items: center; gap: 12px; }
+.sess :is(.ops, .dockwrap) .conf { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; }
 .sess :is(.ops, .dockwrap) .conf output { font-size: 13px; font-variant-numeric: tabular-nums; width: 38px; text-align: right; color: var(--ink); }
 .sess :is(.ops, .dockwrap) .think { border: 1px solid var(--hair); border-radius: 14px; background: var(--surface); padding: 10px 12px; margin-top: 0; }
 .sess :is(.ops, .dockwrap) .think label.lab { padding: 0; margin-bottom: 6px; display: block; }
@@ -784,3 +784,10 @@
 .sess .ops :is(.dock,.shell,.inner){height:auto;flex:0 1 auto}
 .sess .ops .rt{margin:16px 16px 0}
 .sess .ops .inner:has(>.invite){padding:14px 20px 18px}
+/* The question panel shows all of itself: options, confidence and reasoning never scroll inside it. */
+.sess :is(.body,.split)>.ops{max-height:none;overflow:visible}
+.sess .ops .dock-scroll{flex:none;overflow:visible}
+.sess .ops .conf .lab{padding:0}
+.sess .ops .dock{max-height:none}
+.sess .ops .inner.has-scroll .q-head{max-height:none;overflow:visible}
+.sess .ops .conf .glass-ground{background:var(--panel)}
