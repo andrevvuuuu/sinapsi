@@ -58,9 +58,11 @@ export function NotePicker({
       void api.notes.list().then((l) => alive && setMine(l.filter((m) => m.sourcePath === path)))
     load()
     const off = api.notes.onUpdate(load)
+    const offVault = api.vault.onChange?.(load)
     return () => {
       alive = false
       off()
+      offVault?.()
     }
   }, [api, path])
 

@@ -27,7 +27,7 @@ const hash = bodyHash
 function friendly(e: unknown): string {
   if (e instanceof AuthRequiredError) return `${e.engine === 'claude' ? 'Claude' : 'Gemini'} chiede di rifare l'accesso: apri il Terminale e scrivi ${e.engine}, poi premi Riprova.`
   if (e instanceof EngineMissingError) return `${e.engine} non è installato su questo Mac.`
-  if (e instanceof AiTimeoutError) return `Gemini ci ha messo troppo tempo a scrivere la nota. Premi Riprova.`
+  if (e instanceof AiTimeoutError) return `${e.engine === 'claude' ? 'Claude' : 'Gemini'} ci ha messo troppo tempo a scrivere la nota. Premi Riprova.`
   return `La nota non è stata scritta correttamente (${e instanceof Error ? e.message.slice(0, 200) : String(e)}). Premi Riprova.`
 }
 

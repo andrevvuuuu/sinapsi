@@ -159,7 +159,7 @@ function Views(): React.JSX.Element {
   if (v.view === 'source')
     content = <NotePicker path={v.path} onOpenNota={openNota} onBack={home} />
   if (v.view === 'notes')
-    content = <NotesView />
+    content = <NotesView onOpenNota={openNota} />
   const livePaths = [] as string[]
   return (
     <AppShell

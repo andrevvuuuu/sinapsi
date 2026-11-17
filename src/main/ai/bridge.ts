@@ -112,10 +112,17 @@ export function createBridge(deps: {
       setState(engine, 'auth')
       throw new AuthRequiredError(engine)
     }
+    const agyPrintTimeout = engine === 'agy' && (res.code === 3 || /print timeout/i.test(res.stdout) || /print timeout/i.test(res.stderr))
+    if (res.timedOut || agyPrintTimeout) {
+      setState(engine, 'error')
+      await logUsage({ ts: t0, task, engine, model, inputTokens: 0, outputTokens: 0, ms: now() - t0, ok: false })
+      throw new AiTimeoutError(engine, timeoutMs)
+    }
     setState(engine, 'error')
     await logUsage({ ts: t0, task, engine, model, inputTokens: 0, outputTokens: 0, ms: now() - t0, ok: false })
-    if (res.timedOut) throw new AiTimeoutError(engine, timeoutMs)
-    throw new AiOutputError(`${engine}: risposta non valida (codice ${res.code})`)
+    const stderrTail = res.stderr.trim().replace(/\s+/g, ' ').slice(-200).trim()
+    const detail = stderrTail ? ` — ${stderrTail}` : ''
+    throw new AiOutputError(`${engine}: risposta non valida (codice ${res.code})${detail}`)
   }
 
   // Bookkeeping must never cost the user an answer they already paid for.
