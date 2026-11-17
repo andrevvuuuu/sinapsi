@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MISSES } from './practice-protocol'
 
 export const EXERCISE_TYPES = ['open', 'mc', 'truefalse', 'order', 'fill', 'match', 'counterexample', 'estimate', 'spoterror', 'graph', 'explain'] as const
 export type ExerciseType = (typeof EXERCISE_TYPES)[number]
@@ -16,7 +17,11 @@ export const ReviewLineSchema = z.object({
   type: z.enum(EXERCISE_TYPES).optional(),
   misconception: z.boolean().optional(),
   /** Where the evidence came from: a Ripasso item (default) or a concluded Pratica problem. */
-  via: z.enum(['review', 'practice']).optional(),
+  via: z.enum(['review', 'practice', 'session']).optional(),
+  source: z.enum(['session-llm', 'session-choice']).optional(),
+  sessionId: z.string().max(64).optional(),
+  evidence: z.enum(['probe', 'retest', 'recall']).optional(),
+  miss: z.enum(MISSES).optional(),
   /** Where in Pratica it came from ("exam:<id>:<problem>"): grading again never writes it twice. */
   ref: z.string().max(200).optional(),
   /** The Registro Lezioni lesson that launched the session, if any. */
@@ -24,6 +29,15 @@ export const ReviewLineSchema = z.object({
   rung: z.number().int().min(0).max(5).optional()
 })
 export type ReviewLine = z.infer<typeof ReviewLineSchema>
+
+export const WeaknessLineSchema = z.object({ id: z.string().max(64), conceptId: z.string().optional(), text: z.string().max(300), kind: z.enum(['misconception', 'gap', 'execution', 'discrimination']), source: z.enum(['session', 'practice', 'review']), ref: z.string().max(200).optional(), at: z.number(), status: z.enum(['active', 'resolved']) })
+export type WeaknessLine = z.infer<typeof WeaknessLineSchema>
+
+export function sessionGrade(v: { verdict: 'correct' | 'partial' | 'incorrect'; hintsUsed?: number }): Grade {
+  if (v.verdict === 'incorrect') return 1
+  if (v.verdict === 'partial') return 1
+  return (v.hintsUsed ?? 0) > 0 ? 2 : 3
+}
 
 export type MemoryState = 'mai visto' | 'la sai' | 'incerto' | 'debole'
 export type Memory = {

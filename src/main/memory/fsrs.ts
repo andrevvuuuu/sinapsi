@@ -2,17 +2,18 @@ import { createEmptyCard, fsrs, generatorParameters, Rating, State, type Card, t
 import { stateOf, type Grade, type Memory, type ReviewLine } from '../../shared/memory-types'
 
 const scheduler = fsrs(generatorParameters({ enable_fuzz: false }))
+const sessionScheduler = fsrs(generatorParameters({ enable_fuzz: false, learning_steps: [], relearning_steps: [] }))
 const RATING: Record<Grade, FsrsGrade> = { 1: Rating.Again, 2: Rating.Hard, 3: Rating.Good, 4: Rating.Easy }
 
 /** Replays one concept's reviews in time order: the card is never stored, always rebuilt. */
 function replay(reviews: ReviewLine[]): Card {
   const sorted = [...reviews].sort((a, b) => a.at - b.at || a.grade - b.grade)
   let card = createEmptyCard(new Date(sorted[0]?.at ?? 0))
-  for (const r of sorted) card = scheduler.next(card, new Date(r.at), RATING[r.grade]).card
+  for (const r of sorted) card = (r.via === 'session' ? sessionScheduler : scheduler).next(card, new Date(r.at), RATING[r.grade]).card
   return card
 }
 
-export function memoryOf(reviews: ReviewLine[], now: number): Map<string, Memory> {
+export function memoryOf(reviews: ReviewLine[], now: number, activeWeaknessConcepts?: Set<string>): Map<string, Memory> {
   const byConcept = new Map<string, ReviewLine[]>()
   for (const r of reviews) byConcept.set(r.conceptId, [...(byConcept.get(r.conceptId) ?? []), r])
   const out = new Map<string, Memory>()
@@ -28,7 +29,7 @@ export function memoryOf(reviews: ReviewLine[], now: number): Map<string, Memory
       reps: card.reps,
       lapses: card.lapses,
       lastAt: last.at,
-      misconception: last.correct === false && (last.confidence ?? 0) >= 70,
+      misconception: (last.correct === false && (last.confidence ?? 0) >= 70) || !!activeWeaknessConcepts?.has(conceptId),
       stability: card.stability,
       lastGrade: last.grade
     })
@@ -37,17 +38,17 @@ export function memoryOf(reviews: ReviewLine[], now: number): Map<string, Memory
 }
 
 const DAY = 86_400_000
-// FSRS-5 forgetting curve, with fractional days (ts-fsrs rounds elapsed time to whole days,
+// FSRS-6 forgetting curve, with fractional days (ts-fsrs rounds elapsed time to whole days,
 // which kept R at 100% for the whole day of a review).
-const DECAY = -0.5
-const FACTOR = 19 / 81
-const curve = (days: number, stability: number): number => Math.pow(1 + (FACTOR * Math.max(0, days)) / Math.max(stability, 1e-6), DECAY)
+const w20 = scheduler.parameters.w[20]
+const factor = Math.pow(0.9, -1 / w20) - 1
+const curve = (days: number, stability: number): number => Math.pow(1 + (factor * Math.max(0, days)) / Math.max(stability, 1e-6), -w20)
 
 /**
  * Right after a lapse the card is in (re)learning: the curve still says ~100% for minutes,
  * but what Andrea should see is the answer he just gave. "Di nuovo" shows as weak, "Difficile" as uncertain.
  */
-function displayedR(card: Card, lastGrade: Grade, now: number): number {
+export function displayedR(card: Card, lastGrade: Grade, now: number): number {
   const since = card.last_review ? (now - card.last_review.getTime()) / DAY : 0
   const R = curve(since, card.stability)
   if (card.state === State.Learning || card.state === State.Relearning) {

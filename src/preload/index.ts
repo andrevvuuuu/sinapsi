@@ -23,12 +23,20 @@ const api: SinapsiApi = {
   },
   app: { openExternal: (url) => ipcRenderer.invoke(CH.openExternal, url) },
   session: {
+    create: (topic) => ipcRenderer.invoke(CH.sessionCreate, topic),
+    confirm: (id, notePath) => ipcRenderer.invoke(CH.sessionConfirm, id, notePath),
     start: (topic) => ipcRenderer.invoke(CH.sessionStart, topic),
     list: () => ipcRenderer.invoke(CH.sessionList),
     get: (id) => ipcRenderer.invoke(CH.sessionGet, id),
     answer: (id, a) => ipcRenderer.invoke(CH.sessionAnswer, id, a),
     say: (id, text) => ipcRenderer.invoke(CH.sessionSay, id, text),
     retry: (id) => ipcRenderer.invoke(CH.sessionRetry, id),
+    contest: (id, questionId) => ipcRenderer.invoke(CH.sessionContest, id, questionId),
+    peek: (id, questionId) => ipcRenderer.invoke(CH.sessionPeek, id, questionId),
+    flag: (id, questionId) => ipcRenderer.invoke(CH.sessionFlag, id, questionId),
+    cancel: (id) => ipcRenderer.invoke(CH.sessionCancel, id),
+    end: (id) => ipcRenderer.invoke(CH.sessionEnd, id),
+    onPartial: (cb) => subscribe(CH.sessionPartial, cb),
     onUpdate: (cb) => subscribe(CH.sessionUpdated, cb)
   },
   notes: {
@@ -62,6 +70,7 @@ const api: SinapsiApi = {
     intervals: (id) => ipcRenderer.invoke(CH.reviewIntervals, id),
     sessions: () => ipcRenderer.invoke(CH.reviewSessions)
   },
+  memory: { stats: () => ipcRenderer.invoke(CH.memoryStats) },
   notebook: {
     list: () => ipcRenderer.invoke(CH.notebookList),
     create: (name) => ipcRenderer.invoke(CH.notebookCreate, name),

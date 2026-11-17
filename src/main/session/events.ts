@@ -1,16 +1,71 @@
+import type { Grade, MemoryState } from '../../shared/memory-types'
+import { sessionGrade } from '../../shared/memory-types'
 import type { LearnerAnswer, Plan, Question, TeacherTurn } from '../../shared/teacher-protocol'
+import type { MinimalTree } from './minimal-tree'
 
+export type MasterySettings = { kOpen: number; kChoice: number; solidDays: number }
+export const DEFAULT_MASTERY: MasterySettings = { kOpen: 2, kChoice: 3, solidDays: 14 }
+export type Stage = 'goal' | 'probe' | 'plan' | 'teach' | 'repair' | 'consolidate' | 'done'
+export type ConceptProgress = {
+  status: 'unseen' | 'explained' | 'probed' | 'repairing' | 'mastered'
+  openStreak: number
+  choiceStreak: number
+  lastConfidences: number[]
+}
+export type Evidence = {
+  questionId: string
+  conceptId: string
+  kind: 'open' | 'choice' | 'game'
+  correct: boolean
+  verdict?: 'correct' | 'partial' | 'incorrect'
+  hintsUsed: number
+  confidence?: number
+  role: string
+  peeked: boolean
+  excluded: boolean
+  at: number
+}
 export type SessionEvent =
-  | { t: 'created'; id: string; topic: string; noteTitle?: string; notePath?: string; at: number }
+  | {
+      t: 'created'
+      id: string
+      topic: string
+      noteTitle?: string
+      notePath?: string
+      tree?: MinimalTree
+      mastery?: MasterySettings
+      candidates?: { title: string; path: string }[]
+      learnerProfile?: string
+      prior?: Record<string, { state: MemoryState; S?: number; seen: boolean }>
+      at: number
+    }
   | { t: 'learner'; text: string; answer?: LearnerAnswer; question?: Question; at: number }
   | { t: 'teacher'; turn: TeacherTurn; conversationId?: string; at: number }
   | { t: 'error'; message: string; at: number }
-
+  | {
+      t: 'graded'
+      questionId: string
+      verdict: 'correct' | 'partial' | 'incorrect'
+      hintsUsed: number
+      reason: string
+      at: number
+    }
+  | { t: 'contested' | 'peeked' | 'flagged'; questionId: string; at: number }
+  | { t: 'validated'; questionId: string; ok: boolean; at: number }
+  | { t: 'cancelled'; at: number }
+  | { t: 'aborted'; at: number }
+  | {
+      t: 'confirmed'
+      notePath?: string
+      noteTitle?: string
+      tree?: MinimalTree
+      prior?: Record<string, { state: MemoryState; S?: number; seen: boolean }>
+      at: number
+    }
 export type ChatItem =
   | { kind: 'learner'; text: string; answer?: LearnerAnswer; question?: Question }
   | { kind: 'teacher'; turn: TeacherTurn }
   | { kind: 'error'; message: string }
-
 export type SessionState = {
   id: string
   topic: string
@@ -22,65 +77,337 @@ export type SessionState = {
   doneNodeIds: string[]
   items: ChatItem[]
   pendingQuestion?: Question
-  awaiting: 'teacher' | 'learner' | 'retry'
+  awaiting: 'teacher' | 'learner' | 'retry' | 'confirm'
+  candidates: { title: string; path: string }[]
+  learnerProfile: string
   summary?: TeacherTurn['summary']
   conversationId?: string
   hasTeacherTurn: boolean
   lastLearnerText?: string
   createdAt: number
   updatedAt: number
+  tree?: MinimalTree
+  mastery: MasterySettings
+  prior: Record<string, { state: MemoryState; S?: number; seen: boolean }>
+  stage: Stage
+  concepts: Record<string, ConceptProgress>
+  probeCount: number
+  turnsSinceGame: number
+  pendingRetest?: { conceptId: string; afterTurns: number }
+  readyToFinish: boolean
+  recallDone: boolean
+  chunkSize: 1 | 2 | 3
+  misconceptionHits: { conceptId?: string; questionId: string; text: string; at: number }[]
+  evidence: Evidence[]
+  cancelled: boolean
 }
-
-export type SessionSummary = { id: string; topic: string; phase: TeacherTurn['phase']; notePath?: string; updatedAt: number }
-
-/** Pure: the whole session state is derived from its event log. */
+export type SessionSummary = {
+  id: string
+  topic: string
+  phase: TeacherTurn['phase']
+  notePath?: string
+  updatedAt: number
+}
+const blank = (): ConceptProgress => ({
+  status: 'unseen',
+  openStreak: 0,
+  choiceStreak: 0,
+  lastConfidences: []
+})
 export function reduceSession(events: SessionEvent[]): SessionState {
-  const s: SessionState = { id: '', topic: '', phase: 'probe', doneNodeIds: [], items: [], awaiting: 'learner', hasTeacherTurn: false, createdAt: 0, updatedAt: 0 }
-  const correctChecks = new Set<string>()
+  const s: SessionState = {
+    id: '',
+    topic: '',
+    phase: 'probe',
+    doneNodeIds: [],
+    items: [],
+    awaiting: 'learner',
+    candidates: [],
+    learnerProfile: '',
+    hasTeacherTurn: false,
+    createdAt: 0,
+    updatedAt: 0,
+    mastery: DEFAULT_MASTERY,
+    prior: {},
+    stage: 'goal',
+    concepts: {},
+    probeCount: 0,
+    turnsSinceGame: 0,
+    readyToFinish: false,
+    recallDone: false,
+    chunkSize: 2,
+    misconceptionHits: [],
+    evidence: [],
+    cancelled: false
+  }
+  const raw: Evidence[] = []
+  const exclusions = new Map<string, boolean>()
+  const dontKnow = new Set<string>()
+  const graded = new Map<string, Extract<SessionEvent, { t: 'graded' }>>()
+  const answered = new Set<string>()
   for (const e of events) {
     s.updatedAt = Math.max(s.updatedAt, e.at)
     switch (e.t) {
       case 'created':
-        Object.assign(s, { id: e.id, topic: e.topic, noteTitle: e.noteTitle, notePath: e.notePath, createdAt: e.at })
+        Object.assign(s, {
+          id: e.id,
+          topic: e.topic,
+          noteTitle: e.noteTitle,
+          notePath: e.notePath,
+          candidates: e.candidates ?? [],
+          learnerProfile: e.learnerProfile ?? '',
+          tree: e.tree,
+          mastery: e.mastery ?? DEFAULT_MASTERY,
+          prior: e.prior ?? {},
+          createdAt: e.at
+        })
+        s.awaiting = 'confirm'
+        break
+      case 'confirmed':
+        s.notePath = e.notePath ?? s.notePath
+        s.noteTitle = e.noteTitle ?? s.noteTitle
+        s.tree = e.tree
+        s.prior = e.prior ?? {}
+        s.awaiting = 'teacher'
         break
       case 'learner': {
-        const q = e.question ?? s.pendingQuestion
-        if (q?.role === 'check' && q.nodeId && e.answer?.choice !== undefined && e.answer.choice === q.correct) correctChecks.add(q.nodeId)
-        // A game played in place of the check counts when it went well.
-        const g = e.answer?.game
-        if (q?.role === 'check' && q.kind === 'game' && q.nodeId && g && g.total > 0 && g.score / g.total >= 0.7) correctChecks.add(q.nodeId)
-        s.items.push({ kind: 'learner', text: e.text, answer: e.answer, question: q })
+        const q = e.question ?? s.pendingQuestion,
+          a = e.answer
+        s.items.push({ kind: 'learner', text: e.text, answer: a, question: q })
         s.pendingQuestion = undefined
         s.lastLearnerText = e.text
         s.awaiting = 'teacher'
+        if (q) {
+          answered.add(q.id)
+          if (q.role === 'probe') s.probeCount++
+          if (q.role === 'recall') s.recallDone = true
+          let correct: boolean | undefined
+          let kind: Evidence['kind'] =
+            q.kind === 'game' ? 'game' : q.kind === 'choice' ? 'choice' : 'open'
+          let hints = 0
+          const grade = graded.get(q.id)
+          if (q.kind === 'choice' && a?.choice !== undefined) correct = a.choice === q.correct
+          if (q.kind === 'game' && a?.game)
+            correct = a.game.total > 0 && a.game.score / a.game.total >= 0.7
+          if (a?.dontKnow) {
+            correct = false
+            dontKnow.add(q.id)
+          }
+          if (grade) {
+            correct = grade.verdict === 'correct'
+            hints = grade.hintsUsed
+          }
+          // Goal and plan questions have no concept: they are never evidence.
+          if (q.nodeId && (correct !== undefined || kind === 'open'))
+            raw.push({
+              questionId: q.id,
+              conceptId: q.nodeId,
+              kind,
+              correct: correct ?? false,
+              hintsUsed: hints,
+              verdict: grade?.verdict,
+              confidence: a?.confidence,
+              role: q.role,
+              peeked: !!a?.peeked,
+              excluded: !!a?.peeked,
+              at: e.at
+            })
+          if (kind === 'game') s.turnsSinceGame = 0
+        }
         break
       }
       case 'teacher': {
-        const t = e.turn
-        s.items.push({ kind: 'teacher', turn: t })
-        s.phase = t.phase
+        s.items.push({ kind: 'teacher', turn: e.turn })
+        s.phase = e.turn.phase
         s.hasTeacherTurn = true
         if (e.conversationId) s.conversationId = e.conversationId
-        if (t.plan) {
-          s.plan = t.plan
-          // A node the new plan dropped cannot be "adesso" any more.
-          if (s.currentNodeId && !t.plan.nodes.some((n) => n.id === s.currentNodeId)) s.currentNodeId = undefined
+        if (e.turn.plan) {
+          s.plan = e.turn.plan
+          if (s.currentNodeId && !e.turn.plan.nodes.some((n) => n.id === s.currentNodeId))
+            s.currentNodeId = undefined
         }
-        if (t.summary) s.summary = t.summary
-        const next = t.question?.nodeId
-        if (next && next !== s.currentNodeId) {
-          if (s.currentNodeId && correctChecks.has(s.currentNodeId) && !s.doneNodeIds.includes(s.currentNodeId)) s.doneNodeIds.push(s.currentNodeId)
-          s.currentNodeId = next
-        }
-        s.pendingQuestion = t.question
+        if (e.turn.summary) s.summary = e.turn.summary
+        const next = e.turn.question?.nodeId
+        if (next) s.currentNodeId = next
+        s.pendingQuestion = e.turn.question
         s.awaiting = 'learner'
+        if (s.hasTeacherTurn && s.stage === 'goal') s.stage = 'probe'
+        if (e.turn.question?.role === 'plan') s.stage = 'plan'
+        if (e.turn.phase === 'teach') s.stage = 'teach'
+        if (e.turn.phase === 'consolidate') s.stage = 'consolidate'
+        if (e.turn.phase === 'done') s.stage = 'done'
         break
       }
       case 'error':
         s.items.push({ kind: 'error', message: e.message })
         s.awaiting = 'retry'
         break
+      case 'graded':
+        graded.set(e.questionId, e)
+        break
+      case 'contested':
+      case 'flagged':
+        exclusions.set(e.questionId, true)
+        break
+      case 'peeked':
+        exclusions.set(e.questionId, true)
+        break
+      case 'validated':
+        if (!e.ok) exclusions.set(e.questionId, true)
+        break
+      case 'cancelled':
+        s.cancelled = true
+        break
+      case 'aborted':
+        s.items.push({ kind: 'error', message: 'Turno annullato' })
+        s.awaiting = 'retry'
+        break
     }
   }
+  s.turnsSinceGame += Math.max(0, answered.size - (s.turnsSinceGame === 0 ? 1 : 0))
+  s.evidence = raw.map((x) => {
+    const g = graded.get(x.questionId)
+    return {
+      ...x,
+      ...(g
+        ? { correct: g.verdict === 'correct', verdict: g.verdict, hintsUsed: g.hintsUsed }
+        : {}),
+      // An open answer the grader never judged says nothing reliable: it does not count.
+      excluded:
+        x.excluded ||
+        exclusions.has(x.questionId) ||
+        (x.kind === 'open' && !g && !dontKnow.has(x.questionId))
+    }
+  })
+  const active = s.evidence.filter(
+    (x) =>
+      !x.excluded &&
+      x.conceptId &&
+      !x.conceptId.startsWith('new:') &&
+      (!s.tree || s.tree.nodes.some((n) => n.id === x.conceptId))
+  )
+  for (const x of active) {
+    if (!s.tree) {
+      if (x.role === 'check' && x.correct && !s.doneNodeIds.includes(x.conceptId))
+        s.doneNodeIds.push(x.conceptId)
+      continue
+    }
+    const p = s.concepts[x.conceptId] ?? (s.concepts[x.conceptId] = blank())
+    p.status = x.correct ? 'probed' : 'repairing'
+    if (x.correct) {
+      if (x.kind === 'open') p.openStreak++
+      else p.choiceStreak++
+    } else {
+      p.openStreak = 0
+      p.choiceStreak = 0
+      s.pendingRetest = { conceptId: x.conceptId, afterTurns: 1 }
+      if ((x.confidence ?? 0) >= 63)
+        s.misconceptionHits.push({
+          conceptId: x.conceptId,
+          questionId: x.questionId,
+          text: 'Risposta errata con fiducia elevata',
+          at: x.at
+        })
+    }
+    if (x.confidence !== undefined)
+      p.lastConfidences = [...p.lastConfidences, x.confidence].slice(-2)
+  }
+  for (const n of s.tree?.nodes ?? []) {
+    const p = s.concepts[n.id] ?? (s.concepts[n.id] = blank())
+    const prior = s.prior[n.id]
+    const ev = active.filter((x) => x.conceptId === n.id)
+    const cold =
+      prior?.state === 'la sai' && (prior.S ?? 0) >= s.mastery.solidDays && ev[0]?.correct
+    if (p.openStreak >= s.mastery.kOpen || p.choiceStreak >= s.mastery.kChoice || cold) {
+      p.status = 'mastered'
+      if (!s.doneNodeIds.includes(n.id)) s.doneNodeIds.push(n.id)
+    }
+  }
+  const goals = s.tree?.goalIds ?? []
+  s.readyToFinish = goals.length
+    ? goals.every((id) => s.concepts[id]?.status === 'mastered') && s.recallDone
+    : s.recallDone
+  if (s.phase === 'done' && !s.readyToFinish) s.phase = 'consolidate'
+  const cur = s.currentNodeId ? s.concepts[s.currentNodeId] : undefined
+  s.chunkSize =
+    cur?.status === 'repairing' ||
+    !!s.tree?.nodes.find((n) => n.id === s.currentNodeId)?.weaknesses.length
+      ? 1
+      : (cur?.lastConfidences.length === 2 && cur.lastConfidences.every((c) => c >= 63)) ||
+          s.prior[s.currentNodeId ?? '']?.state === 'la sai'
+        ? 3
+        : 2
   return s
+}
+export function checkTurnAgainst(state: SessionState, turn: TeacherTurn): string | null {
+  if (turn.phase === 'done' && !state.readyToFinish && !state.cancelled)
+    return "l'obiettivo non è ancora padroneggiato: continua"
+  const q = turn.question
+  if (q?.role === 'probe' && state.probeCount >= 3) return 'misura conclusa: passa al piano'
+  if (turn.plan && state.tree?.nodes.length) {
+    const ids = new Set(state.tree.nodes.map((n) => n.id))
+    if (turn.plan.nodes.some((n) => !ids.has(n.id) && !/^new:/.test(n.id)))
+      return 'id del piano non validi: usa gli id dell’albero o new:slug'
+  }
+  if (
+    q &&
+    ['check', 'predict', 'recall'].includes(q.role) &&
+    state.tree?.nodes.length &&
+    q.kind !== 'game' &&
+    !q.nodeId
+  )
+    return 'manca nodeId'
+  if (q?.kind === 'game' && state.turnsSinceGame < 2) return 'al massimo un gioco ogni tre turni'
+  return null
+}
+export function stageInstruction(state: SessionState): string {
+  const id = state.currentNodeId
+  const n = state.tree?.nodes.find((x) => x.id === id)
+  const mastered = state.doneNodeIds.join(', ') || 'nessuno'
+  const retest = state.pendingRetest
+    ? `${state.pendingRetest.conceptId} (dopo un turno su un altro concetto)`
+    : 'nessuno'
+  return `[Stato sessione] fase: ${state.stage}; concetto: ${id ? `${id} «${n?.name ?? id}» (${state.concepts[id]?.status ?? 'unseen'})` : 'nessuno'}; passi per blocco: ${state.chunkSize}; retest da fare: ${retest}; probe rimasti: ${Math.max(0, 3 - state.probeCount)}; padroneggiati: ${mastered}; obiettivo: ${state.tree?.goalIds.join(', ') || state.topic}.`
+}
+export function fsrsEvidence(state: SessionState): {
+  conceptId: string
+  grade: Grade
+  evidence: 'probe' | 'retest' | 'recall'
+  source: 'session-llm' | 'session-choice'
+  confidence?: number
+  correct: boolean
+  at: number
+}[] {
+  const out: {
+    conceptId: string
+    grade: Grade
+    evidence: 'probe' | 'retest' | 'recall'
+    source: 'session-llm' | 'session-choice'
+    confidence?: number
+    correct: boolean
+    at: number
+  }[] = []
+  for (const id of new Set(state.evidence.filter((e) => !e.excluded).map((e) => e.conceptId))) {
+    const es = state.evidence.filter((e) => e.conceptId === id && !e.excluded)
+    const prior = state.prior[id]?.seen
+    const x = prior
+      ? (es.find((e) => e.role === 'probe') ?? es[0])
+      : // New concept: the first check right after its explanation is not a cold retrieval;
+        // the next evidence on it (a retest or the final recall) is.
+        (es[1] ?? es.find((e) => e.role === 'recall') ?? es[0])
+    if (!x) continue
+    const verdict = x.verdict ?? (x.correct ? 'correct' : 'incorrect')
+    out.push({
+      conceptId: id,
+      grade: sessionGrade({ verdict, hintsUsed: x.hintsUsed }),
+      evidence: (x.role === 'probe' ? 'probe' : x.role === 'recall' ? 'recall' : 'retest') as
+        'probe' | 'retest' | 'recall',
+      source: (x.kind === 'choice' || x.kind === 'game' ? 'session-choice' : 'session-llm') as
+        'session-choice' | 'session-llm',
+      ...(x.confidence !== undefined ? { confidence: x.confidence } : {}),
+      correct: x.correct,
+      at: x.at
+    })
+  }
+  return out
 }

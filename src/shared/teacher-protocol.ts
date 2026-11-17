@@ -11,7 +11,7 @@ export const ROLE_IT: Record<(typeof ROLES)[number], string> = {
 }
 
 const BlockSchema = z.object({ type: z.literal('text'), md: z.string() })
-const PlanNodeSchema = z.object({ id: z.string().min(1), title: z.string().min(1), status: z.enum(['known', 'todo', 'goal']) })
+const PlanNodeSchema = z.object({ id: z.string().min(1), title: z.string().min(1), status: z.enum(['known', 'todo', 'goal']), role: z.enum(['base', 'derivata']).optional() })
 // Edges are [from, to] pairs; plain 2-item arrays keep the JSON Schema simple for the CLI.
 const Edge = z.array(z.string()).min(2).max(2) as unknown as z.ZodType<[string, string]>
 const PlanSchema = z.object({ nodes: z.array(PlanNodeSchema).min(1), edges: z.array(Edge) })
@@ -96,6 +96,7 @@ export const LearnerAnswerSchema = z.object({
   text: z.string().max(5000).optional(),
   thoughts: z.string().max(5000).optional(),
   game: z.object({ score: z.number().int().min(0).max(100), total: z.number().int().min(0).max(100), detail: z.string().max(5000) }).optional()
+  ,peeked: z.boolean().optional()
 })
 export type LearnerAnswer = z.infer<typeof LearnerAnswerSchema>
 

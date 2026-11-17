@@ -21,6 +21,54 @@ const PHASE: Record<SessionState['phase'], string> = {
   done: 'Conclusa'
 }
 
+const CONFIDENCE_NAMES: Record<number, string> = {
+  12: 'Tiro a indovinare',
+  37: 'Incerto',
+  63: 'Abbastanza sicuro',
+  88: 'Sicuro'
+}
+
+function CalibrationBlock({
+  stats
+}: {
+  stats: Awaited<ReturnType<typeof window.sinapsi.memory.stats>> | null
+}): React.JSX.Element | null {
+  if (!stats) return null
+  const visibleLevels = (stats.calibration ?? []).filter((c) => c.n > 0)
+  const afterN = stats.againRate?.afterSession?.n ?? 0
+  const noN = stats.againRate?.noSession?.n ?? 0
+  const hasAgain = afterN > 0 || noN > 0
+  if (visibleLevels.length === 0 && !hasAgain) return null
+
+  return (
+    <div className="calib-block" role="region" aria-label="Calibrazione">
+      <h3>Calibrazione</h3>
+      {visibleLevels.length > 0 && (
+        <ul className="calib-levels">
+          {visibleLevels.map((c) => (
+            <li key={c.level} className="calib-level-item">
+              <b>{c.level}%</b> ({CONFIDENCE_NAMES[c.level] ?? `${c.level}%`}):{' '}
+              {Math.round(c.correctRate * 100)}% corrette vs {c.level}% dichiarato ({c.n}{' '}
+              {c.n === 1 ? 'risposta' : 'risposte'})
+            </li>
+          ))}
+        </ul>
+      )}
+      {hasAgain && (
+        <p className="calib-again">
+          {afterN > 0
+            ? `Tasso Ripeti (Again) al primo ripasso post-sessione: ${Math.round(
+                stats.againRate!.afterSession.againRate * 100
+              )}% (${afterN} ${afterN === 1 ? 'ripasso' : 'ripassi'})`
+            : `Tasso Ripeti (Again) al primo ripasso: ${Math.round(
+                stats.againRate!.noSession.againRate * 100
+              )}% (${noN} ${noN === 1 ? 'ripasso' : 'ripassi'})`}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export function SessionView({
   id,
   onBack,
@@ -35,6 +83,12 @@ export function SessionView({
   const [free, setFree] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [partialText, setPartialText] = useState('')
+  const [peekedQIds, setPeekedQIds] = useState<Set<string>>(new Set())
+  const [memoryStats, setMemoryStats] = useState<Awaited<
+    ReturnType<typeof window.sinapsi.memory.stats>
+  > | null>(null)
+
   const createNota = async (): Promise<void> => {
     setCreating(true)
     try {
@@ -62,14 +116,58 @@ export function SessionView({
     let alive = true
     void api.get(id).then((x) => alive && setS(x))
     const off = api.onUpdate((x) => x.id === id && setS(x))
+    const offPartial = api.onPartial?.((p: { id: string; text: string }) => {
+      if (p.id === id && alive) setPartialText(p.text)
+    })
     return () => {
       alive = false
       off()
+      offPartial?.()
     }
   }, [api, id])
 
+  useEffect(() => {
+    if (s?.awaiting !== 'teacher') {
+      setPartialText('')
+    }
+  }, [s?.awaiting])
+
+  useEffect(() => {
+    if (s?.phase !== 'done') return
+    let alive = true
+    const fn = window.sinapsi?.memory?.stats
+    if (typeof fn === 'function') {
+      void fn()
+        .then((res) => {
+          if (alive) setMemoryStats(res)
+        })
+        .catch(() => {
+          if (alive) setMemoryStats(null)
+        })
+    }
+    return () => {
+      alive = false
+    }
+  }, [s?.phase])
+
   const measureDock = useDockHeight(scroller, dockwrap, s !== null)
   const q = s?.awaiting === 'learner' ? s.pendingQuestion : undefined
+
+  const isRetrieval = Boolean(
+    q &&
+    (['check', 'recall', 'probe'].includes(q.role) ||
+      (s?.stage && ['probe', 'consolidate'].includes(s.stage)))
+  )
+  const isPeeked =
+    (q && peekedQIds.has(q.id)) ||
+    Boolean(s?.evidence?.some((e) => e.questionId === q?.id && e.peeked))
+  const isBlurred = isRetrieval && !isPeeked
+
+  const handlePeek = (): void => {
+    if (!q) return
+    setPeekedQIds((prev) => new Set(prev).add(q.id))
+    void api.peek(id, q.id)
+  }
 
   useEffect(() => {
     const el = scroller.current
@@ -92,7 +190,10 @@ export function SessionView({
   }
 
   const hasOperative = Boolean(
-    q || (s.awaiting === 'learner' && s.phase !== 'done') || s.phase === 'done'
+    q ||
+    (s.awaiting === 'learner' && s.phase !== 'done') ||
+    s.phase === 'done' ||
+    s.awaiting === 'confirm'
   )
 
   return (
@@ -106,6 +207,11 @@ export function SessionView({
         <span className="phase mono">
           {s.items.length <= 1 && !s.hasTeacherTurn ? 'Obiettivo' : PHASE[s.phase]}
         </span>
+        {s.phase !== 'done' && (
+          <button type="button" className="nodrag end-btn" onClick={() => void api.end(id)}>
+            Termina ora
+          </button>
+        )}
         <span className="sp" />
         {(score.points > 0 || score.games > 0) && (
           <span className="score score-pill" aria-label="Punteggio">
@@ -115,17 +221,28 @@ export function SessionView({
         {s.noteTitle && <span className="notechip">Dalla tua nota: {s.noteTitle}</span>}
       </GlassSurface>
 
-      <PlanMap plan={s.plan} current={s.currentNodeId} done={s.doneNodeIds} />
+      <PlanMap
+        plan={s.plan}
+        current={s.currentNodeId}
+        done={s.doneNodeIds}
+        tree={s.tree}
+        concepts={s.concepts}
+      />
 
       <main className="body split">
-        <GlassContent layout="scroll" className="scroll edge-fade" ref={scroller} aria-label="La lezione">
+        <GlassContent
+          layout="scroll"
+          className="scroll edge-fade"
+          ref={scroller}
+          aria-label="La lezione"
+        >
           <div className="col" aria-live="polite">
             {s.items.map((it, i) => {
               if (it.kind === 'teacher')
                 return (
                   <div
                     key={i}
-                    className="msg"
+                    className={`msg ${isBlurred ? 'retrieval-blurred' : ''}`}
                     ref={i === s.items.length - 1 ? lastTutor : undefined}
                   >
                     {it.turn.blocks.map((b, j) => (
@@ -156,6 +273,7 @@ export function SessionView({
                         <p className="score-line">
                           {`Punti ${score.points} · serie migliore ${score.bestStreak}${score.games ? ` · giochi ${score.games}` : ''}${score.calibration !== null ? ` · calibrazione ${score.calibration}%` : ''}`}
                         </p>
+                        <CalibrationBlock stats={memoryStats} />
                         {it.turn.summary.misconceptions.length > 0 && (
                           <>
                             <h3>Misconcezioni</h3>
@@ -183,14 +301,34 @@ export function SessionView({
                     )}
                   </div>
                 )
-              if (it.question && it.answer)
-                return <AnswerCard key={i} q={it.question} a={it.answer} />
+              if (it.question && it.answer) {
+                const ev = s.evidence?.find((e) => e.questionId === it.question!.id)
+                return (
+                  <AnswerCard
+                    key={i}
+                    q={it.question}
+                    a={it.answer}
+                    sessionId={id}
+                    evidence={ev}
+                    onContest={(qid) => void api.contest(id, qid)}
+                    onFlag={(qid) => void api.flag(id, qid)}
+                  />
+                )
+              }
               return (
                 <div key={i} className="msg you">
                   <div>{i === 0 ? s.topic : it.text}</div>
                 </div>
               )
             })}
+            {isBlurred && (
+              <div className="retrieval-gate" role="region" aria-label="Recupero attivo">
+                <p>La lezione è nascosta per stimolare il richiamo attivo.</p>
+                <button type="button" className="pri" onClick={handlePeek}>
+                  Mostra lezione
+                </button>
+              </div>
+            )}
             {s.awaiting === 'retry' && s.items[s.items.length - 1]?.kind !== 'error' && (
               <div className="card err" role="alert">
                 <p>Il tutor non ha finito di rispondere (forse l'app è stata chiusa).</p>
@@ -200,13 +338,35 @@ export function SessionView({
               </div>
             )}
             {s.awaiting === 'teacher' && (
-              <div className="msg typing-row">
-                <span className="typing" aria-hidden="true">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                <span className="lab mono">Il tutor sta pensando…</span>
+              <div className="msg typing-row streaming-row">
+                {partialText ? (
+                  <div className="streaming-content">
+                    <RichText md={partialText} className="stream-md" />
+                    <button
+                      type="button"
+                      className="cancel-btn"
+                      onClick={() => void api.cancel(id)}
+                    >
+                      Annulla
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="typing" aria-hidden="true">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                    <span className="lab mono">Il tutor sta pensando…</span>
+                    <button
+                      type="button"
+                      className="cancel-btn"
+                      onClick={() => void api.cancel(id)}
+                    >
+                      Annulla
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -214,6 +374,33 @@ export function SessionView({
 
         <aside className="dockwrap ops" ref={dockwrap}>
           <div className="dock">
+            {s.awaiting === 'confirm' && (
+              <GlassShell>
+                <div className="inner confirm-card">
+                  <div className="lab">Nota di partenza</div>
+                  <h3 className="confirm-title">Su quale nota lavoriamo?</h3>
+                  <div className="confirm-list">
+                    {(s.candidates ?? []).map((c) => (
+                      <button
+                        key={c.path}
+                        type="button"
+                        className="opt confirm-opt"
+                        onClick={() => void api.confirm(id, c.path)}
+                      >
+                        <span>{c.title}</span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="opt confirm-opt idk"
+                      onClick={() => void api.confirm(id, null)}
+                    >
+                      Nessuna nota
+                    </button>
+                  </div>
+                </div>
+              </GlassShell>
+            )}
             {q && (
               <QuestionDock
                 key={q.id}

@@ -67,11 +67,15 @@ describe('buildMaterialContext', () => {
     const text = await buildMaterialContext({
       material: { conceptIds: ['n_r', 'n_w'], sourceIds: ['11111111-1111-4111-8111-111111111111'], free: 'Esercizio 3 del tema di giugno' },
       graph,
+      memory: new Map([['n_r', mem('n_r', 0.31, NOW - 1)]]),
+      weaknesses: [{ id: 'w_1', conceptId: 'n_r', text: 'Confondere ipotesi', kind: 'misconception', source: 'practice', at: 1, status: 'active' }],
       readNote: async (p) => `Testo di ${p}`,
       sourceText: async () => ({ title: 'Temi d’esame', text: { segments: [{ label: 'p. 1', text: 'Esercizio 1: studia f.' }], warnings: [] } })
     })
     expect(text).toContain('n_r | Teorema di Rolle | Teorema di Rolle: enunciato')
     expect(text).toContain('n_w | Teorema di Weierstrass')
+    expect(text).toContain('STATO DI MEMORIA')
+    expect(text).toContain('DEBOLEZZE ATTIVE\nn_r | misconception | Confondere ipotesi')
     expect(text).toContain('Teorema di Weierstrass + Teorema di Fermat ⇒ Teorema di Rolle')
     expect(text).toContain('Testo di /v/Teorema di Rolle.md')
     expect(text.match(/Testo di \/v\/Teorema di Rolle\.md/g)).toHaveLength(1)

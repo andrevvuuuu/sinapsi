@@ -20,7 +20,15 @@ export type {
 export type { Catalog, Material } from './practice-types'
 export type { ReviewSession } from '../main/memory/history'
 export type { Chip, ChipAction, Suggestions } from '../main/suggest/suggest'
-export type { LessonEntry, LessonEvent, LaunchDestination, PacerType, MasteryLevel, DigestStep, Ref } from './lesson-types'
+export type {
+  LessonEntry,
+  LessonEvent,
+  LaunchDestination,
+  PacerType,
+  MasteryLevel,
+  DigestStep,
+  Ref
+} from './lesson-types'
 export type GraphPositions = Record<string, [number, number]>
 export type NoteRequest = { sourcePath?: string; sessionId?: string }
 
@@ -37,6 +45,14 @@ export const CH = {
   aiStatusChanged: 'ai:status-changed',
   openExternal: 'app:open-external',
   sessionStart: 'session:start',
+  sessionCreate: 'session:create',
+  sessionConfirm: 'session:confirm',
+  sessionContest: 'session:contest',
+  sessionPeek: 'session:peek',
+  sessionFlag: 'session:flag',
+  sessionCancel: 'session:cancel',
+  sessionEnd: 'session:end',
+  sessionPartial: 'session:partial',
   sessionList: 'session:list',
   sessionGet: 'session:get',
   sessionAnswer: 'session:answer',
@@ -64,6 +80,7 @@ export const CH = {
   reviewRecord: 'review:record',
   reviewMemory: 'review:memory',
   reviewCalibration: 'review:calibration',
+  memoryStats: 'memory:stats',
   reviewIntervals: 'review:intervals',
   reviewSessions: 'review:sessions',
   notebookList: 'notebook:list',
@@ -128,12 +145,21 @@ export interface SinapsiApi {
   }
   app: { openExternal(url: string): Promise<void> }
   session: {
+    /** With several candidate notes the state waits on 'confirm' and lists state.candidates. */
+    create(topic: string): Promise<string>
+    confirm(id: string, notePath: string | null): Promise<void>
     start(topic: string): Promise<string>
     list(): Promise<SessionSummary[]>
     get(id: string): Promise<SessionState>
     answer(id: string, a: LearnerAnswer): Promise<void>
     say(id: string, text: string): Promise<void>
     retry(id: string): Promise<void>
+    contest(id: string, questionId: string): Promise<void>
+    peek(id: string, questionId: string): Promise<void>
+    flag(id: string, questionId: string): Promise<void>
+    cancel(id: string): Promise<void>
+    end(id: string): Promise<void>
+    onPartial(cb: (partial: { id: string; text: string }) => void): () => void
     onUpdate(cb: (s: SessionState) => void): () => void
   }
   notes: {
@@ -187,17 +213,25 @@ export interface SinapsiApi {
       turns: import('../main/memory/explain').ExplainTurn[]
       confidence: number
     }): Promise<import('../main/memory/review').ExplainResult>
-    record(
-      r: import('./memory-types').ReviewLine
-    ): Promise<{
+    record(r: import('./memory-types').ReviewLine): Promise<{
       memory: import('./memory-types').Memory
       intervals: Record<import('./memory-types').Grade, string>
     }>
     memory(): Promise<Record<string, import('./memory-types').Memory>>
-    calibration(): Promise<Omit<import('./confidence').ConfidenceCalibration, 'confidentErrors'> & { confidentErrors: { conceptId: string; name: string; at: number; confidence: number }[] }>
+    calibration(): Promise<
+      Omit<import('./confidence').ConfidenceCalibration, 'confidentErrors'> & {
+        confidentErrors: { conceptId: string; name: string; at: number; confidence: number }[]
+      }
+    >
     intervals(conceptId: string): Promise<Record<import('./memory-types').Grade, string>>
     /** Past Ripasso sittings, newest first. */
     sessions(): Promise<import('../main/memory/history').ReviewSession[]>
+  }
+  memory: {
+    stats(): Promise<{
+      calibration: import('./calibration').CalibrationLevel[]
+      againRate: ReturnType<typeof import('./calibration').firstReviewAgainRate>
+    }>
   }
   notebook: {
     list(): Promise<import('./notebook-types').Notebook[]>
@@ -266,12 +300,20 @@ export interface SinapsiApi {
   }
   exams: {
     list(): Promise<import('./exam-types').ExamEntry[]>
-    create(entry: { courseId: string; title?: string; date: string; weight?: number }): Promise<import('./exam-types').ExamEntry>
+    create(entry: {
+      courseId: string
+      title?: string
+      date: string
+      weight?: number
+    }): Promise<import('./exam-types').ExamEntry>
     update(id: string, patch: Partial<import('./exam-types').ExamEntry>): Promise<boolean>
     archive(id: string): Promise<void>
   }
   plan: {
-    week(): Promise<{ plan: import('./plan-types').WeekPlan; readiness: import('./plan-types').Readiness[] }>
+    week(): Promise<{
+      plan: import('./plan-types').WeekPlan
+      readiness: import('./plan-types').Readiness[]
+    }>
   }
   /** What to study, review or practise next, each with its reason (no AI). */
   suggest: { get(): Promise<import('../main/suggest/suggest').Suggestions> }

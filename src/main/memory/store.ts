@@ -9,3 +9,7 @@ export function memoryStore(dir: string): MemoryStore {
   const file = join(dir, 'reviews.jsonl')
   return { append: (r) => appendJsonl(file, r), read: () => readJsonl(file, ReviewLineSchema) }
 }
+
+
+export { weaknessStore } from './weaknesses'
+export type { WeaknessStore } from './weaknesses'

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { ExerciseSchema, VariantLineSchema, type Exercise, type VariantLine } from '../../shared/exercise-schema'
 import type { Concept } from '../../shared/graph-types'
 import { EXERCISE_TYPES, type ExerciseType } from '../../shared/memory-types'
+import type { WeaknessLine } from '../../shared/memory-types'
 import { capNote } from '../session/prompt'
 import { appendJsonl, readJsonl } from '../store/jsonl'
 
@@ -64,7 +65,7 @@ const FORMAT: Record<ExerciseType, string> = {
 
 const EXPLAIN_RULE = `- "explain" (spiegalo tu: Andrea spiega a libro chiuso, a voce o per iscritto, e Claude lo corregge confrontando con la nota) solo per i concetti che hanno una dimostrazione da ricostruire o che sono una definizione importante, mai per fatti minori o calcoli; al massimo uno per concetto. Il "prompt" chiede di ricostruire la dimostrazione o di spiegare il concetto come a un compagno ("A libro chiuso: ricostruisci la dimostrazione di…", "Spiega a un compagno che cos'è… e perché serve…"); "answer" elenca i passaggi chiave, con le ipotesi, nell'ordine della nota.`
 
-export function buildVariantsPrompt(input: { noteTitle: string; noteText: string; concepts: Concept[]; types?: ExerciseType[]; depth?: boolean }): string {
+export function buildVariantsPrompt(input: { noteTitle: string; noteText: string; concepts: Concept[]; types?: ExerciseType[]; depth?: boolean; weaknesses?: WeaknessLine[]; lastMiss?: string }): string {
   const types = input.types?.length ? input.types : [...EXERCISE_TYPES]
   // Concepts that already have their other variants only need the check for a "Spiegalo tu".
   const explainOnly = types.length === 1 && types[0] === 'explain'
@@ -83,6 +84,7 @@ ${input.depth ? '- Punta su catene causa-effetto, condizioni in cui il risultato
 - Italiano; matematica in LaTeX con $…$; dentro le stringhe JSON ogni backslash va raddoppiato (\\\\frac).`,
     `CONCETTI (id | nome | enunciato)
 ${input.concepts.map((c) => `${c.id} | ${c.name} | ${c.statement.replace(/\s+/g, ' ')}`).join('\n')}`,
+    ...((input.weaknesses?.length || input.lastMiss) ? [`DEBOLEZZE E ULTIMO ERRORE\n${input.weaknesses?.map((w) => `${w.kind} | ${w.text}`).join('\n') ?? ''}${input.lastMiss ? `\nUltimo miss: ${input.lastMiss}` : ''}\nPer ogni debolezza attiva, includi almeno un esercizio che distingua il modello errato da quello corretto.`] : []),
     `FORMATO (un solo oggetto JSON):
 { "concepts": [ { "id": "n_…", "exercises": [ Esercizio, … ] } ] }
 Usa SOLO questi tipi: ${types.map((t) => `"${t}"`).join(', ')}.${types.length < 3 && !explainOnly ? ' (Qui bastano anche tipi ripetuti, con domande diverse.)' : ''}

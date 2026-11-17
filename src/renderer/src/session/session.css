@@ -73,15 +73,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.sess .body {
-  display: grid;
-  grid-template-columns: 1fr 280px;
-  grid-template-rows: minmax(0, 1fr);
-  min-height: 0;
-}
-.sess .side {
-  grid-area: 1/2;
-}
 .sess .scroll {
   overflow: auto;
   min-height: 0;
@@ -690,104 +681,872 @@
 }
 
 /* Compact layout contracts retained for regex based layout checks. */
-.sess .top{display:flex;align-items:center;gap:16px;padding:14px 24px 14px 88px;border-bottom:1px solid var(--hair);min-height:var(--topbar-h)}
-.dock{max-width:712px;margin:0 auto}
-.inner.has-scroll>.dock-scroll{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;margin:-4px -6px;padding:4px 6px}
-@media (max-height:760px){.sess .inner{padding:12px 14px}.sess .q{margin:2px 0 8px}.sess .act{margin-top:8px}.dockwrap{padding-bottom:12px}}
-.dock{max-width:712px;margin:0 auto;pointer-events:auto;display:flex;flex-direction:column;max-height:max(55vh,300px)}
-.sess .dock .inner{box-shadow:var(--inner)}
+.sess .top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 24px 14px 88px;
+  border-bottom: 1px solid var(--hair);
+  min-height: var(--topbar-h);
+}
+.dock {
+  max-width: 712px;
+  margin: 0 auto;
+}
+.inner.has-scroll > .dock-scroll {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  margin: -4px -6px;
+  padding: 4px 6px;
+}
+@media (max-height: 760px) {
+  .sess .inner {
+    padding: 12px 14px;
+  }
+  .sess .q {
+    margin: 2px 0 8px;
+  }
+  .sess .act {
+    margin-top: 8px;
+  }
+  .dockwrap {
+    padding-bottom: 12px;
+  }
+}
+.dock {
+  max-width: 712px;
+  margin: 0 auto;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  max-height: max(55vh, 300px);
+}
+.sess .dock .inner {
+  box-shadow: var(--inner);
+}
 
 /* Layout A: testata, timeline, split */
-.sess { grid-template-rows: auto auto minmax(0, 1fr); }
-.sess .top { display: flex; align-items: center; gap: 22px; padding: 20px 32px 20px 88px; background: #2c2d31; border-bottom: 1px solid var(--hair); min-width: 0; width: 100%; box-sizing: border-box; }
-[data-theme='trattato'] .sess .top { background: #e4e3df; }
-.sess .top .back-btn, .sess .top .pill.back-btn { flex: none; border: 0; background: transparent; padding: 4px 0; font-size: 14px; color: var(--ink); min-height: auto; border-radius: 0; box-shadow: none; cursor: pointer; }
-.sess .top .back-btn:hover, .sess .top .pill.back-btn:hover { color: var(--accent); background: transparent; border-color: transparent; }
-.sess .top h1 { min-width: 0; font-size: 28px; font-weight: 500; letter-spacing: -0.025em; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
-.sess .top .phase { flex: none; font: 500 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); }
+.sess {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+.sess .top {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 20px 32px 20px 88px;
+  background: #2c2d31;
+  border-bottom: 1px solid var(--hair);
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+[data-theme='trattato'] .sess .top {
+  background: #e4e3df;
+}
+.sess .top .back-btn,
+.sess .top .pill.back-btn {
+  flex: none;
+  border: 0;
+  background: transparent;
+  padding: 4px 0;
+  font-size: 14px;
+  color: var(--ink);
+  min-height: auto;
+  border-radius: 0;
+  box-shadow: none;
+  cursor: pointer;
+}
+.sess .top .back-btn:hover,
+.sess .top .pill.back-btn:hover {
+  color: var(--accent);
+  background: transparent;
+  border-color: transparent;
+}
+.sess .top h1 {
+  min-width: 0;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+.sess .top .phase {
+  flex: none;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
 
-:is(.tl-a, .plan-timeline) { display: flex; align-items: flex-start; gap: 28px; padding: 16px 32px 14px 40px; background: var(--panel); border-bottom: 1px solid var(--hair); width: 100%; box-sizing: border-box; }
-:is(.tl-a, .plan-timeline) > :is(.mono, .lab) { flex: none; padding-top: 4px; color: var(--muted); font: 500 11px/1 var(--mono); letter-spacing: 0.18em; text-transform: uppercase; }
-:is(.tl-a, .plan-timeline) .empty { color: var(--muted); font-size: 13px; margin: 0; padding-top: 2px; }
-:is(.tl-a, .plan-timeline) :is(ol, .map) { flex: 1; list-style: none; padding: 0; margin: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; position: relative; gap: 0; }
-:is(.tl-a, .plan-timeline) :is(ol, .map)::before { display: none; }
-:is(.tl-a, .plan-timeline) :is(li, .node) { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; font-size: 13px; padding: 0 6px; }
-:is(.tl-a, .plan-timeline) :is(li, .node)::before { content: ""; position: absolute; top: 7px; left: -50%; width: 100%; height: 2px; background: var(--hair); z-index: 0; }
-:is(.tl-a, .plan-timeline) :is(li, .node):first-child::before { display: none; }
-:is(.tl-a, .plan-timeline) :is(li, .node):is(.done, .cur)::before { background: var(--accent); }
-:is(.tl-a, .plan-timeline) :is(li, .node) i { position: relative; z-index: 1; width: 16px; height: 16px; border-radius: 50%; background: var(--panel); border: 2px solid var(--hair); box-sizing: border-box; }
-:is(.tl-a, .plan-timeline) :is(li, .node).own i { border-color: var(--good); background: var(--panel); }
-:is(.tl-a, .plan-timeline) :is(li, .node).done i { background: var(--accent); border-color: var(--accent); }
-:is(.tl-a, .plan-timeline) :is(li, .node).cur i { border-color: var(--accent); background: var(--panel); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); }
-:is(.tl-a, .plan-timeline) :is(li, .node).goal i { border-radius: 4px; transform: rotate(45deg) scale(0.85); }
-:is(.tl-a, .plan-timeline) :is(li, .node).goal.done i { background: var(--accent); border-color: var(--accent); border-radius: 4px; transform: rotate(45deg) scale(0.85); }
-:is(.tl-a, .plan-timeline) :is(li, .node) small { display: block; font: var(--font-caption); font-size: 11px; letter-spacing: var(--track-caption); text-transform: uppercase; color: var(--muted); margin-top: 2px; }
-:is(.tl-a, .plan-timeline) :is(li, .node).cur { color: var(--ink); font-weight: 600; }
-:is(.tl-a, .plan-timeline) :is(li, .node):not(.cur) { color: var(--muted); font-weight: 400; }
+:is(.tl-a, .plan-timeline) {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  padding: 16px 32px 14px 40px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--hair);
+  width: 100%;
+  box-sizing: border-box;
+}
+:is(.tl-a, .plan-timeline) > :is(.mono, .lab) {
+  flex: none;
+  padding-top: 4px;
+  color: var(--muted);
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+:is(.tl-a, .plan-timeline) .empty {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+  padding-top: 2px;
+}
+:is(.tl-a, .plan-timeline) :is(ol, .map) {
+  flex: 1;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  position: relative;
+  gap: 0;
+}
+:is(.tl-a, .plan-timeline) :is(ol, .map)::before {
+  display: none;
+}
+:is(.tl-a, .plan-timeline) :is(li, .node) {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 0 6px;
+}
+:is(.tl-a, .plan-timeline) :is(li, .node)::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--hair);
+  z-index: 0;
+}
+:is(.tl-a, .plan-timeline) :is(li, .node):first-child::before {
+  display: none;
+}
+:is(.tl-a, .plan-timeline) :is(li, .node):is(.done, .cur)::before {
+  background: var(--accent);
+}
+:is(.tl-a, .plan-timeline) :is(li, .node) i {
+  position: relative;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 2px solid var(--hair);
+  box-sizing: border-box;
+}
+:is(.tl-a, .plan-timeline) :is(li, .node).own i {
+  border-color: var(--good);
+  background: var(--panel);
+}
+:is(.tl-a, .plan-timeline) :is(li, .node).done i {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+:is(.tl-a, .plan-timeline) :is(li, .node).cur i {
+  border-color: var(--accent);
+  background: var(--panel);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+:is(.tl-a, .plan-timeline) :is(li, .node).goal i {
+  border-radius: 4px;
+  transform: rotate(45deg) scale(0.85);
+}
+:is(.tl-a, .plan-timeline) :is(li, .node).goal.done i {
+  background: var(--accent);
+  border-color: var(--accent);
+  border-radius: 4px;
+  transform: rotate(45deg) scale(0.85);
+}
+:is(.tl-a, .plan-timeline) :is(li, .node) small {
+  display: block;
+  font: var(--font-caption);
+  font-size: 11px;
+  letter-spacing: var(--track-caption);
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 2px;
+}
+:is(.tl-a, .plan-timeline) :is(li, .node).cur {
+  color: var(--ink);
+  font-weight: 600;
+}
+:is(.tl-a, .plan-timeline) :is(li, .node):not(.cur) {
+  color: var(--muted);
+  font-weight: 400;
+}
 
-.sess :is(.body, .split) { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 40%); gap: 24px; padding: 20px 32px 24px 40px; height: 100%; box-sizing: border-box; }
-.sess .split .scroll { grid-column: 1; grid-row: 1; min-height: 0; overflow: auto; position: relative; display: flex; flex-direction: column; margin-top: 0; --scroll-edge-top: 0px; padding: 4px 8px 40px 2px; scrollbar-width: thin; }
-.sess .split .scroll .col { max-width: 680px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; padding: 12px 0 24px; }
-.sess :is(.body, .split) .msg.you, .sess :is(.body, .split) .you { display: flex; justify-content: flex-end; align-self: stretch; }
-.sess :is(.body, .split) .msg.you div, .sess :is(.body, .split) .you div { max-width: 80%; padding: 12px 18px; border-radius: 18px; background: var(--surface); color: var(--ink); }
-.sess .typing-row { display: flex; align-items: center; gap: 10px; color: var(--muted); }
-.sess .typing-row .lab { font: 500 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
-.sess .typing { display: inline-flex; gap: 3px; align-items: center; }
-.sess .typing i { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); opacity: 0.5; animation: bl 1s infinite; }
-.sess .typing i:nth-child(2) { animation-delay: 0.2s; }
-.sess .typing i:nth-child(3) { animation-delay: 0.4s; }
-@keyframes bl { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+.sess :is(.body, .split) {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 40%);
+  gap: 24px;
+  padding: 20px 32px 24px 40px;
+  height: 100%;
+  box-sizing: border-box;
+}
+.sess .split .scroll {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin-top: 0;
+  --scroll-edge-top: 0px;
+  padding: 4px 8px 40px 2px;
+  scrollbar-width: thin;
+}
+.sess .split .scroll .col {
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 0 24px;
+}
+.sess :is(.body, .split) .msg.you,
+.sess :is(.body, .split) .you {
+  display: flex;
+  justify-content: flex-end;
+  align-self: stretch;
+}
+.sess :is(.body, .split) .msg.you div,
+.sess :is(.body, .split) .you div {
+  max-width: 80%;
+  padding: 12px 18px;
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.sess .typing-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+.sess .typing-row .lab {
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sess .typing {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+.sess .typing i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: 0.5;
+  animation: bl 1s infinite;
+}
+.sess .typing i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.sess .typing i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes bl {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
 
-.sess :is(.body, .split) > :is(.ops, .dockwrap) { grid-column: 2; grid-row: 1; min-height: 0; align-self: start; position: sticky; top: 0; height: 100%; display: flex; flex-direction: column; border-radius: 18px; background: var(--panel); border: 1px solid var(--hair); box-shadow: var(--inner); overflow: hidden; pointer-events: auto; padding: 0; z-index: 2; box-sizing: border-box; }
-.sess :is(.ops, .dockwrap) .dock { width: 100%; height: 100%; max-width: none; margin: 0; display: flex; flex-direction: column; min-height: 0; filter: none; }
-.sess :is(.ops, .dockwrap) .shell { padding: 0; border-radius: 0; background: transparent; box-shadow: none; height: 100%; display: flex; flex-direction: column; min-height: 0; }
-.sess :is(.ops, .dockwrap) .inner { border-radius: 0; background: transparent; box-shadow: none; padding: 0; height: 100%; display: flex; flex-direction: column; min-height: 0; }
-.sess :is(.ops, .dockwrap) .q-head { padding: 18px 20px 10px; overflow: visible; }
-.sess :is(.ops, .dockwrap) .lab { padding: 18px 20px 0; font: 500 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
-.sess :is(.ops, .dockwrap) .q { font-size: 16px; font-weight: 600; line-height: 1.45; margin-top: 6px; letter-spacing: -0.005em; color: var(--ink); }
-.sess :is(.ops, .dockwrap) .dock-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px 20px 12px; margin: 0; display: flex; flex-direction: column; gap: 14px; }
-.sess :is(.ops, .dockwrap) .act { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 20px 16px; border-top: 1px solid var(--hair); margin-top: auto; background: var(--panel); flex: none; }
-.sess :is(.ops, .dockwrap) .hint { font: 500 11px/1 var(--mono); font-size: 12px; color: var(--muted); }
-.sess :is(.ops, .dockwrap) .pri, .sess .pri { border: 1px solid var(--sh-send-bg); background: var(--sh-send-bg); color: #fff; border-radius: 999px; padding: 8px 18px; font-weight: 500; min-height: 36px; cursor: pointer; transition: transform 0.15s var(--ease-out), background 0.15s var(--ease-out); }
-.sess :is(.ops, .dockwrap) .pri:not(:disabled):hover, .sess .pri:not(:disabled):hover { background: color-mix(in srgb, var(--sh-send-bg) 86%, #000); border-color: color-mix(in srgb, var(--sh-send-bg) 86%, #000); transform: none; }
-.sess :is(.ops, .dockwrap) .pri:not(:disabled):active, .sess .pri:not(:disabled):active { transform: scale(0.98); }
-.sess :is(.ops, .dockwrap) .pri:disabled, .sess .pri:disabled { opacity: 0.45; background: var(--sh-send-bg); border-color: var(--sh-send-bg); color: #fff; cursor: not-allowed; }
-.sess :is(.ops, .dockwrap) .opt { display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--hair); background: var(--surface); color: var(--ink); min-height: auto; box-shadow: none; transition: border-color 0.15s var(--ease-out), background 0.15s var(--ease-out); }
-.sess :is(.ops, .dockwrap) .opt:not(:disabled):hover { border-color: var(--ctl-edge); background: var(--surface); }
-.sess :is(.ops, .dockwrap) .opt[aria-pressed='true'] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
-.sess :is(.ops, .dockwrap) .opt .k { flex: none; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: 12px; font-weight: 600; background: var(--faint); color: var(--ink); }
-.sess :is(.ops, .dockwrap) .opt[aria-pressed='true'] .k { background: var(--accent); color: #fff; }
-.sess :is(.ops, .dockwrap) .opt.idk { color: var(--muted); border-style: dashed; padding-left: 12px; }
-.sess :is(.ops, .dockwrap) .conf { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; }
-.sess :is(.ops, .dockwrap) .conf output { font-size: 13px; font-variant-numeric: tabular-nums; width: 38px; text-align: right; color: var(--ink); }
-.sess :is(.ops, .dockwrap) .think { border: 1px solid var(--hair); border-radius: 14px; background: var(--surface); padding: 10px 12px; margin-top: 0; }
-.sess :is(.ops, .dockwrap) .think label.lab { padding: 0; margin-bottom: 6px; display: block; }
-.sess :is(.ops, .dockwrap) .think textarea { width: 100%; min-height: 76px; resize: vertical; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 14px; padding: 0; }
-.sess :is(.ops, .dockwrap) .sc-input { display: flex; flex-direction: column; gap: 12px; padding: 20px; height: 100%; }
-.sess :is(.ops, .dockwrap) .sc-input .mic-field { flex: 1; display: flex; flex-direction: column; }
-.sess :is(.ops, .dockwrap) .sc-input textarea { width: 100%; flex: 1; min-height: 100px; resize: none; border-radius: 14px; border: 1px solid var(--hair); background: var(--surface); color: var(--ink); padding: 12px 14px; font-size: 14px; }
-.sess :is(.ops, .dockwrap) .sc-input button.pri { align-self: flex-end; min-height: 36px; border: 1px solid var(--sh-send-bg); background: var(--sh-send-bg); color: #fff; border-radius: 999px; padding: 8px 18px; }
+.sess :is(.body, .split) > :is(.ops, .dockwrap) {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 0;
+  align-self: start;
+  position: sticky;
+  top: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  box-shadow: var(--inner);
+  overflow: hidden;
+  pointer-events: auto;
+  padding: 0;
+  z-index: 2;
+  box-sizing: border-box;
+}
+.sess :is(.ops, .dockwrap) .dock {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  filter: none;
+}
+.sess :is(.ops, .dockwrap) .shell {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.sess :is(.ops, .dockwrap) .inner {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.sess :is(.ops, .dockwrap) .q-head {
+  padding: 18px 20px 10px;
+  overflow: visible;
+}
+.sess :is(.ops, .dockwrap) .lab {
+  padding: 18px 20px 0;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sess :is(.ops, .dockwrap) .q {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+  margin-top: 6px;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+}
+.sess :is(.ops, .dockwrap) .dock-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 4px 20px 12px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.sess :is(.ops, .dockwrap) .act {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--hair);
+  margin-top: auto;
+  background: var(--panel);
+  flex: none;
+}
+.sess :is(.ops, .dockwrap) .hint {
+  font: 500 11px/1 var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.sess :is(.ops, .dockwrap) .pri,
+.sess .pri {
+  border: 1px solid var(--sh-send-bg);
+  background: var(--sh-send-bg);
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-weight: 500;
+  min-height: 36px;
+  cursor: pointer;
+  transition:
+    transform 0.15s var(--ease-out),
+    background 0.15s var(--ease-out);
+}
+.sess :is(.ops, .dockwrap) .pri:not(:disabled):hover,
+.sess .pri:not(:disabled):hover {
+  background: color-mix(in srgb, var(--sh-send-bg) 86%, #000);
+  border-color: color-mix(in srgb, var(--sh-send-bg) 86%, #000);
+  transform: none;
+}
+.sess :is(.ops, .dockwrap) .pri:not(:disabled):active,
+.sess .pri:not(:disabled):active {
+  transform: scale(0.98);
+}
+.sess :is(.ops, .dockwrap) .pri:disabled,
+.sess .pri:disabled {
+  opacity: 0.45;
+  background: var(--sh-send-bg);
+  border-color: var(--sh-send-bg);
+  color: #fff;
+  cursor: not-allowed;
+}
+.sess :is(.ops, .dockwrap) .opt {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--hair);
+  background: var(--surface);
+  color: var(--ink);
+  min-height: auto;
+  box-shadow: none;
+  transition:
+    border-color 0.15s var(--ease-out),
+    background 0.15s var(--ease-out);
+}
+.sess :is(.ops, .dockwrap) .opt:not(:disabled):hover {
+  border-color: var(--ctl-edge);
+  background: var(--surface);
+}
+.sess :is(.ops, .dockwrap) .opt[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+.sess :is(.ops, .dockwrap) .opt .k {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--faint);
+  color: var(--ink);
+}
+.sess :is(.ops, .dockwrap) .opt[aria-pressed='true'] .k {
+  background: var(--accent);
+  color: #fff;
+}
+.sess :is(.ops, .dockwrap) .opt.idk {
+  color: var(--muted);
+  border-style: dashed;
+  padding-left: 12px;
+}
+.sess :is(.ops, .dockwrap) .conf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sess :is(.ops, .dockwrap) .conf output {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  width: 38px;
+  text-align: right;
+  color: var(--ink);
+}
+.sess :is(.ops, .dockwrap) .think {
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 10px 12px;
+  margin-top: 0;
+}
+.sess :is(.ops, .dockwrap) .think label.lab {
+  padding: 0;
+  margin-bottom: 6px;
+  display: block;
+}
+.sess :is(.ops, .dockwrap) .think textarea {
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  padding: 0;
+}
+.sess :is(.ops, .dockwrap) .sc-input {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  height: 100%;
+}
+.sess :is(.ops, .dockwrap) .sc-input .mic-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.sess :is(.ops, .dockwrap) .sc-input textarea {
+  width: 100%;
+  flex: 1;
+  min-height: 100px;
+  resize: none;
+  border-radius: 14px;
+  border: 1px solid var(--hair);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 12px 14px;
+  font-size: 14px;
+}
+.sess :is(.ops, .dockwrap) .sc-input button.pri {
+  align-self: flex-end;
+  min-height: 36px;
+  border: 1px solid var(--sh-send-bg);
+  background: var(--sh-send-bg);
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 18px;
+}
 
-.sess .ops-empty { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; }
-.sess .ops-empty p { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0; }
+.sess .ops-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+}
+.sess .ops-empty p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
 
 @media (max-width: 900px) {
-  .sess :is(.body, .split) { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; padding: 16px 20px 24px; gap: 16px; }
-  .sess .split .scroll { grid-column: 1; grid-row: 1; }
-  .sess :is(.body, .split) > :is(.ops, .dockwrap) { grid-column: 1; grid-row: 2; position: static; height: auto; }
-  :is(.tl-a, .plan-timeline) { padding: 12px 20px 10px; gap: 16px; overflow-x: auto; }
-  :is(.tl-a, .plan-timeline) :is(li, .node) { font-size: 11px; }
+  .sess :is(.body, .split) {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    padding: 16px 20px 24px;
+    gap: 16px;
+  }
+  .sess .split .scroll {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .sess :is(.body, .split) > :is(.ops, .dockwrap) {
+    grid-column: 1;
+    grid-row: 2;
+    position: static;
+    height: auto;
+  }
+  :is(.tl-a, .plan-timeline) {
+    padding: 12px 20px 10px;
+    gap: 16px;
+    overflow-x: auto;
+  }
+  :is(.tl-a, .plan-timeline) :is(li, .node) {
+    font-size: 11px;
+  }
 }
 
 /* The panel takes its content's height up to the column, and its blocks keep the panel's 16-20 px inset. */
-.sess :is(.body,.split)>.ops{height:auto;max-height:100%}
-.sess .ops :is(.dock,.shell,.inner){height:auto;flex:0 1 auto}
-.sess .ops .rt{margin:16px 16px 0}
-.sess .ops .inner:has(>.invite){padding:14px 20px 18px}
+.sess :is(.body, .split) > .ops {
+  height: auto;
+  max-height: 100%;
+}
+.sess .ops :is(.dock, .shell, .inner) {
+  height: auto;
+  flex: 0 1 auto;
+}
+.sess .ops .rt {
+  margin: 16px 16px 0;
+}
+.sess .ops .inner:has(> .invite) {
+  padding: 14px 20px 18px;
+}
 /* The question panel shows all of itself: options, confidence and reasoning never scroll inside it. */
-.sess :is(.body,.split)>.ops{max-height:none;overflow:visible}
-.sess .ops .dock-scroll{flex:none;overflow:visible}
-.sess .ops .conf .lab{padding:0}
-.sess .ops .dock{max-height:none}
-.sess .ops .inner.has-scroll .q-head{max-height:none;overflow:visible}
-.sess .ops .conf .glass-ground{background:var(--panel)}
+.sess :is(.body, .split) > .ops {
+  max-height: none;
+  overflow: visible;
+}
+.sess .ops .dock-scroll {
+  flex: none;
+  overflow: visible;
+}
+.sess .ops .conf .lab {
+  padding: 0;
+}
+.sess .ops .dock {
+  max-height: none;
+}
+.sess .ops .inner.has-scroll .q-head {
+  max-height: none;
+  overflow: visible;
+}
+.sess .ops .conf .glass-ground {
+  background: var(--panel);
+}
+
+/* Header End Button */
+.sess .top .end-btn {
+  flex: none;
+  border: 1px solid color-mix(in srgb, var(--hair) 80%, transparent);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  padding: 4px 12px;
+  font: 500 12px/1 var(--sans);
+  color: var(--ink);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: var(--btn-transition);
+}
+.sess .top .end-btn:hover {
+  background: color-mix(in srgb, var(--bad) 12%, transparent);
+  border-color: color-mix(in srgb, var(--bad) 40%, transparent);
+  color: var(--bad);
+}
+
+/* Retrieval Mode (blur & peek gate) */
+.retrieval-blurred {
+  filter: blur(8px);
+  user-select: none;
+  pointer-events: none;
+  transition: filter 0.25s var(--ease-out);
+}
+.retrieval-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  margin: 16px 0;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  border: 1px solid var(--hair);
+  box-shadow: var(--inner);
+  text-align: center;
+}
+.retrieval-gate p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Streaming & Turn Cancellation */
+.streaming-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.streaming-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  animation: imp-in 0.2s var(--ease-out);
+}
+.cancel-btn {
+  align-self: flex-start;
+  border: 1px solid color-mix(in srgb, var(--bad) 40%, transparent);
+  background: color-mix(in srgb, var(--bad) 10%, transparent);
+  color: var(--bad);
+  font: 500 12px/1 var(--sans);
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: var(--btn-transition);
+}
+.cancel-btn:hover {
+  background: color-mix(in srgb, var(--bad) 20%, transparent);
+  border-color: var(--bad);
+}
+
+/* Note Confirmation Card */
+.confirm-card {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.confirm-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+.confirm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.confirm-opt {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Grader Verdict & Contesta / Flag */
+.chip.warn {
+  background: color-mix(in srgb, #f59e0b 16%, transparent);
+  color: #d97706;
+}
+.chip.contested {
+  background: color-mix(in srgb, var(--muted) 16%, transparent);
+  color: var(--muted);
+}
+.link-btn.contest-btn {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: 500 12px/1 var(--sans);
+  padding: 2px 6px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.link-btn.contest-btn:hover {
+  color: color-mix(in srgb, var(--accent) 80%, #000);
+}
+.quiet-btn.flag-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: 400 11px/1 var(--sans);
+  padding: 2px 6px;
+  cursor: pointer;
+  margin-left: auto;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+.quiet-btn.flag-btn:hover {
+  opacity: 1;
+  color: var(--bad);
+}
+
+/* PlanMap Tree Nodes */
+.node-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.node-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.node-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 2px;
+}
+.birth-link {
+  background: transparent;
+  border: 0;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: var(--btn-transition);
+}
+.birth-link:hover {
+  color: var(--accent);
+  background: var(--faint);
+}
+.chip.role {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.status-pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.status-pill .dot.dot-unseen {
+  background: var(--muted);
+}
+.status-pill .dot.dot-explained {
+  background: var(--pen);
+}
+.status-pill .dot.dot-probed {
+  background: var(--accent);
+}
+.status-pill .dot.dot-repairing {
+  background: var(--bad);
+}
+.status-pill .dot.dot-mastered {
+  background: var(--good);
+}
+.chip.goal-chip {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.tree-node.goal .node-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Summary Calibration */
+.calib-block {
+  margin-top: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--hair);
+}
+.calib-block h3 {
+  margin-bottom: var(--s-2);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.calib-levels {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--s-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.calib-level-item {
+  font-size: 13px;
+  color: var(--ink);
+}
+.calib-again {
+  font-size: 13px;
+  color: var(--muted);
+  margin: var(--s-2) 0 0;
+}

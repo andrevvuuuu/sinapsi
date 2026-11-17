@@ -15,6 +15,7 @@ import { CH } from '../shared/api'
 import { readTutorCalendar } from './tutor/calendar'
 import { createSinapsiTutorService } from './tutor/sinapsi-tutor'
 import { confidenceCalibration } from '../shared/confidence'
+import { calibrationByLevel, firstReviewAgainRate } from '../shared/calibration'
 import { createBridge, type Bridge } from './ai/bridge'
 import { nodeSpawn } from './ai/engines'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
@@ -43,7 +44,7 @@ import { notebookStore } from './notebook/store'
 import { fakeReviewBridge } from './memory/fake-review'
 import { createReviewService } from './memory/review'
 import { memoryOf } from './memory/fsrs'
-import { memoryStore } from './memory/store'
+import { memoryStore, weaknessStore } from './memory/store'
 import { reviewSessions } from './memory/history'
 import { variantsStore } from './memory/variants'
 import { transcribeVoice } from './memory/voice'
@@ -152,6 +153,9 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.openExternal, (_e, url) => h.openExternal(url))
   bridge.onStatus((s) => broadcast(CH.aiStatusChanged, s))
 
+  const memoryDir = join(dataDir(), 'memory')
+  const sessionMemory = memoryStore(memoryDir)
+  const sessionWeaknesses = weaknessStore(memoryDir)
   const runner = createSessionRunner({
     bridge:
       process.env.SINAPSI_FAKE_TEACHER === '1'
@@ -168,12 +172,36 @@ export function registerIpc(): { bridge: Bridge } {
     },
     readNote: (path) => readFile(path, 'utf8'),
     games: async () => (await settings.load()).gamesInSessions,
+    memoryStore: sessionMemory,
     memory: async (notePath) =>
       memoryBrief(
         await extractor.graph(),
         memoryOf(await memoryStore(join(dataDir(), 'memory')).read(), Date.now()),
         notePath
       ),
+    weaknesses: sessionWeaknesses,
+    graph: () => extractor.graph(),
+    settings: async () => {
+      const current = await settings.load()
+      return {
+        mastery: current.mastery,
+        learnerProfile: current.learnerProfile,
+        graderEngine: current.graderEngine,
+        fastStart: current.fastStart
+      }
+    },
+    otherEngine: async () => {
+      const current = await settings.load()
+      const teach = current.engines.teach
+      const grader = current.engines.grade
+      if (grader.engine !== teach.engine) return grader
+      return {
+        engine: teach.engine === 'claude' ? 'agy' : 'claude',
+        model: teach.engine === 'claude' ? 'gemini-3.8-flash-medium' : 'sonnet'
+      }
+    },
+    teachEngine: async () => (await settings.load()).engines.teach,
+    onPartial: (id, text) => broadcast(CH.sessionPartial, { id, text }),
     onUpdate: (s) => {
       broadcast(CH.sessionUpdated, s)
     }
@@ -182,9 +210,14 @@ export function registerIpc(): { bridge: Bridge } {
   // Turns can take a while: the window learns progress through session:updated, so these return at once.
   const background = (p: Promise<unknown>): void =>
     void p.catch((e) => console.warn('[session]', e))
+  ipcMain.handle(CH.sessionCreate, async (_e, topic) => runner.create(String(topic)))
+  // Returns as soon as the session exists; the first turn (if no note choice is pending) runs in the background.
+  ipcMain.handle(CH.sessionConfirm, (_e, id, notePath) =>
+    background(runner.confirm(String(id), notePath == null ? null : String(notePath)))
+  )
   ipcMain.handle(CH.sessionStart, async (_e, topic) => {
-    const id = await sh.start(topic)
-    background(sh.retry(id))
+    const id = await runner.create(String(topic))
+    background(runner.retry(id))
     return id
   })
   ipcMain.handle(CH.sessionList, () => sh.list())
@@ -192,6 +225,17 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.sessionAnswer, (_e, id, a) => background(sh.answer(id, a)))
   ipcMain.handle(CH.sessionSay, (_e, id, text) => background(sh.say(id, text)))
   ipcMain.handle(CH.sessionRetry, (_e, id) => background(sh.retry(id)))
+  ipcMain.handle(CH.sessionContest, (_e, id, questionId) =>
+    runner.contest(String(id), String(questionId))
+  )
+  ipcMain.handle(CH.sessionPeek, (_e, id, questionId) =>
+    runner.peek(String(id), String(questionId))
+  )
+  ipcMain.handle(CH.sessionFlag, (_e, id, questionId) =>
+    runner.flag(String(id), String(questionId))
+  )
+  ipcMain.handle(CH.sessionCancel, (_e, id) => runner.cancel(String(id)))
+  ipcMain.handle(CH.sessionEnd, (_e, id) => background(runner.end(String(id))))
 
   const vaultIndexOrNull = async (): Promise<import('../shared/vault-types').VaultIndex | null> => {
     const idx = await h.vaultIndex()
@@ -330,7 +374,7 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.graphPositions, () => gh.positions())
   ipcMain.handle(CH.graphSavePositions, (_e, p) => gh.savePositions(p))
 
-  const memoryDir = join(dataDir(), 'memory')
+  const weaknesses = weaknessStore(memoryDir)
   const review = createReviewService({
     bridge: process.env.SINAPSI_FAKE_REVIEW === '1' ? fakeReviewBridge() : bridge,
     memory: memoryStore(memoryDir),
@@ -339,13 +383,19 @@ export function registerIpc(): { bridge: Bridge } {
     vault: vaultOrNull,
     readNote: (path) => readFile(path, 'utf8'),
     settings: async () => settings.load(),
+    weaknesses: () => weaknesses.active(),
     pacerOf: async () => {
       const lessons = reduceLessons(await lessonStore(dataDir()).read())
-      const map = new Map<string, { type: import('../shared/lesson-types').PacerType; at: number }>()
-      for (const lesson of lessons) for (const id of lesson.conceptIds) {
-        const current = map.get(id), at = Date.parse(lesson.updatedAt)
-        if (!current || at > current.at) map.set(id, { type: lesson.pacerType, at })
-      }
+      const map = new Map<
+        string,
+        { type: import('../shared/lesson-types').PacerType; at: number }
+      >()
+      for (const lesson of lessons)
+        for (const id of lesson.conceptIds) {
+          const current = map.get(id),
+            at = Date.parse(lesson.updatedAt)
+          if (!current || at > current.at) map.set(id, { type: lesson.pacerType, at })
+        }
       return new Map([...map].map(([id, v]) => [id, v.type]))
     },
     workDir: join(dataDir(), 'ai-work')
@@ -381,15 +431,29 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.reviewExplain, (_e, req) => rh.explain(req))
   ipcMain.handle(CH.reviewRecord, (_e, r) => rh.record(r))
   ipcMain.handle(CH.reviewMemory, () => rh.memory())
+  ipcMain.handle(CH.memoryStats, async () => {
+    const reviews = await sessionMemory.read()
+    return { calibration: calibrationByLevel(reviews), againRate: firstReviewAgainRate(reviews) }
+  })
   ipcMain.handle(CH.reviewCalibration, async () => {
-    const [lines, graph, index] = await Promise.all([memoryStore(memoryDir).read(), extractor.graph(), vaultOrNull()])
+    const [lines, graph, index] = await Promise.all([
+      memoryStore(memoryDir).read(),
+      extractor.graph(),
+      vaultOrNull()
+    ])
     const subject = (id: string): string | null => {
       const concept = graph.concepts.find((c) => c.id === id)
       return index?.notes.find((n) => n.path === concept?.birth)?.subject ?? null
     }
     const result = confidenceCalibration(lines, subject)
     const names = new Map(graph.concepts.map((c) => [c.id, c.name]))
-    return { ...result, confidentErrors: result.confidentErrors.map((e) => ({ ...e, name: names.get(e.conceptId) ?? e.conceptId })) }
+    return {
+      ...result,
+      confidentErrors: result.confidentErrors.map((e) => ({
+        ...e,
+        name: names.get(e.conceptId) ?? e.conceptId
+      }))
+    }
   })
   ipcMain.handle(CH.reviewIntervals, (_e, id) => rh.intervals(id))
   ipcMain.handle(CH.reviewSessions, async () =>
@@ -410,6 +474,12 @@ export function registerIpc(): { bridge: Bridge } {
       buildMaterialContext({
         material: m,
         graph: await extractor.graph(),
+        memory: memoryOf(
+          await memoryStore(memoryDir).read(),
+          Date.now(),
+          new Set((await weaknesses.active()).flatMap((w) => (w.conceptId ? [w.conceptId] : [])))
+        ),
+        weaknesses: await weaknesses.active(),
         readNote: (path) => readFile(path, 'utf8'),
         sourceText: async (id) => {
           const src = await nbStore.source(id)
@@ -420,6 +490,7 @@ export function registerIpc(): { bridge: Bridge } {
     topic: async (m: import('../shared/practice-types').Material) =>
       practiceTopic(m, await conceptNames()),
     memory: memoryStore(memoryDir),
+    weaknesses,
     onDone: async (lessonId: string): Promise<void> => {
       const entry = reduceLessons(await ls.read()).find((item) => item.id === lessonId)
       if (!entry) return
@@ -429,13 +500,26 @@ export function registerIpc(): { bridge: Bridge } {
       }
     },
     onCompass: async (lessonId: string, question: string): Promise<void> => {
-      await ls.append({ t: 'confusion-added', at: new Date().toISOString(), id: lessonId, qid: randomUUID(), text: question })
+      await ls.append({
+        t: 'confusion-added',
+        at: new Date().toISOString(),
+        id: lessonId,
+        qid: randomUUID(),
+        text: question
+      })
     },
     onSolved: async (lessonId: string, questions: string[]): Promise<void> => {
       const entry = reduceLessons(await ls.read()).find((item) => item.id === lessonId)
       for (const question of questions) {
-        for (const open of entry?.confusionQuestions.filter((q) => q.status === 'open' && q.text === question) ?? []) {
-          await ls.append({ t: 'confusion-resolved', at: new Date().toISOString(), id: lessonId, qid: open.id })
+        for (const open of entry?.confusionQuestions.filter(
+          (q) => q.status === 'open' && q.text === question
+        ) ?? []) {
+          await ls.append({
+            t: 'confusion-resolved',
+            at: new Date().toISOString(),
+            id: lessonId,
+            qid: open.id
+          })
         }
       }
     },
@@ -508,14 +592,15 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.planWeek, async () => {
     const todayDate = new Date()
     const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`
-    const [exams, lessonEvents, memories, reviews, currentSettings, practiceSessions] = await Promise.all([
-      eh.list(),
-      ls.read(),
-      review.memory(),
-      memoryStore(memoryDir).read(),
-      settings.load(),
-      practice.list()
-    ])
+    const [exams, lessonEvents, memories, reviews, currentSettings, practiceSessions] =
+      await Promise.all([
+        eh.list(),
+        ls.read(),
+        review.memory(),
+        memoryStore(memoryDir).read(),
+        settings.load(),
+        practice.list()
+      ])
     const lessons = reduceLessons(lessonEvents)
     const plan = buildWeekPlan({
       today,
@@ -531,7 +616,13 @@ export function registerIpc(): { bridge: Bridge } {
         .map(async (item) => {
           const state = await ph.get(item.id)
           return state.exam?.grade
-            ? [{ conceptIds: state.material.conceptIds, total: state.exam.grade.total, at: state.updatedAt }]
+            ? [
+                {
+                  conceptIds: state.material.conceptIds,
+                  total: state.exam.grade.total,
+                  at: state.updatedAt
+                }
+              ]
             : []
         })
     )
@@ -589,20 +680,20 @@ export function registerIpc(): { bridge: Bridge } {
     // The Registro's lessons: Sinapsi's own plus the Obsidian lesson tutor's (never practised = not studied yet).
     lessons: async () => [
       ...(await lh.list()),
-      ...(await sinapsiTutor.report().catch(() => null))?.lessons
+      ...((await sinapsiTutor.report().catch(() => null))?.lessons
         .filter((lesson) => lesson.stats.covered === 0 && lesson.lastStudiedAt === null)
         .map((lesson) => ({
           id: `tutor:${lesson.course}:${lesson.date}:${lesson.number ?? ''}`,
           date: lesson.date,
           topic: lesson.items[0]?.label ?? lesson.text.slice(0, 80),
-          courseId: lesson.number ? `${lesson.courseName} · lezione ${lesson.number}` : lesson.courseName
-        })) ?? []
+          courseId: lesson.number
+            ? `${lesson.courseName} · lezione ${lesson.number}`
+            : lesson.courseName
+        })) ?? [])
     ],
     studiedLessons: async () =>
       new Set(
-        (await ls.read())
-          .filter((event) => event.t === 'session-launched')
-          .map((event) => event.id)
+        (await ls.read()).filter((event) => event.t === 'session-launched').map((event) => event.id)
       ),
     now: Date.now
   })

@@ -11,6 +11,42 @@
         ],
         "createdAt": "2026-11-05T21:19:31.478Z",
         "reason": "Claude: practice.css:193 is a checkbox checkmark drawn with border-left+border-bottom rotated -45deg, not a card side-tab"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "createdAt": "2026-11-14T16:02:13.613Z",
+        "reason": "user asked for the deck in the app's identity; the app itself loads Instrument Serif, Geist and Geist Mono"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist mono",
+        "createdAt": "2026-11-14T16:02:13.631Z",
+        "reason": "user asked for the deck in the app's identity; the app itself loads Instrument Serif, Geist and Geist Mono"
+      },
+      {
+        "rule": "overused-font",
+        "value": "instrument serif",
+        "createdAt": "2026-11-14T16:02:13.646Z",
+        "reason": "user asked for the deck in the app's identity; the app itself loads Instrument Serif, Geist and Geist Mono"
+      },
+      {
+        "rule": "oversized-h1",
+        "value": "*",
+        "files": [
+          "docs/presentazione/sinapsi-pitch.html"
+        ],
+        "createdAt": "2026-11-14T16:02:13.662Z",
+        "reason": "agent judgement: one-line slide title at 80px on a fixed 1920x1080 presentation stage, not a web hero"
+      },
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "reports/proto-session/index.html"
+        ],
+        "createdAt": "2026-11-16T17:16:21.052Z",
+        "reason": "Claude: reports/ui-reference/STYLE.md asks for coloured glows (per-item dock glow); the flash-game popup is meant to be dramatic per the user's brief"
       }
     ]
   }

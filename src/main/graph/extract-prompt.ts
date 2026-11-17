@@ -2,10 +2,17 @@ import type { Concept } from '../../shared/graph-types'
 import { capNote } from '../session/prompt'
 
 /** Learn Harness EXTRACTION_CORE + the auditor's equivalence bias, in one call (no tools headless). */
-export function buildExtractPrompt(input: { noteTitle: string; noteText: string; candidates: Concept[] }): string {
-  const cands = input.candidates.map((c) => `${c.id} | ${c.name} | ${c.statement.replace(/\s+/g, ' ')}`).join('\n')
+export function buildExtractPrompt(input: {
+  noteTitle: string
+  noteText: string
+  candidates: Concept[]
+  learnerProfile?: string
+}): string {
+  const cands = input.candidates
+    .map((c) => `${c.id} | ${c.name} | ${c.statement.replace(/\s+/g, ' ')}`)
+    .join('\n')
   return [
-    `Sei lo stadio di estrazione di un'app di studio. Leggi una nota personale di Andrea (studente di Scienze matematiche per l'IA) e riporti ciò che insegna per il suo grafo della conoscenza, che unisce tutte le sue note.`,
+    `Sei lo stadio di estrazione di un'app di studio. Leggi una nota personale${input.learnerProfile ? ` di ${input.learnerProfile}` : ' di Andrea (studente di Scienze matematiche per l’IA)'} e riporti ciò che insegna per il suo grafo della conoscenza, che unisce tutte le sue note.`,
     `L'OBIETTIVO: trovare le IDEE CENTRALI della nota e mostrare come tutto deriva dalle fondamenta. La nota insegna argomentando: idee ricavate da altre idee, fino a una base su cui il resto poggia. Consegni due cose: le idee centrali e le catene di ragionamento che le ricavano.
 - Ogni catena è un insieme di premesse che INSIEME implicano una conclusione. Solo l'implicazione giustifica una catena: dove il legame è storico o narrativo non c'è catena. Argomenti indipendenti per la stessa conclusione sono catene separate.
 - Il grafo contiene solo idee VERE sul mondo, mai qualcosa su Andrea, sullo studio o su questa lettura. Un errore comune entra come la sua correzione vera.
