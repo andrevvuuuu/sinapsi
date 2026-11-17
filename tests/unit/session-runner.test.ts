@@ -9,17 +9,48 @@ import type { TeacherTurn } from '../../src/shared/teacher-protocol'
 import type { VaultIndex } from '../../src/shared/vault-types'
 
 const probeTurn: TeacherTurn = {
-  phase: 'probe', blocks: [{ type: 'text', md: 'Partiamo.' }],
-  question: { id: 'q1', role: 'probe', kind: 'choice', prompt: 'Rolle?', options: ['a', 'b'], correct: 0, why: ['sì', 'no'], nodeId: 'rolle' }
+  phase: 'probe',
+  blocks: [{ type: 'text', md: 'Partiamo.' }],
+  question: {
+    id: 'q1',
+    role: 'probe',
+    kind: 'choice',
+    prompt: 'Rolle?',
+    options: ['a', 'b'],
+    correct: 0,
+    why: ['sì', 'no'],
+    nodeId: 'rolle'
+  }
 }
 const planTurn: TeacherTurn = {
-  phase: 'plan', blocks: [{ type: 'text', md: 'Ecco il piano.' }],
-  plan: { nodes: [{ id: 'rolle', title: 'Rolle', status: 'known' }, { id: 'corda', title: 'Corda', status: 'todo' }, { id: 'lag', title: 'Lagrange', status: 'goal' }], edges: [['rolle', 'lag'], ['corda', 'lag']] },
+  phase: 'plan',
+  blocks: [{ type: 'text', md: 'Ecco il piano.' }],
+  plan: {
+    nodes: [
+      { id: 'rolle', title: 'Rolle', status: 'known' },
+      { id: 'corda', title: 'Corda', status: 'todo' },
+      { id: 'lag', title: 'Lagrange', status: 'goal' }
+    ],
+    edges: [
+      ['rolle', 'lag'],
+      ['corda', 'lag']
+    ]
+  },
   question: { id: 'q2', role: 'plan', kind: 'open', prompt: 'Va bene?' }
 }
 const checkTurn = (id: string, nodeId: string): TeacherTurn => ({
-  phase: 'teach', blocks: [{ type: 'text', md: 'Spiegazione.' }],
-  question: { id, role: 'check', kind: 'choice', prompt: 'Verifica', options: ['x', 'y'], correct: 1, why: ['no', 'sì'], nodeId }
+  phase: 'teach',
+  blocks: [{ type: 'text', md: 'Spiegazione.' }],
+  question: {
+    id,
+    role: 'check',
+    kind: 'choice',
+    prompt: 'Verifica',
+    options: ['x', 'y'],
+    correct: 1,
+    why: ['no', 'sì'],
+    nodeId
+  }
 })
 const at = 1
 
@@ -49,19 +80,34 @@ describe('reduceSession', () => {
     expect(reduceSession(ev).doneNodeIds).toEqual(['corda'])
   })
   it('awaits the teacher after a learner message and offers retry after an error', () => {
-    const base: SessionEvent[] = [{ t: 'created', id: 's', topic: 'x', at }, { t: 'learner', text: 'ciao', at }]
+    const base: SessionEvent[] = [
+      { t: 'created', id: 's', topic: 'x', at },
+      { t: 'learner', text: 'ciao', at }
+    ]
     expect(reduceSession(base).awaiting).toBe('teacher')
     expect(reduceSession([...base, { t: 'error', message: 'boom', at }]).awaiting).toBe('retry')
   })
 })
 
-function harness(converse: (r: ConverseRequest<TeacherTurn>) => Promise<TeacherTurn>, index: VaultIndex | null = null) {
+function harness(
+  converse: (r: ConverseRequest<TeacherTurn>) => Promise<TeacherTurn>,
+  index: VaultIndex | null = null
+) {
   return mkdtemp(join(tmpdir(), 'sinapsi-sess-')).then((dir) => {
     const calls: ConverseRequest<TeacherTurn>[] = []
     const updates: string[] = []
     const runner = createSessionRunner({
       dir,
-      bridge: { converse: async (r) => (calls.push(r as ConverseRequest<TeacherTurn>), { data: await converse(r as ConverseRequest<TeacherTurn>), conversationId: r.conversationId, engine: 'claude' as const }) } as never,
+      bridge: {
+        converse: async (r) => (
+          calls.push(r as ConverseRequest<TeacherTurn>),
+          {
+            data: await converse(r as ConverseRequest<TeacherTurn>),
+            conversationId: r.conversationId,
+            engine: 'claude' as const
+          }
+        )
+      } as never,
       vault: async () => index,
       readNote: async () => 'TESTO DELLA NOTA',
       onUpdate: (s) => updates.push(s.awaiting),
@@ -81,12 +127,35 @@ describe('session runner', () => {
     expect(calls[0].systemPrompt).toContain('Protocollo')
     expect(calls[1].resume).toBe(true)
     expect(calls[1].prompt).toContain('Risposta alla domanda q1 (misura)')
-    const log = (await readFile(join(dir, `${id}.jsonl`), 'utf8')).trim().split('\n').map((l) => JSON.parse(l).t)
-    expect(log).toEqual(['created', 'learner', 'teacher', 'learner', 'teacher'])
+    const log = (await readFile(join(dir, `${id}.jsonl`), 'utf8'))
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l).t)
+    expect(log).toEqual(['created', 'confirmed', 'learner', 'teacher', 'learner', 'teacher'])
   })
 
   it('grounds the first message in the matching Obsidian note', async () => {
-    const index = { root: '/v', scannedAt: 0, subjects: [], notes: [{ path: '/v/L.md', title: 'Teorema di Lagrange', folder: '', tags: [], aliases: [], links: [], headings: [], blockIds: [], subject: null, mtime: 0, size: 0, available: true }] }
+    const index = {
+      root: '/v',
+      scannedAt: 0,
+      subjects: [],
+      notes: [
+        {
+          path: '/v/L.md',
+          title: 'Teorema di Lagrange',
+          folder: '',
+          tags: [],
+          aliases: [],
+          links: [],
+          headings: [],
+          blockIds: [],
+          subject: null,
+          mtime: 0,
+          size: 0,
+          available: true
+        }
+      ]
+    }
     const { runner, calls } = await harness(async () => probeTurn, index)
     const id = await runner.start('teorema di lagrange')
     expect(calls[0].prompt).toContain('TESTO DELLA NOTA')
@@ -113,7 +182,13 @@ describe('session runner', () => {
   it('can retry a session reopened after the app closed mid-turn', async () => {
     const { runner, dir } = await harness(async () => probeTurn)
     const id = '22222222-2222-4222-8222-222222222222'
-    await writeFile(join(dir, `${id}.jsonl`), [JSON.stringify({ t: 'created', id, topic: 'x', at }), JSON.stringify({ t: 'learner', text: 'Voglio studiare: x', at })].join('\n') + '\n')
+    await writeFile(
+      join(dir, `${id}.jsonl`),
+      [
+        JSON.stringify({ t: 'created', id, topic: 'x', at }),
+        JSON.stringify({ t: 'learner', text: 'Voglio studiare: x', at })
+      ].join('\n') + '\n'
+    )
     expect((await runner.get(id)).awaiting).toBe('retry')
     await runner.retry(id)
     expect((await runner.get(id)).awaiting).toBe('learner')
@@ -126,9 +201,24 @@ describe('session runner', () => {
       return turns.shift()!
     })
     const id = await runner.start('x')
-    await Promise.all([runner.answer(id, { questionId: 'q1', choice: 0, confidence: 50 }), runner.answer(id, { questionId: 'q2', choice: 1, confidence: 50 })])
-    const log = (await readFile(join(dir, `${id}.jsonl`), 'utf8')).trim().split('\n').map((l) => JSON.parse(l).t)
-    expect(log).toEqual(['created', 'learner', 'teacher', 'learner', 'teacher', 'learner', 'teacher'])
+    await Promise.all([
+      runner.answer(id, { questionId: 'q1', choice: 0, confidence: 50 }),
+      runner.answer(id, { questionId: 'q2', choice: 1, confidence: 50 })
+    ])
+    const log = (await readFile(join(dir, `${id}.jsonl`), 'utf8'))
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l).t)
+    expect(log).toEqual([
+      'created',
+      'confirmed',
+      'learner',
+      'teacher',
+      'learner',
+      'teacher',
+      'learner',
+      'teacher'
+    ])
   })
 
   it('lists sessions newest first', async () => {
@@ -137,12 +227,229 @@ describe('session runner', () => {
     const list = await runner.list()
     expect(list[0]).toMatchObject({ topic: 'Primo', phase: 'probe' })
   })
+
+  it('creates candidates, confirms a minimal tree, and grades an open answer statelessly', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sinapsi-session-grade-'))
+    const asks: unknown[] = []
+    const noteIndex: VaultIndex = {
+      root: '/v',
+      scannedAt: 0,
+      subjects: [],
+      notes: [
+        {
+          path: '/v/L.md',
+          title: 'Lagrange',
+          folder: '',
+          tags: [],
+          aliases: [],
+          links: [],
+          headings: ['Teorema'],
+          blockIds: [],
+          subject: null,
+          mtime: 0,
+          size: 0,
+          available: true
+        }
+      ]
+    }
+    let call = 0
+    const runner = createSessionRunner({
+      dir,
+      bridge: {
+        converse: async () => ({
+          data:
+            call++ === 0
+              ? {
+                  phase: 'teach',
+                  blocks: [],
+                  question: {
+                    id: 'open',
+                    role: 'check',
+                    kind: 'open',
+                    prompt: 'Spiega',
+                    nodeId: 'c'
+                  }
+                }
+              : probeTurn,
+          conversationId: 's',
+          engine: 'claude'
+        }),
+        ask: async (request) => {
+          asks.push(request)
+          return {
+            data: { verdict: 'correct', hintsUsed: 0, reason: 'Dimostrato' },
+            fromCache: false,
+            engine: 'agy'
+          }
+        }
+      } as never,
+      vault: async () => noteIndex,
+      readNote: async () => '# Teorema\n\nEnunciato dal testo.',
+      graph: async () => ({
+        concepts: [
+          {
+            id: 'c',
+            name: 'Lagrange',
+            statement: 'Il teorema.',
+            aliases: [],
+            birth: '/v/L.md',
+            notes: ['/v/L.md'],
+            sections: { '/v/L.md': 'Teorema' },
+            depth: 0
+          }
+        ],
+        chains: [],
+        extracted: {}
+      }),
+      memoryStore: { read: async () => [], append: async () => undefined },
+      onUpdate: () => undefined
+    })
+    const id = await runner.create('Lagrange')
+    const created = { id }
+    // A single candidate is confirmed at once; the first turn starts with retry.
+    expect((await runner.get(id)).candidates).toEqual([{ title: 'Lagrange', path: '/v/L.md' }])
+    expect((await runner.get(id)).awaiting).not.toBe('confirm')
+    await runner.retry(id)
+    await runner.answer(created.id, { questionId: 'open', text: 'Risposta', confidence: 99 })
+    expect(asks).toHaveLength(1)
+    expect((asks[0] as { prompt: string }).prompt).not.toContain('99')
+    const state = await runner.get(created.id)
+    expect(state.items.some((item) => item.kind === 'teacher')).toBe(true)
+  })
+
+  it('waits for the note choice when several notes match, then confirm starts the turn', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sinapsi-session-confirm-'))
+    const note = (path: string, title: string) => ({
+      path,
+      title,
+      folder: '',
+      tags: [],
+      aliases: [],
+      links: [],
+      headings: [],
+      mtime: 0,
+      size: 0,
+      available: true
+    })
+    let turns = 0
+    const runner = createSessionRunner({
+      dir,
+      bridge: {
+        converse: async () => (
+          turns++,
+          {
+            data: { phase: 'probe', blocks: [{ type: 'text', md: 'ok' }] },
+            conversationId: 'c',
+            engine: 'claude'
+          }
+        )
+      } as never,
+      vault: async () =>
+        ({
+          root: '/v',
+          scannedAt: 0,
+          subjects: [],
+          notes: [note('/v/A.md', 'Derivate'), note('/v/B.md', 'Derivate parziali')]
+        }) as never,
+      readNote: async () => '# Derivate',
+      onUpdate: () => undefined
+    })
+    const id = await runner.start('derivate')
+    const waiting = await runner.get(id)
+    expect(waiting.awaiting).toBe('confirm')
+    expect(waiting.candidates.length).toBeGreaterThan(1)
+    expect(turns).toBe(0)
+    await runner.confirm(id, '/v/B.md')
+    expect(turns).toBe(1)
+    expect((await runner.get(id)).lastLearnerText).toContain('Derivate')
+  })
+
+  it('records an aborted event when a live turn is cancelled', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sinapsi-session-abort-'))
+    let signalTeacher: (() => void) | undefined
+    const runner = createSessionRunner({
+      dir,
+      bridge: {
+        converse: (_request: ConverseRequest<TeacherTurn>) =>
+          new Promise((_resolve, reject) => {
+            signalTeacher = () => reject(new Error('abort'))
+            if (_request.signal?.aborted) signalTeacher()
+            else _request.signal?.addEventListener('abort', signalTeacher, { once: true })
+          })
+      } as never,
+      vault: async () => null,
+      readNote: async () => '',
+      onUpdate: () => undefined
+    })
+    const created = { id: await runner.create('x') }
+    const pendingTurn = runner.retry(created.id)
+    while (!signalTeacher) await new Promise((resolve) => setTimeout(resolve, 1))
+    await runner.cancel(created.id)
+    await pendingTurn
+    expect((await runner.get(created.id)).items.at(-1)).toEqual({
+      kind: 'error',
+      message: 'Turno annullato'
+    })
+  })
+
+  it('writes one session review per concept and finalizes idempotently', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sinapsi-session-finalize-'))
+    const reviews: { ref?: string; via?: string }[] = []
+    let calls = 0
+    const runner = createSessionRunner({
+      dir,
+      bridge: {
+        converse: async () => ({
+          data:
+            calls++ === 0
+              ? {
+                  phase: 'probe',
+                  blocks: [],
+                  question: {
+                    id: 'recall',
+                    role: 'recall',
+                    kind: 'choice',
+                    prompt: 'Ricorda',
+                    options: ['giusta', 'sbagliata'],
+                    correct: 0,
+                    why: ['Sì.', 'No.'],
+                    nodeId: 'concept'
+                  }
+                }
+              : {
+                  phase: 'done',
+                  blocks: [],
+                  summary: { learned: ['concept'], shaky: [], misconceptions: [] }
+                },
+          conversationId: 'session',
+          engine: 'claude'
+        })
+      } as never,
+      vault: async () => null,
+      readNote: async () => '',
+      memoryStore: {
+        read: async () => reviews as never,
+        append: async (review) => {
+          reviews.push(review)
+        }
+      },
+      onUpdate: () => undefined
+    })
+    const id = await runner.start('concept')
+    await runner.answer(id, { questionId: 'recall', choice: 0, confidence: 88 })
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    await runner.end(id)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(reviews).toHaveLength(1)
+    expect(reviews[0]).toMatchObject({ via: 'session', ref: `session:${id}:concept` })
+  })
 })
 
 describe('fake teacher script', () => {
   it('is made only of valid turns', async () => {
     const { FAKE_SCRIPT, LONG_MEASURE_SCRIPT } = await import('../../src/main/session/fake-teacher')
     const { TeacherTurnSchema } = await import('../../src/shared/teacher-protocol')
-    for (const t of [...FAKE_SCRIPT, ...LONG_MEASURE_SCRIPT]) expect(TeacherTurnSchema.safeParse(t).success).toBe(true)
+    for (const t of [...FAKE_SCRIPT, ...LONG_MEASURE_SCRIPT])
+      expect(TeacherTurnSchema.safeParse(t).success).toBe(true)
   })
 })

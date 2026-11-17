@@ -2,7 +2,8 @@ import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { formatInterval, memoryOf, previewIntervals } from '../../src/main/memory/fsrs'
+import { formatInterval, memoryOf, previewIntervals, displayedR } from '../../src/main/memory/fsrs'
+import { createEmptyCard, fsrs, generatorParameters, Rating, State } from 'ts-fsrs'
 import { memoryStore } from '../../src/main/memory/store'
 import type { ReviewLine } from '../../src/shared/memory-types'
 
@@ -11,6 +12,25 @@ const DAY = 86_400_000
 const R = (at: number, grade: 1 | 2 | 3 | 4, extra: Partial<ReviewLine> = {}): ReviewLine => ({ conceptId: 'n_a', at, grade, ...extra })
 
 describe('memoryOf', () => {
+  it('uses the scheduler FSRS-6 curve with fractional elapsed days', () => {
+    const sched = fsrs(generatorParameters({ enable_fuzz: false }))
+    const w20 = sched.parameters.w[20]
+    const factor = 0.9 ** (-1 / w20) - 1
+    const stability = 5
+    const card = { ...createEmptyCard(new Date(T0)), stability, last_review: new Date(T0), state: State.Review }
+    for (const t of [0.5, 1, 3]) {
+      expect(displayedR(card, 3, T0 + t * stability * DAY)).toBeCloseTo((1 + factor * t) ** -w20, 6)
+    }
+    expect(displayedR(card, 3, T0 + stability * DAY)).toBeCloseTo(0.9, 6)
+  })
+  it('graduates session reviews at once while ordinary Good stays in Learning', () => {
+    const session = memoryOf([R(T0, 3, { via: 'session' })], T0).get('n_a')!
+    expect(session.state).toBe('la sai')
+    expect(session.due).toBeCloseTo(T0 + 2 * DAY, -4)
+    const ordinary = memoryOf([R(T0, 3)], T0).get('n_a')!
+    expect(ordinary.state).toBe('la sai')
+    expect(ordinary.due).toBeLessThan(T0 + DAY)
+  })
   it('knows nothing about a concept never reviewed', () => {
     expect(memoryOf([], T0).get('n_a')).toBeUndefined()
   })

@@ -1,4 +1,31 @@
 import type { Plan } from '../../../shared/teacher-protocol'
+import type { MinimalTree } from '../../../main/session/minimal-tree'
+import type { ConceptProgress } from '../../../main/session/events'
+
+export interface PlanMapProps {
+  plan?: Plan | null
+  current?: string | null
+  done?: string[]
+  tree?: MinimalTree | null
+  concepts?: Record<string, ConceptProgress> | null
+}
+
+const STATUS_LABELS: Record<ConceptProgress['status'], string> = {
+  unseen: 'da vedere',
+  explained: 'spiegato',
+  probed: 'verificato',
+  repairing: 'da riparare',
+  mastered: 'padroneggiato'
+}
+
+function openObsidian(birth: string): void {
+  const url = 'obsidian://open?path=' + encodeURIComponent(birth)
+  const openExternal =
+    window.sinapsi?.app?.openExternal ??
+    (window as unknown as { api?: { app?: { openExternal?: (u: string) => Promise<void> } } }).api
+      ?.app?.openExternal
+  void openExternal?.(url)
+}
 
 /** The plan in dependency order: what is needed first sits on top, the goal at the end. */
 function ordered(plan: Plan): Plan['nodes'] {
@@ -22,12 +49,82 @@ function ordered(plan: Plan): Plan['nodes'] {
 export function PlanMap({
   plan,
   current,
-  done = []
-}: {
-  plan?: Plan | null
-  current?: string | null
-  done?: string[]
-}): React.JSX.Element {
+  done = [],
+  tree,
+  concepts
+}: PlanMapProps): React.JSX.Element {
+  if (tree?.nodes && tree.nodes.length > 0) {
+    return (
+      <aside className="tl-a plan-timeline" aria-label="Il piano">
+        <span className="mono lab">Il piano</span>
+        <ol className="map tree-map">
+          {tree.nodes.map((n) => {
+            const isCurrent = n.id === current
+            const isDone = done.includes(n.id)
+            const isGoal = Boolean(n.goal)
+            const status: ConceptProgress['status'] = concepts?.[n.id]?.status ?? 'unseen'
+            const statusLabel = STATUS_LABELS[status] ?? status
+
+            const classes = [
+              'node',
+              'tree-node',
+              isGoal ? 'goal' : '',
+              isDone ? 'done' : '',
+              isCurrent ? 'cur' : '',
+              `status-${status}`
+            ]
+              .filter(Boolean)
+              .join(' ')
+
+            return (
+              <li key={n.id} className={classes}>
+                <i aria-hidden="true" />
+                <div className="node-content">
+                  <div className="node-title-row">
+                    <span className="node-name">{n.name}</span>
+                    {n.birth && (
+                      <button
+                        type="button"
+                        className="birth-link"
+                        title={`Apri nota in Obsidian (${n.birth})`}
+                        aria-label={`Apri nota in Obsidian: ${n.birth}`}
+                        onClick={() => openObsidian(n.birth)}
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M12 9v4H3V4h4" />
+                          <path d="M9 3h4v4" />
+                          <path d="M6 10L13 3" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  <div className="node-badges">
+                    <span className={`chip role role-${n.role}`}>{n.role}</span>
+                    <span className={`status-pill status-${status}`}>
+                      <span className={`dot dot-${status}`} aria-hidden="true" />
+                      <span className="status-label">{statusLabel}</span>
+                    </span>
+                    {isGoal && <span className="chip goal-chip">Obiettivo</span>}
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      </aside>
+    )
+  }
+
   if (!plan || !plan.nodes || plan.nodes.length === 0) {
     return (
       <aside className="tl-a plan-timeline" aria-label="Il piano">

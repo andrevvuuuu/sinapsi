@@ -9,7 +9,7 @@ import {
   type Task
 } from '../../../shared/settings-schema'
 import { GlassSurface } from '@glass-sdk/liquid-glass'
-import { GlassOverlay } from '../components/glass'
+import { GlassOverlay, Seg } from '../components/glass'
 import { focusWhenShown } from '../components/glass-theme'
 import { ThemeSwitch } from '../shell/ThemeSwitch'
 import './settings.css'
@@ -54,6 +54,14 @@ export function SettingsDialog({
   const [pauses, setPauses] = useState(settings.microPauses ?? false)
   const [limit, setLimit] = useState(settings.sessionLimit ?? false)
   const [limitMin, setLimitMin] = useState(String(settings.sessionLimitMinutes ?? 50))
+  const [kOpen, setKOpen] = useState(String(settings.mastery?.kOpen ?? 2))
+  const [kChoice, setKChoice] = useState(String(settings.mastery?.kChoice ?? 3))
+  const [solidDays, setSolidDays] = useState(String(settings.mastery?.solidDays ?? 14))
+  const [learnerProfile, setLearnerProfile] = useState(settings.learnerProfile ?? '')
+  const [graderEngine, setGraderEngine] = useState<'other' | 'same'>(
+    settings.graderEngine ?? 'other'
+  )
+  const [fastStart, setFastStart] = useState(settings.fastStart ?? false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [vaultPath, setVaultPath] = useState(settings.vaultPath ?? '')
@@ -95,6 +103,17 @@ export function SettingsDialog({
     const m = Number(limitMin)
     if (limit && (!limitMin.trim() || !Number.isInteger(m) || m < 10 || m > 180))
       return setError('Durata massima: un numero di minuti da 10 a 180.')
+    const ko = Number(kOpen)
+    const kc = Number(kChoice)
+    const sd = Number(solidDays)
+    if (!kOpen.trim() || !Number.isInteger(ko) || ko < 1 || ko > 5)
+      return setError('Soglia risposta aperta (kOpen): un numero da 1 a 5.')
+    if (!kChoice.trim() || !Number.isInteger(kc) || kc < 1 || kc > 6)
+      return setError('Soglia scelta multipla (kChoice): un numero da 1 a 6.')
+    if (!solidDays.trim() || !Number.isInteger(sd) || sd < 1 || sd > 60)
+      return setError('Giorni di consolidamento (solidDays): un numero da 1 a 60.')
+    if (learnerProfile.length > 2000)
+      return setError('Profilo dello studente: massimo 2000 caratteri.')
     try {
       onSaved(
         await window.sinapsi.settings.set({
@@ -105,7 +124,15 @@ export function SettingsDialog({
           gamesInSessions: games,
           microPauses: pauses,
           sessionLimit: limit,
-          ...(Number.isInteger(m) && m >= 10 && m <= 180 ? { sessionLimitMinutes: m } : {})
+          ...(Number.isInteger(m) && m >= 10 && m <= 180 ? { sessionLimitMinutes: m } : {}),
+          mastery: {
+            kOpen: ko,
+            kChoice: kc,
+            solidDays: sd
+          },
+          learnerProfile: learnerProfile.trim(),
+          graderEngine,
+          fastStart
         })
       )
       setError(null)
@@ -139,7 +166,13 @@ export function SettingsDialog({
       setSavedVaultPath(next.vaultPath ?? path)
       onSaved(next)
       const result = await window.sinapsi.vault.index()
-      setVaultStatus('error' in result ? result.error === 'missing' ? 'Cartella non trovata' : 'Cartella non leggibile' : `Collegato: ${result.notes.length} note`)
+      setVaultStatus(
+        'error' in result
+          ? result.error === 'missing'
+            ? 'Cartella non trovata'
+            : 'Cartella non leggibile'
+          : `Collegato: ${result.notes.length} note`
+      )
     } catch (e) {
       setVaultError(clean(e))
     } finally {
@@ -178,7 +211,9 @@ export function SettingsDialog({
           <div className="sd-head">
             <div className="sd-head-title-group">
               <h2 id="st-title">Impostazioni</h2>
-              <p className="sd-head-subtitle">Preferenze dell’applicazione, motori AI e ritmo di studio</p>
+              <p className="sd-head-subtitle">
+                Preferenze dell’applicazione, motori AI e ritmo di studio
+              </p>
             </div>
             <button
               type="button"
@@ -215,14 +250,51 @@ export function SettingsDialog({
               <div className="sd-card-head">
                 <h3>Vault Obsidian</h3>
               </div>
-              <label className="sd-vault-label" htmlFor="sd-vault-path">Percorso del vault</label>
+              <label className="sd-vault-label" htmlFor="sd-vault-path">
+                Percorso del vault
+              </label>
               <div className="sd-vault-row">
-                <input id="sd-vault-path" className="sd-vault-path" type="text" value={vaultPath} onChange={(e) => { setVaultPath(e.target.value); setVaultStatus(null); setVaultError(null) }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void linkVault() } }} />
-                <button type="button" className="btn" onClick={() => void chooseVault()}>Sfoglia…</button>
-                <button type="button" className="btn pri" disabled={!vaultPath.trim() || vaultPath.trim() === savedVaultPath || linkingVault} onClick={() => void linkVault()}>{linkingVault ? 'Collego…' : 'Collega'}</button>
+                <input
+                  id="sd-vault-path"
+                  className="sd-vault-path"
+                  type="text"
+                  value={vaultPath}
+                  onChange={(e) => {
+                    setVaultPath(e.target.value)
+                    setVaultStatus(null)
+                    setVaultError(null)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void linkVault()
+                    }
+                  }}
+                />
+                <button type="button" className="btn" onClick={() => void chooseVault()}>
+                  Sfoglia…
+                </button>
+                <button
+                  type="button"
+                  className="btn pri"
+                  disabled={
+                    !vaultPath.trim() || vaultPath.trim() === savedVaultPath || linkingVault
+                  }
+                  onClick={() => void linkVault()}
+                >
+                  {linkingVault ? 'Collego…' : 'Collega'}
+                </button>
               </div>
-              {vaultStatus && <p className="sd-vault-status" role="status">{vaultStatus}</p>}
-              {vaultError && <p className="sd-error" role="alert">{vaultError}</p>}
+              {vaultStatus && (
+                <p className="sd-vault-status" role="status">
+                  {vaultStatus}
+                </p>
+              )}
+              {vaultError && (
+                <p className="sd-error" role="alert">
+                  {vaultError}
+                </p>
+              )}
             </section>
 
             {/* 2. Motori AI */}
@@ -276,13 +348,17 @@ export function SettingsDialog({
             <section className="sd-card">
               <div className="sd-card-head">
                 <h3>Estrazione in background</h3>
-                <p className="sd-hint">Analisi asincrona del tuo vault per indicizzare nuovi concetti.</p>
+                <p className="sd-hint">
+                  Analisi asincrona del tuo vault per indicizzare nuovi concetti.
+                </p>
               </div>
               <div className="sd-card-fields">
                 <label className="sd-toggle-row">
                   <span className="sd-toggle-copy">
                     <strong className="sd-toggle-title">Estrazione automatica</strong>
-                    <span className="sd-toggle-desc">Estrai i concetti delle note quando il Mac è inattivo</span>
+                    <span className="sd-toggle-desc">
+                      Estrai i concetti delle note quando il Mac è inattivo
+                    </span>
                   </span>
                   <input
                     type="checkbox"
@@ -328,18 +404,128 @@ export function SettingsDialog({
               </div>
             </section>
 
+            {/* Sessioni */}
+            {Boolean(settings.mastery) && (
+              <section className="sd-card">
+                <div className="sd-card-head">
+                  <h3>Sessioni</h3>
+                  <p className="sd-hint">
+                    Padronanza dei concetti, profilo dello studente e avvio.
+                  </p>
+                </div>
+                <div className="sd-card-fields">
+                  <div className="sd-group-title">Soglie padronanza</div>
+                  <label className="sd-input-row">
+                    <span className="sd-input-label">
+                      Risposte aperte corrette consecutive (kOpen)
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      step={1}
+                      value={kOpen}
+                      onChange={(e) => (setKOpen(e.target.value), setSaved(false))}
+                    />
+                  </label>
+                  <label className="sd-input-row">
+                    <span className="sd-input-label">
+                      Scelte multiple corrette consecutive (kChoice)
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={6}
+                      step={1}
+                      value={kChoice}
+                      onChange={(e) => (setKChoice(e.target.value), setSaved(false))}
+                    />
+                  </label>
+                  <label className="sd-input-row">
+                    <span className="sd-input-label">Giorni di consolidamento (solidDays)</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={60}
+                      step={1}
+                      value={solidDays}
+                      onChange={(e) => (setSolidDays(e.target.value), setSaved(false))}
+                    />
+                  </label>
+
+                  <div className="sd-textarea-group">
+                    <label className="sd-textarea-label" htmlFor="learner-profile-input">
+                      <strong className="sd-toggle-title">Profilo dello studente</strong>
+                      <span className="sd-toggle-desc">
+                        Descrivi il tuo percorso. Se presente, sostituisce il profilo predefinito
+                        dell'app.
+                      </span>
+                    </label>
+                    <textarea
+                      id="learner-profile-input"
+                      className="sd-textarea"
+                      rows={3}
+                      maxLength={2000}
+                      placeholder="Es. Studente di Ingegneria informatica. Conosco già la logica booleana e le strutture dati di base."
+                      value={learnerProfile}
+                      onChange={(e) => (setLearnerProfile(e.target.value), setSaved(false))}
+                    />
+                    <span className="sd-char-count">{learnerProfile.length} / 2000</span>
+                  </div>
+
+                  <div className="sd-toggle-row">
+                    <span className="sd-toggle-copy">
+                      <strong className="sd-toggle-title">Correttore</strong>
+                      <span className="sd-toggle-desc">
+                        Motore utilizzato per valutare le risposte aperte
+                      </span>
+                    </span>
+                    <Seg<'other' | 'same'>
+                      label="Correttore"
+                      track="plain"
+                      className="sd-seg"
+                      value={graderEngine}
+                      onChange={(v) => (setGraderEngine(v), setSaved(false))}
+                      options={[
+                        { value: 'other', label: 'Altro motore' },
+                        { value: 'same', label: 'Stesso motore' }
+                      ]}
+                    />
+                  </div>
+
+                  <label className="sd-toggle-row">
+                    <span className="sd-toggle-copy">
+                      <strong className="sd-toggle-title">Avvio rapido</strong>
+                      <span className="sd-toggle-desc">
+                        Salta la scelta della nota e avvia subito la sessione
+                      </span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="sd-switch"
+                      checked={fastStart}
+                      onChange={(e) => (setFastStart(e.target.checked), setSaved(false))}
+                    />
+                  </label>
+                </div>
+              </section>
+            )}
+
             {/* 5. Ritmo di studio */}
             <section className="sd-card">
               <div className="sd-card-head">
                 <h3>Ritmo di studio</h3>
-                <p className="sd-hint">Facoltativi: valgono per Apprendimento, Ripasso e Pratica.</p>
+                <p className="sd-hint">
+                  Facoltativi: valgono per Apprendimento, Ripasso e Pratica.
+                </p>
               </div>
               <div className="sd-card-fields">
                 <label className="sd-toggle-row">
                   <span className="sd-toggle-copy">
                     <strong className="sd-toggle-title">Micro-pause</strong>
                     <span className="sd-toggle-desc">
-                      {MICRO_PAUSE_SECONDS} secondi di riposo ogni {MICRO_PAUSE_EVERY} minuti di studio
+                      {MICRO_PAUSE_SECONDS} secondi di riposo ogni {MICRO_PAUSE_EVERY} minuti di
+                      studio
                     </span>
                   </span>
                   <input

@@ -1,5 +1,5 @@
 import type { GraphData } from '../../shared/graph-types'
-import type { Memory } from '../../shared/memory-types'
+import type { Memory, WeaknessLine } from '../../shared/memory-types'
 import type { Notebook, SourceText } from '../../shared/notebook-types'
 import type { Catalog, CatalogConcept, Material } from '../../shared/practice-types'
 import type { VaultIndex } from '../../shared/vault-types'
@@ -52,6 +52,8 @@ export async function buildMaterialContext(input: {
   graph: GraphData
   readNote: (path: string) => Promise<string>
   sourceText: (id: string) => Promise<{ title: string; text: SourceText } | null>
+  memory?: Map<string, Memory>
+  weaknesses?: WeaknessLine[]
 }): Promise<string> {
   const { material, graph } = input
   const byId = new Map(graph.concepts.map((c) => [c.id, c]))
@@ -63,6 +65,10 @@ export async function buildMaterialContext(input: {
     const name = (id: string): string => byId.get(id)?.name ?? id
     const chains = graph.chains.filter((ch) => pickedIds.has(ch.conclusion) || ch.premises.some((p) => pickedIds.has(p)))
     if (chains.length) parts.push(`CATENE DI RAGIONAMENTO (premesse ⇒ conclusione)\n${chains.map((ch) => `${ch.premises.map(name).join(' + ')} ⇒ ${name(ch.conclusion)}`).join('\n')}`)
+    const memories = picked.flatMap((c) => { const m = input.memory?.get(c.id); return m ? [`${c.id} | ${c.name} | ${m.state} | ${m.R === null ? '—' : pct(m.R)} | ${m.stability === undefined ? '—' : m.stability.toFixed(1)} | misconcezione ${m.misconception ? 'sì' : 'no'}`] : [] })
+    if (memories.length) parts.push(`STATO DI MEMORIA\nid | nome | stato | R% | S giorni | misconcezione sì/no\n${memories.join('\n')}`)
+    const weaknesses = (input.weaknesses ?? []).filter((w) => w.status === 'active' && w.conceptId && pickedIds.has(w.conceptId))
+    if (weaknesses.length) parts.push(`DEBOLEZZE ATTIVE\n${weaknesses.map((w) => `${w.conceptId} | ${w.kind} | ${w.text}`).join('\n')}`)
     let used = 0
     for (const path of [...new Set(picked.map((c) => c.birth))]) {
       if (used >= NOTES_TOTAL) break

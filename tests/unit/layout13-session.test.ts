@@ -1,7 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
+// Compared without formatting whitespace, so prettier can lay the file out freely.
 const css = readFileSync('src/renderer/src/session/session.css', 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/\s+/g, ' ')
+  .replace(/\s*([{};:,>])\s*/g, '$1')
+  .replace(/;}/g, '}')
 describe('session layout', () => {
   it('the top bar has the same height and padding as every other screen', () => {
     expect(css).toMatch(/\.sess \.top\{display:flex;align-items:center;gap:16px;padding:14px 24px 14px 88px;border-bottom:1px solid var\(--hair\);min-height:var\(--topbar-h\)\}/)

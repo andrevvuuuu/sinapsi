@@ -10,6 +10,7 @@ import type { Grade } from '../../shared/memory-types'
 import { checkTurnAgainst, formatSubmission, hintGate, practiceJsonSchema, PracticeTurnSchema, type PracticeTurn, type Submission } from '../../shared/practice-protocol'
 import type { Material } from '../../shared/practice-types'
 import type { MemoryStore } from '../memory/store'
+import type { WeaknessStore } from '../memory/store'
 import { reducePractice, type PracticeEvent, type PracticeState, type PracticeSummary } from './events'
 import { firstPracticeMessage, PRACTICE_SYSTEM_PROMPT } from './prompt'
 
@@ -21,6 +22,7 @@ export type PracticeDeps = {
   /** A short label for lists: "Rolle, Lagrange · 1 fonte". */
   topic: (m: Material) => Promise<string>
   memory: Pick<MemoryStore, 'append' | 'read'>
+  weaknesses?: Pick<WeaknessStore, 'append' | 'resolveByEvidence'>
   onUpdate: (s: PracticeState) => void
   now?: () => number
   uuid?: () => string
@@ -77,7 +79,15 @@ export function createPracticeRunner(deps: PracticeDeps) {
     const grade = gradeFor(turn.conclude.outcome, p.maxRung)
     const ref = `train:${s.id}:${p.id}`
     const done = new Set((await deps.memory.read()).filter((r) => r.ref === ref).map((r) => r.conceptId))
-    for (const conceptId of new Set(p.targets)) if (!done.has(conceptId)) await deps.memory.append({ conceptId, at: now(), grade, correct: turn.conclude.outcome !== 'surrendered', via: 'practice', ref, lessonId: s.material.lessonId, rung: p.maxRung ?? 0 })
+    for (const conceptId of new Set(p.targets)) {
+      if (done.has(conceptId)) continue
+      await deps.memory.append({ conceptId, at: now(), grade, correct: turn.conclude.outcome !== 'surrendered', via: 'practice', ref, lessonId: s.material.lessonId, rung: p.maxRung ?? 0, miss: turn.conclude.miss })
+      if (turn.conclude.miss === 'structural' || turn.conclude.miss === 'discrimination') {
+        await deps.weaknesses?.append({ id: `w_${uuid().replace(/-/g, '').slice(0, 20)}`, conceptId, text: turn.conclude.verdict.slice(0, 300), kind: turn.conclude.miss === 'structural' ? 'misconception' : 'discrimination', source: 'practice', ref, at: now(), status: 'active' })
+      }
+      // Solved unaided (no hint rung): evidence that an active weakness on this concept is gone.
+      if (turn.conclude.outcome === 'solved') await deps.weaknesses?.resolveByEvidence(conceptId, now(), ref)
+    }
   }
 
   async function tutorTurn(id: string): Promise<void> {

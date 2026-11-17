@@ -10,6 +10,12 @@ export class AiTimeoutError extends Error {
 }
 export class AiOutputError extends Error {}
 export class AiSchemaError extends Error {}
+export class AiAbortError extends Error {
+  constructor() {
+    super('Annullato')
+    this.name = 'AiAbortError'
+  }
+}
 export class EngineMissingError extends Error {
   constructor(readonly engine: string) {
     super(`${engine} non è installato`)

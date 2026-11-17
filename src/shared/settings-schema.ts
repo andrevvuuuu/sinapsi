@@ -49,7 +49,10 @@ export function settingsSchema(home: string) {
       .min(1)
       .catch([...EXERCISE_TYPES]),
     gamesInSessions: z.boolean().catch(true),
-    studyHours: z.array(z.number().min(0).max(16).multipleOf(0.5)).length(7).catch([3, 3, 3, 3, 3, 2, 1]),
+    studyHours: z
+      .array(z.number().min(0).max(16).multipleOf(0.5))
+      .length(7)
+      .catch([3, 3, 3, 3, 3, 2, 1]),
     planBuffer: z.number().min(0.15).max(0.2).catch(0.15),
     /** Optional: a short break suggested every MICRO_PAUSE_EVERY minutes of a study session. */
     microPauses: z.boolean().catch(false),
@@ -59,7 +62,17 @@ export function settingsSchema(home: string) {
     /** Sidebar subjects (top vault folders) in the chosen order. */
     subjectOrder: z.array(z.string()).catch([]),
     /** The university subjects; null until chosen (the sidebar guesses from the lesson tutor). */
-    universitySubjects: z.array(z.string()).nullable().catch(null)
+    universitySubjects: z.array(z.string()).nullable().catch(null),
+    mastery: z
+      .object({
+        kOpen: z.number().int().min(1).max(5).catch(2),
+        kChoice: z.number().int().min(1).max(6).catch(3),
+        solidDays: z.number().int().min(1).max(60).catch(14)
+      })
+      .catch({ kOpen: 2, kChoice: 3, solidDays: 14 }),
+    learnerProfile: z.string().max(2000).catch(''),
+    graderEngine: z.enum(['other', 'same']).catch('other'),
+    fastStart: z.boolean().catch(false)
   })
 }
 export type Settings = z.infer<ReturnType<typeof settingsSchema>>

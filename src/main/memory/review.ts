@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises'
 import type { Bridge } from '../ai/bridge'
 import type { Exercise } from '../../shared/exercise-schema'
 import type { Concept, GraphData } from '../../shared/graph-types'
-import { proposeGrade, type ExerciseType, type Grade, type Memory, type ReviewLine } from '../../shared/memory-types'
+import { proposeGrade, type ExerciseType, type Grade, type Memory, type ReviewLine, type WeaknessLine } from '../../shared/memory-types'
 import type { VaultIndex } from '../../shared/vault-types'
 import { PACER_EXERCISE_TYPES, type PacerType } from '../../shared/lesson-types'
 import { memoryOf, previewIntervals } from './fsrs'
@@ -61,6 +61,8 @@ export function createReviewService(deps: {
   readNote: (path: string) => Promise<string>
   settings: () => Promise<{ reviewSessionSize: number; exerciseTypes: ExerciseType[] }>
   pacerOf?: () => Promise<Map<string, PacerType>>
+  /** Active weaknesses: variants aim at least one exercise at each. */
+  weaknesses?: () => Promise<WeaknessLine[]>
   now?: () => number
   workDir: string
 }): ReviewService {
@@ -104,10 +106,12 @@ export function createReviewService(deps: {
     const generateNote = async ({ notePath, types, concepts: cs }: { notePath: string; types: ExerciseType[]; concepts: Concept[] }): Promise<void> => {
       try {
         const text = await deps.readNote(notePath).catch(() => '')
+        const ids = new Set(cs.map((c) => c.id))
+        const weak = ((await deps.weaknesses?.().catch(() => [])) ?? []).filter((w) => w.conceptId && ids.has(w.conceptId))
         const title = index?.notes.find((n) => n.path === notePath)?.title ?? notePath.split('/').pop()!.replace(/\.md$/, '')
         const r = await deps.bridge.ask({
           task: 'variants',
-          prompt: buildVariantsPrompt({ noteTitle: title, noteText: text, concepts: cs, types, depth: cs.length > 0 && cs.every((c) => ['C', 'A'].includes(pacers.get(c.id) ?? '')) }),
+          prompt: buildVariantsPrompt({ noteTitle: title, noteText: text, concepts: cs, types, depth: cs.length > 0 && cs.every((c) => ['C', 'A'].includes(pacers.get(c.id) ?? '')), weaknesses: weak }),
           schema: variantsReplySchema(new Set(cs.map((c) => c.id)), now, new Set(types)),
           timeoutMs: VARIANTS_TIMEOUT,
           cwd: deps.workDir

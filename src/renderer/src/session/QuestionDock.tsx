@@ -2,12 +2,21 @@ import { useEffect, useRef, useState } from 'react'
 import { ROLE_IT, type LearnerAnswer, type Question } from '../../../shared/teacher-protocol'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
-import { GlassRange, GlassShell, ScrollEdges } from '../components/glass'
+import { GlassShell, ScrollEdges, Seg } from '../components/glass'
 import { RichText } from './RichText'
 import { GameDock } from './games/GameDock'
 import { focusWhenShown } from '../components/glass-theme'
 
 const LETTERS = 'ABCDEF'
+
+type ConfKey = '12' | '37' | '63' | '88'
+
+const CONFIDENCE_OPTIONS: readonly { value: ConfKey; label: string }[] = [
+  { value: '12', label: 'Tiro a indovinare' },
+  { value: '37', label: 'Incerto' },
+  { value: '63', label: 'Abbastanza sicuro' },
+  { value: '88', label: 'Sicuro' }
+]
 
 type Props = {
   question: Question
@@ -19,8 +28,16 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
   const [revealed, setRevealed] = useState(q.role !== 'check')
   const [thoughts, setThoughts] = useState('')
   const [pick, setPick] = useState<number | 'idk' | null>(null)
-  const [confidence, setConfidence] = useState(50)
+  const [confidence, setConfidence] = useState<number | null>(null)
   const [text, setText] = useState('')
+
+  useEffect(() => {
+    setConfidence(null)
+    setPick(null)
+    setText('')
+    setThoughts('')
+    setRevealed(q.role !== 'check')
+  }, [q.id, q.role])
   // A new question takes the focus, so screen readers and the keyboard start from it.
   const head = useRef<HTMLDivElement>(null)
   // Once the dock's glass shell shows (a frame after it mounts).
@@ -133,7 +150,12 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
 
   const isChoice = q.kind === 'choice'
   const isGoal = q.role === 'goal'
-  const ready = !answerBusy && (isChoice ? pick !== null : text.trim().length > 0)
+  const hasConfidence = confidence !== null
+  const ready =
+    !answerBusy &&
+    (isChoice
+      ? pick === 'idk' || (pick !== null && (isGoal || hasConfidence))
+      : text.trim().length > 0 && (isGoal || hasConfidence))
   const send = (): void => {
     if (!ready) return
     const a: LearnerAnswer = { questionId: q.id }
@@ -141,12 +163,17 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
       if (pick === 'idk') a.dontKnow = true
       else {
         a.choice = pick as number
-        if (!isGoal) {
+        if (!isGoal && confidence !== null) {
           a.confidence = confidence
-          if (text.trim()) a.text = text.trim()
         }
+        if (text.trim()) a.text = text.trim()
       }
-    } else a.text = text.trim()
+    } else {
+      a.text = text.trim()
+      if (!isGoal && confidence !== null) {
+        a.confidence = confidence
+      }
+    }
     if (thoughts.trim()) a.thoughts = thoughts.trim()
     onAnswer(a)
   }
@@ -196,20 +223,17 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
                 </button>
               </div>
               {!isGoal && pick !== 'idk' && (
-                <div className="conf">
+                <div className="conf" role="group" aria-labelledby="cf-l">
                   <span className="lab" id="cf-l">
                     Fiducia
                   </span>
-                  <GlassRange
-                    aria-labelledby="cf-l"
-                    min={0}
-                    max={100}
-                    step={10}
-                    value={confidence}
-                    onValueChange={(v) => setConfidence(v)}
-                    thumbProps={{ getAriaValueText: (_text, v) => `${v}%` }}
+                  <Seg<ConfKey>
+                    label="Fiducia"
+                    track="plain"
+                    value={confidence !== null ? (String(confidence) as ConfKey) : null}
+                    onChange={(v) => setConfidence(Number(v))}
+                    options={CONFIDENCE_OPTIONS}
                   />
-                  <output aria-hidden="true">{confidence}%</output>
                 </div>
               )}
             </>
@@ -238,6 +262,20 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
                 <MicButton dictation={answerMic} />
               </div>
               <DictationError dictation={answerMic} />
+            </div>
+          )}
+          {!isChoice && !isGoal && (
+            <div className="conf" role="group" aria-labelledby="cf-l-open">
+              <span className="lab" id="cf-l-open">
+                Fiducia
+              </span>
+              <Seg<ConfKey>
+                label="Fiducia"
+                track="plain"
+                value={confidence !== null ? (String(confidence) as ConfKey) : null}
+                onChange={(v) => setConfidence(Number(v))}
+                options={CONFIDENCE_OPTIONS}
+              />
             </div>
           )}
         </div>
