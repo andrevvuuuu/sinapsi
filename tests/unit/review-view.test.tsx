@@ -59,7 +59,7 @@ describe('ReviewView', () => {
     const { api } = mount([mc])
     await screen.findByRole('heading', { name: /sbiadendo/ })
     const chips = within(screen.getByRole('group', { name: 'Esercizi' })).getAllByRole('button')
-    expect(chips).toHaveLength(11)
+    expect(chips).toHaveLength(12)
     fireEvent.click(screen.getByRole('button', { name: 'Riordina i passi' }))
     expect(api.settings.set).toHaveBeenLastCalledWith({ exerciseTypes: expect.not.arrayContaining(['order']) })
     for (const c of chips) if (c.getAttribute('aria-pressed') === 'true') fireEvent.click(c)

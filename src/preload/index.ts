@@ -50,6 +50,7 @@ const api: SinapsiApi = {
   graph: {
     get: () => ipcRenderer.invoke(CH.graphGet),
     chainSource: (id) => ipcRenderer.invoke(CH.graphChainSource, id),
+    explainChain: (id, opts) => ipcRenderer.invoke(CH.graphExplainChain, id, opts),
     extract: (path, reason) => ipcRenderer.invoke(CH.graphExtract, path, reason),
     status: () => ipcRenderer.invoke(CH.graphStatus),
     onChange: (cb) => subscribe(CH.graphChanged, cb),

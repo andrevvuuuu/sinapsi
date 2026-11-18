@@ -1,4 +1,5 @@
 import type { Concept, GraphData } from '../../../shared/graph-types'
+import type { Memory } from '../../../shared/memory-types'
 import { isMoc } from '../../../shared/moc'
 import type { VaultIndex } from '../../../shared/vault-types'
 
@@ -221,6 +222,90 @@ export function filterBySubject(g: GraphData, subject: string | null | undefined
   const concepts = g.concepts.filter((c) => c.notes.some((path) => subjectOfPath(path) === subject))
   const ids = new Set(concepts.map((c) => c.id))
   return { ...g, concepts, chains: g.chains.filter((ch) => ids.has(ch.conclusion) && ch.premises.every((id) => ids.has(id))) }
+}
+
+export type GraphAggregation = {
+  clusters: { id: string; label: string; conceptIds: string[]; meanR: number | null; weak: number }[]
+  links: { from: string; to: string; count: number }[]
+}
+
+const noteLabel = (path: string): string => path.replace(/\\/g, '/').split('/').pop()!.replace(/\.md$/i, '')
+const subjectFor = (c: Concept): string | null => {
+  const path = (c.notes[0] ?? c.birth).replace(/\\/g, '/').split('/').filter(Boolean)
+  return path.length > 1 ? path[0] : null
+}
+
+export function shouldAggregate(conceptCount: number, threshold = 400): boolean {
+  return conceptCount >= threshold
+}
+
+export function aggregate(
+  g: GraphData,
+  mem: Map<string, Memory> | undefined,
+  by: 'subject' | 'note'
+): GraphAggregation {
+  const clusterFor = new Map<string, string>()
+  const grouped = new Map<string, { label: string; concepts: Concept[] }>()
+  for (const c of g.concepts) {
+    const path = by === 'note' ? c.birth : subjectFor(c)
+    const id = path === null ? 'subject:—' : `${by}:${path}`
+    const label = path === null ? '—' : by === 'note' ? noteLabel(path) : path
+    const group = grouped.get(id) ?? { label, concepts: [] }
+    group.concepts.push(c)
+    grouped.set(id, group)
+    clusterFor.set(c.id, id)
+  }
+  const clusters = [...grouped].map(([id, group]) => {
+    const rs = group.concepts.map((c) => mem?.get(c.id)?.R).filter((r): r is number => r != null && Number.isFinite(r))
+    return {
+      id,
+      label: group.label,
+      conceptIds: group.concepts.map((c) => c.id),
+      meanR: rs.length ? rs.reduce((sum, r) => sum + r, 0) / rs.length : null,
+      weak: group.concepts.filter((c) => ['incerto', 'debole'].includes(mem?.get(c.id)?.state ?? '')).length
+    }
+  })
+  const crossing = new Map<string, number>()
+  for (const ch of g.chains) {
+    const froms = new Set(ch.premises.map((id) => clusterFor.get(id)).filter((id): id is string => !!id))
+    const to = clusterFor.get(ch.conclusion)
+    if (!to) continue
+    for (const from of froms) if (from !== to) {
+      const key = `${from}\n${to}`
+      crossing.set(key, (crossing.get(key) ?? 0) + 1)
+    }
+  }
+  const links = [...crossing].map(([key, count]) => {
+    const [from, to] = key.split('\n')
+    return { from, to, count }
+  })
+  return { clusters, links }
+}
+
+export function drillDown(g: GraphData, clusterId: string, by: 'subject' | 'note'): GraphData {
+  const concepts = g.concepts.filter((c) => {
+    const path = by === 'note' ? c.birth : subjectFor(c)
+    return (path === null ? 'subject:—' : `${by}:${path}`) === clusterId
+  })
+  const ids = new Set(concepts.map((c) => c.id))
+  return { ...g, concepts, chains: g.chains.filter((ch) => ids.has(ch.conclusion) && ch.premises.every((id) => ids.has(id))) }
+}
+
+export function orphans(g: GraphData): { id: string; reason: 'isolated' | 'no-outgoing' }[] {
+  const touched = new Set<string>()
+  const premises = new Set<string>()
+  for (const ch of g.chains) {
+    touched.add(ch.conclusion)
+    for (const id of ch.premises) { touched.add(id); premises.add(id) }
+  }
+  const found: { id: string; reason: 'isolated' | 'no-outgoing'; name: string }[] = []
+  for (const c of g.concepts) {
+    if (!touched.has(c.id)) found.push({ id: c.id, reason: 'isolated', name: c.name })
+    else if (c.depth === 0 && !premises.has(c.id)) found.push({ id: c.id, reason: 'no-outgoing', name: c.name })
+  }
+  return found
+    .sort((a, b) => a.reason.localeCompare(b.reason) || a.name.localeCompare(b.name))
+    .map(({ id, reason }) => ({ id, reason }))
 }
 
 /** A cheap content signature: equal data in new objects (every graph:changed, every vault event) gives the same key. */

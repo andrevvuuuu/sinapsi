@@ -12,7 +12,7 @@ export const PropLineSchema = z.object({
   section: z.string().optional(),
   at: z.number()
 })
-export const ChainLineSchema = z.object({ id: z.string(), premises: z.array(z.string()), conclusion: z.string(), notePath: z.string(), at: z.number() })
+export const ChainLineSchema = z.object({ id: z.string(), premises: z.array(z.string()), conclusion: z.string(), notePath: z.string(), at: z.number(), why: z.string().optional() })
 export const ExtractionLineSchema = z.object({
   notePath: z.string(),
   hash: z.string(),
@@ -46,9 +46,10 @@ export type Concept = {
   sections: Record<string, string>
   depth: number
 }
-export type Chain = { id: string; premises: string[]; conclusion: string; notes: string[] }
+export type Chain = { id: string; premises: string[]; conclusion: string; notes: string[]; why?: string }
+export type ChainExplanation = { chainId: string; text: string; engine: string; verdict: 'supported' | 'not-justified' | 'unverified'; verifiedBy?: string; at: number }
 export type GraphData = { concepts: Concept[]; chains: Chain[]; extracted: Record<string, { hash: string; at: number }>; retired: string[]; dormant: string[] }
 
 export type ExtractorStatus = { running?: string; queued: string[]; lastError?: { notePath: string; message: string } }
 
-export type ChainSource = { chainId: string; notePath: string; premises: { id: string; name: string; statement: string }[]; conclusion: { id: string; name: string; statement: string }; excerpts: { conceptId: string; heading: string; text: string }[] }
+export type ChainSource = { chainId: string; notePath: string; premises: { id: string; name: string; statement: string }[]; conclusion: { id: string; name: string; statement: string }; excerpts: { conceptId: string; heading: string; text: string }[]; why?: string }

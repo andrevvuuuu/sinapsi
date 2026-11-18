@@ -67,6 +67,7 @@ export const CH = {
   notesAttempt: 'notes:attempt',
   graphGet: 'graph:get',
   graphChainSource: 'graph:chain-source',
+  graphExplainChain: 'graph:explain-chain',
   graphExtract: 'graph:extract',
   graphStatus: 'graph:status',
   graphChanged: 'graph:changed',
@@ -175,6 +176,7 @@ export interface SinapsiApi {
   graph: {
     get(): Promise<import('./graph-types').GraphData>
     chainSource(chainId: string): Promise<import('./graph-types').ChainSource>
+    explainChain(chainId: string, opts?: { refresh?: boolean }): Promise<import('./graph-types').ChainExplanation>
     /** manual (default) always re-extracts; study skips a note unchanged since its last extraction. */
     extract(path: string, reason?: 'manual' | 'study'): Promise<void>
     status(): Promise<import('./graph-types').ExtractorStatus>
@@ -201,6 +203,8 @@ export interface SinapsiApi {
       conceptIds?: string[]
       weakest?: boolean
       misconceptions?: boolean
+      examAt?: number
+      order?: 'due' | 'gain'
     }): Promise<import('../main/memory/review').ReviewPlan>
     grade(req: {
       conceptId: string
@@ -215,10 +219,21 @@ export interface SinapsiApi {
       turns: import('../main/memory/explain').ExplainTurn[]
       confidence: number
     }): Promise<import('../main/memory/review').ExplainResult>
-    record(r: import('./memory-types').ReviewLine): Promise<{
+    record(
+      r:
+        | import('./memory-types').ReviewLine
+        | {
+            conceptId: string
+            at: number
+            type: 'chain'
+            checked?: boolean[]
+            grade?: import('./memory-types').Grade | null
+            record?: boolean
+          }
+    ): Promise<{
       memory: import('./memory-types').Memory
       intervals: Record<import('./memory-types').Grade, string>
-    }>
+    } | null>
     memory(): Promise<Record<string, import('./memory-types').Memory>>
     calibration(): Promise<
       Omit<import('./confidence').ConfidenceCalibration, 'confidentErrors'> & {

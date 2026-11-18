@@ -2,27 +2,32 @@ import { select, type Selection } from 'd3-selection'
 import 'd3-transition'
 import { zoom as d3zoom, zoomIdentity, type ZoomBehavior } from 'd3-zoom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ChainSource, ExtractorStatus, GraphData } from '../../../shared/graph-types'
+import type { ChainExplanation, ChainSource, ExtractorStatus, GraphData } from '../../../shared/graph-types'
 import type { VaultIndex } from '../../../shared/vault-types'
-import { weakPrerequisites, type CascadeMemory } from '../../../shared/cascade'
+import { weakPrerequisites, suspectPremises, type CascadeMemory } from '../../../shared/cascade'
 import { DICTATION_SHORT, useDictation } from '../components/dictation'
 import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
 import { SceneBoundary } from '../components/glass'
 import { RichText } from '../session/RichText'
 import { draw, radiusOf, type Colors, type Lens, type Sel } from './draw'
-import { createLayout, type Layout, type LayoutMode, type SimNode } from './layout'
+import { warmUp, createLayout, type Layout, type LayoutMode, type SimNode } from './layout'
 import { GraphNotchDock } from './GraphNotchDock'
 import {
+  aggregate,
   buildModel,
+  drillDown,
   filterBySubject,
   lensCounts,
   modelKey,
+  orphans,
+  shouldAggregate,
   subjectsOf,
   type GraphModel,
   type SearchHit,
   type VConcept,
   liveOnly
 } from './model'
+import { examClass } from '../../../shared/retention'
 import type { Memory } from '../../../shared/memory-types'
 import './graph.css'
 
@@ -42,6 +47,31 @@ function setStoredSubject(s: string | null | undefined): void {
     if (s === undefined) localStorage.removeItem(STORAGE_KEY)
     else if (s === null) localStorage.setItem(STORAGE_KEY, '__null__')
     else localStorage.setItem(STORAGE_KEY, s)
+  } catch {
+    // ignore
+  }
+}
+
+const EXAM_DATE_KEY = 'sinapsi:graph:exam-date'
+const defaultExamDate = (): string => {
+  const d = new Date()
+  d.setDate(d.getDate() + 14)
+  return d.toISOString().slice(0, 10)
+}
+function getStoredExamDate(): string {
+  try {
+    const v = localStorage.getItem(EXAM_DATE_KEY)
+    if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v
+    return defaultExamDate()
+  } catch {
+    return defaultExamDate()
+  }
+}
+function setStoredExamDate(d: string): void {
+  try {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      localStorage.setItem(EXAM_DATE_KEY, d)
+    }
   } catch {
     // ignore
   }
@@ -120,7 +150,10 @@ function GraphBody({
   index: VaultIndex
   onStudy: (title: string) => void
   onOpenNote: (path: string) => void
-  onReview?: (conceptIds: string[], opts?: { cascadeWeak?: string[] }) => void
+  onReview?: (
+    conceptIds: string[],
+    opts?: { cascadeWeak?: string[]; examAt?: number; order?: 'due' | 'gain' }
+  ) => void
   onAskTutor?: (conceptId: string, name: string) => void
   /** Start with the graph menu open (it normally waits behind its round button). */
   menuOpen?: boolean
@@ -151,6 +184,21 @@ function GraphBody({
   const [memory, setMemory] = useState<Record<string, Memory>>({})
   const [lens, setLens] = useState<Lens>('all')
   const [now] = useState(() => Date.now())
+
+  const [examDate, setExamDateState] = useState<string>(getStoredExamDate)
+  const setExamDate = useCallback((d: string) => {
+    setExamDateState(d)
+    setStoredExamDate(d)
+  }, [])
+  const examAt = useMemo(() => {
+    const t = new Date(examDate + 'T23:59:59').getTime()
+    return Number.isNaN(t) ? Date.now() + 14 * 86_400_000 : t
+  }, [examDate])
+  const examAtRef = useRef(examAt)
+  useEffect(() => {
+    examAtRef.current = examAt
+    dirty.current = true
+  }, [examAt])
 
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -205,21 +253,38 @@ function GraphBody({
     }
   }, [graph, subjectFilter, subjects, setSubjectFilter])
 
-  // Rebuilt only when the content changes: every graph:changed and vault event brings new objects.
-  const liveKey = livePaths ? [...livePaths].sort().join('\n') : null
+  const [drilledCluster, setDrilledCluster] = useState<{
+    id: string
+    label: string
+    by: 'subject' | 'note'
+  } | null>(null)
+
+  useEffect(() => {
+    setDrilledCluster(null)
+  }, [subjectFilter, graph])
+
   const subjectFilteredGraph = useMemo(
     () => (graph ? filterBySubject(graph, subjectFilter) : null),
     [graph, subjectFilter]
   )
+
+  const currentGraph = useMemo(() => {
+    if (!subjectFilteredGraph) return null
+    if (!drilledCluster) return subjectFilteredGraph
+    return drillDown(subjectFilteredGraph, drilledCluster.id, drilledCluster.by)
+  }, [subjectFilteredGraph, drilledCluster])
+
+  // Rebuilt only when the content changes: every graph:changed and vault event brings new objects.
+  const liveKey = livePaths ? [...livePaths].sort().join('\n') : null
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const shown = useMemo(
     () =>
-      subjectFilteredGraph && livePaths
-        ? liveOnly(subjectFilteredGraph, index, livePaths)
-        : subjectFilteredGraph
-          ? { graph: subjectFilteredGraph, index }
+      currentGraph && livePaths
+        ? liveOnly(currentGraph, index, livePaths)
+        : currentGraph
+          ? { graph: currentGraph, index }
           : null,
-    [subjectFilteredGraph, index, liveKey]
+    [currentGraph, index, liveKey]
   )
   const key = shown ? modelKey(shown.graph, shown.index) : ''
   const model: GraphModel | null = useMemo(
@@ -258,6 +323,66 @@ function GraphBody({
     () => (model ? lensCounts(model, memory, now) : { due: 0, never: 0, fragile: 0 }),
     [model, memory, now]
   )
+
+  const memMap = useMemo(() => new Map(Object.entries(memory)), [memory])
+
+  const isAggregated = useMemo(() => {
+    if (!shown || drilledCluster) return false
+    return shouldAggregate(shown.graph.concepts.length)
+  }, [shown, drilledCluster])
+
+  const aggregation = useMemo(() => {
+    if (!isAggregated || !shown) return null
+    const by: 'subject' | 'note' = subjectFilter !== undefined ? 'note' : 'subject'
+    return aggregate(shown.graph, memMap, by)
+  }, [isAggregated, shown, memMap, subjectFilter])
+
+  const aggregationRef = useRef(aggregation)
+  useEffect(() => {
+    aggregationRef.current = aggregation
+    dirty.current = true
+  }, [aggregation])
+
+  const examCounts = useMemo(() => {
+    const res = { solid: 0, shaky: 0, weak: 0, misconception: 0, faded: 0, unseen: 0 }
+    if (!model) return res
+    for (const c of model.concepts) {
+      const m = memory[c.id]
+      const cls = m ? examClass(m, examAt) : 'unseen'
+      res[cls]++
+    }
+    return res
+  }, [model, memory, examAt])
+
+  const orphansList = useMemo(() => {
+    const g = shown?.graph ?? graph
+    if (!g) return []
+    const raw = orphans(g)
+    return raw.map((o) => {
+      const c = g.concepts.find((x) => x.id === o.id)
+      return { ...o, name: c?.name ?? o.id }
+    })
+  }, [shown?.graph, graph])
+  const orphansSet = useMemo(() => new Set(orphansList.map((o) => o.id)), [orphansList])
+  const orphansSetRef = useRef(orphansSet)
+  useEffect(() => {
+    orphansSetRef.current = orphansSet
+    dirty.current = true
+  }, [orphansSet])
+
+  const suspectSet = useMemo(() => {
+    const g = shown?.graph ?? graph
+    if (!g) return new Set<string>()
+    return new Set(suspectPremises(g, memMap))
+  }, [shown?.graph, graph, memMap])
+  const suspectSetRef = useRef(suspectSet)
+  useEffect(() => {
+    suspectSetRef.current = suspectSet
+    dirty.current = true
+  }, [suspectSet])
+
+  const [warmupProgress, setWarmupProgress] = useState<number | null>(null)
+
   const [extractError, setExtractError] = useState<string | null>(null)
   const extract = (path: string): void => {
     setExtractError(null)
@@ -278,8 +403,8 @@ function GraphBody({
     if (!model) return
     const prev = layoutRef.current?.positions() ?? savedRef.current ?? undefined
     const l = createLayout(model, { mode, saved: prev })
-    l.tick(l.warmup)
-    l.sim.on('tick', () => (dirty.current = true))
+    const isLarge = model.concepts.length >= 80 || shouldAggregate(model.concepts.length)
+
     let saveTimer: ReturnType<typeof setTimeout> | undefined
     // Manual ticks send no 'end' event: save after the warm-up too, and after every settled restart.
     const save = (): void => {
@@ -289,13 +414,43 @@ function GraphBody({
         2000
       )
     }
+    l.sim.on('tick', () => (dirty.current = true))
     l.sim.on('end', save)
-    save()
+
+    const controller = new AbortController()
+    if (isLarge) {
+      setWarmupProgress(0)
+      warmUp(l, {
+        budgetMs: 8,
+        signal: controller.signal,
+        onProgress: (frac) => {
+          dirty.current = true
+          setWarmupProgress(frac < 1 ? frac : null)
+        }
+      })
+        .then(() => {
+          dirty.current = true
+          setWarmupProgress(null)
+          save()
+        })
+        .catch((err) => {
+          if (err?.name !== 'AbortError') {
+            // ignore
+          }
+        })
+    } else {
+      l.tick(l.warmup)
+      dirty.current = true
+      save()
+    }
+
     layoutRef.current?.sim.stop()
     layoutRef.current = l
     dirty.current = true
     return () => {
       clearTimeout(saveTimer)
+      controller.abort()
+      setWarmupProgress(null)
       l.sim.stop()
     }
     // mode changes are applied by setMode below without rebuilding the layout
@@ -409,7 +564,11 @@ function GraphBody({
             now: nowRef.current,
             subjectColor: (sj) =>
               index.subjects.find((x) => x.id === sj)?.color ?? colors.current!.muted,
-            offscreen: offscreen.current!
+            offscreen: offscreen.current!,
+            examAt: examAtRef.current,
+            orphansSet: orphansSetRef.current,
+            suspectSet: suspectSetRef.current,
+            aggregation: aggregationRef.current
           })
           labels.current = out.regionLabels
         }
@@ -451,6 +610,13 @@ function GraphBody({
     }
   }, [model, fit])
 
+  // Refit when drilling into a cluster or returning to the full graph
+  useEffect(() => {
+    if (layoutRef.current && framed.current) {
+      setTimeout(() => fit(), reducedMotion() ? 0 : 350)
+    }
+  }, [drilledCluster, fit])
+
   const changeMode = (m: LayoutMode): void => {
     setMode(m)
     const l = layoutRef.current
@@ -463,6 +629,31 @@ function GraphBody({
   function pick(x: number, y: number): Sel | null {
     const l = layoutRef.current
     if (!l || !model) return null
+
+    if (aggregationRef.current) {
+      const { clusters } = aggregationRef.current
+      const { k, x: tx, y: ty } = T.current
+      let bestCluster: { id: string; d: number } | null = null
+      for (const cl of clusters) {
+        const ns = cl.conceptIds
+          .map((id) => l.byId.get(id))
+          .filter((n): n is SimNode => !!n && n.x !== undefined && n.y !== undefined)
+        if (!ns.length) continue
+        const cx = ns.reduce((sum, n) => sum + n.x!, 0) / ns.length
+        const cy = ns.reduce((sum, n) => sum + n.y!, 0) / ns.length
+        const sx = cx * k + tx
+        const sy = cy * k + ty
+        const r =
+          Math.max(24, Math.min(70, 16 + Math.sqrt(cl.conceptIds.length) * 5)) *
+          Math.sqrt(Math.max(0.4, Math.min(1.5, k)))
+        const d = Math.hypot(sx - x, sy - y)
+        if (d < r && (!bestCluster || d < bestCluster.d)) {
+          bestCluster = { id: cl.id, d }
+        }
+      }
+      return bestCluster ? { kind: 'concept', id: bestCluster.id } : null
+    }
+
     for (const [id, [a, b, w, h]] of labels.current)
       if (x >= a && x <= a + w && y >= b && y <= b + h) return { kind: 'region', id }
     const { k, x: tx, y: ty } = T.current
@@ -596,6 +787,29 @@ function GraphBody({
 
   return (
     <div className="graph" ref={wrapRef}>
+      {warmupProgress !== null && (
+        <div
+          className="g-warmup-progress"
+          role="progressbar"
+          aria-valuenow={Math.round(warmupProgress * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div
+            className="g-warmup-bar"
+            style={{ width: `${Math.round(warmupProgress * 100)}%` }}
+          />
+        </div>
+      )}
+      {drilledCluster && (
+        <nav className="g-breadcrumb" aria-label="Percorso">
+          <button type="button" onClick={() => setDrilledCluster(null)}>
+            Tutto
+          </button>
+          <span aria-hidden="true"> / </span>
+          <span>{drilledCluster.label}</span>
+        </nav>
+      )}
       {/* The live layer the glass controls refract. */}
       <GlassContent className="gcanvas">
         <canvas
@@ -619,7 +833,17 @@ function GraphBody({
             )
               return
             const r = e.currentTarget.getBoundingClientRect()
-            choose(pick(e.clientX - r.left, e.clientY - r.top))
+            const hit = pick(e.clientX - r.left, e.clientY - r.top)
+            if (aggregationRef.current && hit) {
+              const by: 'subject' | 'note' = subjectFilter !== undefined ? 'note' : 'subject'
+              const cl = aggregationRef.current.clusters.find((c) => c.id === hit.id)
+              if (cl) {
+                setDrilledCluster({ id: cl.id, label: cl.label, by })
+                choose(null)
+                return
+              }
+            }
+            choose(hit)
           }}
         />
       </GlassContent>
@@ -659,6 +883,23 @@ function GraphBody({
         setSubjectFilter={setSubjectFilter}
         initialSection={menuOpen ? 'search' : null}
         onOpenChange={setDockOpen}
+        examAt={examAt}
+        examDate={examDate}
+        setExamDate={setExamDate}
+        examCounts={examCounts}
+        orphansList={orphansList}
+        onSelectOrphan={(id) => {
+          if (isAggregated && aggregation) {
+            const cl = aggregation.clusters.find((c) => c.conceptIds.includes(id))
+            if (cl) {
+              const by: 'subject' | 'note' = subjectFilter !== undefined ? 'note' : 'subject'
+              setDrilledCluster({ id: cl.id, label: cl.label, by })
+            }
+          }
+          choose({ kind: 'concept', id })
+          focusOn(id, 1.8)
+        }}
+        onMassimoGuadagno={() => onReview?.([], { order: 'gain', examAt })}
       />
       {model && !(livePaths && livePaths.length === 0) && (
         <GlassSurface radius={999} className="gzoom" role="group" aria-label="Zoom">
@@ -766,6 +1007,7 @@ function GraphBody({
           onReview={onReview}
           onAskTutor={onAskTutor}
           graph={shown?.graph ?? graph}
+          suspectSet={suspectSet}
         />
       )}
     </div>
@@ -797,9 +1039,13 @@ type CardProps = {
   onOpenNote: (path: string) => void
   onExtract: (path: string) => void
   memory: Record<string, Memory>
-  onReview?: (conceptIds: string[], opts?: { cascadeWeak?: string[] }) => void
+  onReview?: (
+    conceptIds: string[],
+    opts?: { cascadeWeak?: string[]; examAt?: number; order?: 'due' | 'gain' }
+  ) => void
   onAskTutor?: (conceptId: string, name: string) => void
   graph?: GraphData | null
+  suspectSet?: Set<string>
 }
 
 function ConceptCardBody({
@@ -808,6 +1054,7 @@ function ConceptCardBody({
   index,
   memory,
   graph,
+  suspectSet,
   onSelect,
   onPath,
   onReview,
@@ -819,9 +1066,13 @@ function ConceptCardBody({
   index: VaultIndex
   memory: Record<string, Memory>
   graph?: GraphData | null
+  suspectSet?: Set<string>
   onSelect: (s: Sel) => void
   onPath: (ids: string[]) => void
-  onReview?: (conceptIds: string[], opts?: { cascadeWeak?: string[] }) => void
+  onReview?: (
+    conceptIds: string[],
+    opts?: { cascadeWeak?: string[]; examAt?: number; order?: 'due' | 'gain' }
+  ) => void
   onAskTutor?: (conceptId: string, name: string) => void
   onOpenNote: (path: string) => void
 }): React.JSX.Element {
@@ -842,6 +1093,32 @@ function ConceptCardBody({
     }
     return weakPrerequisites({ parents: parentsObj, depth: depthObj, memory: memObj }, c.id)
   }, [model, memory, c.id])
+
+  const suspectDiffCount = useMemo(() => {
+    if (!graph) return 0
+    const children = new Map<string, Set<string>>()
+    for (const ch of graph.chains) {
+      for (const p of ch.premises) {
+        const set = children.get(p) ?? new Set<string>()
+        set.add(ch.conclusion)
+        children.set(p, set)
+      }
+    }
+    const seen = new Set<string>()
+    const walk = (id: string): void => {
+      for (const child of children.get(id) ?? []) {
+        if (!seen.has(child)) {
+          seen.add(child)
+          walk(child)
+        }
+      }
+    }
+    walk(c.id)
+    return [...seen].filter((id) => {
+      const child = memory[id]
+      return !!child && (child.lapses > 0 || child.misconception)
+    }).length
+  }, [graph, c.id, memory])
 
   const incomingChains = (graph?.chains ?? []).filter((ch) => ch.conclusion === c.id)
   const coveredParents = new Set(incomingChains.flatMap((ch) => ch.premises))
@@ -881,6 +1158,11 @@ function ConceptCardBody({
             : 'mai visto'}
         </span>
       </div>
+      {suspectSet?.has(c.id) && (
+        <div className="gcard-suspect" role="status">
+          Premessa sospetta: {suspectDiffCount} conseguenze in difficoltà
+        </div>
+      )}
       <h3>{c.name}</h3>
       <RichText md={c.statement} className="stmt" />
       <h4>
@@ -994,7 +1276,8 @@ function ChainCardBody({
   model,
   index,
   onSelect,
-  onOpenNote
+  onOpenNote,
+  chain
 }: {
   chainId: string
   premisesIds: string[]
@@ -1003,11 +1286,19 @@ function ChainCardBody({
   index: VaultIndex
   onSelect: (s: Sel) => void
   onOpenNote: (path: string) => void
+  chain?: GraphData['chains'][0]
 }): React.JSX.Element {
   const [revealed, setRevealed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [source, setSource] = useState<ChainSource | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Stage 2: Spiegazione AI (generate-then-reveal)
+  const [aiAnswer, setAiAnswer] = useState('')
+  const [aiCommitted, setAiCommitted] = useState(false)
+  const [aiExplanation, setAiExplanation] = useState<ChainExplanation | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
 
   const onReveal = async (): Promise<void> => {
     setRevealed(true)
@@ -1023,6 +1314,22 @@ function ChainCardBody({
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const onExplainAi = async (): Promise<void> => {
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      if (typeof window.sinapsi?.graph?.explainChain !== 'function') {
+        throw new Error('API explainChain non disponibile')
+      }
+      const expl = await window.sinapsi.graph.explainChain(chainId)
+      setAiExplanation(expl)
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setAiLoading(false)
     }
   }
 
@@ -1087,7 +1394,14 @@ function ChainCardBody({
         <p className="hint">—</p>
       )}
 
-      <h4>Perché</h4>
+      {(chain?.why || source?.why) && (
+        <div className="chain-why">
+          <h4>Perché (dall'estrazione)</h4>
+          <RichText md={(chain?.why || source?.why)!} className="stmt" />
+        </div>
+      )}
+
+      <h4>Dalla nota</h4>
       <p className="chain-prompt">
         Perché queste premesse implicano la conclusione? Prova a dirlo prima di rivelare.
       </p>
@@ -1137,6 +1451,75 @@ function ChainCardBody({
           )}
         </>
       )}
+
+      <div className="chain-ai-stage">
+        <h4>Spiegazione AI</h4>
+        {!aiCommitted ? (
+          <>
+            <p className="chain-prompt">
+              Formula la tua spiegazione del passaggio logico prima di confrontarla con l'AI:
+            </p>
+            <textarea
+              className="chain-ai-input"
+              rows={3}
+              placeholder="Spiega con parole tue perché le premesse implicano la conclusione…"
+              value={aiAnswer}
+              onChange={(e) => setAiAnswer(e.target.value)}
+            />
+            <div className="acts">
+              <button
+                type="button"
+                className="pri"
+                disabled={!aiAnswer.trim()}
+                onClick={() => setAiCommitted(true)}
+              >
+                Conferma spiegazione
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="chain-ai-committed">
+              <span className="chain-ai-label">La tua spiegazione:</span>
+              <p>{aiAnswer}</p>
+            </div>
+            {!aiExplanation && !aiLoading && (
+              <div className="acts">
+                <button
+                  type="button"
+                  className="pri"
+                  onClick={onExplainAi}
+                >
+                  Rivela spiegazione AI
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {aiLoading && <p className="hint">Interrogo l'AI…</p>}
+        {aiError && (
+          <p className="gstatus err" role="alert">
+            {aiError}
+          </p>
+        )}
+
+        {aiExplanation && (
+          <div className="chain-ai-result">
+            <div className="chain-ai-head">
+              <span className="chain-ai-badge">AI</span>
+              <span className={`chain-verdict verdict-${aiExplanation.verdict}`}>
+                {aiExplanation.verdict === 'supported'
+                  ? 'Verificata sulla nota'
+                  : aiExplanation.verdict === 'not-justified'
+                    ? 'La nota non giustifica questo passaggio'
+                    : 'Non verificata'}
+              </span>
+            </div>
+            <RichText md={aiExplanation.text} className="stmt" />
+          </div>
+        )}
+      </div>
     </>
   )
 }
@@ -1154,7 +1537,8 @@ function Card({
   memory,
   onReview,
   onAskTutor,
-  graph
+  graph,
+  suspectSet
 }: CardProps): React.JSX.Element {
   const conceptRow = (id: string, tag?: string): React.JSX.Element | null => {
     const c = model.concepts.find((x) => x.id === id)
@@ -1189,6 +1573,7 @@ function Card({
         index={index}
         memory={memory}
         graph={graph}
+        suspectSet={suspectSet}
         onSelect={onSelect}
         onPath={onPath}
         onReview={onReview}
@@ -1225,6 +1610,7 @@ function Card({
         index={index}
         onSelect={onSelect}
         onOpenNote={onOpenNote}
+        chain={chain}
       />
     )
   } else if (sel.kind === 'wikilink') {

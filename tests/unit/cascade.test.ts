@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { weakPrerequisites } from '../../src/shared/cascade'
+import { suspectPremises, weakPrerequisites } from '../../src/shared/cascade'
 
 describe('weakPrerequisites', () => {
   const input = {
@@ -16,5 +16,14 @@ describe('weakPrerequisites', () => {
   })
   it('is cycle-safe and respects the cap', () => {
     expect(weakPrerequisites(input, 'goal', { cap: 1 })).toEqual(['root'])
+  })
+})
+
+describe('suspectPremises', () => {
+  it('finds unseen or weak concepts with at least two struggling descendants', () => {
+    const concepts = ['p', 'a', 'b'].map((id) => ({ id, name: id, statement: id, aliases: [], birth: '', notes: [], sections: {}, depth: 0 }))
+    const graph = { concepts, chains: [{ id: '1', premises: ['p'], conclusion: 'a', notes: [] }, { id: '2', premises: ['p'], conclusion: 'b', notes: [] }], extracted: {}, retired: [], dormant: [] }
+    const mem = new Map([['a', { conceptId: 'a', state: 'debole' as const, R: 0.2, due: null, reps: 3, lapses: 1, lastAt: 1, misconception: false }], ['b', { conceptId: 'b', state: 'debole' as const, R: 0.2, due: null, reps: 3, lapses: 0, lastAt: 1, misconception: true }]])
+    expect(suspectPremises(graph, mem)).toEqual(['p'])
   })
 })

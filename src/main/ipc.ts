@@ -74,6 +74,7 @@ import { scanVault } from './vault/scan'
 import { createRewatcher, watchVault } from './vault/watch'
 import { detectMoves, detectOfflineMoves } from './graph/moves'
 import { resolvePath } from './graph/resolve-path'
+import { createChainExplainer, fakeChainExplainBridge } from './graph/explain'
 
 export function registerIpc(): { bridge: Bridge } {
   // Assigned below; the session and note hooks only run after registration.
@@ -371,18 +372,32 @@ export function registerIpc(): { bridge: Bridge } {
       await rename(positionsFile + '.tmp', positionsFile)
     }
   })
-  ipcMain.handle(CH.graphGet, () => gh.get())
-  ipcMain.handle(CH.graphChainSource, async (_e, chainId) => {
+  const chainSource = async (chainId: string): Promise<import('../shared/graph-types').ChainSource> => {
     const graph = await gh.get()
-    const chain = graph.chains.find((c) => c.id === String(chainId))
+    const chain = graph.chains.find((c) => c.id === chainId)
     if (!chain) throw new Error('chain not found')
     const byId = new Map(graph.concepts.map((c) => [c.id, c]))
     const notePath = chain.notes[0] ?? byId.get(chain.conclusion)?.birth ?? ''
     const content = notePath ? await readFile(notePath, 'utf8').catch(() => '') : ''
     const concept = (id: string) => { const c = byId.get(id); return { id, name: c?.name ?? '', statement: c?.statement ?? '' } }
     const ids = [...new Set([...chain.premises, chain.conclusion])]
-    return { chainId: chain.id, notePath, premises: chain.premises.map(concept), conclusion: concept(chain.conclusion), excerpts: content ? ids.map((id) => { const heading = byId.get(id)?.sections[notePath] ?? ''; return { conceptId: id, heading, text: sectionText(content, [heading]).slice(0, 1200) } }).filter((x) => !!x.heading) : [] }
+    return { chainId: chain.id, notePath, premises: chain.premises.map(concept), conclusion: concept(chain.conclusion), excerpts: content ? ids.map((id) => { const heading = byId.get(id)?.sections[notePath] ?? ''; return { conceptId: id, heading, text: sectionText(content, [heading]).slice(0, 1200) } }).filter((x) => !!x.heading) : [], ...(chain.why ? { why: chain.why } : {}) }
+  }
+  const chainExplainer = createChainExplainer({
+    bridge: process.env.SINAPSI_FAKE_EXPLAIN === '1' ? fakeChainExplainBridge() : bridge,
+    source: chainSource,
+    store,
+    engine: async () => (await settings.load()).engines.teach,
+    otherEngine: async () => {
+      const current = await settings.load()
+      const primary = current.engines.teach
+      if (current.engines.grade.engine !== primary.engine) return current.engines.grade
+      return { engine: primary.engine === 'claude' ? 'agy' : 'claude', model: primary.engine === 'claude' ? 'gemini-3.8-flash-medium' : 'sonnet' }
+    }
   })
+  ipcMain.handle(CH.graphGet, () => gh.get())
+  ipcMain.handle(CH.graphChainSource, (_e, chainId) => chainSource(String(chainId)))
+  ipcMain.handle(CH.graphExplainChain, (_e, chainId, opts) => chainExplainer(String(chainId), opts))
   ipcMain.handle(CH.graphStatus, () => gh.status())
   ipcMain.handle(CH.graphExtract, (_e, path, reason) => gh.extract(path, reason))
   ipcMain.handle(CH.graphPositions, () => gh.positions())

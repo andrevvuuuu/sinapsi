@@ -49,7 +49,7 @@ export function deriveGraph(
     const premises = [...new Set(l.premises)]
     const key = `${[...premises].sort().join('+')}>${l.conclusion}`
     const c = byKey.get(key)
-    if (!c) byKey.set(key, { id: l.id, premises, conclusion: l.conclusion, notes: [l.notePath] })
+    if (!c) byKey.set(key, { id: l.id, premises, conclusion: l.conclusion, notes: [l.notePath], ...(l.why ? { why: l.why } : {}) })
     else if (!c.notes.includes(l.notePath)) c.notes.push(l.notePath)
   }
   const merged = [...byKey.values()]

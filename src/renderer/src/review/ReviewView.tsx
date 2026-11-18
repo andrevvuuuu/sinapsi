@@ -45,6 +45,8 @@ export function ReviewView({
   query,
   conceptIds,
   cascadeWeak,
+  examAt,
+  order,
   onBack,
   onStudy,
   onOpenNote
@@ -52,6 +54,8 @@ export function ReviewView({
   query?: string
   conceptIds?: string[]
   cascadeWeak?: string[]
+  examAt?: number
+  order?: 'due' | 'gain'
   onBack: () => void
   onStudy: (name: string) => void
   onOpenNote: (path: string) => void
@@ -82,7 +86,16 @@ export function ReviewView({
   const [endedAt, setEndedAt] = useState<number | null>(null)
 
   const load = useCallback(
-    async (opts?: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean }, reset = true) => {
+    async (
+      opts?: {
+        conceptIds?: string[]
+        weakest?: boolean
+        misconceptions?: boolean
+        examAt?: number
+        order?: 'due' | 'gain'
+      },
+      reset = true
+    ) => {
       if (reset) {
         setItems(null)
         setError(null)
@@ -103,7 +116,12 @@ export function ReviewView({
             .map((c) => c.id)
           o = { conceptIds: ids }
         }
-        const p = await api.review.plan(o)
+        const planOpts = {
+          ...(examAt !== undefined ? { examAt } : {}),
+          ...(order !== undefined ? { order } : {}),
+          ...o
+        }
+        const p = await api.review.plan(planOpts)
         setItems(p.items)
         setClinicEmpty(!!opts?.misconceptions && p.items.length === 0)
         setDue(p.due)
@@ -115,7 +133,7 @@ export function ReviewView({
         setItems([])
       }
     },
-    [api, conceptIds, query]
+    [api, conceptIds, query, examAt, order]
   )
   useEffect(() => {
     // Deferred: the first plan sets state asynchronously, never during the effect itself.
@@ -249,7 +267,7 @@ export function ReviewView({
       })
       setResults((rs) => [
         ...rs,
-        { item, grade, before: item.R, after: r.memory.R, misconception: v.kind === 'mis' }
+        { item, grade, before: item.R, after: r ? r.memory.R : item.R, misconception: v.kind === 'mis' }
       ])
       if (cascadeWeak?.length && !item.cascadeOf && grade <= 2) {
         try {
@@ -274,6 +292,45 @@ export function ReviewView({
     }
     setError(null)
     next()
+  }
+
+  async function handleChainRecord(checked: boolean[], record: boolean): Promise<void> {
+    if (saving) return
+    const item = items![i]
+    const ex = item.exercise
+    const conclusionId = ex.type === 'chain' ? ex.conclusion.id : item.conceptId
+    setSaving(true)
+    try {
+      const fraction = checked.length ? checked.filter(Boolean).length / checked.length : 0
+      const calculatedGrade: Grade = fraction === 0 ? 1 : fraction < 0.5 ? 2 : 3
+      let afterR = item.R
+      if (record) {
+        const r = await api.review.record({
+          conceptId: conclusionId,
+          at: Date.now(),
+          type: 'chain',
+          checked
+        })
+        if (r?.memory?.R !== undefined) afterR = r.memory.R
+        setResults((rs) => [
+          ...rs,
+          { item, grade: calculatedGrade, before: item.R, after: afterR, misconception: false }
+        ])
+      } else {
+        await api.review.record({
+          conceptId: conclusionId,
+          at: Date.now(),
+          type: 'chain',
+          record: false
+        })
+      }
+      setError(null)
+      next()
+    } catch (e) {
+      setError(remote(e))
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Keyboard and VoiceOver users land where the next action is: "Prossima" after the check,
@@ -566,7 +623,7 @@ export function ReviewView({
             )}
             <div
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && state.ready && !verdict)
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && state.ready && !verdict && item.exercise.type !== 'chain')
                   void check()
               }}
             >
@@ -574,13 +631,15 @@ export function ReviewView({
                 <ExerciseView
                   key={`${item.conceptId}-${i}-${turns.length}`}
                   exercise={item.exercise}
-                  locked={!!verdict}
+                  locked={!!verdict || saving}
                   followUp={turns.length > 0}
                   onChange={setState}
+                  onRecordChain={(chk) => void handleChainRecord(chk, true)}
+                  onSkipChain={() => void handleChainRecord([], false)}
                 />
               )}
             </div>
-            {!verdict && (
+            {!verdict && item.exercise.type !== 'chain' && (
               <>
                 {turns.length === 0 && (
                   <div className="rv-conf">
@@ -620,7 +679,7 @@ export function ReviewView({
                 </div>
               </>
             )}
-            {verdict && (
+            {verdict && item.exercise.type !== 'chain' && (
               <div className="rv-reveal">
                 <div className={`rv-verdict ${verdict.kind}`} role="status">
                   <b>{TITLE[verdict.kind]}</b>

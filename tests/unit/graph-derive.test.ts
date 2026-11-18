@@ -25,6 +25,10 @@ describe('deriveGraph', () => {
     const g = deriveGraph({ props: [P('n_a'), P('n_b')], chains: [C(['n_a'], 'n_b', 'arg_1'), C(['n_a'], 'n_b', 'arg_2', '/v/B.md')], extractions: [] })
     expect(g.chains).toEqual([{ id: 'arg_1', premises: ['n_a'], conclusion: 'n_b', notes: ['/v/A.md', '/v/B.md'] }])
   })
+  it('keeps the extracted why on a chain', () => {
+    const g = deriveGraph({ props: [P('n_a'), P('n_b')], chains: [{ ...C(['n_a'], 'n_b'), why: 'Per il criterio enunciato nella nota.' }], extractions: [] })
+    expect(g.chains[0].why).toBe('Per il criterio enunciato nella nota.')
+  })
   it('drops chains with unknown ids, no premises, or a self conclusion', () => {
     const g = deriveGraph({ props: [P('n_a'), P('n_b')], chains: [C(['n_x'], 'n_b'), C([], 'n_b'), C(['n_a', 'n_b'], 'n_b')], extractions: [] })
     expect(g.chains).toEqual([])

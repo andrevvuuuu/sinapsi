@@ -24,7 +24,7 @@ export function parseVariants(raw: unknown, conceptIds: Set<string>, now: () => 
     for (const e of c.exercises) {
       const p = ExerciseSchema.safeParse(e)
       // One "Spiegalo tu" per concept: it is long, and the rotation must not keep landing on it.
-      if (!p.success || (allowed && !allowed.has(p.data.type)) || (p.data.type === 'explain' && explains++ > 0)) {
+      if (!p.success || p.data.type === 'chain' || (allowed && !allowed.has(p.data.type)) || (p.data.type === 'explain' && explains++ > 0)) {
         dropped++
         continue
       }
@@ -49,7 +49,7 @@ export function fallbackExercise(c: Concept): Exercise {
   return { type: 'open', prompt: `Senza guardare: che cosa dice «${c.name}»?`, answer: c.statement }
 }
 
-const FORMAT: Record<ExerciseType, string> = {
+const FORMAT: Record<Exclude<ExerciseType, 'chain'>, string> = {
   open: '  { "type": "open" }                                                    // risposta aperta',
   mc: '  { "type": "mc", "options": ["…","…"], "correct": 0 }                  // 2–6 opzioni, indice da 0',
   truefalse: '  { "type": "truefalse", "statement": "…", "value": true }              // vero/falso: Andrea spiega anche perché',
@@ -66,7 +66,7 @@ const FORMAT: Record<ExerciseType, string> = {
 const EXPLAIN_RULE = `- "explain" (spiegalo tu: Andrea spiega a libro chiuso, a voce o per iscritto, e Claude lo corregge confrontando con la nota) solo per i concetti che hanno una dimostrazione da ricostruire o che sono una definizione importante, mai per fatti minori o calcoli; al massimo uno per concetto. Il "prompt" chiede di ricostruire la dimostrazione o di spiegare il concetto come a un compagno ("A libro chiuso: ricostruisci la dimostrazione di…", "Spiega a un compagno che cos'è… e perché serve…"); "answer" elenca i passaggi chiave, con le ipotesi, nell'ordine della nota.`
 
 export function buildVariantsPrompt(input: { noteTitle: string; noteText: string; concepts: Concept[]; types?: ExerciseType[]; depth?: boolean; weaknesses?: WeaknessLine[]; lastMiss?: string }): string {
-  const types = input.types?.length ? input.types : [...EXERCISE_TYPES]
+  const types = (input.types?.length ? input.types : EXERCISE_TYPES).filter((type): type is Exclude<ExerciseType, 'chain'> => type !== 'chain')
   // Concepts that already have their other variants only need the check for a "Spiegalo tu".
   const explainOnly = types.length === 1 && types[0] === 'explain'
   return [

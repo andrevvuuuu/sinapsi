@@ -1,7 +1,8 @@
 import { mkdir } from 'node:fs/promises'
 import type { Bridge } from '../ai/bridge'
-import type { Exercise } from '../../shared/exercise-schema'
+import type { ChainExercise, Exercise } from '../../shared/exercise-schema'
 import type { Concept, GraphData } from '../../shared/graph-types'
+import { retrievabilityAt } from '../../shared/retention'
 import { proposeGrade, type ExerciseType, type Grade, type Memory, type ReviewLine, type WeaknessLine } from '../../shared/memory-types'
 import type { VaultIndex } from '../../shared/vault-types'
 import { PACER_EXERCISE_TYPES, type PacerType } from '../../shared/lesson-types'
@@ -19,19 +20,23 @@ export type ReviewItem = {
   noteTitle: string
   subject: string | null
   R: number | null
-  exercise: Exercise
+  exercise: Exercise | ChainExercise
   variantId: string | null
 }
 export type ReviewPlan = { items: ReviewItem[]; due: number }
 export type GradeResult = { verdict: 'ok' | 'partial' | 'wrong'; feedback: string; proposed: Grade }
 /** A "Spiegalo tu" turn: the picky student asks for the missing step, or gives the verdict. */
 export type ExplainResult = { kind: 'question'; question: string } | ({ kind: 'verdict' } & GradeResult)
+export function gradeChainIdeaUnits(checked: boolean[]): Grade {
+  const fraction = checked.length ? checked.filter(Boolean).length / checked.length : 0
+  return fraction === 0 ? 1 : fraction < 0.5 ? 2 : 3
+}
 export type ReviewService = {
-  plan(opts?: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean }): Promise<ReviewPlan>
+  plan(opts?: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean; examAt?: number; order?: 'due' | 'gain' }): Promise<ReviewPlan>
   prepare(notePath: string): Promise<void>
   grade(req: { conceptId: string; exercise: Exercise; answer: string; confidence: number }): Promise<GradeResult>
   explain(req: { conceptId: string; exercise: Exercise; turns: ExplainTurn[]; confidence: number }): Promise<ExplainResult>
-  record(r: ReviewLine): Promise<{ memory: Memory; intervals: Record<Grade, string> }>
+  record(r: ReviewLine | { conceptId: string; at: number; grade?: Grade | null; checked?: boolean[]; record?: boolean; type: 'chain' }): Promise<{ memory: Memory; intervals: Record<Grade, string> } | null>
   memory(): Promise<Record<string, Memory>>
   intervals(conceptId: string): Promise<Record<Grade, string>>
 }
@@ -143,13 +148,18 @@ export function createReviewService(deps: {
       const concepts = g.concepts.filter((c) => c.birth === notePath)
       if (concepts.length) await ensureVariants(concepts, new Set(settings.exerciseTypes), index)
     },
-    async plan(opts: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean } = {}) {
+    async plan(opts: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean; examAt?: number; order?: 'due' | 'gain' } = {}) {
       const [g, reviews, settings, index, pacers] = await Promise.all([deps.graph(), deps.memory.read(), deps.settings(), deps.vault(), deps.pacerOf?.() ?? Promise.resolve(new Map<string, PacerType>())])
       const t = now()
       const mem = memoryOf(reviews, t)
       const byId = new Map(g.concepts.map((c) => [c.id, c]))
       const R = (id: string): number => mem.get(id)?.R ?? -1
       const dueIds = g.concepts.filter((c) => (mem.get(c.id)?.due ?? Infinity) <= t).map((c) => c.id)
+      const retestIds = g.concepts.filter((c) => {
+        const last = reviews.filter((r) => r.conceptId === c.id).sort((a, b) => b.at - a.at)[0]
+        const age = last ? (t - last.at) / 86_400_000 : Infinity
+        return !!last && last.correct === false && (last.confidence ?? 0) >= 70 && age >= 1 && age <= 3
+      }).map((c) => c.id)
       let chosen: Concept[]
       if (opts.misconceptions) chosen = g.concepts.filter((c) => mem.get(c.id)?.misconception).sort((a, b) => R(a.id) - R(b.id)).slice(0, settings.reviewSessionSize)
       else if (opts.conceptIds) chosen = opts.conceptIds.map((id) => byId.get(id)).filter((c): c is Concept => !!c)
@@ -158,9 +168,10 @@ export function createReviewService(deps: {
         const fresh = g.concepts.filter((c) => !mem.has(c.id)).sort((a, b) => a.depth - b.depth)
         chosen = [...reviewed, ...fresh].slice(0, settings.reviewSessionSize)
       } else {
+        const retests = retestIds.map((id) => byId.get(id)!).sort((a, b) => R(a.id) - R(b.id))
         const due = dueIds.map((id) => byId.get(id)!).sort((a, b) => R(a.id) - R(b.id))
         const fresh = g.concepts.filter((c) => !mem.has(c.id)).sort((a, b) => a.depth - b.depth).slice(0, NEW_PER_SESSION)
-        chosen = [...due, ...fresh].slice(0, settings.reviewSessionSize)
+        chosen = [...retests, ...due.filter((c) => !retestIds.includes(c.id)), ...fresh].slice(0, settings.reviewSessionSize)
       }
 
       const allowed = new Set(settings.exerciseTypes.length ? settings.exerciseTypes : (['open'] as ExerciseType[]))
@@ -205,7 +216,34 @@ export function createReviewService(deps: {
           variantId: pick?.id ?? null
         }
       })
-      return { items: opts.conceptIds ? items : interleave(items), due: dueIds.length }
+      const examAt = opts.examAt
+      if (opts.order === 'gain' && examAt !== undefined) {
+        const gain = (id: string, minutes: number): number => {
+          const m = mem.get(id)
+          if (!m) return 0
+          const before = retrievabilityAt(m, examAt) ?? 0
+          const afterMemory = memoryOf([...reviews.filter((r) => r.conceptId === id), { conceptId: id, at: t, grade: 3 }], t).get(id)
+          return ((afterMemory ? retrievabilityAt(afterMemory, examAt) ?? before : before) - before) / minutes
+        }
+        items.sort((a, b) => gain(b.conceptId, 1.5) - gain(a.conceptId, 1.5))
+      }
+      const conceptById = byId
+      const chains = g.chains.filter((chain) => chain.premises.every((id) => (mem.get(id)?.reps ?? 0) > 0) && (mem.get(chain.conclusion)?.reps ?? 0) > 0)
+      const reaches = (from: string, target: string): boolean => {
+        const seen = new Set<string>(); const stack = [from]
+        while (stack.length) { const id = stack.pop()!; if (id === target) return true; if (seen.has(id)) continue; seen.add(id); for (const edge of g.chains) if (edge.premises.includes(id)) stack.push(edge.conclusion) }
+        return false
+      }
+      for (const chain of chains) {
+        if (chain.premises.some((id) => reaches(chain.conclusion, id))) continue
+        const conclusion = conceptById.get(chain.conclusion)
+        if (!conclusion) continue
+        const premises = chain.premises.map((id) => conceptById.get(id)).filter((c): c is Concept => !!c)
+        if (premises.length !== chain.premises.length) continue
+        const note = index?.notes.find((n) => n.path === conclusion.birth)
+        items.push({ conceptId: conclusion.id, name: conclusion.name, notePath: conclusion.birth, noteTitle: note?.title ?? conclusion.birth.split('/').pop()!.replace(/\.md$/, ''), subject: note?.subject ?? null, R: mem.get(conclusion.id)?.R ?? null, variantId: null, exercise: { type: 'chain', chainId: chain.id, premises: premises.map(({ id, name, statement }) => ({ id, name, statement })), conclusion: { id: conclusion.id, name: conclusion.name, statement: conclusion.statement }, prompt: `Perché da ${premises.map((p) => p.name).join(', ')} segue ${conclusion.name}?`, answer: premises.map((p) => `Uso ${p.name}: ${p.statement}`).join('\n'), question: `Perché da ${premises.map((p) => p.name).join(', ')} segue ${conclusion.name}?`, ideaUnits: premises.map((p) => `Uso ${p.name}: ${p.statement}`) } })
+      }
+      return { items: opts.order === 'gain' && examAt !== undefined ? items : opts.conceptIds ? items : interleave(items), due: dueIds.length }
     },
 
     async grade(req) {
@@ -253,6 +291,12 @@ export function createReviewService(deps: {
     },
 
     async record(r) {
+      if ('type' in r && r.type === 'chain') {
+        const chainResult = r as { conceptId: string; at: number; grade?: Grade | null; checked?: boolean[]; record?: boolean; type: 'chain' }
+        if (chainResult.record === false || (chainResult.grade === null && chainResult.checked === undefined)) return null
+        const grade = chainResult.checked ? gradeChainIdeaUnits(chainResult.checked) : Math.min(3, chainResult.grade ?? 1) as Grade
+        r = { conceptId: chainResult.conceptId, at: chainResult.at, grade, type: 'chain' } as ReviewLine
+      }
       await deps.memory.append(r)
       const reviews = (await deps.memory.read()).filter((x) => x.conceptId === r.conceptId)
       const t = now()

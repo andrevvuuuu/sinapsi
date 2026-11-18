@@ -1,5 +1,28 @@
 export type CascadeMemory = { R: number; stability: number; reps?: number }
 
+import type { Memory } from './memory-types'
+import type { GraphData } from './graph-types'
+
+export function suspectPremises(g: GraphData, mem: Map<string, Memory>): string[] {
+  const children = new Map<string, Set<string>>()
+  for (const chain of g.chains) for (const premise of chain.premises) {
+    const set = children.get(premise) ?? new Set<string>()
+    set.add(chain.conclusion)
+    children.set(premise, set)
+  }
+  const descendants = (root: string): Set<string> => {
+    const seen = new Set<string>()
+    const visit = (id: string): void => { for (const child of children.get(id) ?? []) if (!seen.has(child)) { seen.add(child); visit(child) } }
+    visit(root)
+    return seen
+  }
+  return g.concepts.filter((c) => {
+    const m = mem.get(c.id)
+    if (m && m.reps > 0 && !m.misconception && (m.R ?? 0) >= 0.6) return false
+    return [...descendants(c.id)].filter((id) => { const child = mem.get(id); return !!child && (child.lapses > 0 || child.misconception) }).length >= 2
+  }).map((c) => c.id)
+}
+
 export function weakPrerequisites(
   input: { parents: Record<string, string[]>; depth: Record<string, number>; memory: Record<string, CascadeMemory | undefined> },
   goalId: string,

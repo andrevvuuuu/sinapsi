@@ -24,7 +24,14 @@ type View =
   | { view: 'session'; id: string }
   | { view: 'nota'; id: string }
   | { view: 'source'; path: string }
-  | { view: 'review'; query?: string; conceptIds?: string[]; cascadeWeak?: string[] }
+  | {
+      view: 'review'
+      query?: string
+      conceptIds?: string[]
+      cascadeWeak?: string[]
+      examAt?: number
+      order?: 'due' | 'gain'
+    }
   | { view: 'practice-setup'; text?: string; initial?: { conceptIds: string[]; exam?: boolean } }
   | { view: 'practice'; id: string }
   | { view: 'lessons' }
@@ -153,10 +160,12 @@ function Views(): React.JSX.Element {
   if (v.view === 'review')
     content = (
       <ReviewView
-        key={`${v.query}|${v.conceptIds?.join(',')}|${v.cascadeWeak?.join(',')}`}
+        key={`${v.query}|${v.conceptIds?.join(',')}|${v.cascadeWeak?.join(',')}|${v.order}|${v.examAt}`}
         query={v.query}
         conceptIds={v.conceptIds}
         cascadeWeak={v.cascadeWeak}
+        examAt={v.examAt}
+        order={v.order}
         onBack={home}
         onStudy={study}
         onOpenNote={(path) => setV({ view: 'source', path })}
@@ -185,7 +194,16 @@ function Views(): React.JSX.Element {
       onNotes={() => setV({ view: 'notes' })}
       onSettingsChanged={() => undefined}
       onStudy={study}
-      onMapReview={(ids, opts) => setV({ view: 'review', conceptIds: ids, cascadeWeak: opts?.cascadeWeak })}
+      onMapReview={(ids, opts) => {
+        const o = opts as { cascadeWeak?: string[]; examAt?: number; order?: 'due' | 'gain' } | undefined
+        setV({
+          view: 'review',
+          conceptIds: ids.length ? ids : undefined,
+          cascadeWeak: o?.cascadeWeak,
+          examAt: o?.examAt,
+          order: o?.order
+        })
+      }}
       onMapAskTutor={askTutor}
     >
       {content}
