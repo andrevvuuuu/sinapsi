@@ -36,7 +36,8 @@ export function AppShell({
   livePaths,
   onSettingsChanged,
   onStudy,
-  onMapReview
+  onMapReview,
+  onMapAskTutor
 }: {
   view: ShellView
   children: ReactNode
@@ -52,7 +53,8 @@ export function AppShell({
   livePaths: string[]
   onSettingsChanged: (s: Settings) => void
   onStudy: (text: string) => void
-  onMapReview: (ids: string[]) => void
+  onMapReview: (ids: string[], opts?: { cascadeWeak?: string[] }) => void
+  onMapAskTutor?: (conceptId: string, name: string) => void
 }): React.JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false),
     [lessons, setLessons] = useState<LessonEntry[]>([]),
@@ -164,6 +166,7 @@ export function AppShell({
                 ])
               ]}
               onReview={onMapReview}
+              onAskTutor={onMapAskTutor}
               onOpenNote={onOpenSource}
               onStudy={onStudy}
             />

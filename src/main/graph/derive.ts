@@ -1,7 +1,10 @@
 import type { Chain, Concept, GraphData, Ledgers } from '../../shared/graph-types'
 
 /** Pure: the whole graph is rebuilt from the ledgers on every read. */
-export function deriveGraph({ props: rawProps, chains: rawChains, extractions: rawExtractions, moves = [] }: Ledgers): GraphData {
+export function deriveGraph(
+  { props: rawProps, chains: rawChains, extractions: rawExtractions, moves = [] }: Ledgers,
+  opts: { excluded?: (path: string) => boolean; missing?: (path: string) => boolean } = {}
+): GraphData {
   // A renamed or moved note: every path follows its moves (in order, transitively).
   // Each line follows only the moves made after it, in order: a rename and its undo bring it back.
   const ordered = [...moves].filter((m) => m.from !== m.to).sort((a, b) => a.at - b.at)
@@ -12,11 +15,26 @@ export function deriveGraph({ props: rawProps, chains: rawChains, extractions: r
   const props = rawProps.map((p) => ({ ...p, notePath: where(p.notePath, p.at) }))
   const chains = rawChains.map((c) => ({ ...c, notePath: where(c.notePath, c.at) }))
   const extractions = rawExtractions.map((e) => ({ ...e, notePath: where(e.notePath, e.at) }))
+  const lastOk = new Map<string, (typeof extractions)[number]>()
+  const hasExtraction = new Set(extractions.map((e) => e.notePath))
+  for (const e of extractions) if (e.ok && !e.skipped && (!lastOk.has(e.notePath) || lastOk.get(e.notePath)!.at <= e.at)) lastOk.set(e.notePath, e)
+  const batchAt = new Map<string, number>()
+  for (const p of props) if (lastOk.has(p.notePath) && p.at <= lastOk.get(p.notePath)!.at) batchAt.set(p.notePath, Math.max(batchAt.get(p.notePath) ?? -Infinity, p.at))
+  for (const c of chains) if (lastOk.has(c.notePath) && c.at <= lastOk.get(c.notePath)!.at) batchAt.set(c.notePath, Math.max(batchAt.get(c.notePath) ?? -Infinity, c.at))
+  const activeProps = props.filter((p) => {
+    const e = lastOk.get(p.notePath)
+    return !opts.excluded?.(p.notePath) && (!hasExtraction.has(p.notePath) || (!!e && e.nodes > 0 && p.at === batchAt.get(p.notePath)))
+  }).sort((a, b) => a.at - b.at)
+  const activeChains = chains.filter((c) => {
+    const e = lastOk.get(c.notePath)
+    return !opts.excluded?.(c.notePath) && (!hasExtraction.has(c.notePath) || (!!e && e.nodes > 0 && c.at === batchAt.get(c.notePath)))
+  })
   const byId = new Map<string, Concept>()
-  for (const p of props) {
+  for (const p of activeProps) {
     const c = byId.get(p.id)
     if (!c) {
-      byId.set(p.id, { id: p.id, name: p.name, statement: p.statement, aliases: [], birth: p.notePath, notes: [p.notePath], sections: p.section ? { [p.notePath]: p.section } : {}, depth: 0 })
+      const historical = props.find((row) => row.id === p.id && row.name.trim())
+      byId.set(p.id, { id: p.id, name: historical?.name ?? p.name, statement: historical?.statement || p.statement, aliases: [], birth: p.notePath, notes: [p.notePath], sections: p.section ? { [p.notePath]: p.section } : {}, depth: 0 })
       continue
     }
     if (!c.notes.includes(p.notePath)) c.notes.push(p.notePath)
@@ -25,13 +43,13 @@ export function deriveGraph({ props: rawProps, chains: rawChains, extractions: r
   }
 
   const byKey = new Map<string, Chain>()
-  for (const l of chains) {
+  for (const l of activeChains) {
     if (!l.premises.length || l.premises.includes(l.conclusion)) continue
     if (!byId.has(l.conclusion) || l.premises.some((x) => !byId.has(x))) continue
     const premises = [...new Set(l.premises)]
     const key = `${[...premises].sort().join('+')}>${l.conclusion}`
     const c = byKey.get(key)
-    if (!c) byKey.set(key, { id: l.id, premises, conclusion: l.conclusion, notes: [l.notePath] })
+    if (!c) byKey.set(key, { id: l.id, premises, conclusion: l.conclusion, notes: [l.notePath], ...(l.why ? { why: l.why } : {}) })
     else if (!c.notes.includes(l.notePath)) c.notes.push(l.notePath)
   }
   const merged = [...byKey.values()]
@@ -42,7 +60,12 @@ export function deriveGraph({ props: rawProps, chains: rawChains, extractions: r
   const extracted: GraphData['extracted'] = {}
   for (const e of extractions) if (e.ok && (!extracted[e.notePath] || extracted[e.notePath].at <= e.at)) extracted[e.notePath] = { hash: e.hash, at: e.at }
 
-  return { concepts: [...byId.values()], chains: merged, extracted }
+  const retired = [...new Set(props.map((p) => p.id).filter((id) => !byId.has(id)))].sort()
+  const dormant = [...byId.values()].filter((c) => c.notes.every((path) => opts.missing?.(path))).map((c) => c.id).sort()
+  const visible = [...byId.values()].filter((c) => !dormant.includes(c.id))
+  const visibleIds = new Set(visible.map((c) => c.id))
+  const visibleChains = merged.filter((c) => visibleIds.has(c.conclusion) && c.premises.every((id) => visibleIds.has(id)))
+  return { concepts: visible, chains: visibleChains, extracted, retired, dormant }
 }
 
 /**

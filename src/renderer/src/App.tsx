@@ -24,7 +24,14 @@ type View =
   | { view: 'session'; id: string }
   | { view: 'nota'; id: string }
   | { view: 'source'; path: string }
-  | { view: 'review'; query?: string; conceptIds?: string[] }
+  | {
+      view: 'review'
+      query?: string
+      conceptIds?: string[]
+      cascadeWeak?: string[]
+      examAt?: number
+      order?: 'due' | 'gain'
+    }
   | { view: 'practice-setup'; text?: string; initial?: { conceptIds: string[]; exam?: boolean } }
   | { view: 'practice'; id: string }
   | { view: 'lessons' }
@@ -63,6 +70,11 @@ function Views(): React.JSX.Element {
   const study = (topic: string): void =>
     void window.sinapsi.session
       .start(topic)
+      .then((id) => setV({ view: 'session', id }))
+      .catch(() => setV({ view: 'home' }))
+  const askTutor = (conceptId: string, name: string): void =>
+    void window.sinapsi.session
+      .start(name, { goalIds: [conceptId] })
       .then((id) => setV({ view: 'session', id }))
       .catch(() => setV({ view: 'home' }))
   const onDock = (destination: Destination): void => {
@@ -148,9 +160,12 @@ function Views(): React.JSX.Element {
   if (v.view === 'review')
     content = (
       <ReviewView
-        key={`${v.query}|${v.conceptIds?.join(',')}`}
+        key={`${v.query}|${v.conceptIds?.join(',')}|${v.cascadeWeak?.join(',')}|${v.order}|${v.examAt}`}
         query={v.query}
         conceptIds={v.conceptIds}
+        cascadeWeak={v.cascadeWeak}
+        examAt={v.examAt}
+        order={v.order}
         onBack={home}
         onStudy={study}
         onOpenNote={(path) => setV({ view: 'source', path })}
@@ -179,7 +194,17 @@ function Views(): React.JSX.Element {
       onNotes={() => setV({ view: 'notes' })}
       onSettingsChanged={() => undefined}
       onStudy={study}
-      onMapReview={(ids) => setV({ view: 'review', conceptIds: ids })}
+      onMapReview={(ids, opts) => {
+        const o = opts as { cascadeWeak?: string[]; examAt?: number; order?: 'due' | 'gain' } | undefined
+        setV({
+          view: 'review',
+          conceptIds: ids.length ? ids : undefined,
+          cascadeWeak: o?.cascadeWeak,
+          examAt: o?.examAt,
+          order: o?.order
+        })
+      }}
+      onMapAskTutor={askTutor}
     >
       {content}
     </AppShell>

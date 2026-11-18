@@ -1,15 +1,17 @@
 import { polygonHull } from 'd3-polygon'
 import { BASE, SPACING, type Layout, type SimNode } from './layout'
-import { fragileBases, type GraphModel } from './model'
+import { fragileBases, type GraphAggregation, type GraphModel } from './model'
+import { examClass } from '../../../shared/retention'
+import type { Memory } from '../../../shared/memory-types'
 
 /** Canvas drawing of the union graph, ported from docs/prototipi/grafo-v2.html. */
 export type Colors = Record<
   'bg' | 'ink' | 'muted' | 'hair' | 'accent' | 'good' | 'warn' | 'bad' | 'pen' | 'surface',
   string
 >
-export type Sel = { kind: 'concept' | 'region' | 'note'; id: string }
-export type Lens = 'all' | 'due' | 'never' | 'fragile'
-type Mem = { state: string; R: number | null; due: number | null }
+export type Sel = { kind: 'concept' | 'region' | 'note' | 'chain' | 'wikilink'; id: string }
+export type Lens = 'all' | 'due' | 'never' | 'fragile' | 'exam' | 'orphans'
+type Mem = { state: string; R: number | null; due: number | null; reps?: number; lapses?: number; lastAt?: number | null; misconception?: boolean; stability?: number }
 export type DrawState = {
   model: GraphModel
   layout: Layout
@@ -28,6 +30,10 @@ export type DrawState = {
   memory: Record<string, Mem>
   lens: Lens
   now: number
+  examAt?: number
+  orphansSet?: Set<string>
+  suspectSet?: Set<string>
+  aggregation?: GraphAggregation | null
 }
 export type DrawOut = { regionLabels: Map<string, [number, number, number, number]> }
 
@@ -44,15 +50,62 @@ export const radiusOf = (m: GraphModel, n: SimNode): number =>
   Math.min(3, (m.kids.get(n.id)?.length ?? 0) * 0.6)
 
 /** Which nodes stay lit while something is hovered, selected, or a path is shown. */
+type FocusCache = {
+  hov: Sel | null
+  sel: Sel | null
+  path: Set<string> | null
+  result: Set<string> | null
+}
+const focusCache = new WeakMap<GraphModel, FocusCache>()
+
 export function focusSet(s: Pick<DrawState, 'model' | 'hov' | 'sel' | 'path'>): Set<string> | null {
-  if (s.path) return s.path
+  const cached = focusCache.get(s.model)
+  const sameSel = (a: Sel | null, b: Sel | null): boolean =>
+    a === b || (!!a && !!b && a.kind === b.kind && a.id === b.id)
+  if (
+    cached &&
+    cached.path === s.path &&
+    sameSel(cached.hov, s.hov) &&
+    sameSel(cached.sel, s.sel)
+  )
+    return cached.result
   const f = s.hov ?? s.sel
-  if (!f) return null
-  if (f.kind === 'concept')
-    return new Set([f.id, ...(s.model.parents.get(f.id) ?? []), ...(s.model.kids.get(f.id) ?? [])])
-  if (f.kind === 'region')
-    return new Set(s.model.concepts.filter((c) => c.notes.includes(f.id)).map((c) => c.id))
-  return new Set([f.id])
+  let result: Set<string> | null = s.path
+  if (!result && f?.kind === 'concept') {
+    const ids = new Set([f.id, ...(s.model.parents.get(f.id) ?? []), ...(s.model.kids.get(f.id) ?? [])])
+    for (const j of s.model.junctions) {
+      if (j.conclusion === f.id || j.premises.includes(f.id)) {
+        ids.add(j.id)
+      }
+    }
+    result = ids
+  } else if (!result && f?.kind === 'region')
+    result = new Set(s.model.concepts.filter((c) => c.notes.includes(f.id)).map((c) => c.id))
+  else if (!result && f?.kind === 'chain') {
+    const ids = new Set<string>([f.id])
+    for (const a of s.model.arrows) {
+      if (a.chain === f.id) {
+        ids.add(a.from)
+        ids.add(a.to)
+      }
+    }
+    for (const j of s.model.junctions) {
+      if (j.id === f.id) {
+        j.premises.forEach((p) => ids.add(p))
+        ids.add(j.conclusion)
+      }
+    }
+    result = ids
+  } else if (!result && f?.kind === 'wikilink') {
+    const [a, b] = f.id.split('\n')
+    const ids = new Set<string>([a, b])
+    for (const c of s.model.concepts) {
+      if (c.notes.includes(a) || c.notes.includes(b)) ids.add(c.id)
+    }
+    result = ids
+  } else if (!result && f) result = new Set([f.id])
+  focusCache.set(s.model, { hov: s.hov, sel: s.sel, path: s.path, result })
+  return result
 }
 
 export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
@@ -70,6 +123,112 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
 
   ctx.fillStyle = C.bg
   ctx.fillRect(0, 0, W, H)
+
+  // Aggregated mode (Scale)
+  if (s.aggregation) {
+    const { clusters, links } = s.aggregation
+    const clusterCentroid = new Map<string, { x: number; y: number }>()
+    for (const cl of clusters) {
+      const ns = cl.conceptIds
+        .map(node)
+        .filter((n): n is SimNode => !!n && n.x !== undefined && n.y !== undefined)
+      if (ns.length > 0) {
+        clusterCentroid.set(cl.id, {
+          x: ns.reduce((sum, n) => sum + n.x!, 0) / ns.length,
+          y: ns.reduce((sum, n) => sum + n.y!, 0) / ns.length
+        })
+      } else {
+        clusterCentroid.set(cl.id, { x: 0, y: 0 })
+      }
+    }
+
+    // Aggregated links with count
+    ctx.save()
+    for (const l of links) {
+      const a = clusterCentroid.get(l.from)
+      const b = clusterCentroid.get(l.to)
+      if (!a || !b) continue
+      const x1 = sx(a.x)
+      const y1 = sy(a.y)
+      const x2 = sx(b.x)
+      const y2 = sy(b.y)
+      const lineW = Math.max(1.5, Math.min(7, 1 + Math.log2(l.count + 1) * 1.5))
+      ctx.lineWidth = lineW
+      ctx.strokeStyle = rgba(C.ink, 0.25)
+      ctx.beginPath()
+      ctx.moveTo(x1, y1)
+      ctx.lineTo(x2, y2)
+      ctx.stroke()
+
+      // Count badge at link midpoint
+      const mx = (x1 + x2) / 2
+      const my = (y1 + y2) / 2
+      const countText = String(l.count)
+      ctx.font = '500 11px "Geist Mono",monospace'
+      const tw = ctx.measureText(countText).width + 10
+      ctx.fillStyle = rgba(C.surface, 0.92)
+      roundRect(ctx, mx - tw / 2, my - 9, tw, 18, 9)
+      ctx.fill()
+      ctx.strokeStyle = rgba(C.hair, 0.8)
+      ctx.lineWidth = 1
+      ctx.stroke()
+      ctx.fillStyle = C.muted
+      ctx.textAlign = 'center'
+      ctx.fillText(countText, mx, my + 4)
+    }
+    ctx.restore()
+
+    // Cluster super-nodes sized by concept count with meanR colour
+    for (const cl of clusters) {
+      const p = clusterCentroid.get(cl.id)
+      if (!p) continue
+      const X = sx(p.x)
+      const Y = sy(p.y)
+      const r =
+        Math.max(24, Math.min(70, 16 + Math.sqrt(cl.conceptIds.length) * 5)) *
+        Math.sqrt(Math.max(0.4, Math.min(1.5, k)))
+      const isHov = s.hov?.kind === 'concept' && s.hov.id === cl.id
+      const isSel = s.sel?.kind === 'concept' && s.sel.id === cl.id
+      const meanColor =
+        cl.meanR === null
+          ? C.muted
+          : cl.meanR >= 0.85
+            ? C.good
+            : cl.meanR >= 0.6
+              ? C.warn
+              : C.bad
+
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(X, Y, r, 0, 7)
+      ctx.fillStyle = rgba(meanColor, s.dark ? 0.35 : 0.22)
+      ctx.fill()
+      ctx.lineWidth = isSel ? 3 : isHov ? 2.5 : 1.5
+      ctx.strokeStyle = isSel || isHov ? C.ink : meanColor
+      ctx.stroke()
+
+      if (isSel || isHov) {
+        ctx.beginPath()
+        ctx.arc(X, Y, r + 5, 0, 7)
+        ctx.strokeStyle = rgba(C.ink, 0.4)
+        ctx.lineWidth = 1
+        ctx.stroke()
+      }
+
+      ctx.textAlign = 'center'
+      ctx.fillStyle = C.ink
+      ctx.font = '500 14px Geist,sans-serif'
+      ctx.fillText(cl.label, X, Y - 2)
+
+      ctx.font = '500 11px "Geist Mono",monospace'
+      ctx.fillStyle = C.muted
+      const pctText = cl.meanR !== null ? ` · ${Math.round(cl.meanR * 100)}%` : ''
+      ctx.fillText(`${cl.conceptIds.length} concetti${pctText}`, X, Y + 14)
+      ctx.restore()
+    }
+
+    return out
+  }
 
   const centroids = new Map<string, { x: number; y: number }>()
   for (const r of model.regions) {
@@ -177,8 +336,13 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       const A = centroids.get(a) ?? node(a)
       const B = centroids.get(b) ?? node(b)
       if (!A || !B || A.x === undefined || B.x === undefined) continue
-      const on = s.sel?.kind === 'region' && (s.sel.id === a || s.sel.id === b)
-      ctx.strokeStyle = rgba(C.muted, (on ? 0.75 : 0.28) * (1 - tProp))
+      const pairKey = [a, b].sort().join('\n')
+      const on =
+        (s.sel?.kind === 'region' && (s.sel.id === a || s.sel.id === b)) ||
+        (s.sel?.kind === 'wikilink' && s.sel.id === pairKey) ||
+        (s.hov?.kind === 'wikilink' && s.hov.id === pairKey)
+      ctx.strokeStyle = rgba(C.muted, (on ? 0.9 : 0.28) * (1 - tProp))
+      ctx.lineWidth = on ? 2 : 1.2
       const mx = (A.x + B.x!) / 2
       const my = (A.y! + B.y!) / 2
       const nx = -(B.y! - A.y!) * 0.18
@@ -192,18 +356,22 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
   }
 
   // Chains: premises converge on a junction, one arrow leaves it.
-  ctx.lineWidth = 1.15
   for (const l of layout.links) {
     if (l.wikilink) continue
     const a = l.source as SimNode
     const b = l.target as SimNode
+    const isChainFocus =
+      (s.sel?.kind === 'chain' && s.sel.id === l.chain) ||
+      (s.hov?.kind === 'chain' && s.hov.id === l.chain)
     const lit =
       !F ||
+      isChainFocus ||
       ((F.has(a.id) || a.kind === 'junction') &&
         (F.has(b.id) || b.kind === 'junction') &&
         (F.has(a.id) || F.has(b.id)))
-    const al = (0.18 + 0.5 * tProp) * (lit ? 1 : 0.06)
-    ctx.strokeStyle = rgba(C.ink, al)
+    const al = isChainFocus ? 1 : (0.18 + 0.5 * tProp) * (lit ? 1 : 0.06)
+    ctx.lineWidth = isChainFocus ? 2.2 : 1.15
+    ctx.strokeStyle = isChainFocus ? C.ink : rgba(C.ink, al)
     const [x1, y1, x2, y2] = [sx(a.x!), sy(a.y!), sx(b.x!), sy(b.y!)]
     if (l.head) {
       const dx = x2 - x1
@@ -216,19 +384,40 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       ctx.moveTo(x1, y1)
       ctx.lineTo(x2 - ux * (er + ah), y2 - uy * (er + ah))
       ctx.stroke()
-      if (k > 0.45) {
+      if (k > 0.45 || isChainFocus) {
         ctx.beginPath()
         ctx.moveTo(x2 - ux * er, y2 - uy * er)
         ctx.lineTo(x2 - ux * (er + ah) - uy * ah * 0.5, y2 - uy * (er + ah) + ux * ah * 0.5)
         ctx.lineTo(x2 - ux * (er + ah) + uy * ah * 0.5, y2 - uy * (er + ah) - ux * ah * 0.5)
         ctx.closePath()
-        ctx.fillStyle = rgba(C.ink, al)
+        ctx.fillStyle = isChainFocus ? C.ink : rgba(C.ink, al)
         ctx.fill()
       }
     } else {
       ctx.beginPath()
       ctx.moveTo(x1, y1)
       ctx.lineTo(x2, y2)
+      ctx.stroke()
+    }
+  }
+
+  // Junctions
+  for (const j of layout.nodes) {
+    if (j.kind !== 'junction') continue
+    const isJunctionFocus =
+      (s.sel?.kind === 'chain' && s.sel.id === j.id) ||
+      (s.hov?.kind === 'chain' && s.hov.id === j.id)
+    const lit = !F || isJunctionFocus || (F && F.has(j.id))
+    const al = isJunctionFocus ? 1 : (0.18 + 0.5 * tProp) * (lit ? 1 : 0.06)
+    ctx.beginPath()
+    ctx.arc(sx(j.x!), sy(j.y!), isJunctionFocus ? 4 : 2, 0, 7)
+    ctx.fillStyle = isJunctionFocus ? C.ink : rgba(C.ink, al)
+    ctx.fill()
+    if (isJunctionFocus) {
+      ctx.beginPath()
+      ctx.arc(sx(j.x!), sy(j.y!), 8, 0, 7)
+      ctx.strokeStyle = C.ink
+      ctx.lineWidth = 1.2
       ctx.stroke()
     }
   }
@@ -270,7 +459,9 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
         ? !s.memory[id]
         : s.lens === 'fragile'
           ? fragile!.has(id)
-          : true
+          : s.lens === 'orphans'
+            ? (s.orphansSet?.has(id) ?? false)
+            : true
   const memColor = (state: string | undefined): string | null =>
     state === 'la sai' ? C.good : state === 'incerto' ? C.warn : state === 'debole' ? C.bad : null
   for (const c of model.concepts) {
@@ -291,25 +482,82 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       ctx.setLineDash([])
     }
     const mem = s.memory[c.id]
-    const mc = memColor(mem?.state)
-    ctx.beginPath()
-    if (mc) {
-      ctx.arc(X, Y, r, 0, 7)
-      ctx.fillStyle = mc
-      ctx.fill()
+    if (s.lens === 'exam') {
+      const cls = mem ? examClass(mem as unknown as Memory, s.examAt ?? s.now) : 'unseen'
+      if (cls === 'solid') {
+        ctx.beginPath()
+        ctx.arc(X, Y, r, 0, 7)
+        ctx.fillStyle = C.good
+        ctx.fill()
+      } else if (cls === 'shaky') {
+        ctx.beginPath()
+        ctx.arc(X, Y, r, 0, 7)
+        ctx.fillStyle = C.warn
+        ctx.fill()
+      } else if (cls === 'weak') {
+        ctx.beginPath()
+        ctx.arc(X, Y, r, 0, 7)
+        ctx.fillStyle = C.bad
+        ctx.fill()
+      } else if (cls === 'misconception') {
+        ctx.beginPath()
+        ctx.arc(X, Y, r, 0, 7)
+        ctx.fillStyle = C.bad
+        ctx.fill()
+        // Distinct marker (ring)
+        ctx.beginPath()
+        ctx.arc(X, Y, r + 4, 0, 7)
+        ctx.strokeStyle = C.bad
+        ctx.lineWidth = 1.8
+        ctx.stroke()
+      } else if (cls === 'faded') {
+        ctx.save()
+        ctx.globalAlpha = Math.min(dim(c.id), 0.35)
+        ctx.beginPath()
+        ctx.arc(X, Y, r, 0, 7)
+        ctx.fillStyle = memColor(mem?.state) ?? C.warn
+        ctx.fill()
+        ctx.restore()
+      } else {
+        // unseen neutral
+        ctx.beginPath()
+        ctx.arc(X, Y, Math.max(1, r - 0.7), 0, 7)
+        ctx.fillStyle = C.bg
+        ctx.fill()
+        ctx.lineWidth = 1.4
+        ctx.strokeStyle = rgba(C.hair, 0.9)
+        ctx.stroke()
+      }
     } else {
-      ctx.arc(X, Y, Math.max(1, r - 0.7), 0, 7)
-      ctx.fillStyle = C.bg
-      ctx.fill()
-      ctx.lineWidth = 1.6
-      ctx.strokeStyle = regionOf.get(c.region)?.hue ?? C.muted
-      ctx.stroke()
-    }
-    if (mem && (mem.due ?? Infinity) <= s.now) {
+      const mc = memColor(mem?.state)
       ctx.beginPath()
-      ctx.arc(X, Y, r + 6, 0, 7)
-      ctx.strokeStyle = rgba(C.warn, 0.6)
-      ctx.lineWidth = 1.2
+      if (mc) {
+        ctx.arc(X, Y, r, 0, 7)
+        ctx.fillStyle = mc
+        ctx.fill()
+      } else {
+        ctx.arc(X, Y, Math.max(1, r - 0.7), 0, 7)
+        ctx.fillStyle = C.bg
+        ctx.fill()
+        ctx.lineWidth = 1.6
+        ctx.strokeStyle = regionOf.get(c.region)?.hue ?? C.muted
+        ctx.stroke()
+      }
+      if (mem && (mem.due ?? Infinity) <= s.now) {
+        ctx.beginPath()
+        ctx.arc(X, Y, r + 6, 0, 7)
+        ctx.strokeStyle = rgba(C.warn, 0.6)
+        ctx.lineWidth = 1.2
+        ctx.stroke()
+      }
+    }
+    if (s.suspectSet?.has(c.id)) {
+      ctx.beginPath()
+      ctx.arc(X + r * 0.7 + 2, Y - r * 0.7 - 2, 3.2, 0, 7)
+      ctx.fillStyle = C.warn
+      ctx.fill()
+      ctx.strokeStyle = C.bg
+      ctx.lineWidth = 1
       ctx.stroke()
     }
     if (s.sel?.kind === 'concept' && s.sel.id === c.id) {

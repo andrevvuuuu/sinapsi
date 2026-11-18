@@ -2,6 +2,8 @@ import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Engine } from '../../shared/settings-schema'
 import type { Nota } from '../../shared/nota-schema'
+import type { MoveLine } from '../../shared/graph-types'
+import { resolvePath } from '../graph/resolve-path'
 
 export type StoredNote = {
   id: string
@@ -58,4 +60,4 @@ export function noteStore(dir: string): NoteStore {
 }
 
 /** Notes whose nota viva is ready: the only ones the graph shows and background extraction touches. */
-export const readySources = (list: Pick<NoteMeta, 'sourcePath' | 'status'>[]): Set<string> => new Set(list.filter((m) => m.status === 'ready').map((m) => m.sourcePath))
+export const readySources = (list: Pick<NoteMeta, 'sourcePath' | 'status'>[], moves: Pick<MoveLine, 'from' | 'to' | 'at'>[] = []): Set<string> => new Set(list.filter((m) => m.status === 'ready').map((m) => resolvePath(m.sourcePath, moves)))

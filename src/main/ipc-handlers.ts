@@ -397,7 +397,20 @@ const PlanOpts = z
   .object({
     conceptIds: z.array(z.string().min(1).max(64)).max(200).optional(),
     weakest: z.boolean().optional(),
-    misconceptions: z.boolean().optional()
+    misconceptions: z.boolean().optional(),
+    examAt: z.number().int().positive().optional(),
+    order: z.enum(['due', 'gain']).optional()
+  })
+  .strict()
+/** «Spiega la catena»: the self-checked idea units (graded ≤ 3 by the service), or a skip that records nothing. */
+const ChainResult = z
+  .object({
+    conceptId: z.string().min(1).max(64),
+    at: z.number(),
+    type: z.literal('chain'),
+    checked: z.array(z.boolean()).max(50).optional(),
+    grade: z.null().optional(),
+    record: z.boolean().optional()
   })
   .strict()
 const GradeReq = z.object({
@@ -426,7 +439,10 @@ export function makeReviewHandlers(svc: ReviewService) {
     plan: async (opts: unknown) => svc.plan(PlanOpts.parse(opts ?? {})),
     grade: async (req: unknown) => svc.grade(GradeReq.parse(req)),
     explain: async (req: unknown) => svc.explain(ExplainReq.parse(req)),
-    record: async (r: unknown) => svc.record(ReviewLineSchema.parse(r)),
+    record: async (r: unknown) => {
+      const chain = ChainResult.safeParse(r)
+      return svc.record(chain.success ? chain.data : ReviewLineSchema.parse(r))
+    },
     memory: () => svc.memory(),
     intervals: async (id: unknown) => svc.intervals(z.string().min(1).max(64).parse(id))
   }

@@ -37,8 +37,21 @@ export type GraphNotchDockProps = {
   onRetry: (path: string) => void
   extractError: string | null
 
+  subjects?: (string | null)[]
+  subjectFilter?: string | null | undefined
+  setSubjectFilter?: (s: string | null | undefined) => void
+
   initialSection?: NotchSection | null
   onOpenChange?: (open: boolean) => void
+
+  examAt?: number
+  setExamAt?: (t: number) => void
+  examDate?: string
+  setExamDate?: (d: string) => void
+  examCounts?: { solid: number; shaky: number; weak: number; misconception: number; faded: number; unseen: number }
+  orphansList?: { id: string; reason: 'isolated' | 'no-outgoing'; name: string }[]
+  onSelectOrphan?: (id: string) => void
+  onMassimoGuadagno?: () => void
 }
 
 const CLOSED_WIDTH = 58
@@ -78,8 +91,17 @@ export function GraphNotchDock({
   index,
   onRetry,
   extractError,
+  subjects,
+  subjectFilter,
+  setSubjectFilter,
   initialSection = null,
-  onOpenChange
+  onOpenChange,
+  examDate = '',
+  setExamDate,
+  examCounts,
+  orphansList,
+  onSelectOrphan,
+  onMassimoGuadagno
 }: GraphNotchDockProps): React.JSX.Element {
   const [activeSection, setActiveSection] = useState<NotchSection | null>(initialSection)
   const dockRef = useRef<HTMLDivElement>(null)
@@ -315,14 +337,25 @@ export function GraphNotchDock({
     ? `${model.concepts.length} concetti da ${model.regions.length} note · ${chainsCount} catene · ${multi} in più note`
     : 'Carico il grafo…'
 
+  const isolatedOrphans = useMemo(
+    () => (orphansList ?? []).filter((o) => o.reason === 'isolated'),
+    [orphansList]
+  )
+  const noOutgoingOrphans = useMemo(
+    () => (orphansList ?? []).filter((o) => o.reason === 'no-outgoing'),
+    [orphansList]
+  )
+
   const lensOptions = useMemo(
     () => [
       { value: 'all' as Lens, label: 'Tutto' },
       { value: 'due' as Lens, label: `Da ripassare (${counts.due})` },
       { value: 'never' as Lens, label: `Mai visti (${counts.never})` },
-      { value: 'fragile' as Lens, label: `Basi fragili (${counts.fragile})` }
+      { value: 'fragile' as Lens, label: `Basi fragili (${counts.fragile})` },
+      { value: 'exam' as Lens, label: "Tenuta all'esame" },
+      { value: 'orphans' as Lens, label: `Orfani (${orphansList?.length ?? 0})` }
     ],
-    [counts.due, counts.never, counts.fragile]
+    [counts.due, counts.never, counts.fragile, orphansList?.length]
   )
 
   const sectionLabel =
@@ -684,6 +717,138 @@ export function GraphNotchDock({
                   })}
                 </div>
               </div>
+              {lens === 'exam' && (
+                <div className="gsec">
+                  <h3>Tenuta all&apos;esame</h3>
+                  <div className="gnotch-date-row">
+                    <label className="lab" htmlFor="gnotch-exam-date">
+                      Data esame
+                    </label>
+                    <input
+                      id="gnotch-exam-date"
+                      type="date"
+                      className="gnotch-date-input"
+                      value={examDate}
+                      onChange={(e) => setExamDate?.(e.target.value)}
+                    />
+                  </div>
+                  <div className="gnotch-exam-legend">
+                    <div className="gnotch-legend-row">
+                      <span className="legend-tag"><i className="legend-dot solid" />Solidi</span>
+                      <strong>{examCounts?.solid ?? 0}</strong>
+                    </div>
+                    <div className="gnotch-legend-row">
+                      <span className="legend-tag"><i className="legend-dot shaky" />Traballanti</span>
+                      <strong>{examCounts?.shaky ?? 0}</strong>
+                    </div>
+                    <div className="gnotch-legend-row">
+                      <span className="legend-tag"><i className="legend-dot weak" />Deboli</span>
+                      <strong>{examCounts?.weak ?? 0}</strong>
+                    </div>
+                    <div className="gnotch-legend-row">
+                      <span className="legend-tag"><i className="legend-dot misconception" />Misconcezioni</span>
+                      <strong>{examCounts?.misconception ?? 0}</strong>
+                    </div>
+                    <div className="gnotch-legend-row">
+                      <span className="legend-tag"><i className="legend-dot faded" />Sbiaditi</span>
+                      <strong>{examCounts?.faded ?? 0}</strong>
+                    </div>
+                    <div className="gnotch-legend-row">
+                      <span className="legend-tag"><i className="legend-dot unseen" />Non visti</span>
+                      <strong>{examCounts?.unseen ?? 0}</strong>
+                    </div>
+                  </div>
+                  <div className="gnotch-actions">
+                    <button
+                      type="button"
+                      className="pri gnotch-gain-btn"
+                      onClick={onMassimoGuadagno}
+                    >
+                      Massimo guadagno
+                    </button>
+                  </div>
+                </div>
+              )}
+              {lens === 'orphans' && (
+                <div className="gsec">
+                  <h3>Coda orfani</h3>
+                  <div className="gnotch-orphans-queue">
+                    <div className="gnotch-queue-group">
+                      <span className="lab">Isolati ({isolatedOrphans.length})</span>
+                      {isolatedOrphans.length === 0 ? (
+                        <p className="hint">Nessun concetto isolato</p>
+                      ) : (
+                        <ul className="gnotch-queue-list">
+                          {isolatedOrphans.map((o) => (
+                            <li key={o.id}>
+                              <button
+                                type="button"
+                                className="gnotch-queue-item"
+                                onClick={() => onSelectOrphan?.(o.id)}
+                              >
+                                <span>{o.name}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <div className="gnotch-queue-group" style={{ marginTop: 'var(--s-3)' }}>
+                      <span className="lab">Senza uscite ({noOutgoingOrphans.length})</span>
+                      {noOutgoingOrphans.length === 0 ? (
+                        <p className="hint">Nessun concetto senza uscite</p>
+                      ) : (
+                        <ul className="gnotch-queue-list">
+                          {noOutgoingOrphans.map((o) => (
+                            <li key={o.id}>
+                              <button
+                                type="button"
+                                className="gnotch-queue-item"
+                                onClick={() => onSelectOrphan?.(o.id)}
+                              >
+                                <span>{o.name}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {subjects && subjects.length > 0 && setSubjectFilter && (
+                <div className="gsec">
+                  <h3>Materia</h3>
+                  <div className="gtoggles" role="group" aria-label="Filtra per materia">
+                    <button
+                      type="button"
+                      aria-pressed={subjectFilter === undefined}
+                      className={subjectFilter === undefined ? 'on' : ''}
+                      onClick={() => setSubjectFilter(undefined)}
+                    >
+                      Tutte
+                    </button>
+                    {subjects
+                      .slice()
+                      .sort((a, b) => (a === null ? 1 : b === null ? -1 : a.localeCompare(b)))
+                      .map((s) => {
+                      const isSelected = subjectFilter === s
+                      const label = s === null ? 'Senza materia' : (model ? model.subjectName(s) : s)
+                      return (
+                        <button
+                          key={s === null ? '__null__' : s}
+                          type="button"
+                          aria-pressed={isSelected}
+                          className={isSelected ? 'on' : ''}
+                          onClick={() => setSubjectFilter(s)}
+                        >
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -732,7 +897,7 @@ export function GraphNotchDock({
                     [
                       ['regions', 'Regioni'],
                       ['wikilinks', 'Link di Obsidian'],
-                      ['frontier', `Frontiera${model ? ` (${model.frontier.length})` : ''}`]
+                      ['frontier', `Frontiera (${model ? model.frontier.length : 0})`]
                     ] as const
                   ).map(([key, label]) => {
                     const isPressed = show[key]
@@ -811,6 +976,33 @@ export function GraphNotchDock({
                 ))}
               </div>
             </div>
+            {subjects && subjects.length > 0 && setSubjectFilter && (
+              <div className="gsec">
+                <h3>Materia</h3>
+                <div role="group" aria-label="Filtra per materia">
+                  <button
+                    type="button"
+                    aria-pressed={subjectFilter === undefined}
+                    onClick={() => setSubjectFilter(undefined)}
+                  >
+                    Tutte
+                  </button>
+                  {subjects
+                    .slice()
+                    .sort((a, b) => (a === null ? 1 : b === null ? -1 : a.localeCompare(b)))
+                    .map((s) => (
+                    <button
+                      key={s === null ? '__null__' : s}
+                      type="button"
+                      aria-pressed={subjectFilter === s}
+                      onClick={() => setSubjectFilter(s)}
+                    >
+                      {s === null ? 'Senza materia' : (model ? model.subjectName(s) : s)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

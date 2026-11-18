@@ -29,6 +29,20 @@ describe('review handlers', () => {
     await expect(h.record({ conceptId: 'n_a', at: 1, grade: 3, confidence: 120 })).rejects.toThrow()
     await expect(h.record({ conceptId: 'n_a', at: 1, grade: 3, confidence: 70 })).resolves.toBeDefined()
   })
+  it('passes the exam date and the gain order through to the plan', async () => {
+    const { h, svc } = setup()
+    await h.plan({ order: 'gain', examAt: 1_800_000_000_000 })
+    expect(svc.plan).toHaveBeenLastCalledWith({ order: 'gain', examAt: 1_800_000_000_000 })
+    await expect(h.plan({ order: 'random' })).rejects.toThrow()
+  })
+  it('accepts a «Spiega la catena» result: checked idea units or a skip', async () => {
+    const { h, svc } = setup()
+    await h.record({ conceptId: 'n_a', at: 1, type: 'chain', checked: [true, false] })
+    expect(svc.record).toHaveBeenLastCalledWith({ conceptId: 'n_a', at: 1, type: 'chain', checked: [true, false] })
+    await h.record({ conceptId: 'n_a', at: 1, type: 'chain', record: false })
+    expect(svc.record).toHaveBeenLastCalledWith({ conceptId: 'n_a', at: 1, type: 'chain', record: false })
+    await expect(h.record({ conceptId: 'n_a', at: 1, type: 'chain', checked: 'tutti' })).rejects.toThrow()
+  })
   it('limits the answer sent for grading', async () => {
     const { h } = setup()
     await expect(h.grade({ conceptId: 'n_a', exercise: { type: 'open', prompt: 'p', answer: 'a' }, answer: 'x'.repeat(10_001), confidence: 50 })).rejects.toThrow()
@@ -40,9 +54,9 @@ describe('review settings', () => {
   it('defaults to twelve concepts and every exercise type, and keeps at least one type', () => {
     const s = settingsSchema('/x').parse({})
     expect(s.reviewSessionSize).toBe(12)
-    expect(s.exerciseTypes).toHaveLength(11)
-    expect(settingsSchema('/x').parse({ exerciseTypes: [] }).exerciseTypes).toHaveLength(11)
-    expect(settingsSchema('/x').parse({ exerciseTypes: ['mc', 'boh'] }).exerciseTypes).toHaveLength(11)
+    expect(s.exerciseTypes).toHaveLength(12)
+    expect(settingsSchema('/x').parse({ exerciseTypes: [] }).exerciseTypes).toHaveLength(12)
+    expect(settingsSchema('/x').parse({ exerciseTypes: ['mc', 'boh'] }).exerciseTypes).toHaveLength(12)
     expect(settingsSchema('/x').parse({ exerciseTypes: ['mc'] }).exerciseTypes).toEqual(['mc'])
   })
 })

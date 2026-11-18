@@ -25,7 +25,7 @@ const api: SinapsiApi = {
   session: {
     create: (topic) => ipcRenderer.invoke(CH.sessionCreate, topic),
     confirm: (id, notePath) => ipcRenderer.invoke(CH.sessionConfirm, id, notePath),
-    start: (topic) => ipcRenderer.invoke(CH.sessionStart, topic),
+    start: (topic, opts) => ipcRenderer.invoke(CH.sessionStart, topic, opts),
     list: () => ipcRenderer.invoke(CH.sessionList),
     get: (id) => ipcRenderer.invoke(CH.sessionGet, id),
     answer: (id, a) => ipcRenderer.invoke(CH.sessionAnswer, id, a),
@@ -49,6 +49,8 @@ const api: SinapsiApi = {
   },
   graph: {
     get: () => ipcRenderer.invoke(CH.graphGet),
+    chainSource: (id) => ipcRenderer.invoke(CH.graphChainSource, id),
+    explainChain: (id, opts) => ipcRenderer.invoke(CH.graphExplainChain, id, opts),
     extract: (path, reason) => ipcRenderer.invoke(CH.graphExtract, path, reason),
     status: () => ipcRenderer.invoke(CH.graphStatus),
     onChange: (cb) => subscribe(CH.graphChanged, cb),

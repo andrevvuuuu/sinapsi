@@ -1,4 +1,5 @@
 import type { Concept, GraphData } from '../../../shared/graph-types'
+import type { Memory } from '../../../shared/memory-types'
 import { isMoc } from '../../../shared/moc'
 import type { VaultIndex } from '../../../shared/vault-types'
 
@@ -38,6 +39,7 @@ export type GraphModel = {
   maxDepth: number
   parents: Map<string, string[]>
   kids: Map<string, string[]>
+  descendantsCount: Map<string, number>
   conceptById: Map<string, VConcept>
   noteByPath: Map<string, ONote | { path: string; title: string }>
   search(q: string, limit?: number): SearchHit[]
@@ -112,6 +114,20 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
     } else arrows.push({ from: ch.premises[0], to: ch.conclusion, chain: ch.id, head: true })
   }
 
+  const descendantsCount = new Map<string, number>()
+  for (const c of concepts) {
+    const seen = new Set<string>()
+    const walk = (id: string): void => {
+      for (const child of kids.get(id) ?? [])
+        if (child !== c.id && !seen.has(child)) {
+          seen.add(child)
+          walk(child)
+        }
+    }
+    walk(c.id)
+    descendantsCount.set(c.id, seen.size)
+  }
+
   const notes: ONote[] = index.notes
     .filter((n) => !regionMap.has(n.path))
     .map((n) => ({
@@ -157,6 +173,7 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
     maxDepth: Math.max(0, ...g.concepts.map((c) => c.depth)),
     parents,
     kids,
+    descendantsCount,
     conceptById: new Map(concepts.map((c) => [c.id, c])),
     noteByPath: new Map<string, ONote | { path: string; title: string }>([
       ...index.notes.map((n) => [n.path, { path: n.path, title: n.title }] as const),
@@ -189,6 +206,105 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
       return hits.slice(0, limit)
     }
   }
+}
+
+export type SubjectOf = (path: string) => string | null
+
+export function subjectsOf(g: GraphData, subjectOf: SubjectOf): (string | null)[] {
+  return [...new Set(g.concepts.flatMap((c) => c.notes.map(subjectOf)))]
+}
+
+export function filterBySubject(g: GraphData, subject: string | null | undefined, subjectOf: SubjectOf): GraphData {
+  if (subject === undefined) return g
+  const concepts = g.concepts.filter((c) => c.notes.some((path) => subjectOf(path) === subject))
+  const ids = new Set(concepts.map((c) => c.id))
+  return { ...g, concepts, chains: g.chains.filter((ch) => ids.has(ch.conclusion) && ch.premises.every((id) => ids.has(id))) }
+}
+
+export type GraphAggregation = {
+  clusters: { id: string; label: string; conceptIds: string[]; meanR: number | null; weak: number }[]
+  links: { from: string; to: string; count: number }[]
+}
+
+const noteLabel = (path: string): string => path.replace(/\\/g, '/').split('/').pop()!.replace(/\.md$/i, '')
+const subjectsFor = (c: Concept, subjectOf: SubjectOf): (string | null)[] =>
+  [...new Set(c.notes.map(subjectOf))]
+
+export function shouldAggregate(conceptCount: number, threshold = 400): boolean {
+  return conceptCount >= threshold
+}
+
+export function aggregate(
+  g: GraphData,
+  mem: Map<string, Memory> | undefined,
+  by: 'subject' | 'note',
+  subjectOf: SubjectOf
+): GraphAggregation {
+  const clustersFor = new Map<string, string[]>()
+  const grouped = new Map<string, { label: string; concepts: Concept[] }>()
+  for (const c of g.concepts) {
+    const paths = by === 'note' ? [c.birth] : subjectsFor(c, subjectOf)
+    const ids: string[] = []
+    for (const path of paths) {
+      const id = path === null ? 'subject:—' : `${by}:${path}`
+      const label = path === null ? '—' : by === 'note' ? noteLabel(path) : path
+      const group = grouped.get(id) ?? { label, concepts: [] }
+      group.concepts.push(c)
+      grouped.set(id, group)
+      ids.push(id)
+    }
+    clustersFor.set(c.id, ids)
+  }
+  const clusters = [...grouped].map(([id, group]) => {
+    const rs = group.concepts.map((c) => mem?.get(c.id)?.R).filter((r): r is number => r != null && Number.isFinite(r))
+    return {
+      id,
+      label: group.label,
+      conceptIds: group.concepts.map((c) => c.id),
+      meanR: rs.length ? rs.reduce((sum, r) => sum + r, 0) / rs.length : null,
+      weak: group.concepts.filter((c) => ['incerto', 'debole'].includes(mem?.get(c.id)?.state ?? '')).length
+    }
+  })
+  const crossing = new Map<string, number>()
+  for (const ch of g.chains) {
+    const froms = new Set(ch.premises.flatMap((id) => clustersFor.get(id) ?? []))
+    const tos = clustersFor.get(ch.conclusion) ?? []
+    for (const from of froms) for (const to of tos) if (from !== to) {
+      const key = `${from}\n${to}`
+      crossing.set(key, (crossing.get(key) ?? 0) + 1)
+    }
+  }
+  const links = [...crossing].map(([key, count]) => {
+    const [from, to] = key.split('\n')
+    return { from, to, count }
+  })
+  return { clusters, links }
+}
+
+export function drillDown(g: GraphData, clusterId: string, by: 'subject' | 'note', subjectOf: SubjectOf): GraphData {
+  const concepts = g.concepts.filter((c) => {
+    const paths = by === 'note' ? [c.birth] : subjectsFor(c, subjectOf)
+    return paths.some((path) => (path === null ? 'subject:—' : `${by}:${path}`) === clusterId)
+  })
+  const ids = new Set(concepts.map((c) => c.id))
+  return { ...g, concepts, chains: g.chains.filter((ch) => ids.has(ch.conclusion) && ch.premises.every((id) => ids.has(id))) }
+}
+
+export function orphans(g: GraphData): { id: string; reason: 'isolated' | 'no-outgoing' }[] {
+  const touched = new Set<string>()
+  const premises = new Set<string>()
+  for (const ch of g.chains) {
+    touched.add(ch.conclusion)
+    for (const id of ch.premises) { touched.add(id); premises.add(id) }
+  }
+  const found: { id: string; reason: 'isolated' | 'no-outgoing'; name: string }[] = []
+  for (const c of g.concepts) {
+    if (!touched.has(c.id)) found.push({ id: c.id, reason: 'isolated', name: c.name })
+    else if (c.depth === 0 && !premises.has(c.id)) found.push({ id: c.id, reason: 'no-outgoing', name: c.name })
+  }
+  return found
+    .sort((a, b) => a.reason.localeCompare(b.reason) || a.name.localeCompare(b.name))
+    .map(({ id, reason }) => ({ id, reason }))
 }
 
 /** A cheap content signature: equal data in new objects (every graph:changed, every vault event) gives the same key. */
@@ -231,7 +347,7 @@ export function fragileBases(model: GraphModel, memory: Record<string, MemoryLik
       .filter(
         (c) =>
           ['incerto', 'debole'].includes(memory[c.id]?.state ?? '') &&
-          descendants(model, c.id).size >= 3
+          (model.descendantsCount.get(c.id) ?? 0) >= 3
       )
       .map((c) => c.id)
   )
@@ -266,5 +382,5 @@ export function liveOnly(g: GraphData, index: VaultIndex, paths: string[]): { gr
   const chains = g.chains.filter((ch) => ids.has(ch.conclusion) && ch.premises.every((p) => ids.has(p))).map((ch) => ({ ...ch, notes: ch.notes.filter((n) => live.has(n)) }))
   const extracted = Object.fromEntries(Object.entries(g.extracted).filter(([p]) => live.has(p)))
   // No frontier either: only links between notes that exist.
-  return { graph: { concepts, chains, extracted }, index: { ...index, notes: index.notes.filter((n) => live.has(n.path)).map((n) => ({ ...n, links: n.links.filter((l) => l.resolved) })) } }
+  return { graph: { concepts, chains, extracted, retired: g.retired, dormant: g.dormant }, index: { ...index, notes: index.notes.filter((n) => live.has(n.path)).map((n) => ({ ...n, links: n.links })) } }
 }

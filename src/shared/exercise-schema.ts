@@ -163,6 +163,7 @@ const fillOk = (text: string): boolean => {
 export const ExerciseSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('open'), ...base }),
   z.object({ type: z.literal('explain'), ...base }),
+  z.object({ type: z.literal('chain'), chainId: z.string().min(1), premises: z.array(z.object({ id: z.string(), name: z.string(), statement: z.string() })).min(1), conclusion: z.object({ id: z.string(), name: z.string(), statement: z.string() }), prompt: z.string().trim().min(1), answer: z.string(), question: z.string().trim().min(1), ideaUnits: z.array(z.string().trim().min(1)).min(1) }),
   z.object({ type: z.literal('mc'), ...base, options: choice, correct: z.number().int() }).refine((e) => e.correct >= 0 && e.correct < e.options.length, 'correct fuori intervallo'),
   z.object({ type: z.literal('truefalse'), ...base, statement: z.string().trim().min(1), value: z.boolean() }),
   z.object({ type: z.literal('order'), ...base, steps: z.array(z.string().trim().min(1)).min(3).max(8) }).refine((e) => distinct(e.steps), 'passi ripetuti'),
@@ -183,6 +184,7 @@ export const ExerciseSchema = z.discriminatedUnion('type', [
       }
     })
 ])
+export type ChainExercise = Extract<z.infer<typeof ExerciseSchema>, { type: 'chain' }>
 export type Exercise = z.infer<typeof ExerciseSchema>
 export type VariantLine = { id: string; conceptId: string; at: number; exercise: Exercise }
 export const VariantLineSchema = z.object({ id: z.string(), conceptId: z.string(), at: z.number(), exercise: ExerciseSchema })

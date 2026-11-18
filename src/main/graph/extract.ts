@@ -4,7 +4,7 @@ import type { VaultIndex } from '../../shared/vault-types'
 
 const NewProp = z.object({ id: z.string().min(1), name: z.string().trim().min(1), statement: z.string().trim().min(1), section: z.string().optional() })
 const RefProp = z.object({ ref: z.string().regex(/^n_/), section: z.string().optional() })
-const ChainItem = z.object({ premises: z.array(z.string().min(1)).min(1), conclusion: z.string().min(1) })
+const ChainItem = z.object({ premises: z.array(z.string().min(1)).min(1), conclusion: z.string().min(1), why: z.string().trim().min(1).optional() })
 export type ExtractReply = { propositions: (z.infer<typeof NewProp> | z.infer<typeof RefProp>)[]; chains: z.infer<typeof ChainItem>[]; dropped: number }
 
 /** Lenient, like the nota viva: each item is checked alone and the bad ones are counted, not fatal. */
@@ -73,7 +73,7 @@ export function mergeExtraction(
     const key = `${[...ids].sort().join('+')}>${conclusion}`
     if (seen.has(key)) continue
     seen.add(key)
-    chains.push({ id: ctx.mintChain(), premises: ids, conclusion, notePath: ctx.notePath, at })
+    chains.push({ id: ctx.mintChain(), premises: ids, conclusion, notePath: ctx.notePath, at, ...(c.why ? { why: c.why } : {}) })
   }
   return { props, chains, dropped }
 }

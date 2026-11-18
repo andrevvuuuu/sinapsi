@@ -39,6 +39,34 @@ export type Layout = {
   positions(): Record<string, [number, number]>
 }
 
+/** Run a stopped layout without monopolising the renderer's event loop. */
+export function warmUp(
+  layout: Layout,
+  opts: { budgetMs?: number; maxTicks?: number; onProgress?(fraction: number); signal?: AbortSignal } = {}
+): Promise<void> {
+  const maxTicks = Math.max(0, Math.floor(opts.maxTicks ?? layout.warmup))
+  const budgetMs = Math.max(1, opts.budgetMs ?? 8)
+  const signal = opts.signal
+  return new Promise((resolve, reject) => {
+    let ticks = 0
+    const abort = (): void => reject(new DOMException('Warm-up aborted', 'AbortError'))
+    if (signal?.aborted) return abort()
+    const runChunk = (): void => {
+      if (signal?.aborted) return abort()
+      const start = typeof performance === 'undefined' ? Date.now() : performance.now()
+      while (ticks < maxTicks && (typeof performance === 'undefined' ? Date.now() : performance.now()) - start < budgetMs) {
+        layout.tick(1)
+        ticks++
+      }
+      const fraction = maxTicks === 0 ? 1 : ticks / maxTicks
+      opts.onProgress?.(fraction)
+      if (ticks >= maxTicks) return resolve()
+      setTimeout(runChunk, 0)
+    }
+    runChunk()
+  })
+}
+
 export const BASE = 90
 export const SPACING = 62
 

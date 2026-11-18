@@ -1,10 +1,10 @@
 import { bodyHash } from './body-hash'
-import type { VaultIndex, VaultNote } from '../../shared/vault-types'
+import type { VaultIndex } from '../../shared/vault-types'
+import { isMoc } from '../../shared/moc'
 
 /** Antigravity writes a note several times in a row (draft, post-processing, verification): wait until it stays still. */
 export const SETTLE_MS = 120_000
 
-const isMoc = (n: VaultNote): boolean => n.type?.toUpperCase() === 'MOC'
 const hash = bodyHash
 
 /**

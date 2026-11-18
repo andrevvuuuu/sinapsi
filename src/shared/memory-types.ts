@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { MISSES } from './practice-protocol'
 
-export const EXERCISE_TYPES = ['open', 'mc', 'truefalse', 'order', 'fill', 'match', 'counterexample', 'estimate', 'spoterror', 'graph', 'explain'] as const
+export const EXERCISE_TYPES = ['open', 'mc', 'truefalse', 'order', 'fill', 'match', 'counterexample', 'estimate', 'spoterror', 'graph', 'explain', 'chain'] as const
 export type ExerciseType = (typeof EXERCISE_TYPES)[number]
 export type Grade = 1 | 2 | 3 | 4
 

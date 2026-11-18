@@ -367,7 +367,13 @@ export function stageInstruction(state: SessionState): string {
   const retest = state.pendingRetest
     ? `${state.pendingRetest.conceptId} (dopo un turno su un altro concetto)`
     : 'nessuno'
-  return `[Stato sessione] fase: ${state.stage}; concetto: ${id ? `${id} «${n?.name ?? id}» (${state.concepts[id]?.status ?? 'unseen'})` : 'nessuno'}; passi per blocco: ${state.chunkSize}; retest da fare: ${retest}; probe rimasti: ${Math.max(0, 3 - state.probeCount)}; padroneggiati: ${mastered}; obiettivo: ${state.tree?.goalIds.join(', ') || state.topic}.`
+  const coldGoals = (state.tree?.goalIds ?? []).filter(
+    (goalId) => state.prior[goalId]?.seen && !state.evidence.some((e) => e.conceptId === goalId && e.role === 'probe')
+  )
+  const goalProbeInstruction = coldGoals.length
+    ? `; prima di insegnare prerequisiti, fai un probe freddo sull'obiettivo già visto ${coldGoals.join(', ')}; dai priorità a questi obiettivi rispetto agli altri probe nel limite di 3`
+    : ''
+  return `[Stato sessione] fase: ${state.stage}; concetto: ${id ? `${id} «${n?.name ?? id}» (${state.concepts[id]?.status ?? 'unseen'})` : 'nessuno'}; passi per blocco: ${state.chunkSize}; retest da fare: ${retest}; probe rimasti: ${Math.max(0, 3 - state.probeCount)}; padroneggiati: ${mastered}; obiettivo: ${state.tree?.goalIds.join(', ') || state.topic}${goalProbeInstruction}.`
 }
 export function fsrsEvidence(state: SessionState): {
   conceptId: string
@@ -391,7 +397,7 @@ export function fsrsEvidence(state: SessionState): {
     const es = state.evidence.filter((e) => e.conceptId === id && !e.excluded)
     const prior = state.prior[id]?.seen
     const x = prior
-      ? (es.find((e) => e.role === 'probe') ?? es[0])
+      ? es.find((e) => e.role === 'probe')
       : // New concept: the first check right after its explanation is not a cold retrieval;
         // the next evidence on it (a retest or the final recall) is.
         (es[1] ?? es.find((e) => e.role === 'recall') ?? es[0])

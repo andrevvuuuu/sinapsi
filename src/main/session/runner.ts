@@ -33,12 +33,13 @@ import { matchNotes } from './note-match'
 import { firstMessage, teacherSystemPrompt } from './prompt'
 import { minimalTree, resolveGoals, treeBrief } from './minimal-tree'
 import { gradeOpenAnswer, validateChoices } from './grade'
+import { sectionText } from '../notes/section-text'
 
 export type SessionRunner = {
   /** Creates the session. With one candidate note (or fastStart) it confirms it at once; otherwise state.awaiting is 'confirm' and state.candidates lists the notes. */
-  create(topic: string): Promise<string>
+  create(topic: string, goalIds?: string[]): Promise<string>
   confirm(id: string, notePath: string | null): Promise<void>
-  start(topic: string): Promise<string>
+  start(topic: string, goalIds?: string[]): Promise<string>
   answer(id: string, a: LearnerAnswer): Promise<void>
   say(id: string, text: string): Promise<void>
   retry(id: string): Promise<void>
@@ -84,24 +85,6 @@ function friendly(e: unknown): string {
   return `Il tutor non ha risposto correttamente (${e instanceof Error ? e.message : String(e)}). Premi Riprova.`
 }
 
-function sectionText(note: string, titles: string[]): string {
-  const lines = note.split(/\r?\n/)
-  const chunks: string[] = []
-  for (let i = 0; i < lines.length; i++) {
-    const match = lines[i].match(/^#{1,6}\s+(.+?)\s*#*$/)
-    if (
-      !match ||
-      !titles.some((title) => title.toLocaleLowerCase() === match[1].toLocaleLowerCase())
-    )
-      continue
-    const start = i
-    i++
-    while (i < lines.length && !/^#{1,6}\s+/.test(lines[i])) i++
-    chunks.push(lines.slice(start, i).join('\n').trim())
-    i--
-  }
-  return chunks.join('\n\n')
-}
 
 export function createSessionRunner(deps: {
   bridge: Pick<Bridge, 'converse'> & Partial<Pick<Bridge, 'ask'>>
@@ -348,7 +331,7 @@ export function createSessionRunner(deps: {
     }
   }
 
-  async function createNow(topic: string): Promise<string> {
+  async function createNow(topic: string, goalIds?: string[]): Promise<string> {
     await mkdir(deps.dir, { recursive: true })
     const id = uuid()
     const [index, options] = await Promise.all([
@@ -370,11 +353,11 @@ export function createSessionRunner(deps: {
     })
     // Nothing to choose: confirm now, the first turn starts with start/retry as before.
     if (candidates.length <= 1 || options.fastStart)
-      await confirmNow(id, candidates[0]?.path ?? null, false)
+      await confirmNow(id, candidates[0]?.path ?? null, false, goalIds)
     return id
   }
 
-  async function confirmNow(id: string, notePath: string | null, turn = true): Promise<void> {
+  async function confirmNow(id: string, notePath: string | null, turn = true, explicitGoalIds?: string[]): Promise<void> {
     const state = await load(id)
     if (state.awaiting !== 'confirm') return
     const index = await deps.vault().catch(() => null)
@@ -389,7 +372,7 @@ export function createSessionRunner(deps: {
       { state: import('../../shared/memory-types').MemoryState; S?: number; seen: boolean }
     > = {}
     if (graph) {
-      const goals = resolveGoals(graph, state.topic, noteMeta?.path)
+      const goals = explicitGoalIds ?? resolveGoals(graph, state.topic, noteMeta?.path)
       const weaknessIds = new Set(
         activeWeaknesses.map((w) => w.conceptId).filter((x): x is string => !!x)
       )
@@ -445,18 +428,18 @@ export function createSessionRunner(deps: {
 
   const pending = new Map<string, Promise<string>>()
   const runner: SessionRunner = {
-    create(topic) {
+    create(topic, goalIds) {
       const key = topic.trim().toLocaleLowerCase()
       const prior = pending.get(key)
       if (prior) return prior
-      const task = createNow(topic)
+      const task = createNow(topic, goalIds)
       pending.set(key, task)
       void task.finally(() => pending.delete(key))
       return task
     },
     confirm: (id, notePath) => serial(id, () => confirmNow(id, notePath)),
-    async start(topic) {
-      const id = await runner.create(topic)
+    async start(topic, goalIds) {
+      const id = await runner.create(topic, goalIds)
       await runner.retry(id)
       return id
     },
