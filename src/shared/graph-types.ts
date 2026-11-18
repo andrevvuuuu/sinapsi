@@ -47,6 +47,6 @@ export type Concept = {
   depth: number
 }
 export type Chain = { id: string; premises: string[]; conclusion: string; notes: string[] }
-export type GraphData = { concepts: Concept[]; chains: Chain[]; extracted: Record<string, { hash: string; at: number }> }
+export type GraphData = { concepts: Concept[]; chains: Chain[]; extracted: Record<string, { hash: string; at: number }>; retired: string[]; dormant: string[] }
 
 export type ExtractorStatus = { running?: string; queued: string[]; lastError?: { notePath: string; message: string } }

@@ -38,6 +38,7 @@ export type GraphModel = {
   maxDepth: number
   parents: Map<string, string[]>
   kids: Map<string, string[]>
+  descendantsCount: Map<string, number>
   conceptById: Map<string, VConcept>
   noteByPath: Map<string, ONote | { path: string; title: string }>
   search(q: string, limit?: number): SearchHit[]
@@ -112,6 +113,20 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
     } else arrows.push({ from: ch.premises[0], to: ch.conclusion, chain: ch.id, head: true })
   }
 
+  const descendantsCount = new Map<string, number>()
+  for (const c of concepts) {
+    const seen = new Set<string>()
+    const walk = (id: string): void => {
+      for (const child of kids.get(id) ?? [])
+        if (child !== c.id && !seen.has(child)) {
+          seen.add(child)
+          walk(child)
+        }
+    }
+    walk(c.id)
+    descendantsCount.set(c.id, seen.size)
+  }
+
   const notes: ONote[] = index.notes
     .filter((n) => !regionMap.has(n.path))
     .map((n) => ({
@@ -157,6 +172,7 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
     maxDepth: Math.max(0, ...g.concepts.map((c) => c.depth)),
     parents,
     kids,
+    descendantsCount,
     conceptById: new Map(concepts.map((c) => [c.id, c])),
     noteByPath: new Map<string, ONote | { path: string; title: string }>([
       ...index.notes.map((n) => [n.path, { path: n.path, title: n.title }] as const),
@@ -231,7 +247,7 @@ export function fragileBases(model: GraphModel, memory: Record<string, MemoryLik
       .filter(
         (c) =>
           ['incerto', 'debole'].includes(memory[c.id]?.state ?? '') &&
-          descendants(model, c.id).size >= 3
+          (model.descendantsCount.get(c.id) ?? 0) >= 3
       )
       .map((c) => c.id)
   )

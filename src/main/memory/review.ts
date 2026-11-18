@@ -259,7 +259,9 @@ export function createReviewService(deps: {
     },
 
     async memory() {
-      return Object.fromEntries(memoryOf(await deps.memory.read(), now()))
+      const activeWeaknesses = (await deps.weaknesses?.()) ?? []
+      const weaknessIds = new Set(activeWeaknesses.map((w) => w.conceptId).filter((id): id is string => !!id))
+      return Object.fromEntries(memoryOf(await deps.memory.read(), now(), weaknessIds))
     },
 
     async intervals(conceptId) {

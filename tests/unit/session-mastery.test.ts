@@ -4,6 +4,7 @@ import {
   reduceSession,
   fsrsEvidence,
   checkTurnAgainst,
+  stageInstruction,
   type SessionState
 } from '../../src/main/session/events'
 import type { MinimalTree } from '../../src/main/session/minimal-tree'
@@ -120,6 +121,33 @@ describe('session mastery', () => {
       { t: 'graded', questionId: '1', verdict: 'correct', hintsUsed: 0, reason: '', at: 2 }
     ])
     expect(s.doneNodeIds).toContain('g')
+  })
+
+  it('prioritizes a cold probe for a previously reviewed goal and only uses that probe as FSRS evidence', () => {
+    const prior = { g: { state: 'la sai' as const, S: 10, seen: true } }
+    const state = reduceSession([
+      { ...base, prior },
+      { t: 'teacher', turn: { phase: 'teach', blocks: [], question: q('check') }, at: 1 },
+      ans('check', 2),
+      { t: 'graded', questionId: 'check', verdict: 'correct', hintsUsed: 0, reason: '', at: 2 }
+    ])
+    expect(stageInstruction(state)).toContain('prima di insegnare prerequisiti')
+    expect(fsrsEvidence(state)).toEqual([])
+
+    const probed = reduceSession([
+      { ...base, prior },
+      { t: 'teacher', turn: { phase: 'probe', blocks: [], question: { ...q('probe'), role: 'probe' } }, at: 1 },
+      {
+        ...ans('probe', 2),
+        question: { ...q('probe'), role: 'probe' },
+        answer: { questionId: 'probe', text: 'yes' }
+      },
+      { t: 'graded', questionId: 'probe', verdict: 'incorrect', hintsUsed: 0, reason: '', at: 2 },
+      { t: 'teacher', turn: { phase: 'teach', blocks: [], question: q('check') }, at: 3 },
+      ans('check', 4),
+      { t: 'graded', questionId: 'check', verdict: 'correct', hintsUsed: 0, reason: '', at: 4 }
+    ])
+    expect(fsrsEvidence(probed)).toMatchObject([{ conceptId: 'g', evidence: 'probe', correct: false }])
   })
 
   it('is ready to finish only after goal mastery and recall', () => {

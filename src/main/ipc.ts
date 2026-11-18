@@ -72,6 +72,7 @@ import { loadSettings, saveSettings } from './store/settings'
 import { scanVault } from './vault/scan'
 import { createRewatcher, watchVault } from './vault/watch'
 import { detectMoves, detectOfflineMoves } from './graph/moves'
+import { resolvePath } from './graph/resolve-path'
 
 export function registerIpc(): { bridge: Bridge } {
   // Assigned below; the session and note hooks only run after registration.
@@ -339,11 +340,12 @@ export function registerIpc(): { bridge: Bridge } {
             () => broadcast(CH.graphChanged, { status })
           )
     },
-    eligible: async () => readySources(await notes.list()),
+    eligible: async () => readySources(await notes.list(), (await store.read()).moves),
     priorities: async () => {
       const idx = await vaultOrNull()
       if (!idx) return []
-      const paths = new Set((await notes.list()).map((m) => m.sourcePath))
+      const moves = (await store.read()).moves
+      const paths = new Set((await notes.list()).map((m) => resolvePath(m.sourcePath, moves)))
       return [
         ...new Set(
           idx.notes.filter((n) => paths.has(n.path) && n.subject).map((n) => n.subject as string)
@@ -354,7 +356,7 @@ export function registerIpc(): { bridge: Bridge } {
   linkedSync = createLinkedSync({
     vault: vaultOrNull,
     readNote: (path) => readFile(path, 'utf8'),
-    studied: async () => readySources(await notes.list()),
+    studied: async () => readySources(await notes.list(), (await store.read()).moves),
     refreshNote: (path) => notes.refresh(path),
     reextract: (path) => extractor.request(path, 'linked')
   })
@@ -672,7 +674,10 @@ export function registerIpc(): { bridge: Bridge } {
   const suggestions = createSuggester({
     cachedIndex: () => lastIndex,
     scan: vaultOrNull,
-    notes: () => notes.list(),
+    notes: async () => {
+      const [list, { moves }] = await Promise.all([notes.list(), store.read()])
+      return list.map((note) => ({ ...note, sourcePath: resolvePath(note.sourcePath, moves) }))
+    },
     sessions: () => runner.list(),
     practiced: () => practice.practiced(),
     memory: () => review.memory(),

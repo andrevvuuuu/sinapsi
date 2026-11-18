@@ -187,7 +187,10 @@ function GraphBody({
       alive = false
     }
   }, [key])
-  const counts = model ? lensCounts(model, memory, now) : { due: 0, never: 0, fragile: 0 }
+  const counts = useMemo(
+    () => (model ? lensCounts(model, memory, now) : { due: 0, never: 0, fragile: 0 }),
+    [model, memory, now]
+  )
   const [extractError, setExtractError] = useState<string | null>(null)
   const extract = (path: string): void => {
     setExtractError(null)

@@ -49,6 +49,27 @@ describe('deriveGraph', () => {
     const g = deriveGraph({ props: [], chains: [], extractions: [E('/v/A.md', 'h1', true, 1), E('/v/A.md', 'h2', true, 2), E('/v/A.md', 'h3', false, 3)] })
     expect(g.extracted['/v/A.md']).toEqual({ hash: 'h2', at: 2 })
   })
+  it('ignores MOC rows for membership and birth', () => {
+    const g = deriveGraph({ props: [P('n_a', '/v/MOC.md', 'moc'), P('n_a', '/v/A.md', 'normal')], chains: [], extractions: [] }, { excluded: (p) => p.includes('MOC') })
+    expect(g.concepts[0].birth).toBe('/v/A.md')
+    expect(g.concepts[0].notes).toEqual(['/v/A.md'])
+  })
+  it('uses only latest successful batch and retires concepts dropped on re-extraction', () => {
+    const pA = { ...P('a'), at: 1 }, pB = { ...P('b'), at: 2 }
+    const g = deriveGraph({ props: [pA, pB], chains: [{ ...C(['a'], 'b'), at: 2 }], extractions: [E('/v/A.md', 'h1', true, 1), { ...E('/v/A.md', 'h2', true, 3), nodes: 0 }] })
+    expect(g.concepts).toEqual([])
+    expect(g.chains).toEqual([])
+    expect(g.retired).toEqual(['a', 'b'])
+  })
+  it('ignores interrupted append rows after lastOk and keeps legacy rows without extraction', () => {
+    const g = deriveGraph({ props: [{ ...P('old'), at: 1 }, { ...P('new'), at: 3 }, P('legacy', '/v/Legacy.md')], chains: [], extractions: [E('/v/A.md', 'h', true, 2)] })
+    expect(g.concepts.map((c) => c.id)).toEqual(['old', 'legacy'])
+  })
+  it('marks concepts from missing notes dormant', () => {
+    const g = deriveGraph({ props: [P('a')], chains: [], extractions: [] }, { missing: (p) => p === '/v/A.md' })
+    expect(g.concepts).toEqual([])
+    expect(g.dormant).toEqual(['a'])
+  })
 })
 
 describe('graphStore', () => {

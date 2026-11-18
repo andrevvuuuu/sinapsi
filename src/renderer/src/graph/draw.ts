@@ -44,15 +44,34 @@ export const radiusOf = (m: GraphModel, n: SimNode): number =>
   Math.min(3, (m.kids.get(n.id)?.length ?? 0) * 0.6)
 
 /** Which nodes stay lit while something is hovered, selected, or a path is shown. */
+type FocusCache = {
+  hov: Sel | null
+  sel: Sel | null
+  path: Set<string> | null
+  result: Set<string> | null
+}
+const focusCache = new WeakMap<GraphModel, FocusCache>()
+
 export function focusSet(s: Pick<DrawState, 'model' | 'hov' | 'sel' | 'path'>): Set<string> | null {
-  if (s.path) return s.path
+  const cached = focusCache.get(s.model)
+  const sameSel = (a: Sel | null, b: Sel | null): boolean =>
+    a === b || (!!a && !!b && a.kind === b.kind && a.id === b.id)
+  if (
+    cached &&
+    cached.path === s.path &&
+    sameSel(cached.hov, s.hov) &&
+    sameSel(cached.sel, s.sel)
+  )
+    return cached.result
   const f = s.hov ?? s.sel
-  if (!f) return null
-  if (f.kind === 'concept')
-    return new Set([f.id, ...(s.model.parents.get(f.id) ?? []), ...(s.model.kids.get(f.id) ?? [])])
-  if (f.kind === 'region')
-    return new Set(s.model.concepts.filter((c) => c.notes.includes(f.id)).map((c) => c.id))
-  return new Set([f.id])
+  let result: Set<string> | null = s.path
+  if (!result && f?.kind === 'concept')
+    result = new Set([f.id, ...(s.model.parents.get(f.id) ?? []), ...(s.model.kids.get(f.id) ?? [])])
+  else if (!result && f?.kind === 'region')
+    result = new Set(s.model.concepts.filter((c) => c.notes.includes(f.id)).map((c) => c.id))
+  else if (!result && f) result = new Set([f.id])
+  focusCache.set(s.model, { hov: s.hov, sel: s.sel, path: s.path, result })
+  return result
 }
 
 export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
