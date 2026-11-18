@@ -381,7 +381,7 @@ export function registerIpc(): { bridge: Bridge } {
     const content = notePath ? await readFile(notePath, 'utf8').catch(() => '') : ''
     const concept = (id: string) => { const c = byId.get(id); return { id, name: c?.name ?? '', statement: c?.statement ?? '' } }
     const ids = [...new Set([...chain.premises, chain.conclusion])]
-    return { chainId: chain.id, notePath, premises: chain.premises.map(concept), conclusion: concept(chain.conclusion), excerpts: content ? ids.map((id) => { const heading = byId.get(id)?.sections[notePath] ?? ''; return { conceptId: id, heading, text: sectionText(content, [heading]).slice(0, 1200) } }).filter((x) => !!x.heading) : [], ...(chain.why ? { why: chain.why } : {}) }
+    return { chainId: chain.id, notePath, premises: chain.premises.map(concept), conclusion: concept(chain.conclusion), excerpts: content ? ids.map((id) => { const heading = byId.get(id)?.sections[notePath] ?? ''; return { conceptId: id, heading, text: sectionText(content, [heading]).slice(0, 1200) } }).filter((x) => !!x.heading && !!x.text) : [], ...(chain.why ? { why: chain.why } : {}) }
   }
   const chainExplainer = createChainExplainer({
     bridge: process.env.SINAPSI_FAKE_EXPLAIN === '1' ? fakeChainExplainBridge() : bridge,

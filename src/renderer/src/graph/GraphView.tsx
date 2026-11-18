@@ -1440,7 +1440,7 @@ function ChainCardBody({
             </div>
           ) : (
             <p className="hint">
-              La nota non contiene un passaggio che giustifichi il nesso
+              La nota non ha una sezione che corrisponda
             </p>
           )}
 

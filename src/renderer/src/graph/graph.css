@@ -267,13 +267,23 @@
 .graph .gcard {
   position: absolute;
   top: 88px;
-  right: var(--s-4);
+  /* The dock sits above the card on the right edge: its 58 px rail always, plus its panel (226 px + padding) when open. */
+  right: calc(58px + var(--s-4));
   z-index: 6;
+  transition: right 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   width: 340px;
   max-height: calc(100% - 220px);
   overflow: auto;
   border-radius: 22px;
   padding: var(--s-5) var(--s-4) var(--s-4);
+}
+.graph:has(.gnotch-dock.open) .gcard {
+  right: calc(58px + 242px + var(--s-4));
+}
+@media (prefers-reduced-motion: reduce) {
+  .graph .gcard {
+    transition: none;
+  }
 }
 /* Close: 44 px to hit, a 36 px circle drawn inside it (content-box background), 10 px from the card's corner. */
 .graph .gcard .x {
