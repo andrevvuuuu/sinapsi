@@ -208,18 +208,15 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
   }
 }
 
-const subjectOfPath = (path: string): string | null => {
-  const parts = path.replace(/\\/g, '/').split('/').filter(Boolean)
-  return parts.length > 1 ? parts[0] : null
+export type SubjectOf = (path: string) => string | null
+
+export function subjectsOf(g: GraphData, subjectOf: SubjectOf): (string | null)[] {
+  return [...new Set(g.concepts.flatMap((c) => c.notes.map(subjectOf)))]
 }
 
-export function subjectsOf(g: GraphData): (string | null)[] {
-  return [...new Set(g.concepts.flatMap((c) => c.notes.map(subjectOfPath)))]
-}
-
-export function filterBySubject(g: GraphData, subject: string | null | undefined): GraphData {
+export function filterBySubject(g: GraphData, subject: string | null | undefined, subjectOf: SubjectOf): GraphData {
   if (subject === undefined) return g
-  const concepts = g.concepts.filter((c) => c.notes.some((path) => subjectOfPath(path) === subject))
+  const concepts = g.concepts.filter((c) => c.notes.some((path) => subjectOf(path) === subject))
   const ids = new Set(concepts.map((c) => c.id))
   return { ...g, concepts, chains: g.chains.filter((ch) => ids.has(ch.conclusion) && ch.premises.every((id) => ids.has(id))) }
 }
@@ -230,10 +227,8 @@ export type GraphAggregation = {
 }
 
 const noteLabel = (path: string): string => path.replace(/\\/g, '/').split('/').pop()!.replace(/\.md$/i, '')
-const subjectFor = (c: Concept): string | null => {
-  const path = (c.notes[0] ?? c.birth).replace(/\\/g, '/').split('/').filter(Boolean)
-  return path.length > 1 ? path[0] : null
-}
+const subjectsFor = (c: Concept, subjectOf: SubjectOf): (string | null)[] =>
+  [...new Set(c.notes.map(subjectOf))]
 
 export function shouldAggregate(conceptCount: number, threshold = 400): boolean {
   return conceptCount >= threshold
@@ -242,18 +237,23 @@ export function shouldAggregate(conceptCount: number, threshold = 400): boolean 
 export function aggregate(
   g: GraphData,
   mem: Map<string, Memory> | undefined,
-  by: 'subject' | 'note'
+  by: 'subject' | 'note',
+  subjectOf: SubjectOf
 ): GraphAggregation {
-  const clusterFor = new Map<string, string>()
+  const clustersFor = new Map<string, string[]>()
   const grouped = new Map<string, { label: string; concepts: Concept[] }>()
   for (const c of g.concepts) {
-    const path = by === 'note' ? c.birth : subjectFor(c)
-    const id = path === null ? 'subject:—' : `${by}:${path}`
-    const label = path === null ? '—' : by === 'note' ? noteLabel(path) : path
-    const group = grouped.get(id) ?? { label, concepts: [] }
-    group.concepts.push(c)
-    grouped.set(id, group)
-    clusterFor.set(c.id, id)
+    const paths = by === 'note' ? [c.birth] : subjectsFor(c, subjectOf)
+    const ids: string[] = []
+    for (const path of paths) {
+      const id = path === null ? 'subject:—' : `${by}:${path}`
+      const label = path === null ? '—' : by === 'note' ? noteLabel(path) : path
+      const group = grouped.get(id) ?? { label, concepts: [] }
+      group.concepts.push(c)
+      grouped.set(id, group)
+      ids.push(id)
+    }
+    clustersFor.set(c.id, ids)
   }
   const clusters = [...grouped].map(([id, group]) => {
     const rs = group.concepts.map((c) => mem?.get(c.id)?.R).filter((r): r is number => r != null && Number.isFinite(r))
@@ -267,10 +267,9 @@ export function aggregate(
   })
   const crossing = new Map<string, number>()
   for (const ch of g.chains) {
-    const froms = new Set(ch.premises.map((id) => clusterFor.get(id)).filter((id): id is string => !!id))
-    const to = clusterFor.get(ch.conclusion)
-    if (!to) continue
-    for (const from of froms) if (from !== to) {
+    const froms = new Set(ch.premises.flatMap((id) => clustersFor.get(id) ?? []))
+    const tos = clustersFor.get(ch.conclusion) ?? []
+    for (const from of froms) for (const to of tos) if (from !== to) {
       const key = `${from}\n${to}`
       crossing.set(key, (crossing.get(key) ?? 0) + 1)
     }
@@ -282,10 +281,10 @@ export function aggregate(
   return { clusters, links }
 }
 
-export function drillDown(g: GraphData, clusterId: string, by: 'subject' | 'note'): GraphData {
+export function drillDown(g: GraphData, clusterId: string, by: 'subject' | 'note', subjectOf: SubjectOf): GraphData {
   const concepts = g.concepts.filter((c) => {
-    const path = by === 'note' ? c.birth : subjectFor(c)
-    return (path === null ? 'subject:—' : `${by}:${path}`) === clusterId
+    const paths = by === 'note' ? [c.birth] : subjectsFor(c, subjectOf)
+    return paths.some((path) => (path === null ? 'subject:—' : `${by}:${path}`) === clusterId)
   })
   const ids = new Set(concepts.map((c) => c.id))
   return { ...g, concepts, chains: g.chains.filter((ch) => ids.has(ch.conclusion) && ch.premises.every((id) => ids.has(id))) }

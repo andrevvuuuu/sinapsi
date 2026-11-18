@@ -244,7 +244,9 @@ function GraphBody({
     setSubjectFilterState(s)
     setStoredSubject(s)
   }, [])
-  const subjects = useMemo(() => (graph ? subjectsOf(graph) : []), [graph])
+  const subjectByPath = useMemo(() => new Map(index.notes.map((note) => [note.path, note.subject ?? null])), [index])
+  const subjectOf = useCallback((path: string) => subjectByPath.get(path) ?? null, [subjectByPath])
+  const subjects = useMemo(() => (graph ? subjectsOf(graph, subjectOf) : []), [graph, subjectOf])
 
   // If stored subject doesn't exist in the current graph, revert to 'Tutte'
   useEffect(() => {
@@ -264,15 +266,15 @@ function GraphBody({
   }, [subjectFilter, graph])
 
   const subjectFilteredGraph = useMemo(
-    () => (graph ? filterBySubject(graph, subjectFilter) : null),
-    [graph, subjectFilter]
+    () => (graph ? filterBySubject(graph, subjectFilter, subjectOf) : null),
+    [graph, subjectFilter, subjectOf]
   )
 
   const currentGraph = useMemo(() => {
     if (!subjectFilteredGraph) return null
     if (!drilledCluster) return subjectFilteredGraph
-    return drillDown(subjectFilteredGraph, drilledCluster.id, drilledCluster.by)
-  }, [subjectFilteredGraph, drilledCluster])
+    return drillDown(subjectFilteredGraph, drilledCluster.id, drilledCluster.by, subjectOf)
+  }, [subjectFilteredGraph, drilledCluster, subjectOf])
 
   // Rebuilt only when the content changes: every graph:changed and vault event brings new objects.
   const liveKey = livePaths ? [...livePaths].sort().join('\n') : null
@@ -334,8 +336,8 @@ function GraphBody({
   const aggregation = useMemo(() => {
     if (!isAggregated || !shown) return null
     const by: 'subject' | 'note' = subjectFilter !== undefined ? 'note' : 'subject'
-    return aggregate(shown.graph, memMap, by)
-  }, [isAggregated, shown, memMap, subjectFilter])
+    return aggregate(shown.graph, memMap, by, subjectOf)
+  }, [isAggregated, shown, memMap, subjectFilter, subjectOf])
 
   const aggregationRef = useRef(aggregation)
   useEffect(() => {

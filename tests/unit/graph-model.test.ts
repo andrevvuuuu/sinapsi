@@ -4,7 +4,7 @@ import type { Concept, GraphData } from '../../src/shared/graph-types'
 import type { VaultIndex, VaultNote } from '../../src/shared/vault-types'
 
 const vnote = (title: string, opts: Partial<VaultNote> & { links?: [string, boolean][] } = {}): VaultNote => ({
-  path: `/v/${title}.md`,
+  path: `/Users/x/vault/${title}.md`,
   title,
   folder: '',
   tags: [],
@@ -19,7 +19,7 @@ const vnote = (title: string, opts: Partial<VaultNote> & { links?: [string, bool
   links: (opts.links ?? []).map(([target, resolved]) => ({ target, resolved }))
 })
 const index: VaultIndex = {
-  root: '/v',
+  root: '/Users/x/vault',
   scannedAt: 1,
   subjects: [{ id: 'matematica', color: '#de77a9' }],
   notes: [
@@ -31,16 +31,16 @@ const index: VaultIndex = {
 }
 const C = (id: string, birth: string, name: string, notes = [birth], depth = 0): Concept => ({ id, name, statement: `${name}: enunciato`, aliases: [], birth, notes, sections: {}, depth })
 const g: GraphData = {
-  extracted: { '/v/Teorema di Rolle.md': { hash: 'h', at: 1 }, '/v/Teorema di Lagrange.md': { hash: 'h', at: 1 } },
+  extracted: { '/Users/x/vault/Teorema di Rolle.md': { hash: 'h', at: 1 }, '/Users/x/vault/Teorema di Lagrange.md': { hash: 'h', at: 1 } },
   concepts: [
-    C('n_w', '/v/Teorema di Rolle.md', 'Weierstrass'),
-    C('n_f', '/v/Teorema di Rolle.md', 'Fermat'),
-    C('n_r', '/v/Teorema di Rolle.md', 'Rolle', ['/v/Teorema di Rolle.md', '/v/Teorema di Lagrange.md'], 1),
-    C('n_l', '/v/Teorema di Lagrange.md', 'Lagrange', undefined, 2)
+    C('n_w', '/Users/x/vault/Teorema di Rolle.md', 'Weierstrass'),
+    C('n_f', '/Users/x/vault/Teorema di Rolle.md', 'Fermat'),
+    C('n_r', '/Users/x/vault/Teorema di Rolle.md', 'Rolle', ['/Users/x/vault/Teorema di Rolle.md', '/Users/x/vault/Teorema di Lagrange.md'], 1),
+    C('n_l', '/Users/x/vault/Teorema di Lagrange.md', 'Lagrange', undefined, 2)
   ],
   chains: [
-    { id: 'arg_1', premises: ['n_w', 'n_f'], conclusion: 'n_r', notes: ['/v/Teorema di Rolle.md'] },
-    { id: 'arg_2', premises: ['n_r'], conclusion: 'n_l', notes: ['/v/Teorema di Lagrange.md'] }
+    { id: 'arg_1', premises: ['n_w', 'n_f'], conclusion: 'n_r', notes: ['/Users/x/vault/Teorema di Rolle.md'] },
+    { id: 'arg_2', premises: ['n_r'], conclusion: 'n_l', notes: ['/Users/x/vault/Teorema di Lagrange.md'] }
   ]
 }
 
@@ -49,7 +49,7 @@ describe('buildModel', () => {
   it('makes one region per note with concepts born there', () => {
     expect(m.regions.map((r) => r.title).sort()).toEqual(['Teorema di Lagrange', 'Teorema di Rolle'])
     expect(m.regions.find((r) => r.title === 'Teorema di Rolle')!.concepts).toEqual(['n_w', 'n_f', 'n_r'])
-    expect(m.concepts.find((c) => c.id === 'n_r')).toMatchObject({ region: '/v/Teorema di Rolle.md', notes: ['/v/Teorema di Rolle.md', '/v/Teorema di Lagrange.md'] })
+    expect(m.concepts.find((c) => c.id === 'n_r')).toMatchObject({ region: '/Users/x/vault/Teorema di Rolle.md', notes: ['/Users/x/vault/Teorema di Rolle.md', '/Users/x/vault/Teorema di Lagrange.md'] })
   })
   it('turns a two-premise chain into a junction with three arrows', () => {
     expect(m.junctions).toEqual([{ id: 'arg_1', premises: ['n_w', 'n_f'], conclusion: 'n_r', depth: 0.5 }])
@@ -66,7 +66,7 @@ describe('buildModel', () => {
   })
   it('dedupes wikilinks between notes', () => {
     expect(m.wikilinks).toHaveLength(2)
-    expect(m.wikilinks).toContainEqual(['/v/Teorema di Lagrange.md', '/v/Teorema di Rolle.md'])
+    expect(m.wikilinks).toContainEqual(['/Users/x/vault/Teorema di Lagrange.md', '/Users/x/vault/Teorema di Rolle.md'])
   })
   it('lists as frontier only unresolved links of MOC notes', () => {
     expect(m.frontier).toEqual([{ name: 'Teorema di Taylor', course: 'Analisi 1 MOC' }])
@@ -80,7 +80,7 @@ describe('buildModel', () => {
     const hits = m.search('lagr')
     expect(hits.map((h) => h.label)).toEqual(['Lagrange', 'Teorema di Lagrange'])
     expect(hits.map((h) => h.kind)).toEqual(['concept', 'region'])
-    expect(m.search('BICÌPITE')[0]).toMatchObject({ kind: 'note', id: '/v/Bicipite.md' })
+    expect(m.search('BICÌPITE')[0]).toMatchObject({ kind: 'note', id: '/Users/x/vault/Bicipite.md' })
     expect(m.search('teorema', 1)).toHaveLength(1)
     expect(m.search('  ')).toEqual([])
   })
@@ -107,31 +107,37 @@ import { filterBySubject, liveOnly, subjectsOf } from '../../src/renderer/src/gr
 
 const subjectGraph: GraphData = {
   concepts: [
-    C('a', '/math/a', 'A'),
-    C('b', '/b', 'B')
+    C('a', '/Users/x/vault/Matematica/a.md', 'A'),
+    C('b', '/Users/x/vault/Generale/b.md', 'B')
   ],
   chains: [{ id: 'ab', premises: ['a'], conclusion: 'b', notes: [] }],
   extracted: {},
   retired: ['x'],
   dormant: ['y']
 }
+const subjectIndex: VaultIndex = { ...index, notes: [
+  vnote('a', { path: '/Users/x/vault/Matematica/a.md', subject: 'matematica' }),
+  vnote('b', { path: '/Users/x/vault/Generale/b.md', subject: null })
+] }
+const subjectOf = (path: string): string | null => subjectIndex.notes.find((note) => note.path === path)?.subject ?? null
 
 describe('graph subject helpers', () => {
   it('lists unique subjects including notes without one', () => {
-    expect(subjectsOf(subjectGraph)).toEqual(['math', null])
+    expect(subjectsOf(subjectGraph, subjectOf)).toEqual(['matematica', null])
+    expect(subjectsOf(subjectGraph, subjectOf)).not.toContain('Users')
   })
   it('filters concepts, drops incomplete chains and preserves retired and dormant ids', () => {
-    const filtered = filterBySubject(subjectGraph, 'math')
+    const filtered = filterBySubject(subjectGraph, 'matematica', subjectOf)
     expect(filtered.concepts.map((c) => c.id)).toEqual(['a'])
     expect(filtered.chains).toEqual([])
     expect(filtered.retired).toEqual(['x'])
     expect(filtered.dormant).toEqual(['y'])
-    expect(filterBySubject(subjectGraph, null).concepts.map((c) => c.id)).toEqual(['b'])
-    expect(filterBySubject(subjectGraph, undefined)).toBe(subjectGraph)
+    expect(filterBySubject(subjectGraph, null, subjectOf).concepts.map((c) => c.id)).toEqual(['b'])
+    expect(filterBySubject(subjectGraph, undefined, subjectOf)).toBe(subjectGraph)
   })
   it('keeps frontier links in the live graph', () => {
-    const source = { ...index, notes: index.notes.map((n) => n.path === '/v/Teorema di Rolle.md' ? { ...n, links: [{ target: 'Missing', resolved: false }] } : n) }
-    const live = liveOnly(subjectGraph, source, ['/v/Teorema di Rolle.md'])
+    const source = { ...index, notes: index.notes.map((n) => n.path === '/Users/x/vault/Teorema di Rolle.md' ? { ...n, links: [{ target: 'Missing', resolved: false }] } : n) }
+    const live = liveOnly(subjectGraph, source, ['/Users/x/vault/Teorema di Rolle.md'])
     expect(live.index.notes[0].links.some((l) => !l.resolved)).toBe(true)
   })
 })

@@ -1090,7 +1090,7 @@
   padding: var(--s-2);
   border-radius: var(--r-sm);
   background: var(--faint);
-  border-left: 2px solid var(--accent);
+  border-left: 1px solid var(--hair);
   font-size: var(--fs-footnote);
 }
 .graph .gcard .chain-excerpt h5 {
@@ -1305,7 +1305,7 @@
   padding: var(--s-2) var(--s-3);
   border-radius: var(--r-sm);
   background: var(--faint);
-  border-left: 3px solid var(--warn);
+  border-left: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
   color: var(--warn);
   font: var(--fw-medium) var(--fs-footnote) / 1.4 var(--sans);
 }
