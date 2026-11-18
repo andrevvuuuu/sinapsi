@@ -940,3 +940,163 @@
 .sh-map .graph .gmore{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:28px;padding:0 4px;border:0;border-radius:var(--r-sm);background:transparent;color:var(--muted);font:var(--font-footnote);font-weight:var(--fw-medium);cursor:pointer;transition:var(--btn-transition)}
 .sh-map .graph .gmore:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 4%,transparent)}
 @media (prefers-reduced-motion:reduce){.sh-map .graph .gseg button,.sh-map .graph .gtoggles button{animation:none!important;transition:none!important}}
+
+/* Task B2: Chain Card, Concept groups, and Dock Subject Filter */
+.graph .gnotch-dock .gtoggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.graph .gnotch-dock .gtoggles button {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-pill, 9999px);
+  border: 1px solid var(--btn-secondary-border);
+  background: var(--btn-secondary-bg);
+  color: var(--muted);
+  font: 500 11px/1 var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s ease-out, color 0.12s ease-out, border-color 0.12s ease-out;
+}
+.graph .gnotch-dock .gtoggles button:hover {
+  background: var(--btn-secondary-bg-hover);
+  color: var(--ink);
+}
+.graph .gnotch-dock .gtoggles button[aria-pressed="true"],
+.graph .gnotch-dock .gtoggles button.on {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
+  border-color: var(--btn-primary-bg);
+  font-weight: 600;
+}
+
+.graph .gcard .acts .hint {
+  width: 100%;
+  margin: var(--s-1) 0 var(--s-2);
+  font-size: var(--fs-footnote);
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.graph .gcard .chain-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin-top: var(--s-1);
+}
+.graph .gcard .chain-group {
+  padding: var(--s-2);
+  border-radius: var(--r-md);
+  background: var(--faint);
+  border: 1px solid var(--hair);
+  cursor: pointer;
+  transition: background-color 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+}
+.graph .gcard .chain-group:hover {
+  background: var(--btn-secondary-bg-hover);
+  border-color: var(--ctl-edge);
+}
+.graph .gcard .chain-group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  min-height: 28px;
+  padding: 0 var(--s-1);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink);
+  font: var(--font-caption);
+  cursor: pointer;
+}
+.graph .gcard .chain-group-header .chain-group-tag {
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.graph .gcard .chain-group-header .chain-group-arrow {
+  color: var(--muted);
+}
+.graph .gcard .chain-group-header small {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.graph .gcard .chain-premises,
+.graph .gcard .chain-conclusion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.graph .gcard .chain-premise {
+  padding: var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--faint);
+  border: 1px solid var(--hair);
+}
+.graph .gcard .chain-concept-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--fs-footnote);
+  text-align: left;
+  cursor: pointer;
+  margin-bottom: var(--s-1);
+}
+.graph .gcard .chain-concept-btn i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.graph .gcard .chain-arrow {
+  text-align: center;
+  font-size: var(--fs-title);
+  color: var(--accent);
+  margin: var(--s-2) 0;
+  line-height: 1;
+}
+.graph .gcard .chain-prompt {
+  font-size: var(--fs-footnote);
+  font-style: italic;
+  color: var(--muted);
+  margin: var(--s-2) 0;
+  line-height: 1.45;
+}
+.graph .gcard .chain-source-box {
+  margin-top: var(--s-3);
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--hair);
+}
+.graph .gcard .chain-excerpts {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: var(--s-2);
+  padding-right: var(--s-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.graph .gcard .chain-excerpt {
+  padding: var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--faint);
+  border-left: 2px solid var(--accent);
+  font-size: var(--fs-footnote);
+}
+.graph .gcard .chain-excerpt h5 {
+  font: var(--font-caption);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 var(--s-1) 0;
+}

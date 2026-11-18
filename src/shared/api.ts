@@ -66,6 +66,7 @@ export const CH = {
   notesUpdated: 'notes:updated',
   notesAttempt: 'notes:attempt',
   graphGet: 'graph:get',
+  graphChainSource: 'graph:chain-source',
   graphExtract: 'graph:extract',
   graphStatus: 'graph:status',
   graphChanged: 'graph:changed',
@@ -148,7 +149,7 @@ export interface SinapsiApi {
     /** With several candidate notes the state waits on 'confirm' and lists state.candidates. */
     create(topic: string): Promise<string>
     confirm(id: string, notePath: string | null): Promise<void>
-    start(topic: string): Promise<string>
+    start(topic: string, opts?: { goalIds?: string[] }): Promise<string>
     list(): Promise<SessionSummary[]>
     get(id: string): Promise<SessionState>
     answer(id: string, a: LearnerAnswer): Promise<void>
@@ -173,6 +174,7 @@ export interface SinapsiApi {
   }
   graph: {
     get(): Promise<import('./graph-types').GraphData>
+    chainSource(chainId: string): Promise<import('./graph-types').ChainSource>
     /** manual (default) always re-extracts; study skips a note unchanged since its last extraction. */
     extract(path: string, reason?: 'manual' | 'study'): Promise<void>
     status(): Promise<import('./graph-types').ExtractorStatus>

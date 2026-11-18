@@ -207,6 +207,22 @@ export function buildModel(g: GraphData, index: VaultIndex): GraphModel {
   }
 }
 
+const subjectOfPath = (path: string): string | null => {
+  const parts = path.replace(/\\/g, '/').split('/').filter(Boolean)
+  return parts.length > 1 ? parts[0] : null
+}
+
+export function subjectsOf(g: GraphData): (string | null)[] {
+  return [...new Set(g.concepts.flatMap((c) => c.notes.map(subjectOfPath)))]
+}
+
+export function filterBySubject(g: GraphData, subject: string | null | undefined): GraphData {
+  if (subject === undefined) return g
+  const concepts = g.concepts.filter((c) => c.notes.some((path) => subjectOfPath(path) === subject))
+  const ids = new Set(concepts.map((c) => c.id))
+  return { ...g, concepts, chains: g.chains.filter((ch) => ids.has(ch.conclusion) && ch.premises.every((id) => ids.has(id))) }
+}
+
 /** A cheap content signature: equal data in new objects (every graph:changed, every vault event) gives the same key. */
 export function modelKey(g: GraphData, index: VaultIndex): string {
   return JSON.stringify([
@@ -282,5 +298,5 @@ export function liveOnly(g: GraphData, index: VaultIndex, paths: string[]): { gr
   const chains = g.chains.filter((ch) => ids.has(ch.conclusion) && ch.premises.every((p) => ids.has(p))).map((ch) => ({ ...ch, notes: ch.notes.filter((n) => live.has(n)) }))
   const extracted = Object.fromEntries(Object.entries(g.extracted).filter(([p]) => live.has(p)))
   // No frontier either: only links between notes that exist.
-  return { graph: { concepts, chains, extracted }, index: { ...index, notes: index.notes.filter((n) => live.has(n.path)).map((n) => ({ ...n, links: n.links.filter((l) => l.resolved) })) } }
+  return { graph: { concepts, chains, extracted, retired: g.retired, dormant: g.dormant }, index: { ...index, notes: index.notes.filter((n) => live.has(n.path)).map((n) => ({ ...n, links: n.links })) } }
 }

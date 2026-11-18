@@ -7,7 +7,7 @@ export type Colors = Record<
   'bg' | 'ink' | 'muted' | 'hair' | 'accent' | 'good' | 'warn' | 'bad' | 'pen' | 'surface',
   string
 >
-export type Sel = { kind: 'concept' | 'region' | 'note'; id: string }
+export type Sel = { kind: 'concept' | 'region' | 'note' | 'chain' | 'wikilink'; id: string }
 export type Lens = 'all' | 'due' | 'never' | 'fragile'
 type Mem = { state: string; R: number | null; due: number | null }
 export type DrawState = {
@@ -65,11 +65,39 @@ export function focusSet(s: Pick<DrawState, 'model' | 'hov' | 'sel' | 'path'>): 
     return cached.result
   const f = s.hov ?? s.sel
   let result: Set<string> | null = s.path
-  if (!result && f?.kind === 'concept')
-    result = new Set([f.id, ...(s.model.parents.get(f.id) ?? []), ...(s.model.kids.get(f.id) ?? [])])
-  else if (!result && f?.kind === 'region')
+  if (!result && f?.kind === 'concept') {
+    const ids = new Set([f.id, ...(s.model.parents.get(f.id) ?? []), ...(s.model.kids.get(f.id) ?? [])])
+    for (const j of s.model.junctions) {
+      if (j.conclusion === f.id || j.premises.includes(f.id)) {
+        ids.add(j.id)
+      }
+    }
+    result = ids
+  } else if (!result && f?.kind === 'region')
     result = new Set(s.model.concepts.filter((c) => c.notes.includes(f.id)).map((c) => c.id))
-  else if (!result && f) result = new Set([f.id])
+  else if (!result && f?.kind === 'chain') {
+    const ids = new Set<string>([f.id])
+    for (const a of s.model.arrows) {
+      if (a.chain === f.id) {
+        ids.add(a.from)
+        ids.add(a.to)
+      }
+    }
+    for (const j of s.model.junctions) {
+      if (j.id === f.id) {
+        j.premises.forEach((p) => ids.add(p))
+        ids.add(j.conclusion)
+      }
+    }
+    result = ids
+  } else if (!result && f?.kind === 'wikilink') {
+    const [a, b] = f.id.split('\n')
+    const ids = new Set<string>([a, b])
+    for (const c of s.model.concepts) {
+      if (c.notes.includes(a) || c.notes.includes(b)) ids.add(c.id)
+    }
+    result = ids
+  } else if (!result && f) result = new Set([f.id])
   focusCache.set(s.model, { hov: s.hov, sel: s.sel, path: s.path, result })
   return result
 }
@@ -196,8 +224,13 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       const A = centroids.get(a) ?? node(a)
       const B = centroids.get(b) ?? node(b)
       if (!A || !B || A.x === undefined || B.x === undefined) continue
-      const on = s.sel?.kind === 'region' && (s.sel.id === a || s.sel.id === b)
-      ctx.strokeStyle = rgba(C.muted, (on ? 0.75 : 0.28) * (1 - tProp))
+      const pairKey = [a, b].sort().join('\n')
+      const on =
+        (s.sel?.kind === 'region' && (s.sel.id === a || s.sel.id === b)) ||
+        (s.sel?.kind === 'wikilink' && s.sel.id === pairKey) ||
+        (s.hov?.kind === 'wikilink' && s.hov.id === pairKey)
+      ctx.strokeStyle = rgba(C.muted, (on ? 0.9 : 0.28) * (1 - tProp))
+      ctx.lineWidth = on ? 2 : 1.2
       const mx = (A.x + B.x!) / 2
       const my = (A.y! + B.y!) / 2
       const nx = -(B.y! - A.y!) * 0.18
@@ -211,18 +244,22 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
   }
 
   // Chains: premises converge on a junction, one arrow leaves it.
-  ctx.lineWidth = 1.15
   for (const l of layout.links) {
     if (l.wikilink) continue
     const a = l.source as SimNode
     const b = l.target as SimNode
+    const isChainFocus =
+      (s.sel?.kind === 'chain' && s.sel.id === l.chain) ||
+      (s.hov?.kind === 'chain' && s.hov.id === l.chain)
     const lit =
       !F ||
+      isChainFocus ||
       ((F.has(a.id) || a.kind === 'junction') &&
         (F.has(b.id) || b.kind === 'junction') &&
         (F.has(a.id) || F.has(b.id)))
-    const al = (0.18 + 0.5 * tProp) * (lit ? 1 : 0.06)
-    ctx.strokeStyle = rgba(C.ink, al)
+    const al = isChainFocus ? 1 : (0.18 + 0.5 * tProp) * (lit ? 1 : 0.06)
+    ctx.lineWidth = isChainFocus ? 2.2 : 1.15
+    ctx.strokeStyle = isChainFocus ? C.ink : rgba(C.ink, al)
     const [x1, y1, x2, y2] = [sx(a.x!), sy(a.y!), sx(b.x!), sy(b.y!)]
     if (l.head) {
       const dx = x2 - x1
@@ -235,19 +272,40 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       ctx.moveTo(x1, y1)
       ctx.lineTo(x2 - ux * (er + ah), y2 - uy * (er + ah))
       ctx.stroke()
-      if (k > 0.45) {
+      if (k > 0.45 || isChainFocus) {
         ctx.beginPath()
         ctx.moveTo(x2 - ux * er, y2 - uy * er)
         ctx.lineTo(x2 - ux * (er + ah) - uy * ah * 0.5, y2 - uy * (er + ah) + ux * ah * 0.5)
         ctx.lineTo(x2 - ux * (er + ah) + uy * ah * 0.5, y2 - uy * (er + ah) - ux * ah * 0.5)
         ctx.closePath()
-        ctx.fillStyle = rgba(C.ink, al)
+        ctx.fillStyle = isChainFocus ? C.ink : rgba(C.ink, al)
         ctx.fill()
       }
     } else {
       ctx.beginPath()
       ctx.moveTo(x1, y1)
       ctx.lineTo(x2, y2)
+      ctx.stroke()
+    }
+  }
+
+  // Junctions
+  for (const j of layout.nodes) {
+    if (j.kind !== 'junction') continue
+    const isJunctionFocus =
+      (s.sel?.kind === 'chain' && s.sel.id === j.id) ||
+      (s.hov?.kind === 'chain' && s.hov.id === j.id)
+    const lit = !F || isJunctionFocus || (F && F.has(j.id))
+    const al = isJunctionFocus ? 1 : (0.18 + 0.5 * tProp) * (lit ? 1 : 0.06)
+    ctx.beginPath()
+    ctx.arc(sx(j.x!), sy(j.y!), isJunctionFocus ? 4 : 2, 0, 7)
+    ctx.fillStyle = isJunctionFocus ? C.ink : rgba(C.ink, al)
+    ctx.fill()
+    if (isJunctionFocus) {
+      ctx.beginPath()
+      ctx.arc(sx(j.x!), sy(j.y!), 8, 0, 7)
+      ctx.strokeStyle = C.ink
+      ctx.lineWidth = 1.2
       ctx.stroke()
     }
   }

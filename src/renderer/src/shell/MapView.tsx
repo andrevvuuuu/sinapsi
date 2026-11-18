@@ -5,12 +5,14 @@ export function MapView({
   index,
   livePaths,
   onReview,
+  onAskTutor,
   onOpenNote,
   onStudy
 }: {
   index: VaultIndex | null
   livePaths: string[]
-  onReview: (ids: string[]) => void
+  onReview: (ids: string[], opts?: { cascadeWeak?: string[] }) => void
+  onAskTutor?: (conceptId: string, name: string) => void
   onOpenNote: (path: string) => void
   onStudy: (title: string) => void
 }): React.JSX.Element {
@@ -25,6 +27,7 @@ export function MapView({
           index={index}
           livePaths={livePaths}
           onReview={onReview}
+          onAskTutor={onAskTutor}
           onOpenNote={onOpenNote}
           onStudy={onStudy}
         />

@@ -102,3 +102,36 @@ describe('buildModel', () => {
     expect(mm.subjectName(null)).toBe('')
   })
 })
+
+import { filterBySubject, liveOnly, subjectsOf } from '../../src/renderer/src/graph/model'
+
+const subjectGraph: GraphData = {
+  concepts: [
+    C('a', '/math/a', 'A'),
+    C('b', '/b', 'B')
+  ],
+  chains: [{ id: 'ab', premises: ['a'], conclusion: 'b', notes: [] }],
+  extracted: {},
+  retired: ['x'],
+  dormant: ['y']
+}
+
+describe('graph subject helpers', () => {
+  it('lists unique subjects including notes without one', () => {
+    expect(subjectsOf(subjectGraph)).toEqual(['math', null])
+  })
+  it('filters concepts, drops incomplete chains and preserves retired and dormant ids', () => {
+    const filtered = filterBySubject(subjectGraph, 'math')
+    expect(filtered.concepts.map((c) => c.id)).toEqual(['a'])
+    expect(filtered.chains).toEqual([])
+    expect(filtered.retired).toEqual(['x'])
+    expect(filtered.dormant).toEqual(['y'])
+    expect(filterBySubject(subjectGraph, null).concepts.map((c) => c.id)).toEqual(['b'])
+    expect(filterBySubject(subjectGraph, undefined)).toBe(subjectGraph)
+  })
+  it('keeps frontier links in the live graph', () => {
+    const source = { ...index, notes: index.notes.map((n) => n.path === '/v/Teorema di Rolle.md' ? { ...n, links: [{ target: 'Missing', resolved: false }] } : n) }
+    const live = liveOnly(subjectGraph, source, ['/v/Teorema di Rolle.md'])
+    expect(live.index.notes[0].links.some((l) => !l.resolved)).toBe(true)
+  })
+})

@@ -12,6 +12,7 @@ import type { MemoryStore } from './store'
 import { buildVariantsPrompt, fallbackExercise, variantsReplySchema, type VariantsStore } from './variants'
 
 export type ReviewItem = {
+  cascadeOf?: string
   conceptId: string
   name: string
   notePath: string

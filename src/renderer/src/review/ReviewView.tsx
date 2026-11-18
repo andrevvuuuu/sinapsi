@@ -44,12 +44,14 @@ const remote = (e: unknown): string =>
 export function ReviewView({
   query,
   conceptIds,
+  cascadeWeak,
   onBack,
   onStudy,
   onOpenNote
 }: {
   query?: string
   conceptIds?: string[]
+  cascadeWeak?: string[]
   onBack: () => void
   onStudy: (name: string) => void
   onOpenNote: (path: string) => void
@@ -249,6 +251,21 @@ export function ReviewView({
         ...rs,
         { item, grade, before: item.R, after: r.memory.R, misconception: v.kind === 'mis' }
       ])
+      if (cascadeWeak?.length && !item.cascadeOf && grade <= 2) {
+        try {
+          const plan = await api.review.plan({ conceptIds: cascadeWeak })
+          setItems((current) => {
+            if (!current) return current
+            const existing = new Set(current.map((x) => x.conceptId))
+            const additions = plan.items
+              .filter((x) => !existing.has(x.conceptId))
+              .map((x) => ({ ...x, cascadeOf: item.conceptId }))
+            return [...current, ...additions]
+          })
+        } catch {
+          // Keep the original goal queue usable if prerequisites cannot be loaded.
+        }
+      }
     } catch (e) {
       setError(remote(e))
       return

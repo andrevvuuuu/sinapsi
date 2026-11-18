@@ -24,7 +24,7 @@ type View =
   | { view: 'session'; id: string }
   | { view: 'nota'; id: string }
   | { view: 'source'; path: string }
-  | { view: 'review'; query?: string; conceptIds?: string[] }
+  | { view: 'review'; query?: string; conceptIds?: string[]; cascadeWeak?: string[] }
   | { view: 'practice-setup'; text?: string; initial?: { conceptIds: string[]; exam?: boolean } }
   | { view: 'practice'; id: string }
   | { view: 'lessons' }
@@ -63,6 +63,11 @@ function Views(): React.JSX.Element {
   const study = (topic: string): void =>
     void window.sinapsi.session
       .start(topic)
+      .then((id) => setV({ view: 'session', id }))
+      .catch(() => setV({ view: 'home' }))
+  const askTutor = (conceptId: string, name: string): void =>
+    void window.sinapsi.session
+      .start(name, { goalIds: [conceptId] })
       .then((id) => setV({ view: 'session', id }))
       .catch(() => setV({ view: 'home' }))
   const onDock = (destination: Destination): void => {
@@ -148,9 +153,10 @@ function Views(): React.JSX.Element {
   if (v.view === 'review')
     content = (
       <ReviewView
-        key={`${v.query}|${v.conceptIds?.join(',')}`}
+        key={`${v.query}|${v.conceptIds?.join(',')}|${v.cascadeWeak?.join(',')}`}
         query={v.query}
         conceptIds={v.conceptIds}
+        cascadeWeak={v.cascadeWeak}
         onBack={home}
         onStudy={study}
         onOpenNote={(path) => setV({ view: 'source', path })}
@@ -179,7 +185,8 @@ function Views(): React.JSX.Element {
       onNotes={() => setV({ view: 'notes' })}
       onSettingsChanged={() => undefined}
       onStudy={study}
-      onMapReview={(ids) => setV({ view: 'review', conceptIds: ids })}
+      onMapReview={(ids, opts) => setV({ view: 'review', conceptIds: ids, cascadeWeak: opts?.cascadeWeak })}
+      onMapAskTutor={askTutor}
     >
       {content}
     </AppShell>

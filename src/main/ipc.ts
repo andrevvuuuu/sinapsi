@@ -55,6 +55,7 @@ import { createExtractor, type Extractor } from './graph/jobs'
 import { graphStore } from './graph/store'
 import { fakeNoteBridge } from './notes/fake-note'
 import { createNoteGenerator } from './notes/generator'
+import { sectionText } from './notes/section-text'
 import { readySources } from './notes/store'
 import { createLinkedSync } from './vault/linked'
 import { fakeTeacher, LONG_MEASURE_SCRIPT } from './session/fake-teacher'
@@ -216,8 +217,8 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.sessionConfirm, (_e, id, notePath) =>
     background(runner.confirm(String(id), notePath == null ? null : String(notePath)))
   )
-  ipcMain.handle(CH.sessionStart, async (_e, topic) => {
-    const id = await runner.create(String(topic))
+  ipcMain.handle(CH.sessionStart, async (_e, topic, opts) => {
+    const id = await runner.create(String(topic), opts?.goalIds)
     background(runner.retry(id))
     return id
   })
@@ -371,6 +372,17 @@ export function registerIpc(): { bridge: Bridge } {
     }
   })
   ipcMain.handle(CH.graphGet, () => gh.get())
+  ipcMain.handle(CH.graphChainSource, async (_e, chainId) => {
+    const graph = await gh.get()
+    const chain = graph.chains.find((c) => c.id === String(chainId))
+    if (!chain) throw new Error('chain not found')
+    const byId = new Map(graph.concepts.map((c) => [c.id, c]))
+    const notePath = chain.notes[0] ?? byId.get(chain.conclusion)?.birth ?? ''
+    const content = notePath ? await readFile(notePath, 'utf8').catch(() => '') : ''
+    const concept = (id: string) => { const c = byId.get(id); return { id, name: c?.name ?? '', statement: c?.statement ?? '' } }
+    const ids = [...new Set([...chain.premises, chain.conclusion])]
+    return { chainId: chain.id, notePath, premises: chain.premises.map(concept), conclusion: concept(chain.conclusion), excerpts: content ? ids.map((id) => { const heading = byId.get(id)?.sections[notePath] ?? ''; return { conceptId: id, heading, text: sectionText(content, [heading]).slice(0, 1200) } }).filter((x) => !!x.heading) : [] }
+  })
   ipcMain.handle(CH.graphStatus, () => gh.status())
   ipcMain.handle(CH.graphExtract, (_e, path, reason) => gh.extract(path, reason))
   ipcMain.handle(CH.graphPositions, () => gh.positions())

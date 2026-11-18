@@ -50,3 +50,5 @@ export type Chain = { id: string; premises: string[]; conclusion: string; notes:
 export type GraphData = { concepts: Concept[]; chains: Chain[]; extracted: Record<string, { hash: string; at: number }>; retired: string[]; dormant: string[] }
 
 export type ExtractorStatus = { running?: string; queued: string[]; lastError?: { notePath: string; message: string } }
+
+export type ChainSource = { chainId: string; notePath: string; premises: { id: string; name: string; statement: string }[]; conclusion: { id: string; name: string; statement: string }; excerpts: { conceptId: string; heading: string; text: string }[] }

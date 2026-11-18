@@ -37,6 +37,10 @@ export type GraphNotchDockProps = {
   onRetry: (path: string) => void
   extractError: string | null
 
+  subjects?: (string | null)[]
+  subjectFilter?: string | null | undefined
+  setSubjectFilter?: (s: string | null | undefined) => void
+
   initialSection?: NotchSection | null
   onOpenChange?: (open: boolean) => void
 }
@@ -78,6 +82,9 @@ export function GraphNotchDock({
   index,
   onRetry,
   extractError,
+  subjects,
+  subjectFilter,
+  setSubjectFilter,
   initialSection = null,
   onOpenChange
 }: GraphNotchDockProps): React.JSX.Element {
@@ -684,6 +691,39 @@ export function GraphNotchDock({
                   })}
                 </div>
               </div>
+              {subjects && subjects.length > 0 && setSubjectFilter && (
+                <div className="gsec">
+                  <h3>Materia</h3>
+                  <div className="gtoggles" role="group" aria-label="Filtra per materia">
+                    <button
+                      type="button"
+                      aria-pressed={subjectFilter === undefined}
+                      className={subjectFilter === undefined ? 'on' : ''}
+                      onClick={() => setSubjectFilter(undefined)}
+                    >
+                      Tutte
+                    </button>
+                    {subjects
+                      .slice()
+                      .sort((a, b) => (a === null ? 1 : b === null ? -1 : a.localeCompare(b)))
+                      .map((s) => {
+                      const isSelected = subjectFilter === s
+                      const label = s === null ? 'Senza materia' : (model ? model.subjectName(s) : s)
+                      return (
+                        <button
+                          key={s === null ? '__null__' : s}
+                          type="button"
+                          aria-pressed={isSelected}
+                          className={isSelected ? 'on' : ''}
+                          onClick={() => setSubjectFilter(s)}
+                        >
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -732,7 +772,7 @@ export function GraphNotchDock({
                     [
                       ['regions', 'Regioni'],
                       ['wikilinks', 'Link di Obsidian'],
-                      ['frontier', `Frontiera${model ? ` (${model.frontier.length})` : ''}`]
+                      ['frontier', `Frontiera (${model ? model.frontier.length : 0})`]
                     ] as const
                   ).map(([key, label]) => {
                     const isPressed = show[key]
@@ -811,6 +851,33 @@ export function GraphNotchDock({
                 ))}
               </div>
             </div>
+            {subjects && subjects.length > 0 && setSubjectFilter && (
+              <div className="gsec">
+                <h3>Materia</h3>
+                <div role="group" aria-label="Filtra per materia">
+                  <button
+                    type="button"
+                    aria-pressed={subjectFilter === undefined}
+                    onClick={() => setSubjectFilter(undefined)}
+                  >
+                    Tutte
+                  </button>
+                  {subjects
+                    .slice()
+                    .sort((a, b) => (a === null ? 1 : b === null ? -1 : a.localeCompare(b)))
+                    .map((s) => (
+                    <button
+                      key={s === null ? '__null__' : s}
+                      type="button"
+                      aria-pressed={subjectFilter === s}
+                      onClick={() => setSubjectFilter(s)}
+                    >
+                      {s === null ? 'Senza materia' : (model ? model.subjectName(s) : s)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
