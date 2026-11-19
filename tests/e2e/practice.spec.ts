@@ -2,7 +2,7 @@ import { _electron as electron, expect, test } from '@playwright/test'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { makeNotaViva } from './helpers'
+import { goTo, makeNotaViva } from './helpers'
 
 const launch = () =>
   electron.launch({
@@ -17,9 +17,11 @@ test('a training session: material, a problem, a hint, the solution, the next pr
   // concepts in the graph: open Rolle once
   await makeNotaViva(win, 'Teorema di Rolle')
 
-  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: 'Pratica', exact: true }).click()
-  await win.getByLabel('Cosa vuoi studiare?').fill('rolle')
-  await win.getByRole('button', { name: 'Inizia' }).click()
+  await goTo(win, 'Oggi')
+  const composer = win.getByRole('region', { name: 'Compositore di studio' })
+  await composer.getByRole('button', { name: 'Esercitati' }).click()
+  await composer.getByRole('textbox', { name: 'Cosa vuoi studiare?' }).fill('rolle')
+  await composer.getByRole('button', { name: 'Inizia studio' }).click()
   await expect(win.getByRole('status').filter({ hasText: 'per «rolle»' })).toBeVisible()
   await win.screenshot({ path: 'test-results/practice-setup.png' })
   await win.getByRole('button', { name: 'Inizia allenamento' }).click()
@@ -51,9 +53,11 @@ test('an exam: a timed sheet, answers, delivery, a grade in thirtieths', async (
   const app = await launch()
   const win = await app.firstWindow()
   win.on('pageerror', (e) => console.log('PAGEERROR', e.message))
-  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: 'Pratica', exact: true }).click()
-  await win.getByLabel('Cosa vuoi studiare?').fill('limiti notevoli')
-  await win.getByRole('button', { name: 'Inizia' }).click()
+  await goTo(win, 'Oggi')
+  const composer = win.getByRole('region', { name: 'Compositore di studio' })
+  await composer.getByRole('button', { name: 'Esercitati' }).click()
+  await composer.getByRole('textbox', { name: 'Cosa vuoi studiare?' }).fill('limiti notevoli')
+  await composer.getByRole('button', { name: 'Inizia studio' }).click()
   await win.getByRole('radio', { name: /Simulazione d'esame/ }).click()
   await win.getByRole('tab', { name: '30 min' }).click()
   await win.getByRole('button', { name: 'Inizia simulazione · 30 min' }).click()
@@ -73,9 +77,11 @@ test('an exam on paper: sheet and clock, pens down, self-grade before the correc
   const win = await app.firstWindow()
   win.on('pageerror', (e) => console.log('PAGEERROR', e.message))
   for (const [round, selfs] of [[1, ['12', '16']], [2, ['10', '9,5']]] as const) {
-    await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: 'Pratica', exact: true }).click()
-    await win.getByLabel('Cosa vuoi studiare?').fill('limiti notevoli')
-    await win.getByRole('button', { name: 'Inizia' }).click()
+    await goTo(win, 'Oggi')
+    const composer = win.getByRole('region', { name: 'Compositore di studio' })
+    await composer.getByRole('button', { name: 'Esercitati' }).click()
+    await composer.getByRole('textbox', { name: 'Cosa vuoi studiare?' }).fill('limiti notevoli')
+    await composer.getByRole('button', { name: 'Inizia studio' }).click()
     await win.getByRole('radio', { name: /Simulazione d'esame/ }).click()
     await win.getByRole('tab', { name: '30 min' }).click()
     await win.getByRole('tab', { name: 'Carta e penna' }).click()

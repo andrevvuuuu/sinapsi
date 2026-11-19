@@ -141,7 +141,7 @@ describe('explain', () => {
   })
   it('gives a verdict that proposes a grade like the other types', async () => {
     const { svc } = setup(() => ({ action: 'grade', verdict: 'partial', feedback: 'Manca Fermat.' }))
-    expect(await svc.explain({ conceptId: 'a1', exercise: explain, turns: [turn('andrea', 'x')], confidence: 90 })).toEqual({ kind: 'verdict', verdict: 'partial', feedback: 'Manca Fermat.', proposed: 2 })
+    expect(await svc.explain({ conceptId: 'a1', exercise: explain, turns: [turn('andrea', 'x')], confidence: 90 })).toEqual({ kind: 'verdict', verdict: 'partial', feedback: 'Manca Fermat.', proposed: 1 })
   })
   it('refuses a third question: the reply must be a verdict', async () => {
     const { svc } = setup(() => ({ action: 'ask', question: 'Ancora?' }))

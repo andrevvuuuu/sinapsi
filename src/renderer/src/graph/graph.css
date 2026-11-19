@@ -1013,7 +1013,7 @@
   align-items: center;
   gap: var(--s-2);
   width: 100%;
-  min-height: 28px;
+  min-height: var(--ctl);
   padding: 0 var(--s-1);
   border: 0;
   border-radius: var(--r-sm);
@@ -1307,6 +1307,13 @@
   font: var(--font-caption);
   color: var(--muted);
   flex: none;
+}
+
+/* Concept card procedural practice status */
+.graph .gcard .gcard-procedural {
+  font: var(--font-footnote);
+  color: var(--muted);
+  margin: 0 0 var(--s-2);
 }
 
 /* Concept card suspect premise callout */

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PracticeSetup } from '../../src/renderer/src/practice/PracticeSetup'
 import { PracticeView } from '../../src/renderer/src/practice/PracticeView'
 import type { PracticeState } from '../../src/main/practice/events'
@@ -9,6 +9,15 @@ import type { Catalog } from '../../src/shared/practice-types'
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
+})
+beforeEach(() => {
+  const data = new Map<string, string>()
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => data.get(k) ?? null,
+    setItem: (k: string, v: string) => void data.set(k, v),
+    removeItem: (k: string) => void data.delete(k),
+    clear: () => data.clear()
+  })
 })
 Element.prototype.scrollIntoView = vi.fn()
 
@@ -34,6 +43,7 @@ const catalog: Catalog = {
 function api(state?: PracticeState) {
   let listener: (s: PracticeState) => void = () => undefined
   const a = {
+    vault: { index: vi.fn(async () => ({ root: '/v', notes: [] })) },
     practice: {
       catalog: vi.fn(async () => catalog),
       create: vi.fn(async () => ID),
@@ -109,6 +119,13 @@ describe('PracticeSetup', () => {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Inizia simulazione su carta · 60 min' })))
     expect(a.practice.examStart).toHaveBeenCalledWith({ conceptIds: ['n_l', 'n_r'], sourceIds: [], free: '' }, 60, true)
   })
+  it('starts mixed training from multiple initial concepts in blind mode', async () => {
+    const { a } = api()
+    render(<PracticeSetup initial={{ conceptIds: ['n_l', 'n_r'] }} onBack={vi.fn()} onStarted={vi.fn()} />)
+    await screen.findByRole('group', { name: 'Scelti' })
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Inizia allenamento' })))
+    expect(a.practice.create).toHaveBeenCalledWith({ conceptIds: ['n_l', 'n_r'], sourceIds: [], free: '', blind: true })
+  })
   it('picks concepts and sources in the dialog; closing without confirming restores the choice', async () => {
     api()
     render(<PracticeSetup onBack={vi.fn()} onStarted={vi.fn()} />)
@@ -117,7 +134,7 @@ describe('PracticeSetup', () => {
     fireEvent.click(within(dlg).getByRole('button', { name: 'Mai praticati' }))
     expect(within(dlg).queryByLabelText('Teorema di Rolle')).toBeNull()
     fireEvent.click(within(dlg).getByLabelText('Teorema di Fermat'))
-    fireEvent.click(within(dlg).getByRole('tab', { name: 'Fonti' }))
+    fireEvent.click(within(dlg).getByRole('tab', { name: 'Materiale del corso' }))
     fireEvent.click(within(dlg).getByLabelText(/Temi d’esame/))
     fireEvent.click(within(dlg).getByRole('button', { name: 'Conferma' }))
     expect(screen.getByText('3 concetti · 1 fonte · ~28 min')).toBeTruthy()
@@ -198,6 +215,59 @@ describe('PracticeView — training', () => {
     fireEvent.click(within(dlg).getByRole('button', { name: 'Usa questo testo' }))
     await act(async () => fireEvent.click(within(dock).getByRole('button', { name: 'Invia' })))
     expect(a.practice.submit).toHaveBeenCalledWith(ID, { kind: 'thinking', photoText: '$|\\cos c| \\le 1$ quindi' })
+  })
+  it('renders triage input when triageActive, confirms tool and sends thinking with confidence', async () => {
+    localStorage.clear()
+    const triageOpen: PracticeState = {
+      ...open,
+      triageEligible: true,
+      problems: [{ ...open.problems[0], triageActive: true, attempts: 0 }]
+    }
+    const { a } = api(triageOpen)
+    render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
+    const dock = await screen.findByRole('region', { name: 'Problema' })
+
+    // Triage input should be rendered
+    const triageRegion = within(dock).getByRole('region', { name: 'Triage strumento' })
+    expect(triageRegion).toBeTruthy()
+    const triageInput = within(triageRegion).getByLabelText('Quale strumento useresti? (opzionale)')
+    fireEvent.change(triageInput, { target: { value: 'Teorema di Rolle' } })
+    await act(async () => fireEvent.click(within(triageRegion).getByRole('button', { name: 'Conferma' })))
+    expect(a.practice.submit).toHaveBeenCalledWith(ID, { kind: 'triage', text: 'Teorema di Rolle' })
+
+    // Confidence selector is visible with plain Seg options
+    const confGroup = within(dock).getByRole('group', { name: 'Fiducia' })
+    expect(confGroup).toBeTruthy()
+    const option63 = within(confGroup).getByRole('tab', { name: 'Abbastanza sicuro' })
+    fireEvent.click(option63)
+
+    // Send thinking with reasoning and confidence
+    fireEvent.change(within(dock).getByLabelText('Il tuo ragionamento'), { target: { value: 'mio ragionamento' } })
+    await act(async () => fireEvent.click(within(dock).getByRole('button', { name: 'Invia' })))
+    expect(a.practice.submit).toHaveBeenLastCalledWith(ID, { kind: 'thinking', text: 'mio ragionamento', confidence: 63 })
+  })
+  it('allows hiding and restoring the confidence selector and persists to localStorage', async () => {
+    localStorage.clear()
+    const { a } = api(open)
+    render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
+    const dock = await screen.findByRole('region', { name: 'Problema' })
+
+    // Hide confidence
+    const hideBtn = within(dock).getByRole('button', { name: 'Nascondi' })
+    fireEvent.click(hideBtn)
+    expect(localStorage.getItem('sinapsi:practice:show-confidence')).toBe('false')
+    expect(within(dock).queryByRole('group', { name: 'Fiducia' })).toBeNull()
+
+    // Restore confidence
+    const showBtn = within(dock).getByRole('button', { name: '+ Mostra fiducia' })
+    fireEvent.click(showBtn)
+    expect(localStorage.getItem('sinapsi:practice:show-confidence')).toBe('true')
+    expect(within(dock).getByRole('group', { name: 'Fiducia' })).toBeTruthy()
+
+    // Non-blocking submission without confidence selection
+    fireEvent.change(within(dock).getByLabelText('Il tuo ragionamento'), { target: { value: 'senza fiducia' } })
+    await act(async () => fireEvent.click(within(dock).getByRole('button', { name: 'Invia' })))
+    expect(a.practice.submit).toHaveBeenCalledWith(ID, { kind: 'thinking', text: 'senza fiducia' })
   })
 })
 

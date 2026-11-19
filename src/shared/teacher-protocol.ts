@@ -84,6 +84,7 @@ export type TeacherTurn = z.infer<typeof TurnShape>
 
 /** JSON Schema 2020-12 without the "$schema" key (the Claude CLI rejects the remote reference). */
 export function teacherJsonSchema(): object {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { $schema: _drop, ...rest } = z.toJSONSchema(TurnShape) as Record<string, unknown>
   return rest
 }

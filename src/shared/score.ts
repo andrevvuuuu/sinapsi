@@ -1,4 +1,5 @@
 import type { ChatItem } from '../main/session/events'
+import { MISCONCEPTION_CONFIDENCE } from './memory-types'
 
 export type SessionScore = { points: number; streak: number; bestStreak: number; games: number; calibration: number | null }
 
@@ -36,7 +37,7 @@ export function sessionScore(items: ChatItem[]): SessionScore {
     if (a.confidence !== undefined) gaps.push(Math.abs(a.confidence - (right ? 100 : 0)))
     // Probes and predictions are meant to be risked: they count for calibration, not for points or the streak.
     if (q.role !== 'check' && q.role !== 'recall') continue
-    if (right) points += 10 + ((a.confidence ?? 0) >= 70 ? 5 : 0)
+    if (right) points += 10 + ((a.confidence ?? 0) >= MISCONCEPTION_CONFIDENCE ? 5 : 0)
     hit(right)
   }
   const calibration = gaps.length ? Math.round(100 - gaps.reduce((x, y) => x + y, 0) / gaps.length) : null

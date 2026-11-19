@@ -13,7 +13,7 @@ export function buildGradePrompt(input: { concept: { name: string; statement: st
     `Domanda: ${input.exercise.prompt}`,
     `Risposta di riferimento: ${input.exercise.answer}`,
     `Risposta di Andrea (fiducia ${input.confidence}%): ${input.answer}`,
-    `Giudica il contenuto, non la forma: "ok" se coglie il punto essenziale della risposta di riferimento, "partial" se è giusta ma incompleta o manca il perché, "wrong" se è sbagliata o non risponde. Se non sei sicuro che sia corretta, "partial" e dillo. In "feedback" una o due frasi: che cosa manca o che cosa è sbagliato, e il punto chiave. Matematica in $…$.`,
+    `Giudica il contenuto, non la forma: "ok" se coglie il punto essenziale della risposta di riferimento, "partial" se è giusta ma incompleta o manca il perché, "wrong" se è sbagliata o non risponde. Se non sei sicuro che sia corretta, "partial" e dillo. In "feedback" una o due frasi: spiega anche perché il ragionamento dato è sbagliato, nominando l'errore specifico dello studente e il punto chiave. Matematica in $…$.`,
     GRADING_RIGOR,
     `Rispondi solo con JSON: { "verdict": "ok" | "partial" | "wrong", "feedback": "…" }`
   ].join('\n\n')

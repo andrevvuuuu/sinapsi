@@ -113,7 +113,12 @@ export function PracticeSetup({
     if (!has || busy || dictating) return
     setBusy(true)
     setError(null)
-    const material = { conceptIds: [...concepts], sourceIds: [...sources], free: free.trim() }
+    const material = {
+      conceptIds: [...concepts],
+      sourceIds: [...sources],
+      free: free.trim(),
+      ...(mode === 'train' && initial && initial.conceptIds.length >= 2 ? { blind: true } : {})
+    }
     try {
       onStarted(
         mode === 'exam' ? await api.examStart(material, minutes, paper) : await api.create(material)

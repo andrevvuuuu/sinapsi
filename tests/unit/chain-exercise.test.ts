@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ExerciseSchema, type ChainExercise } from '../../src/shared/exercise-schema'
 import { ExerciseView } from '../../src/renderer/src/review/ExerciseView'
 import { ReviewView } from '../../src/renderer/src/review/ReviewView'
-import type { ReviewItem } from '../../src/main/memory/review'
+import { gradeChainIdeaUnits, type ReviewItem } from '../../src/main/memory/review'
 import { settingsSchema } from '../../src/shared/settings-schema'
 
 afterEach(cleanup)
@@ -27,6 +27,25 @@ const ex: ChainExercise = {
     'Se entrambi gli estremi sono sul bordo, la funzione è costante'
   ]
 }
+
+describe('gradeChainIdeaUnits', () => {
+  it('tutte le unità → 3', () => {
+    expect(gradeChainIdeaUnits([true])).toBe(3)
+    expect(gradeChainIdeaUnits([true, true, true])).toBe(3)
+  })
+
+  it('parziale → 1', () => {
+    expect(gradeChainIdeaUnits([true, false])).toBe(1)
+    expect(gradeChainIdeaUnits([true, true, false])).toBe(1)
+    expect(gradeChainIdeaUnits([false, true, false])).toBe(1)
+  })
+
+  it('nessuna → 1', () => {
+    expect(gradeChainIdeaUnits([false])).toBe(1)
+    expect(gradeChainIdeaUnits([false, false, false])).toBe(1)
+    expect(gradeChainIdeaUnits([])).toBe(1)
+  })
+})
 
 describe('chain exercise schema', () => {
   it('accepts deterministic premise idea units', () => {

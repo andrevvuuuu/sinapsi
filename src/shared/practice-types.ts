@@ -7,7 +7,8 @@ export const MaterialSchema = z.object({
   conceptIds: z.array(z.string().min(1).max(64)).max(200),
   sourceIds: z.array(z.string().uuid()).max(100),
   free: z.string().max(20_000),
-  lessonId: z.string().max(64).optional()
+  lessonId: z.string().max(64).optional(),
+  blind: z.boolean().optional()
 })
 export type Material = z.infer<typeof MaterialSchema>
 

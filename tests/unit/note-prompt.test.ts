@@ -37,10 +37,40 @@ describe('sessionDigest', () => {
     const low = reduceSession(events.map((e) => (e.t === 'learner' && e.answer?.questionId === 'q1' ? { ...e, answer: { ...e.answer, confidence: 30 } } : e)))
     expect(sessionDigest(low)).not.toMatch(/^errore:/m)
   })
-  it('is capped at 8000 characters', () => {
-    const many: SessionEvent[] = [events[0]]
+  it('reports wrong answer as error when confidence >= MISCONCEPTION_CONFIDENCE', () => {
+    const at63 = reduceSession(events.map((e) => (e.t === 'learner' && e.answer?.questionId === 'q1' ? { ...e, answer: { ...e.answer, confidence: 63 } } : e)))
+    expect(sessionDigest(at63)).toMatch(/^errore:/m)
+
+    const at62 = reduceSession(events.map((e) => (e.t === 'learner' && e.answer?.questionId === 'q1' ? { ...e, answer: { ...e.answer, confidence: 62 } } : e)))
+    expect(sessionDigest(at62)).not.toMatch(/^errore:/m)
+  })
+  it('caps body at 8000 characters with truncation marker without truncating head', () => {
+    const many: SessionEvent[] = [events[0], events[4]]
     for (let i = 0; i < 200; i++) many.push({ t: 'learner', text: 'x', answer: { questionId: 'q2', text: 'a'.repeat(300) }, question: predict, at: 10 + i })
-    expect(sessionDigest(reduceSession(many)).length).toBeLessThanOrEqual(8000)
+    const digest = sessionDigest(reduceSession(many))
+    expect(digest).toContain('Argomento: Lagrange')
+    expect(digest).toContain('Hai imparato: la funzione scarto')
+    expect(digest).toContain('Misconcezioni: c è unico')
+    expect(digest).toContain('[…sessione troncata]')
+    const head = digest.split('\nprevisione:')[0]
+    const body = digest.slice(head.length + 1)
+    expect(body.length).toBeLessThanOrEqual(8000)
+  })
+  it('places summary and corrector verdicts in the head before body and never truncates head', () => {
+    const s = reduceSession([
+      { t: 'created', id: 's1', topic: 'Analisi', tree: { goalIds: ['c1'], nodes: [{ id: 'c1', name: 'Derivata', statement: '', role: 'concept', R: null, weaknesses: [], birth: '', goal: true }], chains: [], pruned: [] }, at: 1 },
+      { t: 'graded', questionId: 'q1', verdict: 'correct', hintsUsed: 0, reason: 'ok', at: 2 },
+      { t: 'learner', text: 'mia risposta', answer: { questionId: 'q1', text: 'definizione' }, question: { id: 'q1', nodeId: 'c1', role: 'check', kind: 'open', prompt: 'Cos è?' }, at: 3 },
+      { t: 'teacher', turn: { phase: 'done', blocks: [], summary: { learned: ['definizione'], shaky: [], misconceptions: [] } }, at: 4 }
+    ])
+    const digest = sessionDigest(s)
+    expect(digest).toContain('Argomento: Analisi')
+    expect(digest).toContain('Hai imparato: definizione')
+    expect(digest).toContain('verdetto correttore: Derivata — correct')
+    expect(digest).toContain('parole: definizione')
+    const headIdx = digest.indexOf('verdetto correttore: Derivata — correct')
+    const bodyIdx = digest.indexOf('parole: definizione')
+    expect(headIdx).toBeLessThan(bodyIdx)
   })
 })
 

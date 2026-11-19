@@ -7,16 +7,9 @@ import { RichText } from './RichText'
 import { GameDock } from './games/GameDock'
 import { focusWhenShown } from '../components/glass-theme'
 
+import { CONFIDENCE_OPTIONS, type ConfKey } from '../components/confidence'
+
 const LETTERS = 'ABCDEF'
-
-type ConfKey = '12' | '37' | '63' | '88'
-
-const CONFIDENCE_OPTIONS: readonly { value: ConfKey; label: string }[] = [
-  { value: '12', label: 'Tiro a indovinare' },
-  { value: '37', label: 'Incerto' },
-  { value: '63', label: 'Abbastanza sicuro' },
-  { value: '88', label: 'Sicuro' }
-]
 
 type Props = {
   question: Question

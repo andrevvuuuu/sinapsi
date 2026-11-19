@@ -168,6 +168,9 @@ function Views(): React.JSX.Element {
         order={v.order}
         onBack={home}
         onStudy={study}
+        onPractice={(conceptIds) =>
+          setV({ view: 'practice-setup', initial: { conceptIds } })
+        }
         onOpenNote={(path) => setV({ view: 'source', path })}
       />
     )

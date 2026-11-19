@@ -7,6 +7,7 @@ import { createSessionRunner } from '../../src/main/session/runner'
 import type { ConverseRequest } from '../../src/main/ai/bridge'
 import type { TeacherTurn } from '../../src/shared/teacher-protocol'
 import type { VaultIndex } from '../../src/shared/vault-types'
+import type { ReviewLine } from '../../src/shared/memory-types'
 
 const probeTurn: TeacherTurn = {
   phase: 'probe',
@@ -442,6 +443,491 @@ describe('session runner', () => {
     await new Promise((resolve) => setTimeout(resolve, 10))
     expect(reviews).toHaveLength(1)
     expect(reviews[0]).toMatchObject({ via: 'session', ref: `session:${id}:concept` })
+  })
+
+  it('does not prevent writing after end() when finalize is called before done', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sinapsi-session-finalize-latch-'))
+    const reviews: ReviewLine[] = []
+    let calls = 0
+    const runner = createSessionRunner({
+      dir,
+      bridge: {
+        converse: async () => ({
+          data:
+            calls++ === 0
+              ? {
+                  phase: 'probe',
+                  blocks: [],
+                  question: {
+                    id: 'recall',
+                    role: 'recall',
+                    kind: 'choice',
+                    prompt: 'Ricorda',
+                    options: ['giusta', 'sbagliata'],
+                    correct: 0,
+                    why: ['Sì.', 'No.'],
+                    nodeId: 'concept'
+                  }
+                }
+              : {
+                  phase: 'teach',
+                  blocks: [],
+                  question: {
+                    id: 'check',
+                    role: 'check',
+                    kind: 'choice',
+                    prompt: 'Verifica',
+                    options: ['a', 'b'],
+                    correct: 0,
+                    why: ['a', 'b'],
+                    nodeId: 'concept'
+                  }
+                },
+          conversationId: 'session',
+          engine: 'claude'
+        })
+      } as never,
+      vault: async () => null,
+      readNote: async () => '',
+      memoryStore: {
+        read: async () => reviews,
+        append: async (review: ReviewLine) => {
+          reviews.push(review)
+        }
+      } as never,
+      onUpdate: () => undefined
+    })
+
+    const id = await runner.start('concept')
+    await runner.answer(id, { questionId: 'recall', choice: 0, confidence: 88 })
+    // Calling finalize prematurely should be a no-op and must not latch-lock future finalization
+    await runner.finalize?.(id)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(reviews).toHaveLength(0)
+
+    // Now end the session; finalize should proceed and write the review and index entry
+    await runner.end(id)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(reviews).toHaveLength(1)
+    expect(reviews[0]).toMatchObject({ via: 'session', ref: `session:${id}:concept` })
+    const index = await readFile(join(dir, 'index.jsonl'), 'utf8').catch(() => '')
+    expect(index).toContain(id)
+  })
+
+  it('appends an error event and no teacher turn when the second turn is still invalid', async () => {
+    const invalidTurn: TeacherTurn = {
+      phase: 'done',
+      blocks: [],
+      summary: { learned: [], shaky: [], misconceptions: [] }
+    }
+    let converseCalls = 0
+    const { runner, dir } = await harness(async () => {
+      converseCalls++
+      return invalidTurn
+    })
+
+    const id = await runner.start('Lagrange')
+    expect(converseCalls).toBe(2)
+
+    const state = await runner.get(id)
+    expect(state.awaiting).toBe('retry')
+    expect(state.items.filter((i) => i.kind === 'teacher')).toHaveLength(0)
+
+    const lastItem = state.items.at(-1)
+    expect(lastItem?.kind).toBe('error')
+    expect(lastItem).toMatchObject({
+      kind: 'error',
+      message: expect.stringContaining("l'obiettivo non è ancora padroneggiato")
+    })
+
+    const log = (await readFile(join(dir, `${id}.jsonl`), 'utf8'))
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l).t)
+    expect(log).toEqual(['created', 'confirmed', 'learner', 'error'])
+  })
+
+  it('discards ReviewLine with conceptId outside the vault graph during finalize', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sinapsi-session-ghost-'))
+    const reviews: ReviewLine[] = []
+    let call = 0
+    const turns: TeacherTurn[] = [
+      {
+        phase: 'probe',
+        blocks: [],
+        question: {
+          id: 'q-valid',
+          role: 'recall',
+          kind: 'choice',
+          prompt: 'Valido',
+          options: ['a', 'b'],
+          correct: 0,
+          why: ['ok', 'no'],
+          nodeId: 'valid-concept'
+        }
+      },
+      {
+        phase: 'teach',
+        blocks: [],
+        question: {
+          id: 'q-ghost',
+          role: 'recall',
+          kind: 'choice',
+          prompt: 'Fantasma',
+          options: ['c', 'd'],
+          correct: 0,
+          why: ['ok', 'no'],
+          nodeId: 'ghost-concept'
+        }
+      },
+      {
+        phase: 'done',
+        blocks: [],
+        summary: { learned: ['valid-concept'], shaky: [], misconceptions: [] }
+      }
+    ]
+
+    const runner = createSessionRunner({
+      dir,
+      bridge: {
+        converse: async () => ({
+          data: turns[call++] ?? turns.at(-1)!,
+          conversationId: 'session',
+          engine: 'claude'
+        })
+      } as never,
+      vault: async () => null,
+      readNote: async () => '',
+      graph: async () => ({
+        concepts: [
+          {
+            id: 'valid-concept',
+            name: 'Valid',
+            statement: 'Enunciato valido',
+            aliases: [],
+            birth: '/v/A.md',
+            notes: ['/v/A.md'],
+            sections: {},
+            depth: 0
+          }
+        ],
+        chains: [],
+        extracted: {},
+        retired: [],
+        dormant: []
+      }),
+      memoryStore: {
+        read: async () => reviews,
+        append: async (review: ReviewLine) => {
+          reviews.push(review)
+        }
+      } as never,
+      onUpdate: () => undefined
+    })
+
+    const id = await runner.start('Valid', ['valid-concept'])
+    await runner.answer(id, { questionId: 'q-valid', choice: 0, confidence: 90 })
+    await runner.answer(id, { questionId: 'q-ghost', choice: 0, confidence: 90 })
+    await runner.end(id)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    expect(reviews.length).toBeGreaterThan(0)
+    expect(reviews.map((r) => r.conceptId)).toEqual(['valid-concept'])
+    expect(reviews.some((r) => r.conceptId === 'ghost-concept')).toBe(false)
+  })
+
+  it('appends an ungraded event when gradeOpenAnswer fails, applies fallback at >=2, and writes unverifiedIds to index.jsonl', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sinapsi-session-ungraded-'))
+    const noteIndex: VaultIndex = {
+      root: '/v',
+      scannedAt: 0,
+      subjects: [],
+      notes: [
+        {
+          path: '/v/L.md',
+          title: 'Lagrange',
+          folder: '',
+          tags: [],
+          aliases: [],
+          links: [],
+          headings: [],
+          blockIds: [],
+          subject: null,
+          mtime: 0,
+          size: 0,
+          available: true
+        }
+      ]
+    }
+    let turnCount = 0
+    const turns: TeacherTurn[] = [
+      {
+        phase: 'teach',
+        blocks: [],
+        question: { id: 'q-open-1', role: 'check', kind: 'open', prompt: 'Spiega 1', nodeId: 'c' }
+      },
+      {
+        phase: 'teach',
+        blocks: [],
+        question: { id: 'q-open-2', role: 'check', kind: 'open', prompt: 'Spiega 2', nodeId: 'c' }
+      },
+      {
+        phase: 'teach',
+        blocks: [],
+        question: { id: 'q-choice-1', role: 'check', kind: 'choice', prompt: 'Scelta 1', options: ['a', 'b'], correct: 0, why: ['ok', 'no'], nodeId: 'c' }
+      },
+      {
+        phase: 'teach',
+        blocks: [],
+        question: { id: 'q-choice-2', role: 'check', kind: 'choice', prompt: 'Scelta 2', options: ['a', 'b'], correct: 0, why: ['ok', 'no'], nodeId: 'c' }
+      },
+      {
+        phase: 'teach',
+        blocks: [],
+        question: { id: 'q-choice-3', role: 'check', kind: 'choice', prompt: 'Scelta 3', options: ['a', 'b'], correct: 0, why: ['ok', 'no'], nodeId: 'c' }
+      },
+      {
+        phase: 'done',
+        blocks: [],
+        summary: { learned: ['c'], shaky: [], misconceptions: [] }
+      }
+    ]
+
+    const runner = createSessionRunner({
+      dir,
+      bridge: {
+        converse: async () => ({
+          data: turns[turnCount++] ?? turns.at(-1)!,
+          conversationId: 's',
+          engine: 'claude'
+        }),
+        ask: async () => {
+          throw new Error('LLM grader crashed')
+        }
+      } as never,
+      vault: async () => noteIndex,
+      readNote: async () => '# Teorema\n\nEnunciato.',
+      graph: async () => ({
+        concepts: [
+          {
+            id: 'c',
+            name: 'Lagrange',
+            statement: 'Il teorema.',
+            aliases: [],
+            birth: '/v/L.md',
+            notes: ['/v/L.md'],
+            sections: { '/v/L.md': 'Teorema' },
+            depth: 0
+          }
+        ],
+        chains: [],
+        extracted: {}
+      }),
+      onUpdate: () => undefined
+    })
+
+    const id = await runner.create('Lagrange')
+    await runner.retry(id)
+
+    // First open answer fails grading -> 1 ungraded
+    await runner.answer(id, { questionId: 'q-open-1', text: 'Risposta 1' })
+    let state = await runner.get(id)
+    expect(state.unverifiedIds).toEqual([])
+
+    // Second open answer fails grading -> 2 ungraded -> fallback active
+    await runner.answer(id, { questionId: 'q-open-2', text: 'Risposta 2' })
+    state = await runner.get(id)
+    expect(state.unverifiedIds).toEqual(['c'])
+
+    // Read session file directly to verify AnyEvent parsing of 'ungraded'
+    const log = (await readFile(join(dir, `${id}.jsonl`), 'utf8'))
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l))
+    const ungradedEvents = log.filter((e: { t: string }) => e.t === 'ungraded')
+    expect(ungradedEvents).toHaveLength(2)
+
+    // Complete 3 choices -> achieves kChoice = 3
+    await runner.answer(id, { questionId: 'q-choice-1', choice: 0 })
+    await runner.answer(id, { questionId: 'q-choice-2', choice: 0 })
+    await runner.answer(id, { questionId: 'q-choice-3', choice: 0 })
+    state = await runner.get(id)
+    expect(state.doneNodeIds).toContain('c')
+
+    // Finalize session
+    await runner.end(id)
+    await new Promise((resolve) => setTimeout(resolve, 30))
+
+    // Check index.jsonl contains unverifiedIds
+    const indexContent = await readFile(join(dir, 'index.jsonl'), 'utf8')
+    const indexLine = JSON.parse(indexContent.trim().split('\n').pop()!)
+    expect(indexLine.id).toBe(id)
+    expect(indexLine.unverifiedIds).toEqual(['c'])
+    expect(indexLine.masteredIds).toContain('c')
+  })
+
+  it('session interrupted from a previous launch (new runner, empty cache) appears in list()', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sinapsi-prev-session-'))
+    const id = 'prev-123'
+    const now = Date.now()
+    const events: SessionEvent[] = [
+      {
+        t: 'created',
+        id,
+        topic: 'Teorema di Rolle',
+        at: now - 3600_000,
+        candidates: [{ title: 'Rolle', path: '/v/Rolle.md' }],
+        learnerProfile: '',
+        mastery: { kOpen: 2, kChoice: 3, solidDays: 14 }
+      },
+      {
+        t: 'confirmed',
+        notePath: '/v/Rolle.md',
+        noteTitle: 'Rolle',
+        at: now - 3500_000
+      },
+      {
+        t: 'learner',
+        text: 'Iniziamo',
+        at: now - 3400_000
+      },
+      {
+        t: 'teacher',
+        turn: {
+          phase: 'teach',
+          blocks: [{ type: 'text', md: 'Spiegazione' }],
+          question: {
+            id: 'q1',
+            role: 'check',
+            kind: 'choice',
+            prompt: 'Test?',
+            options: ['a', 'b'],
+            correct: 0,
+            why: ['sì', 'no'],
+            nodeId: 'rolle'
+          }
+        },
+        at: now - 3300_000
+      }
+    ]
+    await writeFile(join(dir, `${id}.jsonl`), events.map((e) => JSON.stringify(e)).join('\n') + '\n')
+
+    const runner = createSessionRunner({
+      dir,
+      bridge: { converse: async () => ({ data: probeTurn, conversationId: 'c', engine: 'claude' }) } as never,
+      vault: async () => null,
+      readNote: async () => '',
+      onUpdate: () => undefined
+    })
+
+    const list = await runner.list()
+    expect(list).toHaveLength(1)
+    expect(list[0]).toMatchObject({
+      id,
+      topic: 'Teorema di Rolle',
+      phase: 'teach',
+      notePath: '/v/Rolle.md'
+    })
+  })
+
+  it('session older than 8 days is recovered as abandoned, writing only cold evidence, second call does not duplicate', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sinapsi-abandoned-'))
+    const id = 'aban-456'
+    const eightDaysAgo = Date.now() - 8 * 86_400_000
+    const reviews: ReviewLine[] = []
+    const events: SessionEvent[] = [
+      {
+        t: 'created',
+        id,
+        topic: 'Analisi Matematica',
+        at: eightDaysAgo,
+        candidates: [],
+        learnerProfile: '',
+        mastery: { kOpen: 2, kChoice: 3, solidDays: 14 }
+      },
+      {
+        t: 'confirmed',
+        at: eightDaysAgo + 1000
+      },
+      // Cold evidence: recall for c-cold
+      {
+        t: 'learner',
+        text: 'Risposta recall',
+        question: {
+          id: 'q-recall',
+          role: 'recall',
+          kind: 'choice',
+          prompt: 'Ricorda?',
+          options: ['giusta', 'sbagliata'],
+          correct: 0,
+          why: ['ok', 'no'],
+          nodeId: 'c-cold'
+        },
+        answer: { questionId: 'q-recall', choice: 0, confidence: 90 },
+        at: eightDaysAgo + 2000
+      },
+      // Immediate evidence: single check for c-immediate
+      {
+        t: 'learner',
+        text: 'Risposta check',
+        question: {
+          id: 'q-check',
+          role: 'check',
+          kind: 'choice',
+          prompt: 'Verifica?',
+          options: ['giusta', 'sbagliata'],
+          correct: 0,
+          why: ['ok', 'no'],
+          nodeId: 'c-immediate'
+        },
+        answer: { questionId: 'q-check', choice: 0, confidence: 90 },
+        at: eightDaysAgo + 3000
+      }
+    ]
+    await writeFile(join(dir, `${id}.jsonl`), events.map((e) => JSON.stringify(e)).join('\n') + '\n')
+
+    const runner = createSessionRunner({
+      dir,
+      bridge: { converse: async () => ({ data: probeTurn, conversationId: 'c', engine: 'claude' }) } as never,
+      vault: async () => null,
+      readNote: async () => '',
+      memoryStore: {
+        read: async () => reviews,
+        append: async (line: ReviewLine) => {
+          reviews.push(line)
+        }
+      } as never,
+      onUpdate: () => undefined
+    })
+
+    await runner.recover()
+
+    // Expect only cold evidence (c-cold), NOT immediate evidence (c-immediate)
+    expect(reviews).toHaveLength(1)
+    expect(reviews[0]).toMatchObject({
+      conceptId: 'c-cold',
+      evidence: 'recall',
+      sessionId: id,
+      ref: `session:${id}:c-cold`
+    })
+
+    // Expect index line with status 'abandoned'
+    const indexContent = await readFile(join(dir, 'index.jsonl'), 'utf8')
+    const indexLines = indexContent.trim().split('\n').map((l) => JSON.parse(l))
+    expect(indexLines).toHaveLength(1)
+    expect(indexLines[0]).toMatchObject({
+      id,
+      status: 'abandoned',
+      topic: 'Analisi Matematica'
+    })
+
+    // Second call to recover must not duplicate reviews or index entries
+    await runner.recover()
+    expect(reviews).toHaveLength(1)
+    const indexContentAfter = await readFile(join(dir, 'index.jsonl'), 'utf8')
+    const indexLinesAfter = indexContentAfter.trim().split('\n').map((l) => JSON.parse(l))
+    expect(indexLinesAfter).toHaveLength(1)
   })
 })
 

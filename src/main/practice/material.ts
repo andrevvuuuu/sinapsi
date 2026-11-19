@@ -3,6 +3,7 @@ import type { Memory, WeaknessLine } from '../../shared/memory-types'
 import type { Notebook, SourceText } from '../../shared/notebook-types'
 import type { Catalog, CatalogConcept, Material } from '../../shared/practice-types'
 import type { VaultIndex } from '../../shared/vault-types'
+import { confusableSiblings } from '../../shared/siblings'
 
 const NOTE_CAP = 12_000
 const NOTES_TOTAL = 40_000
@@ -62,6 +63,18 @@ export async function buildMaterialContext(input: {
   const parts: string[] = []
   if (picked.length) {
     parts.push(`CONCETTI SCELTI (id | nome | enunciato) — usa questi id in "targets"\n${picked.map((c) => `${c.id} | ${c.name} | ${c.statement}`).join('\n')}`)
+    if (material.blind) {
+      const siblings = confusableSiblings(graph, picked.map((concept) => concept.id), 2)
+      const lines = picked.flatMap((concept) =>
+        (siblings.get(concept.id) ?? []).flatMap((id) => {
+          const sibling = byId.get(id)
+          return sibling ? [`${sibling.id} | ${sibling.name} | ${sibling.statement}`] : []
+        })
+      )
+      if (lines.length) {
+        parts.push(`CONCETTI AFFINI (non bersagli: possibili esche, non usarli come targets)\n${lines.join('\n')}`)
+      }
+    }
     const name = (id: string): string => byId.get(id)?.name ?? id
     const chains = graph.chains.filter((ch) => pickedIds.has(ch.conclusion) || ch.premises.some((p) => pickedIds.has(p)))
     if (chains.length) parts.push(`CATENE DI RAGIONAMENTO (premesse ⇒ conclusione)\n${chains.map((ch) => `${ch.premises.map(name).join(' + ')} ⇒ ${name(ch.conclusion)}`).join('\n')}`)

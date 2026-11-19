@@ -30,7 +30,8 @@ import {
   makeVoiceHandlers,
   makeLessonHandlers,
   makeExamHandlers,
-  practiceTopic
+  practiceTopic,
+  resolveOtherEngine
 } from './ipc-handlers'
 import { createExamService } from './practice/exam'
 import { fakeTutor } from './practice/fake-tutor'
@@ -47,7 +48,9 @@ import { memoryOf } from './memory/fsrs'
 import { memoryStore, weaknessStore } from './memory/store'
 import { reviewSessions } from './memory/history'
 import { variantsStore } from './memory/variants'
+import { confusableSiblings } from '../shared/siblings'
 import { transcribeVoice } from './memory/voice'
+import { misconceptionConceptIds } from '../shared/memory-types'
 import { createDictation, findWhisperPython, spawnWhisperServer } from './voice/dictation'
 import whisperServer from '../../resources/whisper_server.py?asset&asarUnpack'
 import { fakeExtractBridge } from './graph/fake-extract'
@@ -70,11 +73,14 @@ import { buildWeekPlan } from './planner/plan'
 import { readinessFor } from './planner/readiness'
 import { pendingDigest, reduceLessons } from './lessons/reduce'
 import { loadSettings, saveSettings } from './store/settings'
+import type { EngineChoice } from '../shared/settings-schema'
 import { scanVault } from './vault/scan'
 import { createRewatcher, watchVault } from './vault/watch'
 import { detectMoves, detectOfflineMoves } from './graph/moves'
 import { resolvePath } from './graph/resolve-path'
 import { createChainExplainer, fakeChainExplainBridge } from './graph/explain'
+
+export { resolveOtherEngine } from './ipc-handlers'
 
 export function registerIpc(): { bridge: Bridge } {
   // Assigned below; the session and note hooks only run after registration.
@@ -92,6 +98,7 @@ export function registerIpc(): { bridge: Bridge } {
         save: saveSettings
       }
     : { load: loadSettings, save: saveSettings }
+  const otherEngine = async (): Promise<EngineChoice> => resolveOtherEngine(await settings.load())
   const h = makeHandlers({
     loadSettings: settings.load,
     saveSettings: settings.save,
@@ -179,7 +186,11 @@ export function registerIpc(): { bridge: Bridge } {
     memory: async (notePath) =>
       memoryBrief(
         await extractor.graph(),
-        memoryOf(await memoryStore(join(dataDir(), 'memory')).read(), Date.now()),
+        memoryOf(
+          await memoryStore(join(dataDir(), 'memory')).read(),
+          Date.now(),
+          misconceptionConceptIds(await sessionWeaknesses.active())
+        ),
         notePath
       ),
     weaknesses: sessionWeaknesses,
@@ -193,22 +204,14 @@ export function registerIpc(): { bridge: Bridge } {
         fastStart: current.fastStart
       }
     },
-    otherEngine: async () => {
-      const current = await settings.load()
-      const teach = current.engines.teach
-      const grader = current.engines.grade
-      if (grader.engine !== teach.engine) return grader
-      return {
-        engine: teach.engine === 'claude' ? 'agy' : 'claude',
-        model: teach.engine === 'claude' ? 'gemini-3.8-flash-medium' : 'sonnet'
-      }
-    },
+    otherEngine,
     teachEngine: async () => (await settings.load()).engines.teach,
     onPartial: (id, text) => broadcast(CH.sessionPartial, { id, text }),
     onUpdate: (s) => {
       broadcast(CH.sessionUpdated, s)
     }
   })
+  void runner.recover().catch((e) => console.warn('[session] recover fallito', e))
   const sh = makeSessionHandlers(runner)
   // Turns can take a while: the window learns progress through session:updated, so these return at once.
   const background = (p: Promise<unknown>): void =>
@@ -388,12 +391,7 @@ export function registerIpc(): { bridge: Bridge } {
     source: chainSource,
     store,
     engine: async () => (await settings.load()).engines.teach,
-    otherEngine: async () => {
-      const current = await settings.load()
-      const primary = current.engines.teach
-      if (current.engines.grade.engine !== primary.engine) return current.engines.grade
-      return { engine: primary.engine === 'claude' ? 'agy' : 'claude', model: primary.engine === 'claude' ? 'gemini-3.8-flash-medium' : 'sonnet' }
-    }
+    otherEngine
   })
   ipcMain.handle(CH.graphGet, () => gh.get())
   ipcMain.handle(CH.graphChainSource, (_e, chainId) => chainSource(String(chainId)))
@@ -427,7 +425,8 @@ export function registerIpc(): { bridge: Bridge } {
         }
       return new Map([...map].map(([id, v]) => [id, v.type]))
     },
-    workDir: join(dataDir(), 'ai-work')
+    workDir: join(dataDir(), 'ai-work'),
+    otherEngine
   })
   const fakeVoice = process.env.SINAPSI_FAKE_MEDIA === '1'
   const dictation = createDictation({
@@ -456,6 +455,8 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.voiceMicrophone, () => vh.microphone())
   const rh = makeReviewHandlers(review)
   ipcMain.handle(CH.reviewPlan, (_e, opts) => rh.plan(opts))
+  ipcMain.handle(CH.reviewPrerequisites, (_e, id, budget) => rh.prerequisites(id, budget))
+  ipcMain.handle(CH.reviewContest, (_e, req) => rh.contest(req))
   ipcMain.handle(CH.reviewGrade, (_e, req) => rh.grade(req))
   ipcMain.handle(CH.reviewExplain, (_e, req) => rh.explain(req))
   ipcMain.handle(CH.reviewRecord, (_e, r) => rh.record(r))
@@ -498,6 +499,29 @@ export function registerIpc(): { bridge: Bridge } {
     new Map((await extractor.graph()).concepts.map((c) => [c.id, c.name]))
   const practiceDeps = {
     bridge: practiceBridge,
+    otherEngine,
+    targetDetails: async (ids: string[]) => (await extractor.graph()).concepts.filter((concept) => ids.includes(concept.id)).map(({ id, name, statement }) => ({ id, name, statement })),
+    siblings: async (targetIds: string[]) => {
+      const graph = await extractor.graph()
+      const confMap = confusableSiblings(graph, targetIds, 2)
+      const conceptsById = new Map(graph.concepts.map((c) => [c.id, c]))
+      const result: { targetId: string; siblingId: string; targetName: string; siblingName: string }[] = []
+      for (const [targetId, sibIds] of confMap.entries()) {
+        const target = conceptsById.get(targetId)
+        if (!target) continue
+        for (const sibId of sibIds) {
+          const sib = conceptsById.get(sibId)
+          if (!sib) continue
+          result.push({
+            targetId,
+            siblingId: sibId,
+            targetName: target.name,
+            siblingName: sib.name
+          })
+        }
+      }
+      return result
+    },
     dir: practiceDir,
     material: async (m: import('../shared/practice-types').Material) =>
       buildMaterialContext({
@@ -506,7 +530,7 @@ export function registerIpc(): { bridge: Bridge } {
         memory: memoryOf(
           await memoryStore(memoryDir).read(),
           Date.now(),
-          new Set((await weaknesses.active()).flatMap((w) => (w.conceptId ? [w.conceptId] : [])))
+          misconceptionConceptIds(await weaknesses.active())
         ),
         weaknesses: await weaknesses.active(),
         readNote: (path) => readFile(path, 'utf8'),

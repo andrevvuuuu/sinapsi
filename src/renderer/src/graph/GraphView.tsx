@@ -197,7 +197,7 @@ function GraphBody({
   const examAtRef = useRef(examAt)
   useEffect(() => {
     examAtRef.current = examAt
-    dirty.current = true
+    markDirty()
   }, [examAt])
 
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -209,7 +209,13 @@ function GraphBody({
   const zoomRef = useRef<ZoomBehavior<HTMLCanvasElement, unknown> | null>(null)
   const selRef = useRef<Selection<HTMLCanvasElement, unknown, null, undefined> | null>(null)
   const hov = useRef<Sel | null>(null)
+  // The draw loop sleeps while nothing changed; setting markDirty() wakes it.
+  const wake = useRef<() => void>(() => undefined)
   const dirty = useRef(true)
+  function markDirty(): void {
+    dirty.current = true
+    wake.current()
+  }
   const labels = useRef(new Map<string, [number, number, number, number]>())
   const size = useRef({ W: 800, H: 600 })
   const colors = useRef<Colors | null>(null)
@@ -300,7 +306,7 @@ function GraphBody({
   useEffect(() => {
     modelRef.current = model
     indexRef.current = index
-    dirty.current = true
+    markDirty()
   }, [model, index])
   const memoryRef = useRef(memory)
   const lensRef = useRef<Lens>(lens)
@@ -308,7 +314,7 @@ function GraphBody({
   useEffect(() => {
     memoryRef.current = memory
     lensRef.current = lens
-    dirty.current = true
+    markDirty()
   }, [memory, lens])
   // Memory changes after each review: reload it when the graph changes too.
   useEffect(() => {
@@ -342,7 +348,7 @@ function GraphBody({
   const aggregationRef = useRef(aggregation)
   useEffect(() => {
     aggregationRef.current = aggregation
-    dirty.current = true
+    markDirty()
   }, [aggregation])
 
   const examCounts = useMemo(() => {
@@ -369,7 +375,7 @@ function GraphBody({
   const orphansSetRef = useRef(orphansSet)
   useEffect(() => {
     orphansSetRef.current = orphansSet
-    dirty.current = true
+    markDirty()
   }, [orphansSet])
 
   const suspectSet = useMemo(() => {
@@ -380,7 +386,7 @@ function GraphBody({
   const suspectSetRef = useRef(suspectSet)
   useEffect(() => {
     suspectSetRef.current = suspectSet
-    dirty.current = true
+    markDirty()
   }, [suspectSet])
 
   const [warmupProgress, setWarmupProgress] = useState<number | null>(null)
@@ -416,7 +422,7 @@ function GraphBody({
         2000
       )
     }
-    l.sim.on('tick', () => (dirty.current = true))
+    l.sim.on('tick', () => (markDirty()))
     l.sim.on('end', save)
 
     const controller = new AbortController()
@@ -426,12 +432,12 @@ function GraphBody({
         budgetMs: 8,
         signal: controller.signal,
         onProgress: (frac) => {
-          dirty.current = true
+          markDirty()
           setWarmupProgress(frac < 1 ? frac : null)
         }
       })
         .then(() => {
-          dirty.current = true
+          markDirty()
           setWarmupProgress(null)
           save()
         })
@@ -442,13 +448,13 @@ function GraphBody({
         })
     } else {
       l.tick(l.warmup)
-      dirty.current = true
+      markDirty()
       save()
     }
 
     layoutRef.current?.sim.stop()
     layoutRef.current = l
-    dirty.current = true
+    markDirty()
     return () => {
       clearTimeout(saveTimer)
       controller.abort()
@@ -517,7 +523,7 @@ function GraphBody({
       size.current = { W: r.width || 800, H: r.height || 600 }
       cv.width = size.current.W * dpr
       cv.height = size.current.H * dpr
-      dirty.current = true
+      markDirty()
     }
     resize()
     const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null
@@ -526,7 +532,7 @@ function GraphBody({
       .scaleExtent([0.08, 6])
       .on('zoom', (ev) => {
         T.current = ev.transform
-        dirty.current = true
+        markDirty()
       })
     const s = select(cv)
     s.call(z).on('dblclick.zoom', null)
@@ -534,14 +540,18 @@ function GraphBody({
     selRef.current = s
     const mo = new MutationObserver(() => {
       colors.current = readColors()
-      dirty.current = true
+      markDirty()
     })
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
     let raf = 0
+    const schedule = (): void => {
+      if (!raf && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(loop)
+    }
+    const subjectColors = new Map(index.subjects.map((x) => [x.id, x.color] as const))
     const loop = (): void => {
+      raf = 0
       const l = layoutRef.current
       const model = modelRef.current
-      const index = indexRef.current
       if (dirty.current && l && model) {
         dirty.current = false
         const ctx = cv.getContext('2d')
@@ -565,7 +575,7 @@ function GraphBody({
             lens: lensRef.current,
             now: nowRef.current,
             subjectColor: (sj) =>
-              index.subjects.find((x) => x.id === sj)?.color ?? colors.current!.muted,
+              (sj != null ? subjectColors.get(sj) : undefined) ?? colors.current!.muted,
             offscreen: offscreen.current!,
             examAt: examAtRef.current,
             orphansSet: orphansSetRef.current,
@@ -575,11 +585,12 @@ function GraphBody({
           labels.current = out.regionLabels
         }
       }
-      if (typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(loop)
     }
-    if (typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(loop)
+    wake.current = schedule
+    schedule()
     return () => {
       if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
+      wake.current = () => undefined
       ro?.disconnect()
       mo.disconnect()
       s.on('.zoom', null)
@@ -591,7 +602,7 @@ function GraphBody({
     showRef.current = show
     selStateRef.current = sel
     pathRef.current = path
-    dirty.current = true
+    markDirty()
   }, [mode, show, sel, path])
 
   // Deselect if currently selected item is no longer in visible model
@@ -775,7 +786,8 @@ function GraphBody({
       if (
         e.key === 'Escape' &&
         !e.defaultPrevented &&
-        !(document.activeElement instanceof HTMLInputElement)
+        !(document.activeElement instanceof HTMLInputElement) &&
+        !(e.target instanceof Element && e.target.closest('.gnotch-dock'))
       )
         choose(null)
     }
@@ -823,7 +835,7 @@ function GraphBody({
             const h = pick(e.clientX - r.left, e.clientY - r.top)
             if (JSON.stringify(h) !== JSON.stringify(hov.current)) {
               hov.current = h
-              dirty.current = true
+              markDirty()
               e.currentTarget.classList.toggle('hov', !!h)
             }
           }}
@@ -1050,6 +1062,11 @@ type CardProps = {
   suspectSet?: Set<string>
 }
 
+function proceduralStatus(procedural?: { independent: boolean } | null): string {
+  if (!procedural) return 'Mai applicato'
+  return procedural.independent ? 'Applicato in autonomia' : 'Applicato con aiuti'
+}
+
 function ConceptCardBody({
   c,
   model,
@@ -1159,6 +1176,9 @@ function ConceptCardBody({
             ? `${memory[c.id].state} · ${Math.round((memory[c.id].R ?? 0) * 100)}%`
             : 'mai visto'}
         </span>
+      </div>
+      <div className="gcard-procedural">
+        {proceduralStatus(memory[c.id]?.procedural)}
       </div>
       {suspectSet?.has(c.id) && (
         <div className="gcard-suspect" role="status">

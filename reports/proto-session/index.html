@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="it" data-theme="lavagna">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sinapsi · prototipo sessione</title>
+<style>
+:root,[data-theme='lavagna']{
+  --canvas:#1c1d20;--bar:#2c2d31;--shell:#232428;--inner:#2a2b30;--card:#303137;
+  --text:#ececef;--text2:#a5a6ae;--line:rgba(236,236,239,.08);--line2:rgba(236,236,239,.16);
+  --spec:inset 0 1px 0 0 rgba(255,255,255,.08);--shadow:0 12px 32px -16px rgba(0,0,0,.55);
+  --violet:#a596f0;--send:#7664c2;--green:#5fd38a;--amber:#f2b84b;--coral:#ed9572;
+  --glass:rgba(255,255,255,.05);--glass-h:rgba(255,255,255,.09);
+  --veil:rgba(8,9,12,.62);
+}
+[data-theme='trattato']{
+  --canvas:#ecebe8;--bar:#e4e3df;--shell:#e4e3df;--inner:#f7f6f3;--card:#fff;
+  --text:#1d1d1f;--text2:#64656a;--line:rgba(29,29,31,.08);--line2:rgba(29,29,31,.16);
+  --spec:inset 0 1px 0 0 rgba(255,255,255,.9);--shadow:0 4px 20px -2px rgba(15,23,42,.08);
+  --violet:#5a48a8;--send:#7664c2;--green:#237648;--amber:#845600;--coral:#a94d30;
+  --glass:rgba(15,23,42,.04);--glass-h:rgba(15,23,42,.07);
+  --veil:rgba(20,22,30,.55);
+}
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--canvas);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+
+/* prototype switcher (not part of the design) */
+.proto{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:50;display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--shell);backdrop-filter:blur(20px) saturate(160%);border:1px solid var(--line2);box-shadow:var(--shadow)}
+.proto button{border:0;background:transparent;padding:6px 14px;border-radius:999px;font-size:13px;color:var(--text2)}
+.proto button[aria-pressed=true]{background:var(--text);color:var(--canvas)}
+
+.app{height:100vh;display:grid;grid-template-rows:auto auto 1fr}
+.top{display:flex;align-items:center;gap:22px;padding:20px 32px 20px 40px;background:var(--bar);border-bottom:1px solid var(--line2);min-width:0}
+.back{flex:none;border:0;background:transparent;padding:4px 0;font-size:14px;color:var(--text)}
+.back:hover{color:var(--violet)}
+.top h1{min-width:0;font-size:28px;font-weight:500;letter-spacing:-.025em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mono{font:500 11px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.14em;text-transform:uppercase}
+.phase{flex:none;color:var(--text)}
+.sp{flex:1}
+.score{font-size:13px;color:var(--text2)}
+
+/* ---------- Timeline A: binario con nodi ---------- */
+.tl-a{display:flex;align-items:flex-start;gap:28px;padding:16px 32px 14px 40px;background:var(--shell);border-bottom:1px solid var(--line2)}
+.tl-a>.mono{flex:none;padding-top:4px;color:var(--text2);font-size:12px;letter-spacing:.18em}
+.tl-a ol{flex:1;list-style:none;padding:0;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;position:relative}
+.tl-a li{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;font-size:13px;padding:0 6px}
+.tl-a li::before{content:"";position:absolute;top:7px;left:-50%;width:100%;height:2px;background:var(--line2);z-index:0}
+.tl-a li:first-child::before{display:none}
+.tl-a li.done::before,.tl-a li.cur::before{background:var(--violet)}
+.tl-a i{position:relative;z-index:1;width:16px;height:16px;border-radius:50%;background:var(--shell);border:2px solid var(--line2)}
+.tl-a li.own i{border-color:var(--green)}
+.tl-a li.done i{background:var(--violet);border-color:var(--violet)}
+.tl-a li.cur i{border-color:var(--violet);box-shadow:0 0 0 5px color-mix(in srgb,var(--violet) 22%,transparent)}
+.tl-a li.goal i{border-radius:4px;transform:rotate(45deg) scale(.85)}
+.tl-a small{display:block;font-size:11px;color:var(--text2)}
+.tl-a li.cur{color:var(--text);font-weight:600}
+.tl-a li:not(.cur){color:var(--text2)}
+
+/* ---------- Timeline B: segmenti compatti ---------- */
+.tl-b{margin:0 24px;display:flex;align-items:center;gap:16px}
+.tl-b .now{font-size:13px;color:var(--text2);white-space:nowrap}
+.tl-b .now b{color:var(--text);font-weight:600}
+.tl-b .bar{flex:1;display:flex;gap:4px}
+.tl-b .seg{flex:1;position:relative;height:6px;border-radius:3px;background:var(--line2);border:0;padding:0}
+.tl-b .seg.done{background:var(--violet)}
+.tl-b .seg.own{background:color-mix(in srgb,var(--green) 55%,transparent)}
+.tl-b .seg.cur{background:linear-gradient(90deg,var(--violet) 45%,var(--line2) 45%);box-shadow:0 0 12px color-mix(in srgb,var(--violet) 60%,transparent)}
+.tl-b .seg:hover::after,.tl-b .seg:focus-visible::after{content:attr(data-t);position:absolute;top:12px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:12px;padding:4px 8px;border-radius:8px;background:var(--card);border:1px solid var(--line2);color:var(--text);z-index:5}
+.tl-b .count{font-size:12px;color:var(--text2);font-variant-numeric:tabular-nums}
+
+/* ---------- Split ---------- */
+.split{min-height:0;display:grid;gap:24px;padding:20px 32px 64px 40px}
+.v-a .split{grid-template-columns:minmax(0,1fr) minmax(360px,40%)}
+.v-b .split{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px}
+.chat{min-height:0;overflow:auto;padding:4px 8px 40px 2px;mask-image:linear-gradient(to bottom,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
+.v-b .chat{padding-left:max(2px,calc(50% - 340px))}
+.chat .col{max-width:680px;display:flex;flex-direction:column;gap:16px;padding-top:12px}
+.msg{line-height:1.65}
+.msg p+p{margin-top:.7em}
+.msg b{font-weight:600}
+.you{align-self:flex-end;max-width:80%;padding:12px 18px;border-radius:18px;background:var(--inner)}
+.past{padding:12px 14px;border-radius:14px;background:var(--glass);border:1px solid var(--line);font-size:14px}
+.past .row{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--text2);margin-bottom:4px}
+.chip{font-size:11px;padding:3px 9px;border-radius:999px}
+.chip.ok{background:color-mix(in srgb,var(--green) 18%,transparent);color:var(--green)}
+.chip.no{background:color-mix(in srgb,var(--coral) 18%,transparent);color:var(--coral)}
+.typing{color:var(--text2);display:flex;gap:10px;align-items:center}
+.typing span{display:inline-flex;gap:3px}.typing i{width:5px;height:5px;border-radius:50%;background:var(--text2);opacity:.5}
+.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+@keyframes bl{0%,80%,100%{opacity:.25}40%{opacity:1}}
+
+/* ---------- Operative panel ---------- */
+.ops{min-height:0;align-self:start;position:sticky;top:0;max-height:100%;display:flex;flex-direction:column;border-radius:18px;background:var(--shell);border:1px solid var(--line2);box-shadow:var(--spec);overflow:hidden}
+.v-a .ops{height:100%}
+.v-b .ops{align-self:center;max-width:520px;width:100%}
+.ops .head{padding:18px 20px 10px}
+.lab{font-size:12px;color:var(--text2)}
+.q{font-size:16px;font-weight:600;line-height:1.45;margin-top:6px;letter-spacing:-.005em}
+.ops .mid{flex:1;min-height:0;overflow:auto;padding:4px 20px 12px;display:flex;flex-direction:column;gap:14px}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:10px;align-items:flex-start;text-align:left;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--inner);transition:border-color .15s,background .15s}
+.opt:hover{border-color:var(--line2)}
+.opt[aria-pressed=true]{border-color:var(--violet);background:color-mix(in srgb,var(--violet) 12%,var(--inner))}
+.opt .k{flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:12px;font-weight:600;background:var(--glass-h);color:var(--text)}
+.opt[aria-pressed=true] .k{background:var(--violet);color:#fff}
+.opt.idk{color:var(--text2)}
+.conf{display:flex;align-items:center;gap:12px}
+.conf input{flex:1;accent-color:var(--violet)}
+.conf output{font-size:13px;font-variant-numeric:tabular-nums;width:38px;text-align:right}
+textarea{width:100%;min-height:76px;resize:vertical;border-radius:14px;border:1px solid var(--line);background:var(--inner);color:var(--text);padding:10px 12px;font:inherit;font-size:14px}
+.v-b textarea{min-height:56px}
+.act{display:flex;align-items:center;gap:10px;padding:12px 20px 16px;border-top:1px solid var(--line)}
+.hint{font-size:12px;color:var(--text2)}
+.pri{border:1px solid var(--send);background:var(--send);color:#fff;border-radius:999px;padding:8px 18px;font-weight:500;transition:transform .15s,background .15s}
+.pri:hover{background:color-mix(in srgb,var(--send) 86%,black)}
+.pri:active{transform:scale(.98)}
+.ghost{border:1px solid var(--line2);background:var(--glass);border-radius:999px;padding:8px 16px}
+
+/* ---------- Giochi lampo: alert a tutto schermo ---------- */
+:root{--ease-out:cubic-bezier(.23,1,.32,1)}
+.gv{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:24px;background:rgba(10,10,12,.55);backdrop-filter:blur(20px) saturate(110%);-webkit-backdrop-filter:blur(20px) saturate(110%);opacity:0;visibility:hidden;transition:opacity .15s ease,visibility 0s .15s}
+[data-theme='trattato'] .gv{background:rgba(28,29,32,.42)}
+.gv.on{opacity:1;visibility:visible;transition:opacity .2s ease}
+.gp{position:relative;width:min(600px,100%);max-height:calc(100vh - 120px);display:flex;flex-direction:column;border-radius:18px;background:var(--shell);color:var(--text);border:1px solid var(--line2);box-shadow:var(--spec),0 24px 64px -24px rgba(0,0,0,.6);overflow:hidden;transform:scale(.97) translateY(6px);opacity:0;transition:transform .22s var(--ease-out),opacity .18s ease}
+.gv.on .gp{transform:none;opacity:1}
+.gp-timer{position:absolute;inset:0 0 auto;height:2px;background:var(--line)}
+.gp-timer b{display:block;height:100%;background:var(--text);transform-origin:left;transition:transform 1s linear}
+.gp-timer.low b{background:var(--coral)}
+.gp-head{display:flex;align-items:center;gap:12px;padding:18px 22px 0}
+.gp-head .mono{color:var(--text2)}
+.gp-head .mono em{font-style:normal;color:var(--text)}
+.gp-skip{margin-left:auto;border:0;background:none;padding:4px 0;font-size:13px;color:var(--text2)}
+.gp-skip:hover{color:var(--text)}
+.gp-prompt{padding:14px 22px 0;font-size:20px;font-weight:500;letter-spacing:-.015em;line-height:1.35;max-width:44ch}
+.gp-body{flex:1;min-height:0;overflow:auto;padding:18px 22px}
+.gp-foot{display:flex;align-items:center;gap:12px;padding:14px 22px 18px;border-top:1px solid var(--line)}
+.gp-foot .mono{color:var(--text2)}
+.gp-foot .sp{flex:1}
+.gp button{transition:transform .14s var(--ease-out),background-color .15s ease,border-color .15s ease,color .15s ease}
+.gp button:active{transform:scale(.97)}
+.g-game{display:none}.g-game.on{display:block}
+.kbd{font:500 11px/1 ui-monospace,"SF Mono",Menlo,monospace;padding:3px 6px;border-radius:5px;border:1px solid var(--line2);color:var(--text2)}
+/* Lampo: vero o falso */
+.sp-st{padding:22px 20px;border-radius:14px;background:var(--inner);font-size:18px;line-height:1.45;min-height:96px;display:flex;align-items:center}
+.sp-ans{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.sp-ans button{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;border:1px solid var(--line2);background:transparent;font-size:15px;font-weight:500}
+@media (hover:hover){.sp-ans button:hover{background:var(--inner)}}
+.sp-prev{margin-top:14px;font-size:13px;color:var(--text2);display:flex;gap:8px;align-items:baseline}
+.ok-t{color:var(--green)}.no-t{color:var(--coral)}
+/* Coppie */
+.mt{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.mt .col{display:flex;flex-direction:column;gap:8px}
+.mt button{text-align:left;padding:11px 14px;border-radius:12px;border:1px solid var(--line2);background:transparent;font-size:14px;min-height:46px}
+@media (hover:hover){.mt button:not(:disabled):hover{background:var(--inner)}}
+.mt button[aria-pressed=true]{border-color:var(--violet);background:color-mix(in srgb,var(--violet) 10%,transparent)}
+.mt button.done{border-style:dashed;color:var(--text2);cursor:default}
+.mt button.done::after{content:" ✓";color:var(--green)}
+/* Ricomponi */
+.od{list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;counter-reset:s}
+.od li{display:flex;align-items:center;gap:12px;padding:10px 10px 10px 14px;border-radius:12px;background:var(--inner);font-size:14px}
+.od li::before{counter-increment:s;content:counter(s);font:500 12px/1 ui-monospace,Menlo,monospace;color:var(--text2);width:14px}
+.od li span{flex:1}
+.od .mv{display:flex;gap:2px}
+.od .mv button{width:28px;height:28px;border-radius:8px;border:0;background:transparent;color:var(--text2)}
+.od .mv button:hover{background:var(--glass-h);color:var(--text)}
+.od li.lift{outline:1px solid var(--violet);background:color-mix(in srgb,var(--violet) 8%,var(--inner))}
+/* Trova l'intruso */
+.sl{display:flex;flex-direction:column;gap:6px}
+.sl button{display:flex;gap:12px;align-items:baseline;text-align:left;padding:11px 14px;border-radius:12px;border:1px solid transparent;background:var(--inner);font-size:14px}
+.sl button .n{font:500 12px/1 ui-monospace,Menlo,monospace;color:var(--text2)}
+.sl button[aria-pressed=true]{border-color:var(--coral);background:color-mix(in srgb,var(--coral) 8%,var(--inner))}
+.sl-why{margin-top:14px}
+.sl-why .lab,.tb .lab{display:block;margin-bottom:6px}
+/* Tabù */
+.tb-c{font-size:26px;font-weight:500;letter-spacing:-.02em}
+.tb-f{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 16px}
+.tb-f span{font-size:13px;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);color:var(--text2);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--text2) 60%,transparent)}
+.tb-f span.hit{border-color:var(--coral);color:var(--coral);text-decoration-color:var(--coral)}
+.tb-warn{font-size:13px;color:var(--coral);margin-top:8px}
+.gp textarea{min-height:88px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:820px){.v-a .split,.v-b .split{grid-template-columns:1fr;grid-template-rows:1fr auto}.ops{position:static}.tl-a li{font-size:11px}}
+</style>
+</head>
+<body>
+<div class="app v-a" id="app">
+  <header class="top">
+    <button class="back">← Home</button>
+    <h1>Insiemi Numerici (Naturali, Interi, Razionali) E Loro Proprietà, Rappresentazione Sulla Retta</h1>
+    <span class="phase mono">Insegnamento</span>
+    <span class="sp"></span>
+    <span class="score">★ 40 · serie 3</span>
+  </header>
+
+  <nav class="tl-a" aria-label="Il piano">
+    <span class="mono">Il piano</span>
+    <ol>
+      <li class="own"><i></i><div>Naturali ℕ<small>già tuo</small></div></li>
+      <li class="done"><i></i><div>Interi ℤ<small>fatto</small></div></li>
+      <li class="cur"><i></i><div>Razionali ℚ<small>adesso</small></div></li>
+      <li><i></i><div>Proprietà delle operazioni<small>da fare</small></div></li>
+      <li><i></i><div>La retta numerica<small>da fare</small></div></li>
+      <li class="goal"><i></i><div>Insiemi a confronto<small>obiettivo</small></div></li>
+    </ol>
+  </nav>
+  <nav class="tl-b" aria-label="Il piano" hidden>
+    <span class="now">Passo 3 di 6 · <b>Le 8 reazioni</b></span>
+    <div class="bar">
+      <button class="seg own" data-t="Glicolisi · già tuo"></button>
+      <button class="seg done" data-t="Acetil-CoA · fatto"></button>
+      <button class="seg cur" data-t="Le 8 reazioni · adesso"></button>
+      <button class="seg" data-t="NADH e FADH₂"></button>
+      <button class="seg" data-t="Resa energetica"></button>
+      <button class="seg" data-t="Ciclo completo · obiettivo"></button>
+    </div>
+    <span class="count">obiettivo: ciclo completo</span>
+  </nav>
+
+  <main class="split">
+    <section class="chat" aria-label="La lezione">
+      <div class="col">
+        <div class="you">Insiemi Numerici (Naturali, Interi, Razionali) E Loro Proprietà, Rappresentazione Sulla Retta</div>
+        <div class="msg"><p>Partiamo da quello che sai già: i <b>naturali</b> servono a contare, ma con loro non puoi sempre sottrarre. 3 − 5 non ha risposta in ℕ, ed è per questo che servono gli <b>interi</b>.</p></div>
+        <div class="past"><div class="row">verifica <span class="chip ok">Corretto</span> fiducia 70%</div>−2, perché in ℤ la sottrazione è sempre possibile.</div>
+        <div class="msg"><p>Esatto. Con gli interi la sottrazione funziona sempre, la divisione no: 7 : 2 non è un intero. Allarghiamo ancora e arriviamo ai <b>razionali</b>, cioè tutti i numeri che puoi scrivere come frazione a/b con b ≠ 0.</p><p>Il punto importante: ogni insieme contiene il precedente. ℕ ⊂ ℤ ⊂ ℚ, e ogni volta che lo allarghi guadagni un'operazione che prima non potevi sempre fare.</p><p>Sulla retta i naturali sono punti staccati. I razionali invece sono <b>densi</b>: tra due di loro, per quanto vicini, ce n'è sempre un altro.</p></div>
+        <div class="past"><div class="row">previsione <span class="chip no">Sbagliato</span> fiducia 60%</div>Tra 1/2 e 1/3 non ci sono altri razionali.</div>
+        <div class="msg"><p>Quasi: ce ne sono infiniti. Per esempio la loro media, 5/12, sta in mezzo. Ecco la domanda che ti aiuta a fissarlo.</p></div>
+        <div class="typing mono"><span><i></i><i></i><i></i></span> Il tutor aspetta la tua risposta</div>
+      </div>
+    </section>
+
+    <aside class="ops" aria-label="La tua risposta">
+      <div class="head">
+        <div class="lab mono">Verifica</div>
+        <div class="q">Quanti numeri razionali ci sono tra 0 e 1?</div>
+      </div>
+      <div class="mid">
+        <div class="opts">
+          <button class="opt" aria-pressed="false"><span class="k">A</span>Nessuno</button>
+          <button class="opt" aria-pressed="false"><span class="k">B</span>Nove, da 0,1 a 0,9</button>
+          <button class="opt" aria-pressed="true"><span class="k">C</span>Infiniti</button>
+          <button class="opt idk" aria-pressed="false">Non lo so</button>
+        </div>
+        <div class="conf"><span class="lab">Fiducia</span><input type="range" min="0" max="100" step="10" value="70" oninput="this.nextElementSibling.value=this.value+'%'"><output>70%</output></div>
+        <div><label class="lab" for="th">Il tuo ragionamento</label><textarea id="th" placeholder="Perché questa risposta? Quello che ti passa per la testa."></textarea></div>
+      </div>
+      <div class="act"><span class="hint">↵ invia · ⇧↵ a capo</span><span class="sp"></span><button class="pri">Invia risposta</button></div>
+    </aside>
+  </main>
+</div>
+
+<div class="gv" id="gv" role="dialog" aria-modal="true" aria-labelledby="gp-t">
+  <div class="gp">
+    <div class="gp-timer" id="gp-timer" aria-hidden="true"><b id="gp-bar"></b></div>
+    <div class="gp-head"><span class="mono" id="gp-t">Gioco lampo · <em id="gp-name">Lampo</em></span><button class="gp-skip" onclick="game(null)">Salta il gioco</button></div>
+
+    <section class="g-game" data-g="speed">
+      <div class="gp-prompt">Vero o falso? Rispondi d'istinto, hai 8 secondi per frase.</div>
+      <div class="gp-body">
+        <div class="sp-st">Ogni numero intero è anche un numero razionale.</div>
+        <div class="sp-ans"><button>Falso <span class="kbd">F</span></button><button>Vero <span class="kbd">V</span></button></div>
+        <p class="sp-prev"><span class="ok-t">Giusto</span> «Tra 0 e 1 ci sono infiniti razionali» era vera.</p>
+      </div>
+      <div class="gp-foot"><span class="mono">Frase 2 di 5</span><span class="sp"></span><span class="mono" id="gp-secs">8 s</span></div>
+    </section>
+
+    <section class="g-game" data-g="match">
+      <div class="gp-prompt">Collega ogni insieme all'operazione che ci puoi sempre fare.</div>
+      <div class="gp-body"><div class="mt">
+        <div class="col"><button class="done" disabled>ℕ naturali</button><button aria-pressed="true">ℤ interi</button><button>ℚ razionali (senza lo 0)</button></div>
+        <div class="col"><button>Divisione</button><button class="done" disabled>Addizione</button><button>Sottrazione</button></div>
+      </div></div>
+      <div class="gp-foot"><span class="mono">1 di 3 coppie</span><span class="sp"></span><span class="hint">Scegli a sinistra, poi a destra</span></div>
+    </section>
+
+    <section class="g-game" data-g="order">
+      <div class="gp-prompt">Metti i passi in ordine per rappresentare 3/4 sulla retta.</div>
+      <div class="gp-body"><ol class="od">
+        <li><span>Fissa lo 0 e l'unità di misura</span><span class="mv"><button aria-label="Sposta su">↑</button><button aria-label="Sposta giù">↓</button></span></li>
+        <li class="lift"><span>Dividi il segmento tra 0 e 1 in 4 parti uguali</span><span class="mv"><button aria-label="Sposta su">↑</button><button aria-label="Sposta giù">↓</button></span></li>
+        <li><span>Conta 3 parti partendo da 0</span><span class="mv"><button aria-label="Sposta su">↑</button><button aria-label="Sposta giù">↓</button></span></li>
+        <li><span>Segna il punto e scrivi 3/4</span><span class="mv"><button aria-label="Sposta su">↑</button><button aria-label="Sposta giù">↓</button></span></li>
+      </ol></div>
+      <div class="gp-foot"><span class="mono">4 passi</span><span class="sp"></span><button class="pri">Controlla l'ordine</button></div>
+    </section>
+
+    <section class="g-game" data-g="spot">
+      <div class="gp-prompt">Una di queste righe contiene un errore. Quale?</div>
+      <div class="gp-body">
+        <div class="sl">
+          <button><span class="n">1</span>ℕ ⊂ ℤ ⊂ ℚ</button>
+          <button aria-pressed="true"><span class="n">2</span>Tra due interi consecutivi c'è sempre un altro intero</button>
+          <button><span class="n">3</span>−5 è un intero ma non un naturale</button>
+          <button><span class="n">4</span>0,25 e 1/4 sono lo stesso razionale</button>
+        </div>
+        <div class="sl-why"><label class="lab mono" for="why">Perché è sbagliata?</label><textarea id="why" placeholder="Spiegalo in una frase."></textarea></div>
+      </div>
+      <div class="gp-foot"><span class="mono">Riga 2 scelta</span><span class="sp"></span><button class="pri">Conferma</button></div>
+    </section>
+
+    <section class="g-game" data-g="taboo">
+      <div class="gp-prompt">Spiega il concetto senza usare le parole vietate.</div>
+      <div class="gp-body tb">
+        <div class="tb-c">Densità dei razionali</div>
+        <div class="tb-f" aria-label="Parole vietate"><span>infiniti</span><span class="hit">mezzo</span><span>frazione</span><span>vicini</span><span>media</span></div>
+        <label class="lab mono" for="tbx">La tua spiegazione</label>
+        <textarea id="tbx">Se prendi due numeri di ℚ, puoi sempre trovarne un altro in mezzo</textarea>
+        <p class="tb-warn">Hai usato «mezzo». Prova a dirlo in un altro modo.</p>
+      </div>
+      <div class="gp-foot"><span class="mono">1 parola vietata usata</span><span class="sp"></span><button class="pri" disabled style="opacity:.45">Invia</button></div>
+    </section>
+  </div>
+</div>
+
+<div class="proto" role="toolbar" aria-label="Prototipo">
+  <button aria-pressed="true" data-v="a">A · Binario 60/40</button>
+  <button class="gb" data-g="speed">Lampo</button>
+  <button class="gb" data-g="match">Coppie</button>
+  <button class="gb" data-g="order">Ricomponi</button>
+  <button class="gb" data-g="spot">Intruso</button>
+  <button class="gb" data-g="taboo">Tabù</button>
+  <button id="th-t">Tema chiaro</button>
+</div>
+
+<script>
+document.querySelectorAll('.opt').forEach(o=>o.onclick=()=>document.querySelectorAll('.opt').forEach(x=>x.setAttribute('aria-pressed',x===o)));
+const tt=document.getElementById('th-t');tt.onclick=()=>{const d=document.documentElement;const l=d.dataset.theme==='lavagna';d.dataset.theme=l?'trattato':'lavagna';tt.textContent=l?'Tema scuro':'Tema chiaro'};
+const NAMES={speed:'Lampo',match:'Coppie',order:'Ricomponi',spot:"Trova l'intruso",taboo:'Tabù'};
+let timer;
+function game(g){const v=document.getElementById('gv');clearInterval(timer);
+  document.querySelectorAll('.gb').forEach(b=>b.setAttribute('aria-pressed',b.dataset.g===g));
+  if(!g){v.classList.remove('on');return}
+  document.querySelectorAll('.g-game').forEach(s=>s.classList.toggle('on',s.dataset.g===g));
+  document.getElementById('gp-name').textContent=NAMES[g];
+  const t=document.getElementById('gp-timer'),bar=document.getElementById('gp-bar');t.hidden=g!=='speed';t.classList.remove('low');
+  v.classList.add('on');
+  if(g==='speed'){let s=8;bar.style.transition='none';bar.style.transform='scaleX(1)';bar.offsetWidth;bar.style.transition='';const out=document.getElementById('gp-secs');out.textContent=s+' s';
+    timer=setInterval(()=>{s--;if(s<0)s=8;bar.style.transform=`scaleX(${s/8})`;out.textContent=s+' s';t.classList.toggle('low',s<=3)},1000)}
+  const f=v.querySelector('.g-game.on button:not(:disabled), .g-game.on textarea');if(f)f.focus({preventScroll:true});
+}
+document.querySelectorAll('.gb').forEach(b=>b.onclick=()=>game(b.dataset.g));
+document.getElementById('gv').addEventListener('click',e=>{if(e.target.id==='gv')game(null)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')game(null)});
+</script>
+</body>
+</html>

@@ -31,7 +31,7 @@ export type SuggestInput = {
 }
 
 const MAX = 3
-const RESUME_DAYS = 30
+export const RESUME_DAYS = 7
 const pct = (r: number): string => `${Math.round(r * 100)}%`
 const EXAM_CONCEPTS = 12
 /** A subject tag as a name: "analisi_1" → "Analisi 1". */
@@ -46,7 +46,11 @@ export function suggest(input: SuggestInput): Suggestions {
   const all = input.index?.notes ?? []
   const byPath = new Map(all.map((n) => [n.path, n]))
   const studied = new Set(input.notes.filter((m) => m.status === 'ready').map((m) => m.sourcePath))
-  for (const s of input.sessions) if (s.phase === 'done' && s.notePath) studied.add(s.notePath)
+  for (const s of input.sessions) {
+    if ((s.status === 'completed' || (!s.status && s.phase === 'done')) && s.notePath) {
+      studied.add(s.notePath)
+    }
+  }
   return { learn: learn(input, all, byPath, studied), review: review(input), practice: practice(input, byPath, studied) }
 }
 
@@ -102,7 +106,15 @@ function learnFromVault(input: SuggestInput, all: VaultNote[], byPath: Map<strin
   }
 
   const unfinished = input.sessions
-    .filter((s) => s.phase !== 'done' && input.now - s.updatedAt <= RESUME_DAYS * 86_400_000 && !(s.notePath && studied.has(s.notePath)))
+    .filter(
+      (s) =>
+        s.phase !== 'done' &&
+        s.status !== 'cancelled' &&
+        s.status !== 'abandoned' &&
+        s.status !== 'completed' &&
+        input.now - s.updatedAt <= RESUME_DAYS * 86_400_000 &&
+        !(s.notePath && studied.has(s.notePath))
+    )
     .sort((a, b) => b.updatedAt - a.updatedAt)
   if (unfinished[0]) push({ label: unfinished[0].topic, reason: 'sessione da finire', action: { kind: 'resume', id: unfinished[0].id } }, unfinished[0].notePath ?? `session:${unfinished[0].id}`)
   // An older unfinished session is still his: no second session on the same note.

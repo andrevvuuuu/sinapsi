@@ -71,5 +71,6 @@ describe('practiceTopic', () => {
     expect(practiceTopic({ conceptIds: ['n_1', 'n_2'], sourceIds: [], free: '' }, names)).toBe('Rolle, Lagrange')
     expect(practiceTopic({ conceptIds: ['n_1', 'n_2', 'n_3', 'n_4'], sourceIds: ['a'], free: '' }, names)).toBe('Rolle, Lagrange, Fermat e altri 1 · 1 fonte')
     expect(practiceTopic({ conceptIds: [], sourceIds: ['a', 'b'], free: 'autovalori e autovettori di matrici simmetriche reali' }, names)).toBe('autovalori e autovettori di matrici… · 2 fonti')
+    expect(practiceTopic({ conceptIds: ['n_1', 'n_2'], sourceIds: ['a'], free: '', blind: true }, names)).toBe('Allenamento misto')
   })
 })

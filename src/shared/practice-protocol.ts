@@ -26,7 +26,7 @@ const TurnShape = z.object({
   phase: z.enum(['warmup', 'body', 'retest', 'done']),
   blocks: z.array(BlockSchema),
   problem: ProblemSchema.optional(),
-  hint: z.object({ rung: z.number().int(), md: z.string().min(1) }).optional(),
+  hint: z.object({ rung: z.number().int(), md: z.string().min(1), conceptId: z.string().optional() }).optional(),
   conclude: z.object({ outcome: z.enum(OUTCOMES), verdict: z.string(), miss: z.enum(MISSES).optional(), retest: z.boolean() }).optional(),
   summary: z.object({ solved: z.array(z.string()), retest: z.array(z.string()), note: z.string() }).optional()
 })
@@ -78,20 +78,24 @@ export function practiceJsonSchema(): object {
 }
 
 export const SubmissionSchema = z.object({
-  kind: z.enum(['start', 'thinking', 'hint', 'next', 'ask', 'dismiss', 'end', 'compass', 'restate']),
+  kind: z.enum(['start', 'thinking', 'hint', 'next', 'ask', 'dismiss', 'end', 'compass', 'restate', 'triage']),
   text: z.string().max(20_000).optional(),
   line: z.number().int().min(0).max(50).optional(),
   photoText: z.string().max(20_000).optional(),
+  confidence: z.number().int().min(0).max(100).optional(),
   compass: z.object({ known: z.string().max(2000), stuck: z.string().min(1).max(2000), question: z.string().min(1).max(1000) }).optional()
 }).superRefine((s, ctx) => {
   if (s.kind === 'compass' && !s.compass) ctx.addIssue({ code: 'custom', message: 'la Bussola della confusione è obbligatoria' })
   if (s.kind === 'restate' && !s.text?.trim()) ctx.addIssue({ code: 'custom', message: 'la riformulazione è obbligatoria' })
+  if (s.kind === 'triage' && !s.text?.trim()) ctx.addIssue({ code: 'custom', message: 'lo strumento è obbligatorio' })
 })
 export type Submission = z.infer<typeof SubmissionSchema>
 
 /** What Andrea sent, as the tutor reads it. */
-export function formatSubmission(s: Submission, problem?: Pick<Problem, 'lines'> & { attempts?: number }): string {
+export function formatSubmission(s: Submission, problem?: Pick<Problem, 'lines'> & { attempts?: number; triage?: string }): string {
   switch (s.kind) {
+    case 'triage':
+      return `Strumento ipotizzato nel triage: ${s.text?.trim() ?? ''}`
     case 'hint':
       return problem?.attempts === 0 ? 'Mi serve un indizio. Non ho ancora scritto un tentativo: solo gradino 0.' : 'Mi serve un indizio.'
     case 'compass':
@@ -110,6 +114,9 @@ export function formatSubmission(s: Submission, problem?: Pick<Problem, 'lines'>
       return s.text ?? ''
     case 'thinking': {
       const parts: string[] = []
+      if (problem?.attempts === 0 && problem?.triage?.trim()) {
+        parts.push(`Strumento ipotizzato nel triage: ${problem.triage.trim()}`)
+      }
       if (s.line !== undefined) parts.push(`Riga scelta: ${s.line + 1} «${problem?.lines?.[s.line] ?? ''}»`)
       if (s.text?.trim()) parts.push(`Il mio ragionamento: ${s.text.trim()}`)
       if (s.photoText?.trim()) parts.push(`Dal foglio fotografato:\n${s.photoText.trim()}`)

@@ -81,4 +81,29 @@ describe('GraphView with memory', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Ripassa questa nota' }))
     expect(onReview).toHaveBeenCalledWith(['n_l', 'n_c', 'n_m'])
   })
+  it('shows procedural status in the concept card (autonomia / aiuti / mai applicato)', async () => {
+    const customMemory: Record<string, Memory> = {
+      n_f: { ...M('n_f', 'la sai', 0.95, NOW + 1e9), procedural: { independent: true, lastPracticeAt: NOW, lastOutcome: true } },
+      n_r: { ...M('n_r', 'incerto', 0.7, NOW - 1000), procedural: { independent: false, lastPracticeAt: NOW, lastOutcome: false } },
+      n_l: M('n_l', 'debole', 0.4, NOW - 1000)
+    }
+    window.sinapsi = {
+      graph: { get: vi.fn(async () => graph), status: vi.fn(async () => ({ queued: [] })), extract: vi.fn(), onChange: () => () => undefined, positions: vi.fn(async () => ({})), savePositions: vi.fn(async () => undefined) },
+      review: { memory: vi.fn(async () => customMemory) }
+    } as never
+    render(<GraphView menuOpen index={index} onStudy={vi.fn()} onOpenNote={vi.fn()} />)
+    await screen.findByRole('tab', { name: /Da ripassare/ })
+
+    // Fermat: independent: true -> 'Applicato in autonomia'
+    const cardFermat = await pick('fermat', /Fermat.*concetto/)
+    expect(within(cardFermat).getByText('Applicato in autonomia')).toBeTruthy()
+
+    // Rolle: independent: false -> 'Applicato con aiuti'
+    const cardRolle = await pick('rolle', /Rolle.*concetto/)
+    expect(within(cardRolle).getByText('Applicato con aiuti')).toBeTruthy()
+
+    // Lagrange: no procedural -> 'Mai applicato'
+    const cardLagrange = await pick('lagrange', /Lagrange.*concetto/)
+    expect(within(cardLagrange).getByText('Mai applicato')).toBeTruthy()
+  })
 })

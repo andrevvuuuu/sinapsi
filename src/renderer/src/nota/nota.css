@@ -501,7 +501,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-4);
   border-radius: var(--r-pill);
   border: 1px solid var(--ctl-edge);
@@ -534,7 +534,7 @@
 .nota .btn {
   display: inline-flex;
   align-items: center;
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-5);
   border-radius: var(--r-pill);
   border: 1px solid var(--ctl-edge);
@@ -613,7 +613,7 @@
   overflow-x: auto;
 }
 .nota .nv-tablist button {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-4);
   border: 0;
   border-radius: var(--r-pill);
@@ -720,7 +720,7 @@
   padding: 0;
 }
 .nota .chain button {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-3);
   border-radius: var(--r-pill);
   border: 1px solid var(--ctl-edge);
@@ -755,8 +755,8 @@
 .nota .nv-fade .link {
   display: inline-flex;
   align-items: center;
-  min-height: var(--ctl-sm);
-  margin: calc((1lh - var(--ctl-sm)) / 2) calc(-1 * var(--s-2));
+  min-height: var(--ctl);
+  margin: calc((1lh - var(--ctl)) / 2) calc(-1 * var(--s-2));
   padding: 0 var(--s-2);
   border: 0;
   border-radius: var(--r-pill);
@@ -781,7 +781,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-4) 0 var(--s-3);
   border-radius: var(--r-pill);
   border: 1px solid var(--ctl-edge);
@@ -836,7 +836,7 @@
 .nota .nv-try .linkish {
   display: inline-flex;
   align-items: center;
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   margin-left: calc(-1 * var(--s-2));
   padding: 0 var(--s-2);
   border: 0;
@@ -1015,7 +1015,7 @@
   white-space: nowrap;
 }
 .nota .nv-hide {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-3);
   border-radius: var(--r-sm);
   border: 1px dashed var(--ctl-edge);

@@ -342,7 +342,14 @@ export function TodayView(p: Props): React.JSX.Element {
           </div>
           {examScore == null ? (
             <div className="sh-exam-empty">
-              <small className="sh-metric-note">
+              <small
+                className="sh-metric-note"
+                title={
+                  tutorReadiness
+                    ? `${tutorReadiness.courseName} · ${tutorReadiness.date} · Tutor`
+                    : (readiness[0]?.courseId ?? 'Nessun esame nel piano')
+                }
+              >
                 {tutorReadiness
                   ? `${tutorReadiness.courseName} · ${tutorReadiness.date} · Tutor`
                   : (readiness[0]?.courseId ?? 'Nessun esame nel piano')}
@@ -352,7 +359,10 @@ export function TodayView(p: Props): React.JSX.Element {
               </button>
             </div>
           ) : (
-            <small className="sh-metric-note">
+            <small
+              className="sh-metric-note"
+              title={readiness[0]?.courseId ?? `${tutorReadiness?.courseName ?? ''} · Tutor`}
+            >
               {readiness[0]?.courseId ?? `${tutorReadiness?.courseName ?? ''} · Tutor`}
             </small>
           )}

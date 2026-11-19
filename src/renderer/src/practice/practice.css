@@ -426,7 +426,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-4);
   border-radius: var(--r-pill);
   border: 1px solid var(--ctl-edge);
@@ -469,7 +469,7 @@
   cursor: not-allowed;
 }
 .pr .pri {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-5);
   border-radius: var(--r-pill);
   border: 1px solid var(--btn-primary-bg);
@@ -515,8 +515,8 @@
   color: var(--muted);
 }
 .pr .linkish {
-  min-height: var(--ctl-sm);
-  margin: calc(-1 * var(--s-2)) 0;
+  min-height: var(--ctl);
+  margin: calc(-1 * var(--s-3)) 0;
   padding: 0 var(--s-3);
   border: 0;
   border-radius: var(--r-pill);
@@ -543,7 +543,7 @@
   gap: var(--s-3);
   align-items: center;
   text-align: left;
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: var(--s-2) var(--s-4);
   border-radius: 12px;
   border: 1px solid var(--hair);
@@ -667,7 +667,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-4);
   border-radius: var(--r-pill);
   border: 1px solid var(--ctl-edge);
@@ -731,9 +731,11 @@ button.mt-chip:active {
   background: var(--faint);
 }
 .pr .mt-chip button {
-  width: var(--ctl-sm);
-  height: var(--ctl-sm);
-  padding: var(--s-2);
+  /* A 44 px target whose 20 px circle (content box) is what shows; the negative margin keeps the chip at its 36 px. */
+  width: var(--ctl);
+  height: var(--ctl);
+  margin-block: calc((var(--ctl-sm) - var(--ctl)) / 2 - 1px);
+  padding: 12px;
   background-clip: content-box;
   border-radius: 50%;
   border: 0;
@@ -852,7 +854,7 @@ button.mt-chip:active {
   background: var(--faint);
 }
 .pr .dur button {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-4);
   border: 0;
   border-radius: var(--r-pill);
@@ -878,8 +880,8 @@ button.mt-chip:active {
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 .pr .custom button {
-  width: var(--ctl-sm);
-  height: var(--ctl-sm);
+  width: var(--ctl);
+  height: var(--ctl);
   border-radius: 50%;
   border: 0;
   background: var(--faint);
@@ -1141,8 +1143,8 @@ button.mt-chip:active {
   margin: 0;
 }
 .pr .mt-x {
-  width: var(--ctl-sm);
-  height: var(--ctl-sm);
+  width: var(--ctl);
+  height: var(--ctl);
   border-radius: var(--r-sm);
   border: 0;
   background: transparent;
@@ -1171,7 +1173,7 @@ button.mt-chip:active {
   background: var(--faint);
 }
 .pr .mt-tabs button {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-4);
   border: 0;
   border-radius: var(--r-pill);
@@ -1227,7 +1229,7 @@ button.mt-chip:active {
   flex-wrap: wrap;
 }
 .pr .mt-filters button {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-3);
   border-radius: var(--r-pill);
   border: 1px solid var(--btn-secondary-border);
@@ -1393,8 +1395,8 @@ button.mt-chip:active {
   flex: 1;
 }
 .pr .mt-sel li button {
-  width: var(--ctl-sm);
-  height: var(--ctl-sm);
+  width: var(--ctl);
+  height: var(--ctl);
   padding: var(--s-2);
   background-clip: content-box;
   border-radius: var(--r-sm);
@@ -1448,7 +1450,7 @@ button.mt-chip:active {
   border-color: var(--accent);
 }
 .pr .mt-btn-act {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-4);
   border-radius: var(--r-pill);
   border: 1px solid var(--btn-secondary-border);
@@ -1483,7 +1485,7 @@ button.mt-chip:active {
   flex-wrap: wrap;
 }
 .pr .mt-yt-form input {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   min-width: 200px;
   border-radius: var(--r-pill);
   border: 1px solid var(--ctl-edge);
@@ -1497,7 +1499,7 @@ button.mt-chip:active {
   outline: none;
 }
 .pr .mt-yt-form button {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-3);
   border-radius: var(--r-pill);
   border: 1px solid var(--btn-secondary-border);
@@ -1766,3 +1768,85 @@ button.mt-chip:active {
 .pr .dur .lg-tab:active{transform:scale(.97)}
 .pr .dur .lg-tab[data-active]{color:#fff;background:var(--sh-send-bg);box-shadow:0 2px 6px color-mix(in srgb,var(--sh-send-bg) 26%,transparent),inset 0 1px 0 rgba(255,255,255,.2)}
 .pr .dur .lg-tab:focus-visible{outline:2px solid var(--sh-violet);outline-offset:2px}
+
+/* T15: Confidence control in ProblemDock */
+.pr .pr-conf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-label);
+  margin-top: var(--s-3);
+}
+.pr .pr-conf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pr .pr-conf-toggle {
+  font: var(--font-footnote);
+  color: var(--muted);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  /* 44 px target, the extra height taken back so the header keeps its line. */
+  min-height: var(--ctl);
+  margin-block: calc((1lh - var(--ctl)) / 2);
+  transition: var(--btn-transition);
+}
+.pr .pr-conf-toggle:hover {
+  color: var(--ink);
+}
+.pr .pr-conf-hidden {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--s-2);
+}
+
+/* T15: Triage card and badge in ProblemDock */
+.pr .pr-triage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-label);
+  padding: var(--s-3);
+  margin-bottom: var(--s-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--ctl-edge);
+  background: var(--surface);
+}
+.pr .pr-triage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pr .pr-triage-row {
+  display: flex;
+  gap: var(--s-2);
+  align-items: center;
+}
+.pr .pr-triage-input {
+  flex: 1;
+  min-height: var(--ctl-sm);
+  padding: 0 var(--s-3);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--hair);
+  background: var(--bg);
+  color: var(--ink);
+  font: var(--font-body);
+}
+.pr .pr-triage-input:focus {
+  border-color: var(--accent);
+  outline: var(--btn-focus-ring);
+  outline-offset: var(--btn-focus-offset);
+}
+.pr .pr-triage-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s-2) var(--s-3);
+  margin-bottom: var(--s-3);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  border: 1px solid var(--hair);
+  font: var(--font-footnote);
+  color: var(--ink);
+}

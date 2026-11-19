@@ -3,6 +3,7 @@ import { BASE, SPACING, type Layout, type SimNode } from './layout'
 import { fragileBases, type GraphAggregation, type GraphModel } from './model'
 import { examClass } from '../../../shared/retention'
 import type { Memory } from '../../../shared/memory-types'
+import type { ProceduralLens } from '../../../shared/procedural'
 
 /** Canvas drawing of the union graph, ported from docs/prototipi/grafo-v2.html. */
 export type Colors = Record<
@@ -11,7 +12,7 @@ export type Colors = Record<
 >
 export type Sel = { kind: 'concept' | 'region' | 'note' | 'chain' | 'wikilink'; id: string }
 export type Lens = 'all' | 'due' | 'never' | 'fragile' | 'exam' | 'orphans'
-type Mem = { state: string; R: number | null; due: number | null; reps?: number; lapses?: number; lastAt?: number | null; misconception?: boolean; stability?: number }
+type Mem = { state: string; R: number | null; due: number | null; reps?: number; lapses?: number; lastAt?: number | null; misconception?: boolean; stability?: number; procedural?: ProceduralLens }
 export type DrawState = {
   model: GraphModel
   layout: Layout
@@ -472,16 +473,29 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
     if (X < -30 || Y < -30 || X > W + 30 || Y > H + 30) continue
     const r = Math.max(1.8, radiusOf(model, n) * Math.sqrt(k) * 0.9)
     ctx.globalAlpha = s.lens !== 'all' && !lensHit(c.id) ? Math.min(dim(c.id), 0.12) : dim(c.id)
+    const mem = s.memory[c.id]
     if (c.notes.length > 1) {
       ctx.beginPath()
-      ctx.arc(X, Y, r + 3.5, 0, 7)
+      ctx.arc(X, Y, mem?.procedural ? r + 4.5 : r + 3.5, 0, 7)
       ctx.setLineDash([2, 2])
       ctx.strokeStyle = rgba(C.ink, 0.45)
       ctx.lineWidth = 1
       ctx.stroke()
       ctx.setLineDash([])
     }
-    const mem = s.memory[c.id]
+    if (mem?.procedural) {
+      ctx.beginPath()
+      ctx.arc(X, Y, r + 2.8, 0, 7)
+      if (mem.procedural.independent) {
+        ctx.setLineDash([])
+      } else {
+        ctx.setLineDash([2, 2])
+      }
+      ctx.strokeStyle = C.accent
+      ctx.lineWidth = 1
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
     if (s.lens === 'exam') {
       const cls = mem ? examClass(mem as unknown as Memory, s.examAt ?? s.now) : 'unseen'
       if (cls === 'solid') {

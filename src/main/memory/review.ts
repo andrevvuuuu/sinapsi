@@ -3,7 +3,7 @@ import type { Bridge } from '../ai/bridge'
 import type { ChainExercise, Exercise } from '../../shared/exercise-schema'
 import type { Concept, GraphData } from '../../shared/graph-types'
 import { retrievabilityAt } from '../../shared/retention'
-import { proposeGrade, type ExerciseType, type Grade, type Memory, type ReviewLine, type WeaknessLine } from '../../shared/memory-types'
+import { MISCONCEPTION_CONFIDENCE, gradeFromOutcome, misconceptionConceptIds, proposeGrade, type ExerciseType, type Grade, type Memory, type Outcome, type ReviewLine, type WeaknessLine } from '../../shared/memory-types'
 import type { VaultIndex } from '../../shared/vault-types'
 import { PACER_EXERCISE_TYPES, type PacerType } from '../../shared/lesson-types'
 import { memoryOf, previewIntervals } from './fsrs'
@@ -11,6 +11,9 @@ import { buildExplainPrompt, explainReplySchema, MAX_QUESTIONS, questionsAsked, 
 import { buildGradePrompt, GradeSchema } from './grade-prompt'
 import type { MemoryStore } from './store'
 import { buildVariantsPrompt, fallbackExercise, variantsReplySchema, type VariantsStore } from './variants'
+import type { EngineChoice } from '../../shared/settings-schema'
+import { ancestors } from '../graph/derive'
+import { weakPrerequisites, suspectPremises, type CascadeMemory } from '../../shared/cascade'
 
 export type ReviewItem = {
   cascadeOf?: string
@@ -22,17 +25,27 @@ export type ReviewItem = {
   R: number | null
   exercise: Exercise | ChainExercise
   variantId: string | null
+  represented?: boolean
+  representedCount?: number
 }
-export type ReviewPlan = { items: ReviewItem[]; due: number }
+export type ReviewPlan = {
+  items: ReviewItem[]
+  due: number
+  toStudy: { conceptId: string; name: string; noteTitle: string }[]
+}
 export type GradeResult = { verdict: 'ok' | 'partial' | 'wrong'; feedback: string; proposed: Grade }
 /** A "Spiegalo tu" turn: the picky student asks for the missing step, or gives the verdict. */
 export type ExplainResult = { kind: 'question'; question: string } | ({ kind: 'verdict' } & GradeResult)
 export function gradeChainIdeaUnits(checked: boolean[]): Grade {
-  const fraction = checked.length ? checked.filter(Boolean).length / checked.length : 0
-  return fraction === 0 ? 1 : fraction < 0.5 ? 2 : 3
+  const total = checked.length
+  const n = checked.filter(Boolean).length
+  const outcome: Outcome = total > 0 && n === total ? 'correct' : n > 0 ? 'partial' : 'wrong'
+  return gradeFromOutcome({ outcome })
 }
 export type ReviewService = {
   plan(opts?: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean; examAt?: number; order?: 'due' | 'gain' }): Promise<ReviewPlan>
+  prerequisites(conceptId: string, budget: number): Promise<ReviewItem[]>
+  contest(req: { conceptId: string; exercise: Exercise; answer: string; confidence: number }): Promise<GradeResult>
   prepare(notePath: string): Promise<void>
   grade(req: { conceptId: string; exercise: Exercise; answer: string; confidence: number }): Promise<GradeResult>
   explain(req: { conceptId: string; exercise: Exercise; turns: ExplainTurn[]; confidence: number }): Promise<ExplainResult>
@@ -71,6 +84,7 @@ export function createReviewService(deps: {
   weaknesses?: () => Promise<WeaknessLine[]>
   now?: () => number
   workDir: string
+  otherEngine?: () => Promise<EngineChoice | undefined>
 }): ReviewService {
   const now = deps.now ?? Date.now
   // One generation per concept and type set per app run: a second plan waits for the one in flight
@@ -149,29 +163,110 @@ export function createReviewService(deps: {
       if (concepts.length) await ensureVariants(concepts, new Set(settings.exerciseTypes), index)
     },
     async plan(opts: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean; examAt?: number; order?: 'due' | 'gain' } = {}) {
-      const [g, reviews, settings, index, pacers] = await Promise.all([deps.graph(), deps.memory.read(), deps.settings(), deps.vault(), deps.pacerOf?.() ?? Promise.resolve(new Map<string, PacerType>())])
+      const [g, reviews, settings, index, pacers, rawWeaknesses] = await Promise.all([
+        deps.graph(),
+        deps.memory.read(),
+        deps.settings(),
+        deps.vault(),
+        deps.pacerOf?.() ?? Promise.resolve(new Map<string, PacerType>()),
+        deps.weaknesses ? deps.weaknesses().catch(() => []) : Promise.resolve([])
+      ])
       const t = now()
-      const mem = memoryOf(reviews, t)
+      const misconceptionIds = misconceptionConceptIds(rawWeaknesses)
+      const mem = memoryOf(reviews, t, misconceptionIds)
       const byId = new Map(g.concepts.map((c) => [c.id, c]))
       const R = (id: string): number => mem.get(id)?.R ?? -1
       const dueIds = g.concepts.filter((c) => (mem.get(c.id)?.due ?? Infinity) <= t).map((c) => c.id)
+      const activeWeaknessIds = new Set(
+        rawWeaknesses.filter((w) => w.status === 'active' && w.conceptId).map((w) => w.conceptId!)
+      )
       const retestIds = g.concepts.filter((c) => {
         const last = reviews.filter((r) => r.conceptId === c.id).sort((a, b) => b.at - a.at)[0]
-        const age = last ? (t - last.at) / 86_400_000 : Infinity
-        return !!last && last.correct === false && (last.confidence ?? 0) >= 70 && age >= 1 && age <= 3
+        const lastWeakness = rawWeaknesses
+          .filter((w) => w.conceptId === c.id && w.status === 'active')
+          .sort((a, b) => b.at - a.at)[0]
+        const refAt = last && lastWeakness ? Math.max(last.at, lastWeakness.at) : (last?.at ?? lastWeakness?.at ?? null)
+        if (refAt === null) return false
+        const age = (t - refAt) / 86_400_000
+        const isHighConfError = !!last && last.correct === false && (last.confidence ?? 0) >= MISCONCEPTION_CONFIDENCE
+        const hasActiveWeakness = activeWeaknessIds.has(c.id)
+        return (isHighConfError || hasActiveWeakness) && age >= 1 && age <= 3
       }).map((c) => c.id)
-      let chosen: Concept[]
-      if (opts.misconceptions) chosen = g.concepts.filter((c) => mem.get(c.id)?.misconception).sort((a, b) => R(a.id) - R(b.id)).slice(0, settings.reviewSessionSize)
-      else if (opts.conceptIds) chosen = opts.conceptIds.map((id) => byId.get(id)).filter((c): c is Concept => !!c)
-      else if (opts.weakest) {
-        const reviewed = g.concepts.filter((c) => mem.has(c.id)).sort((a, b) => R(a.id) - R(b.id))
-        const fresh = g.concepts.filter((c) => !mem.has(c.id)).sort((a, b) => a.depth - b.depth)
-        chosen = [...reviewed, ...fresh].slice(0, settings.reviewSessionSize)
+
+      const reviewedIds = new Set(reviews.map((r) => r.conceptId))
+      const noteTitleOf = (birth: string): string =>
+        index?.notes.find((n) => n.path === birth)?.title ?? birth.split('/').pop()!.replace(/\.md$/, '')
+
+      let candidateConcepts: Concept[]
+      let toStudy: { conceptId: string; name: string; noteTitle: string }[] = []
+      if (opts.misconceptions) {
+        candidateConcepts = g.concepts.filter((c) => mem.get(c.id)?.misconception || misconceptionIds.has(c.id)).sort((a, b) => R(a.id) - R(b.id))
+      } else if (opts.conceptIds) {
+        candidateConcepts = opts.conceptIds.map((id) => byId.get(id)).filter((c): c is Concept => !!c)
+      } else if (opts.weakest) {
+        candidateConcepts = g.concepts.filter((c) => reviewedIds.has(c.id)).sort((a, b) => R(a.id) - R(b.id))
+        toStudy = g.concepts
+          .filter((c) => !reviewedIds.has(c.id))
+          .sort((a, b) => a.depth - b.depth)
+          .slice(0, NEW_PER_SESSION)
+          .map((c) => ({ conceptId: c.id, name: c.name, noteTitle: noteTitleOf(c.birth) }))
       } else {
-        const retests = retestIds.map((id) => byId.get(id)!).sort((a, b) => R(a.id) - R(b.id))
-        const due = dueIds.map((id) => byId.get(id)!).sort((a, b) => R(a.id) - R(b.id))
-        const fresh = g.concepts.filter((c) => !mem.has(c.id)).sort((a, b) => a.depth - b.depth).slice(0, NEW_PER_SESSION)
-        chosen = [...retests, ...due.filter((c) => !retestIds.includes(c.id)), ...fresh].slice(0, settings.reviewSessionSize)
+        const retests = retestIds.map((id) => byId.get(id)!).filter((c) => !!c && (reviewedIds.has(c.id) || activeWeaknessIds.has(c.id))).sort((a, b) => R(a.id) - R(b.id))
+        const due = dueIds.map((id) => byId.get(id)!).filter((c) => reviewedIds.has(c.id)).sort((a, b) => R(a.id) - R(b.id))
+        candidateConcepts = [...retests, ...due.filter((c) => !retestIds.includes(c.id))]
+        toStudy = g.concepts
+          .filter((c) => !reviewedIds.has(c.id))
+          .sort((a, b) => a.depth - b.depth)
+          .slice(0, NEW_PER_SESSION)
+          .map((c) => ({ conceptId: c.id, name: c.name, noteTitle: noteTitleOf(c.birth) }))
+      }
+
+      const size = settings.reviewSessionSize
+      const maxChains = Math.max(0, Math.floor(size * 0.2))
+
+      const reaches = (from: string, target: string): boolean => {
+        const seen = new Set<string>(); const stack = [from]
+        while (stack.length) { const id = stack.pop()!; if (id === target) return true; if (seen.has(id)) continue; seen.add(id); for (const edge of g.chains) if (edge.premises.includes(id)) stack.push(edge.conclusion) }
+        return false
+      }
+
+      const validChains = g.chains.filter((chain) => {
+        if (!chain.premises.every((id) => (mem.get(id)?.reps ?? 0) > 0)) return false
+        if ((mem.get(chain.conclusion)?.reps ?? 0) <= 0) return false
+        if (chain.premises.some((id) => reaches(chain.conclusion, id))) return false
+        const conclusion = byId.get(chain.conclusion)
+        if (!conclusion) return false
+        const premises = chain.premises.map((id) => byId.get(id)).filter((c): c is Concept => !!c)
+        if (premises.length !== chain.premises.length) return false
+        return true
+      })
+
+      let chosen: Concept[]
+      let finalChains: (typeof g.chains[number])[]
+
+      if (maxChains === 0 || candidateConcepts.length === 0) {
+        chosen = candidateConcepts.slice(0, size)
+        finalChains = []
+      } else {
+        const topConcepts = candidateConcepts.slice(0, size)
+        const topSet = new Set(topConcepts.map((c) => c.id))
+        const touchingChains = validChains.filter(
+          (ch) => ch.premises.some((id) => topSet.has(id)) || topSet.has(ch.conclusion)
+        )
+        const candidateChains = touchingChains.slice(0, maxChains)
+        const conceptCount = Math.max(0, size - candidateChains.length)
+        chosen = candidateConcepts.slice(0, conceptCount)
+        let chosenSet = new Set(chosen.map((c) => c.id))
+        finalChains = candidateChains.filter(
+          (ch) => ch.premises.some((id) => chosenSet.has(id)) || chosenSet.has(ch.conclusion)
+        )
+        if (finalChains.length < candidateChains.length) {
+          chosen = candidateConcepts.slice(0, Math.max(0, size - finalChains.length))
+          chosenSet = new Set(chosen.map((c) => c.id))
+          finalChains = candidateChains.filter(
+            (ch) => ch.premises.some((id) => chosenSet.has(id)) || chosenSet.has(ch.conclusion)
+          )
+        }
       }
 
       const allowed = new Set(settings.exerciseTypes.length ? settings.exerciseTypes : (['open'] as ExerciseType[]))
@@ -195,7 +290,7 @@ export function createReviewService(deps: {
       // "Spiegalo tu" is long and only exists for proofs and key definitions: at most one item in four.
       const explainCap = Math.max(1, Math.floor(chosen.length / EXPLAIN_SHARE))
       let explains = 0
-      const items: ReviewItem[] = chosen.map((c) => {
+      const conceptItems: ReviewItem[] = chosen.map((c) => {
         const allowedHere = allowedFor(c)
         const all = variants.filter((v) => v.conceptId === c.id && allowedHere.has(v.exercise.type))
         const others = all.filter((v) => v.exercise.type !== 'explain')
@@ -209,13 +304,41 @@ export function createReviewService(deps: {
           conceptId: c.id,
           name: c.name,
           notePath: c.birth,
-          noteTitle: note?.title ?? c.birth.split('/').pop()!.replace(/\.md$/, ''),
+          noteTitle: noteTitleOf(c.birth),
           subject: note?.subject ?? null,
           R: mem.get(c.id)?.R ?? null,
           exercise: pick?.exercise ?? fallbackExercise(c),
           variantId: pick?.id ?? null
         }
       })
+
+      const chainItems: ReviewItem[] = []
+      for (const chain of finalChains) {
+        const conclusion = byId.get(chain.conclusion)!
+        const premises = chain.premises.map((id) => byId.get(id)!).filter((c): c is Concept => !!c)
+        const note = index?.notes.find((n) => n.path === conclusion.birth)
+        chainItems.push({
+          conceptId: conclusion.id,
+          name: conclusion.name,
+          notePath: conclusion.birth,
+          noteTitle: noteTitleOf(conclusion.birth),
+          subject: note?.subject ?? null,
+          R: mem.get(conclusion.id)?.R ?? null,
+          variantId: null,
+          exercise: {
+            type: 'chain',
+            chainId: chain.id,
+            premises: premises.map(({ id, name, statement }) => ({ id, name, statement })),
+            conclusion: { id: conclusion.id, name: conclusion.name, statement: conclusion.statement },
+            prompt: `Perché da ${premises.map((p) => p.name).join(', ')} segue ${conclusion.name}?`,
+            answer: premises.map((p) => `Uso ${p.name}: ${p.statement}`).join('\n'),
+            question: `Perché da ${premises.map((p) => p.name).join(', ')} segue ${conclusion.name}?`,
+            ideaUnits: premises.map((p) => `Uso ${p.name}: ${p.statement}`)
+          }
+        })
+      }
+
+      let items = [...conceptItems, ...chainItems]
       const examAt = opts.examAt
       if (opts.order === 'gain' && examAt !== undefined) {
         const gain = (id: string, minutes: number): number => {
@@ -226,24 +349,142 @@ export function createReviewService(deps: {
           return ((afterMemory ? retrievabilityAt(afterMemory, examAt) ?? before : before) - before) / minutes
         }
         items.sort((a, b) => gain(b.conceptId, 1.5) - gain(a.conceptId, 1.5))
+      } else if (!opts.conceptIds) {
+        items = interleave(items)
       }
-      const conceptById = byId
-      const chains = g.chains.filter((chain) => chain.premises.every((id) => (mem.get(id)?.reps ?? 0) > 0) && (mem.get(chain.conclusion)?.reps ?? 0) > 0)
-      const reaches = (from: string, target: string): boolean => {
-        const seen = new Set<string>(); const stack = [from]
-        while (stack.length) { const id = stack.pop()!; if (id === target) return true; if (seen.has(id)) continue; seen.add(id); for (const edge of g.chains) if (edge.premises.includes(id)) stack.push(edge.conclusion) }
-        return false
+      items = items.slice(0, size)
+
+      return {
+        items,
+        due: dueIds.length,
+        toStudy
       }
-      for (const chain of chains) {
-        if (chain.premises.some((id) => reaches(chain.conclusion, id))) continue
-        const conclusion = conceptById.get(chain.conclusion)
-        if (!conclusion) continue
-        const premises = chain.premises.map((id) => conceptById.get(id)).filter((c): c is Concept => !!c)
-        if (premises.length !== chain.premises.length) continue
-        const note = index?.notes.find((n) => n.path === conclusion.birth)
-        items.push({ conceptId: conclusion.id, name: conclusion.name, notePath: conclusion.birth, noteTitle: note?.title ?? conclusion.birth.split('/').pop()!.replace(/\.md$/, ''), subject: note?.subject ?? null, R: mem.get(conclusion.id)?.R ?? null, variantId: null, exercise: { type: 'chain', chainId: chain.id, premises: premises.map(({ id, name, statement }) => ({ id, name, statement })), conclusion: { id: conclusion.id, name: conclusion.name, statement: conclusion.statement }, prompt: `Perché da ${premises.map((p) => p.name).join(', ')} segue ${conclusion.name}?`, answer: premises.map((p) => `Uso ${p.name}: ${p.statement}`).join('\n'), question: `Perché da ${premises.map((p) => p.name).join(', ')} segue ${conclusion.name}?`, ideaUnits: premises.map((p) => `Uso ${p.name}: ${p.statement}`) } })
+    },
+
+    async prerequisites(conceptId: string, budget: number): Promise<ReviewItem[]> {
+      if (budget <= 0) return []
+      const [g, reviews, rawWeaknesses] = await Promise.all([
+        deps.graph(),
+        deps.memory.read(),
+        deps.weaknesses ? deps.weaknesses().catch(() => []) : Promise.resolve([])
+      ])
+      const t = now()
+      const misconceptionIds = misconceptionConceptIds(rawWeaknesses)
+      const mem = memoryOf(reviews, t, misconceptionIds)
+
+      const parentsRecord: Record<string, string[]> = {}
+      for (const c of g.chains) {
+        parentsRecord[c.conclusion] = [...(parentsRecord[c.conclusion] ?? []), ...c.premises]
       }
-      return { items: opts.order === 'gain' && examAt !== undefined ? items : opts.conceptIds ? items : interleave(items), due: dueIds.length }
+      const depthRecord: Record<string, number> = {}
+      for (const c of g.concepts) {
+        depthRecord[c.id] = c.depth
+      }
+      const memRecord: Record<string, CascadeMemory | undefined> = {}
+      for (const [id, m] of mem) {
+        if (m && typeof m.R === 'number') {
+          memRecord[id] = { R: m.R, stability: m.stability ?? 0, reps: m.reps }
+        }
+      }
+
+      const weak = weakPrerequisites(
+        { parents: parentsRecord, depth: depthRecord, memory: memRecord },
+        conceptId,
+        { cap: budget }
+      )
+
+      const anc = ancestors(g, conceptId)
+      const suspects = suspectPremises(g, mem)
+      const suspectAncestors = suspects.filter((id) => anc.has(id) && id !== conceptId)
+
+      const seen = new Set<string>()
+      const candidateIds: string[] = []
+      for (const id of [...weak, ...suspectAncestors]) {
+        if (id !== conceptId && !seen.has(id) && g.concepts.some((c) => c.id === id)) {
+          seen.add(id)
+          candidateIds.push(id)
+        }
+      }
+
+      if (candidateIds.length === 0) return []
+
+      const planned = await this.plan({ conceptIds: candidateIds })
+      return planned.items
+        .filter((item) => item.conceptId !== conceptId)
+        .map((item) => ({ ...item, cascadeOf: conceptId }))
+        .slice(0, budget)
+    },
+
+    async contest(req: { conceptId: string; exercise: Exercise; answer: string; confidence: number }): Promise<GradeResult> {
+      try {
+        const c = (await deps.graph()).concepts.find((x) => x.id === req.conceptId)
+        await mkdir(deps.workDir, { recursive: true })
+        const engine = await deps.otherEngine?.()
+
+        if (req.exercise.type === 'explain') {
+          const notePath = c?.birth
+          const [text, index] = await Promise.all([notePath ? deps.readNote(notePath).catch(() => '') : '', deps.vault()])
+          const noteTitle = index?.notes.find((n) => n.path === notePath)?.title ?? notePath?.split('/').pop()!.replace(/\.md$/, '') ?? ''
+          const r = await deps.bridge.ask({
+            task: 'grade',
+            prompt: buildExplainPrompt({
+              concept: { name: c?.name ?? '', statement: c?.statement ?? '' },
+              exercise: req.exercise,
+              noteTitle,
+              noteText: text,
+              turns: [
+                { by: 'andrea', text: req.answer },
+                { by: 'claude', text: 'Chiarimento' },
+                { by: 'claude', text: 'Secondo chiarimento' }
+              ],
+              confidence: req.confidence
+            }),
+            schema: explainReplySchema(false),
+            timeoutMs: GRADE_TIMEOUT,
+            cwd: deps.workDir,
+            ...(engine ? { engine } : {})
+          })
+          const reply = r.data as { action: 'grade'; verdict: GradeResult['verdict']; feedback: string }
+          return {
+            verdict: reply.verdict,
+            feedback: reply.feedback,
+            proposed: proposeGrade({
+              correct: reply.verdict === 'ok' ? true : reply.verdict === 'partial' ? 'partial' : false,
+              confidence: req.confidence
+            })
+          }
+        }
+
+        const r = await deps.bridge.ask({
+          task: 'grade',
+          prompt: buildGradePrompt({
+            concept: { name: c?.name ?? '', statement: c?.statement ?? '' },
+            exercise: req.exercise,
+            answer: req.answer,
+            confidence: req.confidence
+          }),
+          schema: GradeSchema,
+          timeoutMs: GRADE_TIMEOUT,
+          cwd: deps.workDir,
+          ...(engine ? { engine } : {})
+        })
+        const { verdict, feedback } = r.data as { verdict: GradeResult['verdict']; feedback: string }
+        return {
+          verdict,
+          feedback,
+          proposed: proposeGrade({
+            correct: verdict === 'ok' ? true : verdict === 'partial' ? 'partial' : false,
+            confidence: req.confidence
+          })
+        }
+      } catch (e) {
+        console.warn('[review] contestazione non riuscita', e)
+        return {
+          verdict: 'partial',
+          feedback: 'Non sono riuscito a correggere: valuta tu confrontando con la risposta di riferimento.',
+          proposed: 2
+        }
+      }
     },
 
     async grade(req) {
@@ -304,9 +545,8 @@ export function createReviewService(deps: {
     },
 
     async memory() {
-      const activeWeaknesses = (await deps.weaknesses?.()) ?? []
-      const weaknessIds = new Set(activeWeaknesses.map((w) => w.conceptId).filter((id): id is string => !!id))
-      return Object.fromEntries(memoryOf(await deps.memory.read(), now(), weaknessIds))
+      const activeWeaknesses = (await deps.weaknesses?.().catch(() => [])) ?? []
+      return Object.fromEntries(memoryOf(await deps.memory.read(), now(), misconceptionConceptIds(activeWeaknesses)))
     },
 
     async intervals(conceptId) {

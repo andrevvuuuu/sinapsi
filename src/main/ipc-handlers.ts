@@ -8,7 +8,7 @@ import type { NoteGenerator } from './notes/generator'
 import { access } from 'node:fs/promises'
 import { z } from 'zod'
 import type { EngineStatus, VaultResult } from '../shared/api'
-import { TASKS, type Engine, type Settings } from '../shared/settings-schema'
+import { TASKS, type Engine, type EngineChoice, type Settings } from '../shared/settings-schema'
 import { LearnerAnswerSchema, type LearnerAnswer } from '../shared/teacher-protocol'
 import type { SessionRunner } from './session/runner'
 import type { VaultIndex } from '../shared/vault-types'
@@ -434,9 +434,25 @@ const ExplainReq = z.object({
   confidence: z.number().min(0).max(100)
 })
 
+export function resolveOtherEngine(settings: Settings): EngineChoice {
+  const teach = settings.engines.teach
+  const grader = settings.engines.grade
+  if (grader.engine !== teach.engine) return grader
+  return {
+    engine: teach.engine === 'claude' ? 'agy' : 'claude',
+    model: teach.engine === 'claude' ? 'gemini-3.8-flash-medium' : 'sonnet'
+  }
+}
+
 export function makeReviewHandlers(svc: ReviewService) {
   return {
     plan: async (opts: unknown) => svc.plan(PlanOpts.parse(opts ?? {})),
+    prerequisites: async (id: unknown, budget: unknown) =>
+      svc.prerequisites(
+        z.string().min(1).max(64).parse(id),
+        z.number().int().min(0).max(100).parse(budget)
+      ),
+    contest: async (req: unknown) => svc.contest(GradeReq.parse(req)),
     grade: async (req: unknown) => svc.grade(GradeReq.parse(req)),
     explain: async (req: unknown) => svc.explain(ExplainReq.parse(req)),
     record: async (r: unknown) => {
@@ -534,6 +550,7 @@ const Answers = z
 
 /** "Rolle, Lagrange, Fermat e altri 2 · 1 fonte": the label of a practice session in lists. */
 export function practiceTopic(m: Material, names: Map<string, string>): string {
+  if (m.blind) return 'Allenamento misto'
   const concepts = m.conceptIds.map((id) => names.get(id) ?? id)
   let head =
     concepts.slice(0, 3).join(', ') + (concepts.length > 3 ? ` e altri ${concepts.length - 3}` : '')

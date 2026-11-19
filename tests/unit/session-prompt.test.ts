@@ -31,6 +31,13 @@ describe('teacher prompt', () => {
     for (const r of ['goal', 'probe', 'plan', 'predict', 'check', 'recall']) expect(TEACHER_SYSTEM_PROMPT).toContain(`"${r}"`)
     expect(TEACHER_SYSTEM_PROMPT).toContain('JSON')
   })
+  it('explains the generative mastery gate, exercise games, and predict prequestion in session phases', () => {
+    expect(TEACHER_SYSTEM_PROMPT).toContain('almeno una risposta aperta corretta')
+    expect(TEACHER_SYSTEM_PROMPT).toContain('scelte multiple non bastano')
+    expect(TEACHER_SYSTEM_PROMPT).toContain('non danno evidenza di padronanza')
+    expect(TEACHER_SYSTEM_PROMPT).toContain('domanda di previsione (role "predict")')
+    expect(TEACHER_SYSTEM_PROMPT).toContain('non viene valutata')
+  })
   it('truncates long notes with a marker', () => {
     const msg = firstMessage('Lagrange', { title: 'Teorema di Lagrange', text: 'x'.repeat(70_000) })
     expect(msg).toContain('«Teorema di Lagrange»')

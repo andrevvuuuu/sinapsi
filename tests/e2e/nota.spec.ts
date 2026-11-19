@@ -2,6 +2,7 @@ import { _electron as electron, expect, test } from '@playwright/test'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { goTo, openVaultNote } from './helpers'
 
 test('a nota viva written from an Obsidian note, with live figure and quiz', async () => {
   const app = await electron.launch({
@@ -9,8 +10,7 @@ test('a nota viva written from an Obsidian note, with live figure and quiz', asy
     env: { ...process.env, SINAPSI_FAKE_NOTE: '1', SINAPSI_VAULT: resolve('tests/fixtures/vault'), SINAPSI_DATA: mkdtempSync(join(tmpdir(), 'sinapsi-e2e-')) }
   })
   const win = await app.firstWindow()
-  await win.getByText('Matematica', { exact: true }).click()
-  await win.getByRole('button', { name: 'Teorema di Rolle' }).click()
+  await openVaultNote(win, 'Teorema di Rolle')
   await win.getByRole('button', { name: 'Crea la nota viva' }).click()
   await expect(win.getByRole('heading', { level: 1, name: /Teorema di Rolle/ })).toBeVisible()
   await expect(win.getByRole('navigation', { name: 'Indice' })).toContainText('Dimostrazione')
@@ -34,8 +34,10 @@ test('a nota viva written from an Obsidian note, with live figure and quiz', asy
   await expect(win.getByText('Perché almeno un estremo è interno?')).toBeVisible()
   await win.screenshot({ path: 'test-results/nota.png', fullPage: true })
 
-  // back home: the nota is listed
+  // back home: returns to today view, and the nota is listed in Note
   await win.getByRole('button', { name: '← Home' }).click()
-  await expect(win.getByRole('heading', { name: 'Note vive' })).toBeVisible()
+  await expect(win.getByRole('heading', { level: 1, name: 'Oggi' })).toBeVisible()
+  await goTo(win, 'Note')
+  await expect(win.getByRole('region', { name: 'Note' }).getByText(/Teorema di Rolle/)).toBeVisible()
   await app.close()
 })

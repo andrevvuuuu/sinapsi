@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { checkTurnAgainst, formatSubmission, hintBlocked, hintGate, practiceJsonSchema, PracticeTurnSchema, SubmissionSchema } from '../../src/shared/practice-protocol'
+import { practiceSystemPrompt } from '../../src/main/practice/prompt'
 
 const problem = { id: 'p1', statement: 'Mostra che $|\\sin a-\\sin b|\\le|a-b|$.', mode: 'recall' as const, targets: ['n_1'], modelSolution: 'Valor medio.' }
 
@@ -7,6 +8,7 @@ describe('PracticeTurnSchema', () => {
   it('accepts a pose, a hint, a conclusion and a final summary', () => {
     expect(PracticeTurnSchema.safeParse({ phase: 'warmup', blocks: [{ type: 'text', md: 'Si parte.' }], problem }).success).toBe(true)
     expect(PracticeTurnSchema.safeParse({ phase: 'warmup', blocks: [], hint: { rung: 1, md: 'Una differenza di valori.' } }).success).toBe(true)
+    expect(PracticeTurnSchema.safeParse({ phase: 'warmup', blocks: [], hint: { rung: 1, md: 'Una differenza di valori.', conceptId: 'n_1' } }).success).toBe(true)
     expect(PracticeTurnSchema.safeParse({ phase: 'body', blocks: [], conclude: { outcome: 'solved_hints', verdict: 'Ok.', retest: true, miss: 'cue' } }).success).toBe(true)
     expect(PracticeTurnSchema.safeParse({ phase: 'done', blocks: [], summary: { solved: ['a'], retest: [], note: 'Bene.' } }).success).toBe(true)
   })
@@ -22,6 +24,17 @@ describe('PracticeTurnSchema', () => {
   it('exports a JSON schema without $schema', () => {
     expect(practiceJsonSchema()).not.toHaveProperty('$schema')
     expect(JSON.stringify(practiceJsonSchema())).toContain('modelSolution')
+    expect(JSON.stringify(practiceJsonSchema())).toContain('conceptId')
+  })
+})
+
+describe('blind practice instructions', () => {
+  it('uses affine concepts only as plausible lures and never names the target', () => {
+    const prompt = practiceSystemPrompt()
+    expect(prompt).toContain('CONCETTI AFFINI')
+    expect(prompt).toContain("mai nominare il bersaglio nell'enunciato")
+    expect(prompt).toContain('Triage e commento dello strumento')
+    expect(prompt).toContain('spiega chiaramente perché')
   })
 })
 
@@ -51,6 +64,17 @@ describe('submissions', () => {
     expect(formatSubmission({ kind: 'ask', text: 'perché R1?' })).toBe('Domanda sul problema appena concluso: perché R1?')
     expect(formatSubmission({ kind: 'dismiss' })).toBe('Lascio questo problema: mostrami la soluzione.')
     expect(formatSubmission({ kind: 'end' })).toBe('Basta così per oggi: chiudi la sessione.')
+    expect(SubmissionSchema.safeParse({ kind: 'triage', text: 'Teorema di Rolle' }).success).toBe(true)
+    expect(SubmissionSchema.safeParse({ kind: 'triage', text: '' }).success).toBe(false)
+    expect(SubmissionSchema.safeParse({ kind: 'thinking', text: 'mio ragionamento', confidence: 63 }).success).toBe(true)
+    expect(SubmissionSchema.safeParse({ kind: 'thinking', text: 'mio ragionamento' }).success).toBe(true)
+    expect(formatSubmission({ kind: 'triage', text: 'Teorema di Rolle' })).toBe('Strumento ipotizzato nel triage: Teorema di Rolle')
+    expect(formatSubmission({ kind: 'thinking', text: 'applico Lagrange' }, { ...lines, attempts: 0, triage: 'Lagrange' })).toBe(
+      'Strumento ipotizzato nel triage: Lagrange\nIl mio ragionamento: applico Lagrange'
+    )
+    expect(formatSubmission({ kind: 'thinking', text: 'secondo tentativo' }, { ...lines, attempts: 1, triage: 'Lagrange' })).toBe(
+      'Il mio ragionamento: secondo tentativo'
+    )
   })
 })
 

@@ -2,6 +2,7 @@ import type { SessionState } from '../session/events'
 import { capNote } from '../session/prompt'
 import { NOTA_FORMAT } from '../../shared/nota-schema'
 import type { Excerpt } from '../../shared/notebook-types'
+import { MISCONCEPTION_CONFIDENCE } from '../../shared/memory-types'
 
 const DIGEST_LIMIT = 8000
 const clip = (t: string, n = 300): string => (t.length > n ? t.slice(0, n - 1) + '…' : t).replace(/\s+/g, ' ').trim()
@@ -11,27 +12,35 @@ const clip = (t: string, n = 300): string => (t.length > n ? t.slice(0, n - 1) +
  * previsione (his predictions), errore (wrong and sure), parole (his own words).
  */
 export function sessionDigest(s: SessionState): string {
-  const lines = [`Argomento: ${s.topic}`]
+  const headLines = [`Argomento: ${s.topic}`]
+  if (s.summary) {
+    headLines.push(`Hai imparato: ${s.summary.learned.join('; ')}`)
+    if (s.summary.shaky.length) headLines.push(`Ancora incerto: ${s.summary.shaky.join('; ')}`)
+    if (s.summary.misconceptions.length) headLines.push(`Misconcezioni: ${s.summary.misconceptions.join('; ')}`)
+  }
+  for (const ev of s.evidence ?? []) {
+    if (!ev.verdict) continue
+    const name = s.tree?.nodes.find((n) => n.id === ev.conceptId)?.name ?? ev.conceptId
+    headLines.push(`verdetto correttore: ${name} — ${ev.verdict}`)
+  }
+
+  const bodyLines: string[] = []
   for (const it of s.items) {
     if (it.kind !== 'learner' || !it.answer || !it.question) continue
     const q = it.question
     const a = it.answer
     const chosen = a.choice !== undefined && q.options ? q.options[a.choice] : undefined
-    if (q.role === 'predict') lines.push(`previsione: alla domanda «${clip(q.prompt, 200)}» ha risposto «${clip(chosen ?? a.text ?? '')}»`)
-    else if (q.kind === 'choice' && a.choice !== undefined && q.correct !== undefined && a.choice !== q.correct && (a.confidence ?? 0) >= 70)
-      lines.push(`errore: alla domanda «${clip(q.prompt, 200)}» ha scelto «${clip(chosen ?? '')}» con fiducia ${a.confidence}% (giusta: «${clip(q.options?.[q.correct] ?? '')}»)`)
-    if (q.role !== 'predict' && a.text) lines.push(`parole: ${clip(a.text)}`)
-    if (a.thoughts) lines.push(`parole: ${clip(a.thoughts)}`)
+    if (q.role === 'predict') bodyLines.push(`previsione: alla domanda «${clip(q.prompt, 200)}» ha risposto «${clip(chosen ?? a.text ?? '')}»`)
+    else if (q.kind === 'choice' && a.choice !== undefined && q.correct !== undefined && a.choice !== q.correct && (a.confidence ?? 0) >= MISCONCEPTION_CONFIDENCE)
+      bodyLines.push(`errore: alla domanda «${clip(q.prompt, 200)}» ha scelto «${clip(chosen ?? '')}» con fiducia ${a.confidence}% (giusta: «${clip(q.options?.[q.correct] ?? '')}»)`)
+    if (q.role !== 'predict' && a.text) bodyLines.push(`parole: ${clip(a.text)}`)
+    if (a.thoughts) bodyLines.push(`parole: ${clip(a.thoughts)}`)
   }
-  if (s.summary) {
-    lines.push(`Hai imparato: ${s.summary.learned.join('; ')}`)
-    if (s.summary.shaky.length) lines.push(`Ancora incerto: ${s.summary.shaky.join('; ')}`)
-    if (s.summary.misconceptions.length) lines.push(`Misconcezioni: ${s.summary.misconceptions.join('; ')}`)
-  }
-  let out = lines.join('\n')
+
+  let body = bodyLines.join('\n')
   const cut = '\n[…sessione troncata]'
-  if (out.length > DIGEST_LIMIT) out = out.slice(0, DIGEST_LIMIT - cut.length) + cut
-  return out
+  if (body.length > DIGEST_LIMIT) body = body.slice(0, DIGEST_LIMIT - cut.length) + cut
+  return [headLines.join('\n'), body].filter(Boolean).join('\n')
 }
 
 export function buildNotePrompt(input: { noteTitle: string; noteText: string; session?: SessionState; sources?: Excerpt[] }): string {

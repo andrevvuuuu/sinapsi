@@ -13,3 +13,4 @@ playwright-report
 # Style references (screenshots of other apps): kept locally, not published
 reports/ui-reference/*.png
 reports/ui-reference/*.jpg
+.orchestrator/

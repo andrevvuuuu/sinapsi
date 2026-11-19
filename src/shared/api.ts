@@ -74,6 +74,8 @@ export const CH = {
   graphPositions: 'graph:positions',
   graphSavePositions: 'graph:save-positions',
   reviewPlan: 'review:plan',
+  reviewPrerequisites: 'review:prerequisites',
+  reviewContest: 'review:contest',
   reviewGrade: 'review:grade',
   reviewExplain: 'review:explain',
   voiceTranscribe: 'voice:transcribe',
@@ -206,6 +208,13 @@ export interface SinapsiApi {
       examAt?: number
       order?: 'due' | 'gain'
     }): Promise<import('../main/memory/review').ReviewPlan>
+    prerequisites(conceptId: string, budget: number): Promise<import('../main/memory/review').ReviewItem[]>
+    contest(req: {
+      conceptId: string
+      exercise: import('./exercise-schema').Exercise
+      answer: string
+      confidence: number
+    }): Promise<import('../main/memory/review').GradeResult>
     grade(req: {
       conceptId: string
       exercise: import('./exercise-schema').Exercise

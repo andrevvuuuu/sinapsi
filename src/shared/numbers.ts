@@ -3,7 +3,7 @@
  * of three digits is a thousands separator; with both, the last one is the decimal mark.
  */
 export function parseItalianNumber(raw: string): number {
-  let s = raw.trim().replace(/[\s ']/g, '')
+  let s = raw.trim().replace(/[\s\u00a0']/g, '')
   if (!/^[-+]?[\d.,]+$/.test(s)) return NaN
   if (s.includes(',') && s.includes('.')) s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '')
   else if (s.includes(',')) s = s.replace(',', '.')

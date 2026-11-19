@@ -64,6 +64,8 @@ const api: SinapsiApi = {
   },
   review: {
     plan: (opts) => ipcRenderer.invoke(CH.reviewPlan, opts),
+    prerequisites: (id, budget) => ipcRenderer.invoke(CH.reviewPrerequisites, id, budget),
+    contest: (req) => ipcRenderer.invoke(CH.reviewContest, req),
     grade: (req) => ipcRenderer.invoke(CH.reviewGrade, req),
     explain: (req) => ipcRenderer.invoke(CH.reviewExplain, req),
     record: (r) => ipcRenderer.invoke(CH.reviewRecord, r),

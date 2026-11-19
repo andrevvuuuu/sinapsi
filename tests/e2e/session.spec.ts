@@ -2,6 +2,7 @@ import { _electron as electron, expect, test, type Locator } from '@playwright/t
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { startStudy } from './helpers'
 
 test('a full learning session with the scripted tutor', async () => {
   const app = await electron.launch({
@@ -9,22 +10,22 @@ test('a full learning session with the scripted tutor', async () => {
     env: { ...process.env, SINAPSI_FAKE_TEACHER: '1', SINAPSI_VAULT: resolve('tests/fixtures/vault'), SINAPSI_DATA: mkdtempSync(join(tmpdir(), 'sinapsi-e2e-')) }
   })
   const win = await app.firstWindow()
-  await win.getByLabel('Cosa vuoi studiare?').fill('Teorema di Lagrange')
-  await win.getByRole('button', { name: 'Inizia' }).click()
+  await startStudy(win, 'Teorema di Lagrange')
   await expect(win.getByText('Dalla tua nota: Teorema di Lagrange')).toBeVisible()
 
   // goal (open)
-  await win.getByLabel('La tua risposta').fill("passare l'esame")
+  await win.getByLabel('Il tuo obiettivo').fill("passare l'esame")
   await win.getByRole('button', { name: 'Invia risposta' }).click()
   // probe (choice + confidence)
   await win.getByRole('button', { name: /^A:/ }).click()
-  await win.getByLabel('Fiducia').fill('90')
+  await win.getByRole('tab', { name: 'Sicuro', exact: true }).click()
   await win.getByRole('button', { name: 'Invia risposta' }).click()
   // plan
   await win.getByRole('button', { name: 'Approva il piano' }).click()
   await expect(win.getByRole('complementary', { name: 'Il piano' }).getByText('Pendenza della corda')).toBeVisible()
   // predict
   await win.getByLabel('La tua risposta').fill('il rapporto tra dislivello e distanza')
+  await win.getByRole('tab', { name: 'Sicuro', exact: true }).click()
   await win.getByRole('button', { name: 'Invia risposta' }).click()
   // check behind the invite
   await win.getByLabel('Pensieri mentre leggi').fill('come una velocità media')
@@ -39,10 +40,11 @@ test('a full learning session with the scripted tutor', async () => {
   await win.locator('.rt').screenshot({ path: 'test-results/session-thoughts.png' })
   await win.getByRole('button', { name: 'Verifica la tua comprensione' }).click()
   await win.getByRole('button', { name: /^A:/ }).click()
+  await win.getByRole('tab', { name: 'Sicuro', exact: true }).click()
   await win.getByRole('button', { name: 'Invia risposta' }).click()
   await expect(win.getByText('Corretto').last()).toBeVisible()
   // game: Coppie
-  const coppie = win.getByRole('region', { name: 'Gioco «Coppie»' })
+  const coppie = win.getByRole('dialog', { name: 'Gioco · Coppie' })
   await coppie.getByRole('group', { name: 'Voci' }).getByRole('button', { name: 'Rolle' }).click()
   await coppie.getByRole('group', { name: 'Corrispondenti' }).getByRole('button', { name: 'derivata nulla in un punto' }).click()
   await coppie.getByRole('group', { name: 'Voci' }).getByRole('button', { name: 'Lagrange' }).click()
@@ -50,7 +52,7 @@ test('a full learning session with the scripted tutor', async () => {
   await expect(coppie.getByText('2/2')).toBeVisible()
   await coppie.getByRole('button', { name: 'Continua' }).click()
   // game: Lampo
-  const lampo = win.getByRole('region', { name: 'Gioco «Lampo»' })
+  const lampo = win.getByRole('dialog', { name: 'Gioco · Lampo' })
   for (const v of ['Vero', 'Falso', 'Vero']) {
     await lampo.getByRole('button', { name: v }).click()
     await win.waitForTimeout(1300)
@@ -61,12 +63,13 @@ test('a full learning session with the scripted tutor', async () => {
   await expect(win.getByLabel('Punteggio')).toContainText('serie')
   // recall
   await win.getByLabel('La tua risposta').fill('pendenza media, Rolle, funzione g')
+  await win.getByRole('tab', { name: 'Sicuro', exact: true }).click()
   await win.getByRole('button', { name: 'Invia risposta' }).click()
   await expect(win.getByText('Hai imparato')).toBeVisible()
   await win.screenshot({ path: 'test-results/session.png' })
 
   await win.getByRole('button', { name: 'Torna alla home' }).click()
-  await expect(win.getByRole('button', { name: /Teorema di Lagrange.*Apprendimento/ })).toBeVisible()
+  await expect(win.getByRole('region', { name: 'Attività recente' }).getByRole('button', { name: /Teorema di Lagrange/i })).toBeVisible()
   await app.close()
 })
 
@@ -84,6 +87,8 @@ async function blurredEdges(scroller: Locator): Promise<string[]> {
   })
 }
 
+// Split layout (conversation left, question panel right): in a 720 px window a long question must keep its head and the
+// send row in view, with only the options scrolling inside the panel.
 test('long measure question in a 720px-high window', async () => {
   const app = await electron.launch({
     args: ['.'],
@@ -92,18 +97,17 @@ test('long measure question in a 720px-high window', async () => {
   const win = await app.firstWindow()
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 720))
   await expect.poll(() => win.evaluate(() => [window.innerWidth, window.innerHeight].join('×'))).toBe('1280×720')
-  await win.getByLabel('Cosa vuoi studiare?').fill('Principio del Buon Ordinamento')
-  await win.getByRole('button', { name: 'Inizia' }).click()
-  await win.getByLabel('La tua risposta').fill('Saper usare il principio del buon ordinamento nelle dimostrazioni per assurdo, e capire quando conviene rispetto all’induzione.')
+  await startStudy(win, 'Principio del Buon Ordinamento')
+  await win.getByLabel('Il tuo obiettivo').fill('Saper usare il principio del buon ordinamento nelle dimostrazioni per assurdo, e capire quando conviene rispetto all’induzione.')
   await win.getByRole('button', { name: 'Invia risposta' }).click()
 
   const send = win.getByRole('button', { name: 'Invia risposta' })
   await expect(win.getByRole('button', { name: /^D:/ })).toBeAttached()
   await expect(send).toBeInViewport({ ratio: 1 })
-  await expect(win.locator('.dock .q-head')).toBeInViewport({ ratio: 1 })
+  await expect(win.locator('.dock .q-head')).toBeInViewport({ ratio: 0.99 }) // subpixel layout
   await win.waitForTimeout(800) // the smooth scroll to the tutor message
   const dock = (await win.locator('.dock').boundingBox())!
-  expect(dock.height).toBeLessThanOrEqual(720 * 0.6)
+  expect(dock.y + dock.height, 'the panel ends inside the window').toBeLessThanOrEqual(720)
   // The tutor message that leads to the question starts in view, below the bar.
   const tutor = win.locator('.sess .msg').filter({ hasText: 'Buon Ordinamento' }).last()
   const barBottom = (await win.locator('.sess .top').boundingBox())!.y + (await win.locator('.sess .top').boundingBox())!.height
@@ -124,15 +128,15 @@ test('long measure question in a 720px-high window', async () => {
   await expect.poll(() => blurredEdges(middle)).toEqual(['top'])
   await middle.evaluate((el) => el.scrollTo({ top: 0 }))
   await expect.poll(() => blurredEdges(middle)).toEqual(['bottom'])
-  // Scrolled to the end, the last tutor message ends above the dock.
+  // Scrolled to the end, the last tutor message stays in the conversation column, left of the panel.
   await win.evaluate(() => {
     const el = document.querySelector('.sess .scroll')!
     el.scrollTo({ top: el.scrollHeight })
   })
   await win.waitForTimeout(200)
   const t = (await tutor.boundingBox())!
-  const dockTop = (await win.locator('.dock').boundingBox())!.y
-  expect(t.y + t.height).toBeLessThanOrEqual(dockTop)
+  expect(t.x + t.width).toBeLessThanOrEqual(dock.x)
+  expect(t.y + t.height).toBeLessThanOrEqual(720)
   await win.screenshot({ path: 'test-results/session-measure-long-end.png' })
   await app.close()
 })

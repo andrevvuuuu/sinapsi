@@ -1,8 +1,8 @@
-import type { PracticeTurn, Problem, Submission } from '../../shared/practice-protocol'
+import { MISSES, type PracticeTurn, type Problem, type Submission } from '../../shared/practice-protocol'
 import type { ExamGrade, ExamSheet, Material, PublicExamProblem } from '../../shared/practice-types'
 
 export type PracticeEvent =
-  | { t: 'created'; id: string; mode: 'train' | 'exam'; material: Material; topic: string; durationMin?: number; paper?: boolean; at: number }
+  | { t: 'created'; id: string; mode: 'train' | 'exam'; material: Material; topic: string; durationMin?: number; paper?: boolean; triageEligible?: boolean; at: number }
   | { t: 'learner'; submission: Submission; text: string; at: number }
   | { t: 'tutor'; turn: PracticeTurn; conversationId?: string; at: number }
   | { t: 'error'; message: string; at: number }
@@ -13,6 +13,7 @@ export type PracticeEvent =
   | { t: 'handed'; at: number }
   /** Paper exam: the points Andrea gives one problem, before writing out the answer and before the correction. */
   | { t: 'self'; id: string; points: number; at: number }
+  | { t: 'attributed'; problemId: string; items: { conceptId: string; state: 'corretto' | 'errore_qui' | 'non_attribuibile'; miss?: (typeof MISSES)[number] }[]; divergent: boolean; at: number }
 
 type PublicProblem = Omit<Problem, 'modelSolution'>
 export type PracticeItem =
@@ -21,6 +22,7 @@ export type PracticeItem =
   | { kind: 'error'; message: string }
 
 export type PracticeProblem = PublicProblem & {
+  hintConcepts: string[]
   status: 'active' | 'done'
   phase: PracticeTurn['phase']
   hints: number
@@ -29,6 +31,9 @@ export type PracticeProblem = PublicProblem & {
   attempts: number
   compass?: { known: string; stuck: string; question: string }
   needsRestate: boolean
+  triageActive?: boolean
+  triage?: string
+  confidence?: number
   outcome?: NonNullable<PracticeTurn['conclude']>['outcome']
   verdict?: string
   miss?: NonNullable<PracticeTurn['conclude']>['miss']
@@ -45,6 +50,7 @@ export type PracticeState = {
   durationMin?: number
   /** An exam written on paper, with the machine off: the answers are typed or photographed afterwards. */
   paper?: boolean
+  triageEligible?: boolean
   phase: PracticeTurn['phase']
   items: PracticeItem[]
   problems: PracticeProblem[]
@@ -89,15 +95,27 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
       case 'created':
         Object.assign(s, { id: e.id, mode: e.mode, material: e.material, topic: e.topic, durationMin: e.durationMin, createdAt: e.at })
         if (e.paper) s.paper = true
+        s.triageEligible = Boolean(e.triageEligible)
         // An exam starts by generating its sheet.
         if (e.mode === 'exam') s.awaiting = 'tutor'
         break
       case 'learner':
         s.items.push({ kind: 'learner', submission: e.submission, text: e.text })
         if (e.submission.kind === 'next') s.paused = false
+        if (e.submission.kind === 'triage') {
+          const p = s.problems.find((x) => x.id === s.active)
+          if (p && e.submission.text?.trim()) p.triage = e.submission.text.trim()
+          s.lastLearnerText = e.text
+          break
+        }
         if (e.submission.kind === 'thinking') {
           const p = s.problems.find((x) => x.id === s.active)
-          if (p) p.attempts++
+          if (p) {
+            if (p.attempts === 0 && e.submission.confidence !== undefined && p.confidence === undefined) {
+              p.confidence = e.submission.confidence
+            }
+            p.attempts++
+          }
         }
         if (e.submission.kind === 'compass') {
           const p = s.problems.find((x) => x.id === s.active)
@@ -119,12 +137,23 @@ export function reducePractice(events: PracticeEvent[]): PracticeState {
         if (e.conversationId) s.conversationId = e.conversationId
         if (problem && publicProblem) {
           solutions.set(problem.id, problem.modelSolution)
-          s.problems.push({ ...publicProblem, status: 'active', phase: e.turn.phase, hints: 0, maxRung: null, attempts: 0, needsRestate: false })
+          s.problems.push({
+            ...publicProblem,
+            hintConcepts: [],
+            status: 'active',
+            phase: e.turn.phase,
+            hints: 0,
+            maxRung: null,
+            attempts: 0,
+            needsRestate: false,
+            triageActive: Boolean(s.triageEligible && publicProblem.targets.length > 0)
+          })
           s.active = problem.id
           s.paused = false
         }
         const p = s.problems.find((x) => x.id === s.active)
         if (e.turn.hint && p) {
+          if (e.turn.hint.conceptId && p.targets.includes(e.turn.hint.conceptId) && !p.hintConcepts.includes(e.turn.hint.conceptId)) p.hintConcepts.push(e.turn.hint.conceptId)
           p.hints++
           p.maxRung = Math.max(p.maxRung ?? 0, e.turn.hint.rung)
           if (e.turn.hint.rung >= 3) p.needsRestate = true

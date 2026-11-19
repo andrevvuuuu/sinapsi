@@ -94,15 +94,27 @@ describe('validation', () => {
 })
 
 describe('a game used as a check', () => {
-  it('marks its node done when played well', () => {
-    const game: Question = q({ type: 'order', steps: ['a', 'b', 'c'] }, { nodeId: 'corda' })
-    const events: SessionEvent[] = [
+  it('marks its node done when played well (only judged taboo)', () => {
+    // Non-taboo games do not mark done
+    const orderGame: Question = q({ type: 'order', steps: ['a', 'b', 'c'] }, { nodeId: 'corda' })
+    const orderEvents: SessionEvent[] = [
       { t: 'created', id: 's', topic: 't', at: 1 },
-      { t: 'teacher', turn: { phase: 'teach', blocks: [], question: game }, at: 2 },
-      { t: 'learner', text: 'x', answer: { questionId: 'g1', game: { score: 3, total: 3, detail: '' } }, question: game, at: 3 },
+      { t: 'teacher', turn: { phase: 'teach', blocks: [], question: orderGame }, at: 2 },
+      { t: 'learner', text: 'x', answer: { questionId: 'g1', game: { score: 3, total: 3, detail: '' } }, question: orderGame, at: 3 },
       { t: 'teacher', turn: { phase: 'teach', blocks: [], question: { id: 'q2', role: 'predict', kind: 'open', prompt: 'p', nodeId: 'lagrange' } }, at: 4 }
     ]
-    expect(reduceSession(events).doneNodeIds).toEqual(['corda'])
+    expect(reduceSession(orderEvents).doneNodeIds).toEqual([])
+
+    // Judged taboo marks node done
+    const tabooGame: Question = q({ type: 'taboo', concept: 'c', forbidden: ['x', 'y'] }, { nodeId: 'corda' })
+    const tabooEvents: SessionEvent[] = [
+      { t: 'created', id: 's', topic: 't', at: 1 },
+      { t: 'teacher', turn: { phase: 'teach', blocks: [], question: tabooGame }, at: 2 },
+      { t: 'learner', text: 'x', answer: { questionId: 'g1', game: { score: 1, total: 0, detail: 'la corda' } }, question: tabooGame, at: 3 },
+      { t: 'graded', questionId: 'g1', verdict: 'correct', hintsUsed: 0, reason: 'buono', at: 3.5 },
+      { t: 'teacher', turn: { phase: 'teach', blocks: [], question: { id: 'q2', role: 'predict', kind: 'open', prompt: 'p', nodeId: 'lagrange' } }, at: 4 }
+    ]
+    expect(reduceSession(tabooEvents).doneNodeIds).toEqual(['corda'])
   })
 })
 

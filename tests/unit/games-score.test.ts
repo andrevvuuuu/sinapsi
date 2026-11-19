@@ -19,4 +19,8 @@ describe('sessionScore', () => {
   it('a weak game breaks the streak', () => {
     expect(sessionScore([ans(check('q1'), 0, 50), played(1, 3)]).streak).toBe(0)
   })
+  it('gives +5 points when confidence >= MISCONCEPTION_CONFIDENCE', () => {
+    expect(sessionScore([ans(check('q1'), 0, 63)]).points).toBe(15)
+    expect(sessionScore([ans(check('q1'), 0, 62)]).points).toBe(10)
+  })
 })

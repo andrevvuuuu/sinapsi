@@ -422,7 +422,7 @@
   color: var(--muted);
 }
 .sess .pri {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-5);
   border-radius: var(--r-pill);
   border: 1px solid var(--btn-primary-bg);
@@ -450,7 +450,7 @@
   cursor: not-allowed;
 }
 .sess .ghost {
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-5);
   border-radius: var(--r-pill);
   border: 1px solid var(--ctl-edge);
@@ -502,7 +502,7 @@
 }
 .invite .go {
   margin-left: auto;
-  min-height: var(--ctl-sm);
+  min-height: var(--ctl);
   padding: 0 var(--s-5);
   border-radius: var(--r-pill);
   background: var(--btn-primary-bg);
@@ -902,6 +902,8 @@
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 40%);
+  /* One row as tall as the view: the panel's max-height: 100% is measured against it, not against its own content. */
+  grid-template-rows: minmax(0, 1fr);
   gap: 24px;
   padding: 20px 32px 24px 40px;
   height: 100%;
@@ -1089,7 +1091,7 @@
   border-radius: 999px;
   padding: 8px 18px;
   font-weight: 500;
-  min-height: 36px;
+  min-height: var(--ctl);
   cursor: pointer;
   transition:
     transform 0.15s var(--ease-out),
@@ -1107,10 +1109,10 @@
 }
 .sess :is(.ops, .dockwrap) .pri:disabled,
 .sess .pri:disabled {
-  opacity: 0.45;
-  background: var(--sh-send-bg);
-  border-color: var(--sh-send-bg);
-  color: #fff;
+  /* The app's disabled control, as the home send: no fill, the 3:1 outline, the AA muted label, never faded. */
+  background: var(--btn-disabled-bg);
+  border-color: var(--btn-disabled-border);
+  color: var(--btn-disabled-ink);
   cursor: not-allowed;
 }
 .sess :is(.ops, .dockwrap) .opt {
@@ -1123,7 +1125,7 @@
   border: 1px solid var(--hair);
   background: var(--surface);
   color: var(--ink);
-  min-height: auto;
+  min-height: var(--ctl);
   box-shadow: none;
   transition:
     border-color 0.15s var(--ease-out),
@@ -1219,12 +1221,17 @@
 }
 .sess :is(.ops, .dockwrap) .sc-input button.pri {
   align-self: flex-end;
-  min-height: 36px;
+  min-height: var(--ctl);
   border: 1px solid var(--sh-send-bg);
   background: var(--sh-send-bg);
   color: #fff;
   border-radius: 999px;
   padding: 8px 18px;
+}
+.sess :is(.ops, .dockwrap) .sc-input button.pri:disabled {
+  background: var(--btn-disabled-bg);
+  border-color: var(--btn-disabled-border);
+  color: var(--btn-disabled-ink);
 }
 
 .sess .ops-empty {
@@ -1284,20 +1291,25 @@
 .sess .ops .inner:has(> .invite) {
   padding: 14px 20px 18px;
 }
-/* The question panel shows all of itself: options, confidence and reasoning never scroll inside it. */
+/* The question panel shows all of itself while it fits; in a short window (a long question at 720 px) the question and the
+   send row stay in view and only the options, confidence and reasoning scroll between them (with the library's scroll edge). */
 .sess :is(.body, .split) > .ops {
-  max-height: none;
-  overflow: visible;
+  max-height: 100%;
+  overflow: hidden;
+}
+.sess .ops :is(.dock, .shell, .inner) {
+  min-height: 0;
 }
 .sess .ops .dock-scroll {
-  flex: none;
-  overflow: visible;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 .sess .ops .conf .lab {
   padding: 0;
 }
 .sess .ops .dock {
-  max-height: none;
+  max-height: 100%;
 }
 .sess .ops .inner.has-scroll .q-head {
   max-height: none;
@@ -1312,8 +1324,9 @@
   flex: none;
   border: 1px solid color-mix(in srgb, var(--hair) 80%, transparent);
   background: color-mix(in srgb, var(--surface) 60%, transparent);
-  padding: 4px 12px;
-  font: 500 12px/1 var(--sans);
+  min-height: var(--ctl);
+  padding: 0 var(--s-4);
+  font: var(--fw-medium) var(--fs-footnote) var(--sans);
   color: var(--ink);
   border-radius: var(--r-pill);
   cursor: pointer;
@@ -1432,6 +1445,9 @@
   background: transparent;
   color: var(--muted);
   font: 400 11px/1 var(--sans);
+  /* 44 px target on a caption-sized link: the negative margin keeps the row's height. */
+  min-height: var(--ctl);
+  margin-block: calc((15px - var(--ctl)) / 2);
   padding: 2px 6px;
   cursor: pointer;
   margin-left: auto;

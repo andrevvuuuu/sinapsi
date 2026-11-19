@@ -87,4 +87,16 @@ describe('buildMaterialContext', () => {
     expect(text).toContain('autovalori')
     expect(text).toContain('nessun concetto della mappa')
   })
+  it('adds plausible sibling lures without changing the chosen concepts', async () => {
+    const text = await buildMaterialContext({
+      material: { conceptIds: ['n_r'], sourceIds: [], free: '', blind: true },
+      graph,
+      readNote: async () => '',
+      sourceText: async () => null
+    })
+    expect(text).toContain('CONCETTI AFFINI (non bersagli: possibili esche, non usarli come targets)')
+    expect(text).toContain('n_w | Teorema di Weierstrass | Teorema di Weierstrass: enunciato')
+    expect(text).toContain('n_f | Teorema di Fermat | Teorema di Fermat: enunciato')
+    expect(text).toContain('CONCETTI SCELTI (id | nome | enunciato)')
+  })
 })
