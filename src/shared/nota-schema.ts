@@ -128,6 +128,14 @@ export type Color = z.infer<typeof Color>
 
 export type Section = { id: string; num: string; title: string; titleEm?: string; blocks: Block[] }
 
+const SectionRaw = z.object({
+  id: z.string().optional(),
+  num: z.string().default(''),
+  title: str,
+  titleEm: z.string().optional(),
+  blocks: z.array(z.unknown()).default([])
+})
+
 const Top = z.object({
   title: str,
   titleEm: z.string().optional(),
@@ -140,7 +148,7 @@ const Top = z.object({
     .object({ fromNote: z.array(z.string()).default([]), added: z.array(z.string()).default([]), flagged: z.array(z.string()).default([]) })
     .default({ fromNote: [], added: [], flagged: [] }),
   sections: z
-    .array(z.object({ id: z.string().optional(), num: z.string().default(''), title: str, titleEm: z.string().optional(), blocks: z.array(z.unknown()).default([]) }))
+    .array(SectionRaw)
     .min(1)
     .transform((a) => a.slice(0, 30)),
   recap: z
@@ -149,48 +157,114 @@ const Top = z.object({
 })
 export type Nota = Omit<z.infer<typeof Top>, 'sections'> & { sections: Section[] }
 
+export function parseBlock(b: unknown, onDrop?: () => void): Block | null {
+  const leaf = (item: unknown): LeafBlock | null => {
+    const r = LeafBlock.safeParse(item)
+    if (r.success) return r.data
+    onDrop?.()
+    return null
+  }
+  if (b && typeof b === 'object' && (b as { type?: unknown }).type === 'tabs') {
+    const tabs = (b as { tabs?: unknown }).tabs
+    if (!Array.isArray(tabs) || tabs.length === 0) {
+      onDrop?.()
+      return null
+    }
+    const out: TabsBlock['tabs'] = []
+    for (const t of tabs) {
+      const label = (t as { label?: unknown })?.label
+      const blocks = (t as { blocks?: unknown })?.blocks
+      if (typeof label !== 'string' || !Array.isArray(blocks)) {
+        onDrop?.()
+        continue
+      }
+      out.push({ label, blocks: blocks.map(leaf).filter((x): x is LeafBlock => x !== null) })
+    }
+    if (!out.length) return null
+    return { type: 'tabs', tabs: out }
+  }
+  return leaf(b)
+}
+
 /** Throws only when the top level is unusable; invalid blocks are dropped and counted. */
 export function parseNota(raw: unknown): { nota: Nota; dropped: number } {
   const top = Top.parse(raw)
   let dropped = 0
-  const leaf = (b: unknown): LeafBlock | null => {
-    const r = LeafBlock.safeParse(b)
-    if (r.success) return r.data
+  const onDrop = (): void => {
     dropped++
-    return null
-  }
-  const block = (b: unknown): Block | null => {
-    if (b && typeof b === 'object' && (b as { type?: unknown }).type === 'tabs') {
-      const tabs = (b as { tabs?: unknown }).tabs
-      if (!Array.isArray(tabs) || tabs.length === 0) {
-        dropped++
-        return null
-      }
-      const out: TabsBlock['tabs'] = []
-      for (const t of tabs) {
-        const label = (t as { label?: unknown })?.label
-        const blocks = (t as { blocks?: unknown })?.blocks
-        if (typeof label !== 'string' || !Array.isArray(blocks)) {
-          dropped++
-          continue
-        }
-        out.push({ label, blocks: blocks.map(leaf).filter((x): x is LeafBlock => x !== null) })
-      }
-      if (!out.length) return null
-      return { type: 'tabs', tabs: out }
-    }
-    return leaf(b)
   }
   const seen = new Set<string>()
   const sections: Section[] = top.sections.map((s, i) => {
     let id = s.id && /^[A-Za-z][\w-]*$/.test(s.id) ? s.id : `s${i + 1}`
     while (seen.has(id)) id = `${id}-${i + 1}`
     seen.add(id)
-    const blocks = s.blocks.map(block).filter((x): x is Block => x !== null)
+    const blocks = s.blocks.map((b) => parseBlock(b, onDrop)).filter((x): x is Block => x !== null)
     return { id, num: s.num, title: s.title, ...(s.titleEm ? { titleEm: s.titleEm } : {}), blocks }
   })
   return { nota: { ...top, sections }, dropped }
 }
+
+export function parseSections(raw: unknown): { sections: Section[]; dropped: number } {
+  let dropped = 0
+  const onDrop = (): void => {
+    dropped++
+  }
+
+  let rawSections: unknown
+  if (raw && typeof raw === 'object') {
+    if ('sections' in raw && Array.isArray((raw as { sections: unknown }).sections)) {
+      rawSections = (raw as { sections: unknown }).sections
+    } else if (
+      'nota' in raw &&
+      (raw as { nota?: { sections?: unknown } }).nota?.sections &&
+      Array.isArray((raw as { nota: { sections: unknown } }).nota.sections)
+    ) {
+      rawSections = (raw as { nota: { sections: unknown } }).nota.sections
+    }
+  }
+
+  if (!Array.isArray(rawSections)) {
+    throw new Error('Formato non valido: campo sections assente o non valido')
+  }
+
+  const seen = new Set<string>()
+  const sections: Section[] = []
+
+  for (let i = 0; i < rawSections.length; i++) {
+    const item = rawSections[i]
+    const parsed = SectionRaw.safeParse(item)
+    if (!parsed.success) {
+      dropped++
+      continue
+    }
+    const s = parsed.data
+    let id = s.id && /^[A-Za-z][\w-]*$/.test(s.id) ? s.id : `s${i + 1}`
+    while (seen.has(id)) id = `${id}-${i + 1}`
+    seen.add(id)
+    const blocks = s.blocks.map((b) => parseBlock(b, onDrop)).filter((x): x is Block => x !== null)
+    sections.push({
+      id,
+      num: s.num,
+      title: s.title,
+      ...(s.titleEm ? { titleEm: s.titleEm } : {}),
+      blocks
+    })
+  }
+
+  return { sections, dropped }
+}
+
+export const SectionsSchema = z.unknown().transform((raw, ctx) => {
+  try {
+    return parseSections(raw)
+  } catch (e) {
+    ctx.addIssue({
+      code: 'custom',
+      message: e instanceof z.ZodError ? e.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') : String(e)
+    })
+    return z.NEVER
+  }
+})
 
 /** For bridge.ask: valid input becomes { nota, dropped }; an unusable top level is a schema error. */
 export const NotaSchema = z.unknown().transform((raw, ctx) => {

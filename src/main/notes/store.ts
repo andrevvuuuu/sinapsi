@@ -15,14 +15,19 @@ export type StoredNote = {
   sourceTitle: string
   /** sha256 of the Obsidian note it was written from: a different hash means the note changed since. */
   sourceHash?: string
+  sourceSections?: { title: string; hash: string }[]
+  sourceIntroHash?: string
   sessionId?: string
   engine?: Engine
   dropped?: number
   nota?: Nota
 }
-export type NoteMeta = Omit<StoredNote, 'nota'> & { title: string }
+export type NoteMeta = Omit<StoredNote, 'nota' | 'sourceSections' | 'sourceIntroHash'> & { title: string }
 
-export const toMeta = ({ nota, ...rest }: StoredNote): NoteMeta => ({ ...rest, title: nota?.title ?? rest.sourceTitle })
+export const toMeta = ({ nota, sourceSections: _s, sourceIntroHash: _i, ...rest }: StoredNote): NoteMeta => ({
+  ...rest,
+  title: nota?.title ?? rest.sourceTitle
+})
 
 /** One JSON file per nota viva; whole-file writes through a temp file, so a crash never leaves half a note. */
 export type NoteStore = { write(n: StoredNote): Promise<void>; read(id: string): Promise<StoredNote>; all(): Promise<StoredNote[]> }

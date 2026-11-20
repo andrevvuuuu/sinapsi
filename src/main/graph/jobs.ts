@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
 import type { Bridge } from '../ai/bridge'
 import { AuthRequiredError, EngineMissingError } from '../ai/errors'
-import type { ExtractionLine, ExtractorStatus, GraphData } from '../../shared/graph-types'
+import type { ExtractionLine, ExtractorStatus, GraphData, Ledgers } from '../../shared/graph-types'
 import type { VaultIndex } from '../../shared/vault-types'
 import { isMoc } from '../../shared/moc'
 import { deriveGraph } from './derive'
@@ -126,6 +126,13 @@ export function createExtractor(deps: {
     return done
   }
 
+  let lastLedgers: Ledgers | null = null
+  let lastVaultIndex: VaultIndex | null = null
+  let lastGraphData: GraphData | null = null
+  let inFlightGraph: Promise<GraphData> | null = null
+  let inFlightLedgers: Ledgers | null = null
+  let inFlightVaultIndex: VaultIndex | null = null
+
   return {
     async request(path, reason) {
       const index = await available(path)
@@ -160,7 +167,29 @@ export function createExtractor(deps: {
     status: () => ({ ...status, queued: [...status.queued] }),
     graph: async () => {
       const [ledgers, index] = await Promise.all([deps.store.read(), deps.vault()])
-      return deriveGraph(ledgers, index ? graphOptions(index) : undefined)
+      if (lastGraphData && ledgers === lastLedgers && index === lastVaultIndex) {
+        return lastGraphData
+      }
+      if (inFlightGraph && ledgers === inFlightLedgers && index === inFlightVaultIndex) {
+        return inFlightGraph
+      }
+      inFlightLedgers = ledgers
+      inFlightVaultIndex = index
+      const p = (async () => {
+        try {
+          const result = deriveGraph(ledgers, index ? graphOptions(index) : undefined)
+          lastLedgers = ledgers
+          lastVaultIndex = index
+          lastGraphData = result
+          return result
+        } finally {
+          inFlightGraph = null
+          inFlightLedgers = null
+          inFlightVaultIndex = null
+        }
+      })()
+      inFlightGraph = p
+      return p
     }
   }
 }

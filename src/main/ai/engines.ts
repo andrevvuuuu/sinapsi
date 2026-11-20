@@ -22,6 +22,9 @@ export type CallOptions = {
 // The tutor only talks: no file, shell or web tools inside a conversation.
 const NO_TOOLS = 'Bash Edit Write Read Glob Grep WebFetch WebSearch Task NotebookEdit'
 
+export const ONE_SHOT_SYSTEM =
+  "Sei un componente dell'app di studio Sinapsi. Segui solo le istruzioni del messaggio e rispondi esattamente nel formato richiesto, senza testo in più."
+
 export function buildArgs(
   engine: Engine,
   prompt: string,
@@ -50,9 +53,17 @@ export function buildArgs(
     }
   }
   const session = conv ? (conv.resume ? ['--resume', conv.id] : ['--session-id', conv.id]) : []
-  const system = opts.systemPrompt && !conv?.resume ? ['--system-prompt', opts.systemPrompt] : []
+  const isReadOnly = Boolean(opts.readOnly && !conv)
+  const isResume = Boolean(conv?.resume)
+  const systemPromptText =
+    opts.systemPrompt && !isResume
+      ? opts.systemPrompt
+      : !isResume && !isReadOnly
+        ? ONE_SHOT_SYSTEM
+        : undefined
+  const system = systemPromptText ? ['--system-prompt', systemPromptText] : []
   const readOnly =
-    opts.readOnly && !conv
+    isReadOnly
       ? [
           '--tools',
           'Read',
@@ -64,7 +75,7 @@ export function buildArgs(
         ]
       : []
   const lockdown =
-    conv || opts.noTools
+    !isReadOnly
       ? [
           '--tools',
           '',

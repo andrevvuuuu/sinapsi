@@ -1,4 +1,4 @@
-function normaliseTitle(value: string): { text: string; number: string | null } {
+export function normaliseTitle(value: string): { text: string; number: string | null } {
   const text = value
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
@@ -13,7 +13,7 @@ function normaliseTitle(value: string): { text: string; number: string | null } 
   return { text: rest, number }
 }
 
-function matchesTitle(heading: string, title: string): boolean {
+export function matchesTitle(heading: string, title: string): boolean {
   const actual = normaliseTitle(heading)
   const requested = normaliseTitle(title)
   if (actual.text === requested.text && actual.number === requested.number) return true

@@ -24,7 +24,7 @@ const LEGACY: Record<Task, object[]> = {
   teach: [{ engine: 'claude' }],
   grade: [{ engine: 'claude' }]
 }
-const SETTINGS_VERSION = 3
+const SETTINGS_VERSION = 4
 // Exercise types added after a version: a list saved before it never chose to leave them out.
 const NEW_TYPES: [number, ExerciseType][] = [[3, 'explain']]
 const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
@@ -50,10 +50,14 @@ export async function loadSettings(): Promise<Settings> {
     raw = {}
   }
   const obj = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
-  // Files written from phase 3 on carry a version: their engine entries are real choices.
-  const legacy = obj.settingsVersion === undefined
-  const engines = dropEngines(obj.engines, (t, c) => legacy && LEGACY[t].some((l) => same(l, c)))
   const version = typeof obj.settingsVersion === 'number' ? obj.settingsVersion : 0
+  const legacy = obj.settingsVersion === undefined
+  const engines = dropEngines(obj.engines, (t, c) => {
+    if (version < 4 && (t === 'extract' || t === 'variants') && same(c, OLD_GEMINI)) {
+      return true
+    }
+    return legacy && LEGACY[t].some((l) => same(l, c))
+  })
   const saved = obj.exerciseTypes
   const types = Array.isArray(saved)
     ? [

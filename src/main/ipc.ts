@@ -74,7 +74,7 @@ import { readinessFor } from './planner/readiness'
 import { pendingDigest, reduceLessons } from './lessons/reduce'
 import { loadSettings, saveSettings } from './store/settings'
 import type { EngineChoice } from '../shared/settings-schema'
-import { scanVault } from './vault/scan'
+import { createVaultIndexCache } from './vault/index-cache'
 import { createRewatcher, watchVault } from './vault/watch'
 import { detectMoves, detectOfflineMoves } from './graph/moves'
 import { resolvePath } from './graph/resolve-path'
@@ -99,10 +99,11 @@ export function registerIpc(): { bridge: Bridge } {
       }
     : { load: loadSettings, save: saveSettings }
   const otherEngine = async (): Promise<EngineChoice> => resolveOtherEngine(await settings.load())
+  const vaultCache = createVaultIndexCache()
   const h = makeHandlers({
     loadSettings: settings.load,
     saveSettings: settings.save,
-    scan: scanVault,
+    scan: (root, excluded) => vaultCache.get(root, excluded),
     aiStatus: () => bridge.status(),
     openExternal: (url) => shell.openExternal(url),
     chooseFolder: async () => {
@@ -124,6 +125,7 @@ export function registerIpc(): { bridge: Bridge } {
   // eslint-disable-next-line prefer-const
   let linkedSync: ReturnType<typeof createLinkedSync> | undefined
   const rewatch = createRewatcher(settings.load, watchVault, async (paths) => {
+    vaultCache.invalidate()
     const idx = await h.vaultIndex()
     if ('error' in idx) return
     if (lastIndex) {
@@ -149,11 +151,15 @@ export function registerIpc(): { bridge: Bridge } {
 
   ipcMain.handle(CH.settingsGet, () => h.settingsGet())
   ipcMain.handle(CH.settingsSet, async (_e, patch) => {
+    if (patch && typeof patch === 'object' && ('vaultPath' in patch || 'excludedFolders' in patch)) {
+      vaultCache.invalidate()
+    }
     const s = await h.settingsSet(patch)
     if (patch && typeof patch === 'object' && 'vaultPath' in patch) void rewatch()
     return s
   })
   ipcMain.handle(CH.settingsChooseVault, async () => {
+    vaultCache.invalidate()
     const s = await h.settingsChooseVault()
     void rewatch()
     return s

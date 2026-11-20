@@ -68,7 +68,11 @@ export function trainingLines(reviews: ReviewLine[]): ReviewLine[] {
 
 /** Replays one concept's reviews in time order: the card is never stored, always rebuilt. */
 function replay(reviews: ReviewLine[]): Card {
-  const applied = trainingLines(reviews)
+  return replayApplied(trainingLines(reviews))
+}
+
+/** The scheduler loop alone, on lines trainingLines already filtered and sorted. */
+function replayApplied(applied: ReviewLine[]): Card {
   if (!applied.length) return createEmptyCard(new Date(0))
   let card = createEmptyCard(new Date(studyClock(applied[0].at)))
   for (const r of applied) {
@@ -84,13 +88,18 @@ function replay(reviews: ReviewLine[]): Card {
 export function memoryOf(reviews: ReviewLine[], now: number, activeWeaknessConcepts?: Set<string>): Map<string, Memory> {
   const proceduralByConcept = proceduralLens(reviews)
   const byConcept = new Map<string, ReviewLine[]>()
-  for (const r of reviews) byConcept.set(r.conceptId, [...(byConcept.get(r.conceptId) ?? []), r])
+  for (const r of reviews) {
+    const list = byConcept.get(r.conceptId)
+    if (list) list.push(r)
+    else byConcept.set(r.conceptId, [r])
+  }
   const out = new Map<string, Memory>()
   for (const [conceptId, rs] of byConcept) {
-    const applied = trainingLines(rs)
-    const card = replay(applied)
+    const sorted = rs.sort((a, b) => a.at - b.at || a.grade - b.grade)
+    const applied = trainingLines(sorted)
+    const card = replayApplied(applied)
     const last = applied.at(-1)!
-    const lastRaw = [...rs].sort((a, b) => a.at - b.at || a.grade - b.grade).at(-1)!
+    const lastRaw = sorted.at(-1)!
     const R = displayedR(card, last.grade, now)
     let due = card.due ? realClock(card.due.getTime()) : null
     // Tetto di prima scadenza: se tutte le righe del concetto applicate sono via: 'session' e sono esattamente 1, due <= at + 24h

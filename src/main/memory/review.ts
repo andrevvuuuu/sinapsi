@@ -13,6 +13,7 @@ import type { MemoryStore } from './store'
 import { buildVariantsPrompt, fallbackExercise, variantsReplySchema, type VariantsStore } from './variants'
 import type { EngineChoice } from '../../shared/settings-schema'
 import { ancestors } from '../graph/derive'
+import { sectionText } from '../notes/section-text'
 import { weakPrerequisites, suspectPremises, type CascadeMemory } from '../../shared/cascade'
 
 export type ReviewItem = {
@@ -56,6 +57,12 @@ export type ReviewService = {
 
 export const NEW_PER_SESSION = 5
 export const EXPLAIN_SHARE = 4
+/** The part of the note a concept comes from: its section when found, else the whole note. */
+const conceptSection = (c: Concept | undefined, notePath: string | undefined, text: string): string => {
+  const title = c && notePath ? c.sections[notePath] : undefined
+  return (title && sectionText(text, [title])) || text
+}
+
 const VARIANTS_TIMEOUT = 300_000
 const GRADE_TIMEOUT = 120_000
 
@@ -431,7 +438,7 @@ export function createReviewService(deps: {
               concept: { name: c?.name ?? '', statement: c?.statement ?? '' },
               exercise: req.exercise,
               noteTitle,
-              noteText: text,
+              noteText: conceptSection(c, notePath, text),
               turns: [
                 { by: 'andrea', text: req.answer },
                 { by: 'claude', text: 'Chiarimento' },
@@ -516,7 +523,7 @@ export function createReviewService(deps: {
         await mkdir(deps.workDir, { recursive: true })
         const r = await deps.bridge.ask({
           task: 'grade',
-          prompt: buildExplainPrompt({ concept: { name: c?.name ?? '', statement: c?.statement ?? '' }, exercise: req.exercise, noteTitle, noteText: text, turns: req.turns, confidence: req.confidence }),
+          prompt: buildExplainPrompt({ concept: { name: c?.name ?? '', statement: c?.statement ?? '' }, exercise: req.exercise, noteTitle, noteText: conceptSection(c, notePath, text), turns: req.turns, confidence: req.confidence }),
           schema: explainReplySchema(questionsAsked(req.turns) < MAX_QUESTIONS),
           timeoutMs: GRADE_TIMEOUT,
           cwd: deps.workDir

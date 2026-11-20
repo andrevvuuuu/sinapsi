@@ -40,7 +40,7 @@ describe('settings dialog', () => {
     const s = { ...settings, engines: { ...settings.engines, variants: { engine: 'claude' as const, model: 'sonnet' } } }
     render(<SettingsDialog settings={s} onTheme={vi.fn()} onSaved={vi.fn()} onClose={vi.fn()} />)
     fireEvent.change(screen.getByLabelText('Motore · Domande del Ripasso'), { target: { value: 'agy' } })
-    expect((screen.getByLabelText('Modello · Domande del Ripasso') as HTMLInputElement).value).toBe('gemini-3.8-flash-high')
+    expect((screen.getByLabelText('Modello · Domande del Ripasso') as HTMLInputElement).value).toBe('gemini-3.8-flash-medium')
   })
 })
 
