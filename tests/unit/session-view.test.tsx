@@ -158,7 +158,8 @@ describe('SessionView', () => {
         id: 'q-probe',
         role: 'probe',
         kind: 'open',
-        prompt: 'Qual è la tesi?'
+        prompt: 'Qual è la tesi?',
+        hideLesson: true
       }
     })
     expect(await screen.findByRole('region', { name: 'Recupero attivo' })).toBeTruthy()
@@ -186,6 +187,22 @@ describe('SessionView', () => {
 
     expect(screen.queryByRole('region', { name: 'Recupero attivo' })).toBeNull()
     expect(history.hasAttribute('data-blurred')).toBe(false)
+  })
+
+  it('keeps the lesson visible when the question is about what is on screen (no hideLesson)', async () => {
+    mount({
+      ...base,
+      items: [
+        { kind: 'learner', text: 'Voglio studiare: Razionali' },
+        { kind: 'teacher', turn: { phase: 'probe', blocks: [{ type: 'text', md: 'Considera $1/2$, $2/4$ e $-3/-6$.' }] } }
+      ],
+      awaiting: 'learner',
+      stage: 'probe',
+      pendingQuestion: { id: 'q-same', role: 'probe', kind: 'open', prompt: 'Queste tre frazioni sono lo stesso numero?' }
+    })
+    expect(await screen.findByText('Queste tre frazioni sono lo stesso numero?')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Recupero attivo' })).toBeNull()
+    expect(document.querySelector('.history')?.hasAttribute('data-blurred')).toBe(false)
   })
 
   it('shows note confirmation card and calls confirm with note path or null', async () => {

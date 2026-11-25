@@ -158,11 +158,8 @@ export function SessionView({
   const measureDock = useDockHeight(scroller, dockwrap, s !== null)
   const q = s?.awaiting === 'learner' ? s.pendingQuestion : undefined
 
-  const isRetrieval = Boolean(
-    q &&
-    (['check', 'recall', 'probe'].includes(q.role) ||
-      (s?.stage && ['probe', 'consolidate'].includes(s.stage)))
-  )
+  // Closed-book only when the tutor says so (hideLesson) on a recall-type question: a question about what is on screen keeps it visible.
+  const isRetrieval = Boolean(q && q.hideLesson === true && ['check', 'recall', 'probe'].includes(q.role))
   const isPeeked =
     (q && peekedQIds.has(q.id)) ||
     Boolean(s?.evidence?.some((e) => e.questionId === q?.id && e.peeked))

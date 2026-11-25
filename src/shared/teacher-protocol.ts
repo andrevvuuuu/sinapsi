@@ -35,7 +35,9 @@ const QuestionSchema = z.object({
   correct: z.number().int().optional(),
   why: z.array(z.string()).optional(),
   nodeId: z.string().optional(),
-  game: GameSchema.optional()
+  game: GameSchema.optional(),
+  /** Closed-book recall: the app hides the lesson above while the question is open. Only when it can be answered from memory. */
+  hideLesson: z.boolean().optional()
 })
 const SummarySchema = z.object({ learned: z.array(z.string()), shaky: z.array(z.string()), misconceptions: z.array(z.string()) })
 

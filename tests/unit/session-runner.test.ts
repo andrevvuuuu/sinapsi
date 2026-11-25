@@ -637,6 +637,43 @@ describe('session runner', () => {
     expect(reviews.some((r) => r.conceptId === 'ghost-concept')).toBe(false)
   })
 
+  it('says the tutor is working, not that it stopped, while an open answer is being graded', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sinapsi-session-grading-'))
+    const turns: TeacherTurn[] = [
+      { phase: 'teach', blocks: [], question: { id: 'q1', role: 'check', kind: 'open', prompt: 'Spiega', nodeId: 'c' } },
+      { phase: 'teach', blocks: [{ type: 'text', md: 'Bene.' }] }
+    ]
+    let release!: () => void
+    const updates: string[] = []
+    let n = 0
+    const runner = createSessionRunner({
+      dir,
+      bridge: {
+        converse: async () => ({ data: turns[n++] ?? turns.at(-1)!, conversationId: 's', engine: 'claude' }),
+        ask: async () => {
+          await new Promise<void>((r) => (release = r))
+          throw new Error('grader down')
+        }
+      } as never,
+      vault: async () => ({ root: '/v', scannedAt: 0, subjects: [], notes: [{ path: '/v/C.md', title: 'Cauchy', folder: '', tags: [], aliases: [], links: [], headings: [], blockIds: [], subject: null, mtime: 0, size: 0, available: true }] }),
+      readNote: async () => '# Teorema\n\nEnunciato.',
+      graph: async () => ({ concepts: [{ id: 'c', name: 'Cauchy', statement: 's', aliases: [], birth: '/v/C.md', notes: ['/v/C.md'], sections: { '/v/C.md': 'Teorema' }, depth: 0 }], chains: [], extracted: {} }),
+      onUpdate: (s) => updates.push(s.awaiting)
+    })
+    const id = await runner.create('Cauchy')
+    await runner.retry(id)
+    const st = await runner.get(id)
+    expect(st.tree?.nodes.some((x) => x.id === 'c')).toBe(true)
+    updates.length = 0
+    const done = runner.answer(id, { questionId: 'q1', text: 'risposta' })
+    await new Promise((r) => setTimeout(r, 20))
+    expect((await runner.get(id)).awaiting).toBe('teacher')
+    expect(updates).not.toContain('retry')
+    release()
+    await done
+    expect(updates).not.toContain('retry')
+  })
+
   it('appends an ungraded event when gradeOpenAnswer fails, applies fallback at >=2, and writes unverifiedIds to index.jsonl', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'sinapsi-session-ungraded-'))
     const noteIndex: VaultIndex = {

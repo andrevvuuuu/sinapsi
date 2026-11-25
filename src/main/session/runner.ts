@@ -116,6 +116,16 @@ export function createSessionRunner(deps: {
   const file = (id: string) => join(deps.dir, `${id}.jsonl`)
   const chains = new Map<string, Promise<unknown>>()
   const inflight = new Map<string, AbortController>()
+  // Sessions whose reply is on its way but whose teacher call has not started yet (e.g. while the open answer is graded).
+  const working = new Set<string>()
+  async function busy<T>(id: string, fn: () => Promise<T>): Promise<T> {
+    working.add(id)
+    try {
+      return await fn()
+    } finally {
+      working.delete(id)
+    }
+  }
   const cache = new Map<string, SessionEvent[]>()
   const profileCache = new Map<string, string>()
   const finalizeStarted = new Set<string>()
@@ -137,7 +147,8 @@ export function createSessionRunner(deps: {
   }
   async function load(id: string): Promise<SessionState> {
     const state = reduceSession(await events(id))
-    if (state.awaiting === 'teacher' && !inflight.has(id)) state.awaiting = 'retry'
+    // Nobody is answering (the app quit mid-turn): offer Riprova. Not while the reply is still being prepared.
+    if (state.awaiting === 'teacher' && !inflight.has(id) && !working.has(id)) state.awaiting = 'retry'
     return state
   }
   async function append(id: string, event: SessionEvent): Promise<void> {
@@ -510,7 +521,7 @@ export function createSessionRunner(deps: {
       return id
     },
     answer: (id, answer) =>
-      serial(id, async () => {
+      serial(id, () => busy(id, async () => {
         const state = await load(id)
         const question = state.pendingQuestion
         if (!question || question.id !== answer.questionId)
@@ -550,9 +561,9 @@ export function createSessionRunner(deps: {
           }
         }
         await teacherTurn(id, extra)
-      }),
+      })),
     say: (id, text) =>
-      serial(id, async () => {
+      serial(id, () => busy(id, async () => {
         const state = await load(id)
         if (
           state.awaiting !== 'learner' ||
@@ -561,7 +572,7 @@ export function createSessionRunner(deps: {
           throw new Error('prima rispondi alla domanda aperta')
         await append(id, { t: 'learner', text, question: state.pendingQuestion, at: Date.now() })
         await teacherTurn(id)
-      }),
+      })),
     retry: (id) =>
       serial(id, async () => {
         const state = await load(id)
