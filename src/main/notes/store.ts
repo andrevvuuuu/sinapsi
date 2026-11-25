@@ -1,28 +1,10 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { Engine } from '../../shared/settings-schema'
-import type { Nota } from '../../shared/nota-schema'
 import type { MoveLine } from '../../shared/graph-types'
 import { resolvePath } from '../graph/resolve-path'
 
-export type StoredNote = {
-  id: string
-  createdAt: number
-  updatedAt: number
-  status: 'generating' | 'ready' | 'error'
-  error?: string
-  sourcePath: string
-  sourceTitle: string
-  /** sha256 of the Obsidian note it was written from: a different hash means the note changed since. */
-  sourceHash?: string
-  sourceSections?: { title: string; hash: string }[]
-  sourceIntroHash?: string
-  sessionId?: string
-  engine?: Engine
-  dropped?: number
-  nota?: Nota
-}
-export type NoteMeta = Omit<StoredNote, 'nota' | 'sourceSections' | 'sourceIntroHash'> & { title: string }
+import type { NoteMeta, StoredNote } from '../../shared/notes-types'
+export type { NoteMeta, StoredNote } from '../../shared/notes-types'
 
 export const toMeta = ({ nota, sourceSections: _s, sourceIntroHash: _i, ...rest }: StoredNote): NoteMeta => ({
   ...rest,

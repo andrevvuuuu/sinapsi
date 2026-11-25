@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { toTitleCase } from '../../shared/subjects'
-import { mkdir, readdir } from 'node:fs/promises'
+import { mkdir, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
 import type { Bridge } from '../ai/bridge'
@@ -88,7 +88,29 @@ export function createPracticeRunner(deps: PracticeDeps) {
     chains.set(id, run.catch(() => undefined))
     return run
   }
-  const events = (id: string): Promise<PracticeEvent[]> => readJsonl(file(id), AnyEvent)
+  // Each session file is read again only when it changed (mtime + size), as memoryStore does: Oggi and the catalog list every session.
+  const eventCache = new Map<string, { mtimeMs: number; size: number; events: PracticeEvent[] }>()
+  async function events(id: string): Promise<PracticeEvent[]> {
+    const path = file(id)
+    const st = await stat(path).catch(() => null)
+    const hit = eventCache.get(id)
+    // A copy every time: the reducer keeps references to event objects and the runner mutates the state it builds.
+    if (st && hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return structuredClone(hit.events)
+    const read = await readJsonl(path, AnyEvent)
+    if (st) eventCache.set(id, { mtimeMs: st.mtimeMs, size: st.size, events: read })
+    else eventCache.delete(id)
+    return structuredClone(read)
+  }
+  /** Every session on disk, each file read at most once (and not at all if unchanged since the last call). */
+  async function allStates(): Promise<PracticeState[]> {
+    let names: string[]
+    try {
+      names = (await readdir(deps.dir)).filter((n) => n.endsWith('.jsonl'))
+    } catch {
+      return []
+    }
+    return (await Promise.all(names.map((n) => load(n.replace(/\.jsonl$/, ''))))).filter((s) => s.id)
+  }
   async function load(id: string): Promise<PracticeState> {
     const s = reducePractice(await events(id))
     // Nobody is answering (the app quit mid-turn): offer Riprova.
@@ -335,22 +357,14 @@ export function createPracticeRunner(deps: PracticeDeps) {
       }),
     get: (id: string): Promise<PracticeState> => load(id),
     async list(): Promise<PracticeSummary[]> {
-      let names: string[]
-      try {
-        names = (await readdir(deps.dir)).filter((n) => n.endsWith('.jsonl'))
-      } catch {
-        return []
-      }
-      const all = await Promise.all(names.map((n) => load(n.replace(/\.jsonl$/, ''))))
-      return all
-        .filter((s) => s.id)
+      return (await allStates())
         .map((s) => ({ id: s.id, topic: s.topic, mode: s.mode, done: s.phase === 'done', updatedAt: s.updatedAt }))
         .sort((a, b) => b.updatedAt - a.updatedAt)
     },
     /** Concepts some concluded problem has exercised: the catalog's "mai praticato" is the rest. */
     async practiced(): Promise<Set<string>> {
       const out = new Set<string>()
-      for (const s of await this.list()) for (const p of (await load(s.id)).problems) if (p.status === 'done') p.targets.forEach((t) => out.add(t))
+      for (const s of await allStates()) for (const p of s.problems) if (p.status === 'done') p.targets.forEach((t) => out.add(t))
       return out
     }
   }

@@ -78,3 +78,10 @@ export const TUTOR_STATES: TutorItemState[] = [
   'da estrarre',
   'scollegato'
 ]
+
+export type TutorCalendar = {
+  courses: { id: string; nome: string; orario: { giorno: string; ora: string }[]; esami: { nome: string; data: string }[] }[]
+  lessons: { course: string; courseName: string; date: string; number?: number; text: string; coverage: { total: number; covered: number; missing: string[] } }[]
+  nextLesson: { course: string; courseName: string; date: string; time: string } | null
+  exams: { course: string; courseName: string; name: string; date: string }[]
+}

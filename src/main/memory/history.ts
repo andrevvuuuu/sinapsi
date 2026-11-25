@@ -1,6 +1,7 @@
 import type { ReviewLine } from '../../shared/memory-types'
 
-export type ReviewSession = { id: string; at: number; count: number; conceptIds: string[]; topic: string }
+import type { ReviewSession } from '../../shared/review-types'
+export type { ReviewSession } from '../../shared/review-types'
 const GAP = 30 * 60_000
 
 /** Ripasso sittings, rebuilt from the review lines: reviews less than 30 minutes apart belong together. Pratica and Sessione are left out (only via absent or 'review'). */

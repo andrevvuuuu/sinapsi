@@ -103,11 +103,20 @@ export function createBridge(deps: {
     listeners.forEach((l) => l({ ...state }))
   }
 
+  /** Studying comes first: no background job starts on an engine while one of its interactive jobs runs or waits. */
+  const interactiveBusy = (engine: Engine): boolean =>
+    running[engine].interactive || queues[engine].interactive.length > 0
+
   function pumpLane(engine: Engine, priority: Priority): void {
     if (running[engine][priority]) return
+    if (priority === 'background' && interactiveBusy(engine)) return
     const q = queues[engine][priority]
     const job = q.shift()
-    if (!job) return
+    if (!job) {
+      // The interactive lane just emptied: the background work it held back can start.
+      if (priority === 'interactive') pumpLane(engine, 'background')
+      return
+    }
     job.signal?.removeEventListener('abort', job.abort!)
     if (job.signal?.aborted) {
       job.reject(new AiAbortError())
@@ -154,6 +163,7 @@ export function createBridge(deps: {
         if (i >= 0) {
           q.splice(i, 1)
           reject(new AiAbortError())
+          if (priority === 'interactive') pumpLane(engine, 'background')
         }
       }
       signal?.addEventListener('abort', queued.abort, { once: true })

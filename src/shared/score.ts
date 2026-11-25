@@ -1,4 +1,4 @@
-import type { ChatItem } from '../main/session/events'
+import type { ChatItem } from './session-types'
 import { MISCONCEPTION_CONFIDENCE } from './memory-types'
 
 export type SessionScore = { points: number; streak: number; bestStreak: number; games: number; calibration: number | null }

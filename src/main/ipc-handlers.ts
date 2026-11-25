@@ -8,7 +8,15 @@ import type { NoteGenerator } from './notes/generator'
 import { access } from 'node:fs/promises'
 import { z } from 'zod'
 import type { EngineStatus, VaultResult } from '../shared/api'
-import { TASKS, type Engine, type EngineChoice, type Settings } from '../shared/settings-schema'
+import {
+  GraderEngineField,
+  LearnerProfileField,
+  MasteryField,
+  TASKS,
+  type Engine,
+  type EngineChoice,
+  type Settings
+} from '../shared/settings-schema'
 import { LearnerAnswerSchema, type LearnerAnswer } from '../shared/teacher-protocol'
 import type { SessionRunner } from './session/runner'
 import type { VaultIndex } from '../shared/vault-types'
@@ -54,10 +62,16 @@ const Patch = z
     sessionLimit: z.boolean(),
     sessionLimitMinutes: z.number().int().min(10).max(180),
     subjectOrder: z.array(z.string().max(300)).max(500),
-    universitySubjects: z.array(z.string().max(300)).max(500).nullable()
+    universitySubjects: z.array(z.string().max(300)).max(500).nullable(),
+    mastery: MasteryField,
+    learnerProfile: LearnerProfileField,
+    graderEngine: GraderEngineField,
+    fastStart: z.boolean()
   })
   .partial()
   .strict()
+/** Exported for the parity test: every stored setting must be patchable. */
+export const SettingsPatch = Patch
 
 export interface HandlerDeps {
   loadSettings(): Promise<Settings>

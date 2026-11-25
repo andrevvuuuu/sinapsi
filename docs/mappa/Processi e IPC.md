@@ -12,6 +12,12 @@
 ## Aree dei canali
 settings, vault, ai, app, session, notes, graph, review, voice, memory, notebook, practice, lessons, tutor, exams, plan, suggest, ui. Tabella metodi: [ARCHITECTURE §6](../ARCHITECTURE.md).
 
+## Impostazioni
+`settings:set` valida con `Patch` in `ipc-handlers.ts`, che riusa i validatori di `src/shared/settings-schema.ts` (`MasteryField`, `LearnerProfileField`, `GraderEngineField`). Un test (`tests/unit/ipc.test.ts`) verifica che ogni campo salvato sia anche modificabile: se aggiungi un campo a `settingsSchema`, aggiungilo a `Patch`. Dopo un salvataggio `App.tsx` (`onSettingsChanged`) ricarica l'indice solo se sono cambiati vault o cartelle escluse.
+
+## Tipi condivisi
+I tipi che attraversano l'IPC stanno in `src/shared/` (`session-types.ts`, `practice-types.ts`, `review-types.ts`, `notes-types.ts`, `suggest-types.ts`, `tutor-types.ts`). I moduli del main li ri-esportano per compatibilità. Renderer e shared non importano mai da `src/main` né moduli `node:*`: lo vieta `@typescript-eslint/no-restricted-imports` in `eslint.config.mjs`. Per controllarlo: `npx eslint src/renderer src/shared | grep -c no-restricted-imports` → 0 (il lint globale ha errori preesistenti).
+
 ## Aggiungere un canale
 `CH` + tipo in `SinapsiApi` (`src/shared/api.ts`) → metodo in `src/preload/index.ts` → handler validato in `ipc-handlers.ts` → `ipcMain.handle` in `ipc.ts`.
 

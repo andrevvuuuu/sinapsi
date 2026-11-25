@@ -13,6 +13,17 @@ type Input = {
   buffer: number
 }
 type CourseScore = { course: string; score: number }
+/** Estimated minutes for one FSRS review card (question, answer, grading). */
+export const REVIEW_MINUTES_PER_CARD = 1.5
+
+/** Concepts whose review falls due on `date` (local day); the first day also takes the overdue ones. */
+function dueOn(memories: Input['memories'], date: string, first: boolean): string[] {
+  const start = new Date(`${date}T00:00:00`).getTime()
+  const end = start + 86_400_000
+  return Object.entries(memories)
+    .filter(([, m]) => m.due !== null && m.due < end && (first || m.due >= start))
+    .map(([id]) => id)
+}
 
 function localDate(date: Date): string {
   const pad = (value: number): string => String(value).padStart(2, '0')
@@ -133,8 +144,14 @@ function makeDay(
   const weekday = (dateAtLocalNoon(date).getDay() + 6) % 7
   const minutes = Math.round((input.studyHours[weekday] ?? 0) * 60)
   const bufferMinutes = Math.round(minutes * input.buffer)
-  const usefulMinutes = Math.max(0, minutes - bufferMinutes)
-  if (!minutes || usefulMinutes < 30) return { date, minutes, bufferMinutes, blocks: [] }
+  const reviewConceptIds = dueOn(input.memories, date, index === 0)
+  const reviewMinutes = Math.min(
+    Math.max(0, minutes - bufferMinutes),
+    Math.ceil(reviewConceptIds.length * REVIEW_MINUTES_PER_CARD)
+  )
+  const review = { reviewMinutes, reviewConceptIds }
+  const usefulMinutes = Math.max(0, minutes - bufferMinutes - reviewMinutes)
+  if (!minutes || usefulMinutes < 30) return { date, minutes, bufferMinutes, blocks: [], ...review }
 
   const ranked: CourseScore[] = candidates
     .map((course) => {
@@ -178,7 +195,7 @@ function makeDay(
       return makeBlock(item.course, date, blockMinutes, input.exams, input.lessons)
     })
     .filter((block) => block.minutes >= 30)
-  return { date, minutes, bufferMinutes, blocks }
+  return { date, minutes, bufferMinutes, blocks, ...review }
 }
 
 export function buildWeekPlan(input: Input): WeekPlan {

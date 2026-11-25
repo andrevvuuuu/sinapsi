@@ -1,5 +1,5 @@
-import { MISSES, type PracticeTurn, type Problem, type Submission } from '../../shared/practice-protocol'
-import type { ExamGrade, ExamSheet, Material, PublicExamProblem } from '../../shared/practice-types'
+import { MISSES, type PracticeTurn, type Submission } from '../../shared/practice-protocol'
+import type { ExamGrade, ExamSheet, Material } from '../../shared/practice-types'
 
 export type PracticeEvent =
   | { t: 'created'; id: string; mode: 'train' | 'exam'; material: Material; topic: string; durationMin?: number; paper?: boolean; triageEligible?: boolean; at: number }
@@ -15,67 +15,15 @@ export type PracticeEvent =
   | { t: 'self'; id: string; points: number; at: number }
   | { t: 'attributed'; problemId: string; items: { conceptId: string; state: 'corretto' | 'errore_qui' | 'non_attribuibile'; miss?: (typeof MISSES)[number] }[]; divergent: boolean; at: number }
 
-type PublicProblem = Omit<Problem, 'modelSolution'>
-export type PracticeItem =
-  | { kind: 'learner'; submission: Submission; text: string }
-  | { kind: 'tutor'; turn: Omit<PracticeTurn, 'problem'> & { problem?: PublicProblem } }
-  | { kind: 'error'; message: string }
+import type { PracticeState } from '../../shared/practice-types'
 
-export type PracticeProblem = PublicProblem & {
-  hintConcepts: string[]
-  status: 'active' | 'done'
-  phase: PracticeTurn['phase']
-  hints: number
-  maxRung: number | null
-  /** Reasoning Andrea sent on this problem: until the first one, hints stop at the first rung. */
-  attempts: number
-  compass?: { known: string; stuck: string; question: string }
-  needsRestate: boolean
-  triageActive?: boolean
-  triage?: string
-  confidence?: number
-  outcome?: NonNullable<PracticeTurn['conclude']>['outcome']
-  verdict?: string
-  miss?: NonNullable<PracticeTurn['conclude']>['miss']
-  retest?: boolean
-  /** Only once the problem is concluded. */
-  modelSolution?: string
-}
-
-export type PracticeState = {
-  id: string
-  mode: 'train' | 'exam'
-  material: Material
-  topic: string
-  durationMin?: number
-  /** An exam written on paper, with the machine off: the answers are typed or photographed afterwards. */
-  paper?: boolean
-  triageEligible?: boolean
-  phase: PracticeTurn['phase']
-  items: PracticeItem[]
-  problems: PracticeProblem[]
-  active?: string
-  /** After a conclusion: questions are welcome, the next problem waits for "next". */
-  paused: boolean
-  awaiting: 'tutor' | 'learner' | 'retry'
-  summary?: PracticeTurn['summary']
-  conversationId?: string
-  hasTutorTurn: boolean
-  lastLearnerText?: string
-  exam?: {
-    sheet: { title: string; problems: PublicExamProblem[] }
-    endsAt: number
-    answers: Record<string, string>
-    /** Sent to the grader. In a paper exam this comes after "handed" and the self-grades. */
-    delivered: boolean
-    handed?: boolean
-    self?: Record<string, number>
-    grade?: ExamGrade
-  }
-  createdAt: number
-  updatedAt: number
-}
-export type PracticeSummary = { id: string; topic: string; mode: 'train' | 'exam'; done: boolean; updatedAt: number }
+export type {
+  PracticeItem,
+  PracticeProblem,
+  PracticeState,
+  PracticeSummary,
+  PublicProblem
+} from '../../shared/practice-types'
 
 /** A copy without the hidden solution. */
 function withoutSolution<T extends { modelSolution?: string }>(p: T): Omit<T, 'modelSolution'> {

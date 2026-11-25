@@ -241,6 +241,58 @@ describe('AI bridge', () => {
     expect(b.status().claude).toBe('idle')
   })
 
+  it('holds a queued background job until every interactive job on that engine is done', async () => {
+    const started: string[] = []
+    const release = new Map<string, () => void>()
+    const b = bridge(async (_c, args) => {
+      const p = args[1]
+      started.push(p)
+      await new Promise<void>((r) => release.set(p, r))
+      return ok(claudeOk(p))
+    })
+    const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 10))
+    const i1 = b.ask({ task: 'teach', prompt: 'i1', priority: 'interactive' })
+    await tick()
+    const bg = b.ask({ task: 'teach', prompt: 'bg', priority: 'background' })
+    const i2 = b.ask({ task: 'teach', prompt: 'i2', priority: 'interactive' })
+    await tick()
+    expect(started).toEqual(['i1'])
+    release.get('i1')!()
+    await i1
+    await tick()
+    expect(started).toEqual(['i1', 'i2'])
+    release.get('i2')!()
+    await i2
+    await tick()
+    expect(started).toEqual(['i1', 'i2', 'bg'])
+    release.get('bg')!()
+    expect((await bg).data).toBe('bg')
+  })
+
+  it('releases the background job when the interactive job it waited for is aborted in the queue', async () => {
+    const started: string[] = []
+    const release = new Map<string, () => void>()
+    const b = bridge(async (_c, args) => {
+      started.push(args[1])
+      await new Promise<void>((r) => release.set(args[1], r))
+      return ok(claudeOk(args[1]))
+    })
+    const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 10))
+    const i1 = b.ask({ task: 'teach', prompt: 'i1', priority: 'interactive' })
+    await tick()
+    const ctl = new AbortController()
+    const i2 = b.ask({ task: 'teach', prompt: 'i2', priority: 'interactive', signal: ctl.signal }).catch((e) => e)
+    const bg = b.ask({ task: 'teach', prompt: 'bg', priority: 'background' })
+    release.get('i1')!()
+    ctl.abort()
+    await i1
+    await i2
+    await tick()
+    expect(started).toEqual(['i1', 'bg'])
+    release.get('bg')!()
+    await bg
+  })
+
   it('serves a repeated cached request without calling the engine', async () => {
     let calls = 0
     const b = bridge(async () => (calls++, ok(agyOk('uno'))))

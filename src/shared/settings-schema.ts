@@ -26,6 +26,18 @@ export const MICRO_PAUSE_SECONDS = 15
 export const SESSION_BREAK_MINUTES = 10
 export const DEFAULT_EXCLUDED = ['.obsidian', '.antigravity', '.trash', 'Prompts']
 
+/** Strict validators shared by the stored schema (below, with defaults) and the IPC patch (no defaults). */
+export const MasteryField = z
+  .object({
+    kOpen: z.number().int().min(1).max(5),
+    kChoice: z.number().int().min(1).max(6),
+    solidDays: z.number().int().min(1).max(60)
+  })
+  .strict()
+export const LearnerProfileField = z.string().max(2000)
+export const GraderEngineField = z.enum(['other', 'same'])
+export const DEFAULT_MASTERY = { kOpen: 2, kChoice: 3, solidDays: 14 }
+
 /** Every field falls back to its default on its own, so a partial or damaged file still loads. */
 export function settingsSchema(home: string) {
   return z.object({
@@ -68,9 +80,9 @@ export function settingsSchema(home: string) {
         kChoice: z.number().int().min(1).max(6).catch(3),
         solidDays: z.number().int().min(1).max(60).catch(14)
       })
-      .catch({ kOpen: 2, kChoice: 3, solidDays: 14 }),
-    learnerProfile: z.string().max(2000).catch(''),
-    graderEngine: z.enum(['other', 'same']).catch('other'),
+      .catch(DEFAULT_MASTERY),
+    learnerProfile: LearnerProfileField.catch(''),
+    graderEngine: GraderEngineField.catch('other'),
     fastStart: z.boolean().catch(false)
   })
 }

@@ -90,14 +90,35 @@ function withGroupOrder(groups: SubjectGroups, prefs: SubjectPrefs, uni: string[
 
 /* ---------- Session names ---------- */
 
+/** Italian articles, prepositions (simple and articulated) and conjunctions: lowercase inside a title. */
+const MINOR = new Set(
+  ('il lo la i gli le l un uno una di a da in con su per tra fra del dello della dei degli delle dell ' +
+    'al allo alla ai agli alle all dal dallo dalla dai dagli dalle dall nel nello nella nei negli nelle nell ' +
+    'col coi sul sullo sulla sui sugli sulle sull e ed o od né ma').split(' ')
+)
+const cap = (w: string): string => w.replace(/^([\s'’\-(«"/]*)(\p{Ll})/u, (_, pre: string, ch: string) => pre + ch.toLocaleUpperCase('it-IT'))
+
 /**
- * Capitalises the first letter of every word, also after an apostrophe or a hyphen
- * ("dell'algebra" → "Dell'Algebra"). The rest of each word is kept as typed, so acronyms and
- * names like "LaTeX" or "FSRS" survive.
+ * Italian title case: the first letter of every word goes up, also after an apostrophe or a hyphen, except the
+ * articles, prepositions and conjunctions typed in lowercase inside the title ("teorema di lagrange e del valor medio" →
+ * "Teorema di Lagrange e del Valor Medio", "dell'algebra" → "dell'Algebra"). The first word always goes up; the rest of
+ * each word is kept as typed, so acronyms and names like "LaTeX" or "FSRS" survive.
  */
 export function toTitleCase(text: string): string {
+  const minor = (w: string, first: boolean): boolean => !first && MINOR.has(w) && w === w.toLocaleLowerCase('it-IT')
   return text
     .trim()
     .replace(/\s+/g, ' ')
-    .replace(/(^|[\s'’\-(«"/])(\p{Ll})/gu, (_, sep: string, ch: string) => sep + ch.toLocaleUpperCase('it-IT'))
+    .split(' ')
+    .map((word, i) =>
+      word
+        .split(/(?<=['’])/)
+        .map((part, j) => {
+          const bare = part.replace(/['’]$/, '')
+          if (minor(bare, i === 0 && j === 0)) return part
+          return part.split('-').map((seg) => cap(seg)).join('-')
+        })
+        .join('')
+    )
+    .join(' ')
 }

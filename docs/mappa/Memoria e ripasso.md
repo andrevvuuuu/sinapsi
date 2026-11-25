@@ -5,7 +5,7 @@
 ## Memoria (FSRS-6)
 - Ogni risposta valutata è una riga di `memory/reviews.jsonl` (`ReviewLineSchema` in `src/shared/memory-types.ts`). La carta FSRS **non viene salvata**: si ricostruisce rigiocando le righe.
 - `src/main/memory/fsrs.ts`: `memoryOf()` (stato di ogni concetto: R, scadenza, stabilità, misconcezioni), `trainingLines()` (regola dello stesso giorno: dopo la prima riga del giorno conta solo un «Di nuovo» in più), `studyClock`/`studyDay` (il giorno cambia alle 04:00), `displayedR`, `previewIntervals`.
-- `memoryStore()` in `src/main/memory/store.ts`: append + lettura con cache (rilegge solo se il file è cambiato). `weaknesses.ts`: debolezze e misconcezioni attive. `fading.ts`: concetti da cui togliere gli aiuti.
+- `memoryStore()` in `src/main/memory/store.ts`: append + lettura con cache (rilegge solo se il file è cambiato). In `registerIpc()` (`src/main/ipc.ts`) esiste **una sola istanza** (`memStore`, e `weakStore` per le debolezze) passata a tutti i servizi: non crearne altre inline, perché la cache vale solo dentro l'istanza. Ogni riga scritta fa partire `memory:changed` (raggruppato in 250 ms) verso la finestra (`window.sinapsi.memory.onChanged`): barra laterale e Oggi aggiornano i «dovuti» anche quando una correzione in background finisce dopo. `weaknesses.ts`: debolezze e misconcezioni attive. `fading.ts`: concetti da cui togliere gli aiuti.
 
 ## Servizio di ripasso
 `createReviewService()` in `src/main/memory/review.ts`:

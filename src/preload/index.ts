@@ -74,7 +74,7 @@ const api: SinapsiApi = {
     intervals: (id) => ipcRenderer.invoke(CH.reviewIntervals, id),
     sessions: () => ipcRenderer.invoke(CH.reviewSessions)
   },
-  memory: { stats: () => ipcRenderer.invoke(CH.memoryStats) },
+  memory: { stats: () => ipcRenderer.invoke(CH.memoryStats), onChanged: (cb) => subscribe(CH.memoryChanged, cb) },
   notebook: {
     list: () => ipcRenderer.invoke(CH.notebookList),
     create: (name) => ipcRenderer.invoke(CH.notebookCreate, name),

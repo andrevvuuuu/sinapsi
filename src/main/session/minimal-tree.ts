@@ -1,26 +1,9 @@
 import type { GraphData } from '../../shared/graph-types'
-import type { Memory, MemoryState, WeaknessLine } from '../../shared/memory-types'
+import type { Memory, WeaknessLine } from '../../shared/memory-types'
 import { ancestors } from '../graph/derive'
 
-export type TreeNode = {
-  id: string
-  name: string
-  statement: string
-  role: 'base' | 'derivata'
-  R: number | null
-  S?: number
-  state: MemoryState
-  weaknesses: string[]
-  sections: Record<string, string>
-  birth: string
-  goal: boolean
-}
-export type MinimalTree = {
-  goalIds: string[]
-  nodes: TreeNode[]
-  chains: { premises: string[]; conclusion: string }[]
-  pruned: string[]
-}
+import type { MinimalTree, TreeNode } from '../../shared/session-types'
+export type { MinimalTree, TreeNode } from '../../shared/session-types'
 const words = (s: string): string[] =>
   [
     ...new Set(

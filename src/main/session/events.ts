@@ -1,31 +1,26 @@
 import type { Grade, MemoryState } from '../../shared/memory-types'
 import { MISCONCEPTION_CONFIDENCE, sessionGrade } from '../../shared/memory-types'
-import type { LearnerAnswer, Plan, Question, TeacherTurn, Game } from '../../shared/teacher-protocol'
+import type { LearnerAnswer, Question, TeacherTurn } from '../../shared/teacher-protocol'
 import type { MinimalTree } from './minimal-tree'
 
-export type MasterySettings = { kOpen: number; kChoice: number; solidDays: number }
+import type {
+  ConceptProgress,
+  Evidence,
+  MasterySettings,
+  SessionState
+} from '../../shared/session-types'
+
+export type {
+  ChatItem,
+  ConceptProgress,
+  Evidence,
+  MasterySettings,
+  SessionState,
+  SessionSummary,
+  Stage
+} from '../../shared/session-types'
+
 export const DEFAULT_MASTERY: MasterySettings = { kOpen: 2, kChoice: 3, solidDays: 14 }
-export type Stage = 'goal' | 'probe' | 'plan' | 'teach' | 'repair' | 'consolidate' | 'done'
-export type ConceptProgress = {
-  status: 'unseen' | 'explained' | 'probed' | 'repairing' | 'mastered'
-  openStreak: number
-  choiceStreak: number
-  lastConfidences: number[]
-}
-export type Evidence = {
-  questionId: string
-  conceptId: string
-  kind: 'open' | 'choice' | 'game'
-  gameType?: Game['type']
-  correct: boolean
-  verdict?: 'correct' | 'partial' | 'incorrect'
-  hintsUsed: number
-  confidence?: number
-  role: string
-  peeked: boolean
-  excluded: boolean
-  at: number
-}
 export function isGenerativeEvidence(x: Evidence): boolean {
   return (
     (x.kind === 'open' || (x.kind === 'game' && x.gameType === 'taboo')) &&
@@ -70,54 +65,6 @@ export type SessionEvent =
       prior?: Record<string, { state: MemoryState; S?: number; seen: boolean }>
       at: number
     }
-export type ChatItem =
-  | { kind: 'learner'; text: string; answer?: LearnerAnswer; question?: Question }
-  | { kind: 'teacher'; turn: TeacherTurn }
-  | { kind: 'error'; message: string }
-export type SessionState = {
-  id: string
-  topic: string
-  noteTitle?: string
-  notePath?: string
-  phase: TeacherTurn['phase']
-  plan?: Plan
-  currentNodeId?: string
-  doneNodeIds: string[]
-  items: ChatItem[]
-  pendingQuestion?: Question
-  awaiting: 'teacher' | 'learner' | 'retry' | 'confirm'
-  candidates: { title: string; path: string }[]
-  learnerProfile: string
-  summary?: TeacherTurn['summary']
-  conversationId?: string
-  hasTeacherTurn: boolean
-  lastLearnerText?: string
-  createdAt: number
-  updatedAt: number
-  tree?: MinimalTree
-  mastery: MasterySettings
-  prior: Record<string, { state: MemoryState; S?: number; seen: boolean }>
-  stage: Stage
-  concepts: Record<string, ConceptProgress>
-  probeCount: number
-  turnsSinceGame: number
-  pendingRetest?: { conceptId: string; afterTurns: number }
-  readyToFinish: boolean
-  recallDone: boolean
-  chunkSize: 1 | 2 | 3
-  misconceptionHits: { conceptId?: string; questionId: string; text: string; at: number }[]
-  evidence: Evidence[]
-  cancelled: boolean
-  unverifiedIds: string[]
-}
-export type SessionSummary = {
-  id: string
-  topic: string
-  phase: TeacherTurn['phase']
-  notePath?: string
-  updatedAt: number
-  status?: 'completed' | 'cancelled' | 'abandoned'
-}
 const blank = (): ConceptProgress => ({
   status: 'unseen',
   openStreak: 0,

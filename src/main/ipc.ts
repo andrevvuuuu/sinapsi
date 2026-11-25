@@ -80,6 +80,9 @@ import { detectMoves, detectOfflineMoves } from './graph/moves'
 import { resolvePath } from './graph/resolve-path'
 import { createChainExplainer, fakeChainExplainBridge } from './graph/explain'
 
+/** Grading writes several review lines in a row: one memory:changed for the burst. */
+const MEMORY_CHANGED_DEBOUNCE_MS = 250
+
 export { resolveOtherEngine } from './ipc-handlers'
 
 export function registerIpc(): { bridge: Bridge } {
@@ -170,8 +173,14 @@ export function registerIpc(): { bridge: Bridge } {
   bridge.onStatus((s) => broadcast(CH.aiStatusChanged, s))
 
   const memoryDir = join(dataDir(), 'memory')
-  const sessionMemory = memoryStore(memoryDir)
-  const sessionWeaknesses = weaknessStore(memoryDir)
+  // One instance each: their read caches (mtime + size) work only if every service shares them.
+  // Every review line goes through memStore, so one event tells the window the memory changed (debounced: grading writes in bursts).
+  let memoryTimer: ReturnType<typeof setTimeout> | undefined
+  const memStore = memoryStore(memoryDir, () => {
+    clearTimeout(memoryTimer)
+    memoryTimer = setTimeout(() => broadcast(CH.memoryChanged, null), MEMORY_CHANGED_DEBOUNCE_MS)
+  })
+  const weakStore = weaknessStore(memoryDir)
   const runner = createSessionRunner({
     bridge:
       process.env.SINAPSI_FAKE_TEACHER === '1'
@@ -188,18 +197,18 @@ export function registerIpc(): { bridge: Bridge } {
     },
     readNote: (path) => readFile(path, 'utf8'),
     games: async () => (await settings.load()).gamesInSessions,
-    memoryStore: sessionMemory,
+    memoryStore: memStore,
     memory: async (notePath) =>
       memoryBrief(
         await extractor.graph(),
         memoryOf(
-          await memoryStore(join(dataDir(), 'memory')).read(),
+          await memStore.read(),
           Date.now(),
-          misconceptionConceptIds(await sessionWeaknesses.active())
+          misconceptionConceptIds(await weakStore.active())
         ),
         notePath
       ),
-    weaknesses: sessionWeaknesses,
+    weaknesses: weakStore,
     graph: () => extractor.graph(),
     settings: async () => {
       const current = await settings.load()
@@ -407,16 +416,15 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.graphPositions, () => gh.positions())
   ipcMain.handle(CH.graphSavePositions, (_e, p) => gh.savePositions(p))
 
-  const weaknesses = weaknessStore(memoryDir)
   const review = createReviewService({
     bridge: process.env.SINAPSI_FAKE_REVIEW === '1' ? fakeReviewBridge() : bridge,
-    memory: memoryStore(memoryDir),
+    memory: memStore,
     variants: variantsStore(memoryDir),
     graph: () => extractor.graph(),
     vault: vaultOrNull,
     readNote: (path) => readFile(path, 'utf8'),
     settings: async () => settings.load(),
-    weaknesses: () => weaknesses.active(),
+    weaknesses: () => weakStore.active(),
     pacerOf: async () => {
       const lessons = reduceLessons(await lessonStore(dataDir()).read())
       const map = new Map<
@@ -468,12 +476,12 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.reviewRecord, (_e, r) => rh.record(r))
   ipcMain.handle(CH.reviewMemory, () => rh.memory())
   ipcMain.handle(CH.memoryStats, async () => {
-    const reviews = await sessionMemory.read()
+    const reviews = await memStore.read()
     return { calibration: calibrationByLevel(reviews), againRate: firstReviewAgainRate(reviews) }
   })
   ipcMain.handle(CH.reviewCalibration, async () => {
     const [lines, graph, index] = await Promise.all([
-      memoryStore(memoryDir).read(),
+      memStore.read(),
       extractor.graph(),
       vaultOrNull()
     ])
@@ -494,7 +502,7 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.reviewIntervals, (_e, id) => rh.intervals(id))
   ipcMain.handle(CH.reviewSessions, async () =>
     reviewSessions(
-      await memoryStore(memoryDir).read(),
+      await memStore.read(),
       new Map((await extractor.graph()).concepts.map((c) => [c.id, c.name]))
     )
   )
@@ -534,11 +542,11 @@ export function registerIpc(): { bridge: Bridge } {
         material: m,
         graph: await extractor.graph(),
         memory: memoryOf(
-          await memoryStore(memoryDir).read(),
+          await memStore.read(),
           Date.now(),
-          misconceptionConceptIds(await weaknesses.active())
+          misconceptionConceptIds(await weakStore.active())
         ),
-        weaknesses: await weaknesses.active(),
+        weaknesses: await weakStore.active(),
         readNote: (path) => readFile(path, 'utf8'),
         sourceText: async (id) => {
           const src = await nbStore.source(id)
@@ -548,8 +556,8 @@ export function registerIpc(): { bridge: Bridge } {
       }),
     topic: async (m: import('../shared/practice-types').Material) =>
       practiceTopic(m, await conceptNames()),
-    memory: memoryStore(memoryDir),
-    weaknesses,
+    memory: memStore,
+    weaknesses: weakStore,
     onDone: async (lessonId: string): Promise<void> => {
       const entry = reduceLessons(await ls.read()).find((item) => item.id === lessonId)
       if (!entry) return
@@ -610,7 +618,7 @@ export function registerIpc(): { bridge: Bridge } {
     read: ls.read,
     append: ls.append,
     memory: () => review.memory(),
-    reviews: () => memoryStore(memoryDir).read(),
+    reviews: () => memStore.read(),
     readNote: (p) => readFile(p, 'utf8'),
     vaultRoot: async () => (await loadSettings()).vaultPath,
     createPractice: (m) => ph.create(m),
@@ -637,7 +645,7 @@ export function registerIpc(): { bridge: Bridge } {
   const sinapsiTutor = createSinapsiTutorService({
     vaultPath: async () => (await settings.load()).vaultPath,
     graph: () => extractor.graph(),
-    reviews: () => memoryStore(memoryDir).read(),
+    reviews: () => memStore.read(),
     memoryOf,
     vault: vaultOrNull
   })
@@ -656,7 +664,7 @@ export function registerIpc(): { bridge: Bridge } {
         eh.list(),
         ls.read(),
         review.memory(),
-        memoryStore(memoryDir).read(),
+        memStore.read(),
         settings.load(),
         practice.list()
       ])

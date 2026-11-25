@@ -17,7 +17,7 @@ I task sono `extract`, `note`, `variants`, `teach`, `grade` (`TASKS` in `src/sha
 - agy: flag prima di `-p`, `--print-timeout`, `--disable-slash-commands`.
 
 ## Code
-Per ogni motore due corsie, `interactive` e `background`, ognuna con un job alla volta: una correzione non aspetta un'estrazione lunga. Lo stato (`busy`/`idle`/`auth`/`missing`/`error`) usa un contatore di chiamate attive ed è trasmesso al renderer (`ai:status-changed`).
+Per ogni motore due corsie, `interactive` e `background`, ognuna con un job alla volta: una correzione non aspetta un'estrazione lunga. Lo studio ha la precedenza: un job `background` **non parte** finché sullo stesso motore c'è un job `interactive` in corso o in coda (`pumpLane` in `bridge.ts`); un background già avviato non viene interrotto. Durante una sessione lunga il background può quindi aspettare. Lo stato (`busy`/`idle`/`auth`/`missing`/`error`) usa un contatore di chiamate attive ed è trasmesso al renderer (`ai:status-changed`).
 
 ## Altri file
 - `json.ts` — `extractJson`: JSON grezzo, in blocchi ```json o dentro testo; ripara i backslash del LaTeX.

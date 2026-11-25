@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises'
 import type { Bridge } from '../ai/bridge'
-import type { ChainExercise, Exercise } from '../../shared/exercise-schema'
+import type { Exercise } from '../../shared/exercise-schema'
 import type { Concept, GraphData } from '../../shared/graph-types'
 import { retrievabilityAt } from '../../shared/retention'
 import { MISCONCEPTION_CONFIDENCE, gradeFromOutcome, misconceptionConceptIds, proposeGrade, type ExerciseType, type Grade, type Memory, type Outcome, type ReviewLine, type WeaknessLine } from '../../shared/memory-types'
@@ -16,27 +16,8 @@ import { ancestors } from '../graph/derive'
 import { sectionText } from '../notes/section-text'
 import { weakPrerequisites, suspectPremises, type CascadeMemory } from '../../shared/cascade'
 
-export type ReviewItem = {
-  cascadeOf?: string
-  conceptId: string
-  name: string
-  notePath: string
-  noteTitle: string
-  subject: string | null
-  R: number | null
-  exercise: Exercise | ChainExercise
-  variantId: string | null
-  represented?: boolean
-  representedCount?: number
-}
-export type ReviewPlan = {
-  items: ReviewItem[]
-  due: number
-  toStudy: { conceptId: string; name: string; noteTitle: string }[]
-}
-export type GradeResult = { verdict: 'ok' | 'partial' | 'wrong'; feedback: string; proposed: Grade }
-/** A "Spiegalo tu" turn: the picky student asks for the missing step, or gives the verdict. */
-export type ExplainResult = { kind: 'question'; question: string } | ({ kind: 'verdict' } & GradeResult)
+import type { ExplainResult, GradeResult, ReviewItem, ReviewPlan } from '../../shared/review-types'
+export type { ExplainResult, GradeResult, ReviewItem, ReviewPlan } from '../../shared/review-types'
 export function gradeChainIdeaUnits(checked: boolean[]): Grade {
   const total = checked.length
   const n = checked.filter(Boolean).length

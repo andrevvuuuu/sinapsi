@@ -5,8 +5,8 @@ import { appendJsonl, readJsonl } from '../store/jsonl'
 
 export type MemoryStore = { append(r: ReviewLine): Promise<void>; read(): Promise<ReviewLine[]> }
 
-/** reviews.jsonl: append-only, one line per graded answer. */
-export function memoryStore(dir: string): MemoryStore {
+/** reviews.jsonl: append-only, one line per graded answer. `onAppend` runs after a line is written, never on a failed write. */
+export function memoryStore(dir: string, onAppend?: () => void): MemoryStore {
   const file = join(dir, 'reviews.jsonl')
   let cached: ReviewLine[] | null = null
   let cachedMeta: { mtimeMs: number; size: number } | null = null
@@ -41,6 +41,7 @@ export function memoryStore(dir: string): MemoryStore {
       // Azzera la cache dopo l'append
       cached = null
       cachedMeta = null
+      onAppend?.()
     },
     read: readInternal
   }
