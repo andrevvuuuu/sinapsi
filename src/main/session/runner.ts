@@ -498,7 +498,9 @@ export function createSessionRunner(deps: {
       if (prior) return prior
       const task = createNow(topic, goalIds)
       pending.set(key, task)
-      void task.finally(() => pending.delete(key))
+      // Clear on both outcomes; the caller handles the rejection of `task` itself.
+      const clear = (): void => void pending.delete(key)
+      task.then(clear, clear)
       return task
     },
     confirm: (id, notePath) => serial(id, () => confirmNow(id, notePath)),
