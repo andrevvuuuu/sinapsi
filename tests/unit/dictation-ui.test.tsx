@@ -238,6 +238,45 @@ describe('useDictation and MicButton', () => {
     expect(off).toHaveBeenCalledTimes(1)
   })
 
+  it('closes AudioContext on transition to transcribing and on unmount', async () => {
+    const closeFn = vi.fn(async () => undefined)
+    const disconnectFn = vi.fn()
+    class FakeAudioContext {
+      createMediaStreamSource = vi.fn(() => ({
+        connect: vi.fn(),
+        disconnect: disconnectFn
+      }))
+      createAnalyser = vi.fn(() => ({
+        fftSize: 256,
+        frequencyBinCount: 128,
+        getByteTimeDomainData: vi.fn((arr: Uint8Array) => arr.fill(128))
+      }))
+      close = closeFn
+    }
+    vi.stubGlobal('AudioContext', FakeAudioContext)
+
+    mockVoice()
+    const { unmount } = render(<Field label="Argomento" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Detta' }))
+    await flush()
+
+    // Passaggio a transcribing tramite stop
+    fireEvent.click(screen.getByRole('button', { name: 'Ferma la dettatura' }))
+    await flush()
+    expect(closeFn).toHaveBeenCalledTimes(1)
+    expect(disconnectFn).toHaveBeenCalledTimes(1)
+    unmount()
+
+    // Unmount durante registrazione
+    closeFn.mockClear()
+    const rendered = render(<Field label="Argomento 2" />)
+    fireEvent.click(rendered.getByRole('button', { name: 'Detta' }))
+    await flush()
+    rendered.unmount()
+    await flush()
+    expect(closeFn).toHaveBeenCalled()
+  })
+
   it('does nothing while disabled, by click or by Option+Space', async () => {
     const voice = mockVoice()
     render(<Field label="Argomento" enabled={false} />)

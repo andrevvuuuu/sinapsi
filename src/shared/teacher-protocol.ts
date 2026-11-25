@@ -35,7 +35,9 @@ const QuestionSchema = z.object({
   correct: z.number().int().optional(),
   why: z.array(z.string()).optional(),
   nodeId: z.string().optional(),
-  game: GameSchema.optional()
+  game: GameSchema.optional(),
+  /** Closed-book recall: the app hides the lesson above while the question is open. Only when it can be answered from memory. */
+  hideLesson: z.boolean().optional()
 })
 const SummarySchema = z.object({ learned: z.array(z.string()), shaky: z.array(z.string()), misconceptions: z.array(z.string()) })
 
@@ -84,6 +86,7 @@ export type TeacherTurn = z.infer<typeof TurnShape>
 
 /** JSON Schema 2020-12 without the "$schema" key (the Claude CLI rejects the remote reference). */
 export function teacherJsonSchema(): object {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { $schema: _drop, ...rest } = z.toJSONSchema(TurnShape) as Record<string, unknown>
   return rest
 }

@@ -36,13 +36,14 @@ describe('reducePractice — training', () => {
     const s = reducePractice([
       ...base,
       { t: 'learner', submission: { kind: 'hint' }, text: 'Mi serve un indizio.', at: 4 },
-      { t: 'tutor', turn: { phase: 'warmup', blocks: [], hint: { rung: 0, md: 'Rileggi.' } }, at: 5 },
+      { t: 'tutor', turn: { phase: 'warmup', blocks: [], hint: { rung: 0, md: 'Rileggi.', conceptId: 'n_1' } }, at: 5 },
       { t: 'learner', submission: { kind: 'hint' }, text: 'Mi serve un indizio.', at: 6 },
-      { t: 'tutor', turn: { phase: 'warmup', blocks: [], hint: { rung: 2, md: 'Un teorema.' } }, at: 7 },
+      { t: 'tutor', turn: { phase: 'warmup', blocks: [], hint: { rung: 2, md: 'Un teorema.', conceptId: 'not-a-target' } }, at: 7 },
       { t: 'learner', submission: { kind: 'thinking', text: 'valor medio' }, text: 'Il mio ragionamento: valor medio', at: 8 },
       { t: 'tutor', turn: { phase: 'warmup', blocks: [{ type: 'text', md: 'Corretto.' }], conclude: { outcome: 'solved_hints', verdict: 'Con aiuti.', retest: true, miss: 'cue' } }, at: 9 }
     ])
     expect(s.problems[0]).toMatchObject({ status: 'done', hints: 2, maxRung: 2, outcome: 'solved_hints', verdict: 'Con aiuti.', retest: true, modelSolution: 'SEGRETO' })
+    expect(s.problems[0].hintConcepts).toEqual(['n_1'])
     expect(s.active).toBeUndefined()
     expect(s.paused).toBe(true)
     const next = reducePractice([...base.slice(0, 2), ...base.slice(2), { t: 'tutor', turn: { phase: 'warmup', blocks: [], conclude: { outcome: 'solved', verdict: 'ok', retest: false } }, at: 9 }, { t: 'learner', submission: { kind: 'next' }, text: 'Prossimo problema.', at: 10 }])
@@ -54,6 +55,32 @@ describe('reducePractice — training', () => {
     const done = reducePractice([...base, { t: 'tutor', turn: { phase: 'done', blocks: [], summary: { solved: ['a'], retest: [], note: 'n' } }, at: 6 }])
     expect(done.summary).toEqual({ solved: ['a'], retest: [], note: 'n' })
     expect(done.phase).toBe('done')
+  })
+  it('records triage without advancing to tutor, and records confidence on thinking', () => {
+    const withTriageEligible: PracticeEvent[] = [
+      { t: 'created', id: 'a', mode: 'train', material, topic: 'Rolle', triageEligible: true, at: 1 },
+      { t: 'learner', submission: { kind: 'start' }, text: 'Inizia', at: 2 },
+      { t: 'tutor', turn: { phase: 'warmup', blocks: [], problem }, at: 3 }
+    ]
+    const s1 = reducePractice(withTriageEligible)
+    expect(s1.triageEligible).toBe(true)
+    expect(s1.problems[0].triageActive).toBe(true)
+
+    const s2 = reducePractice([
+      ...withTriageEligible,
+      { t: 'learner', submission: { kind: 'triage', text: 'Teorema di Rolle' }, text: 'Strumento ipotizzato nel triage: Teorema di Rolle', at: 4 }
+    ])
+    expect(s2.problems[0].triage).toBe('Teorema di Rolle')
+    expect(s2.awaiting).toBe('learner')
+
+    const s3 = reducePractice([
+      ...withTriageEligible,
+      { t: 'learner', submission: { kind: 'triage', text: 'Teorema di Rolle' }, text: 'Strumento ipotizzato nel triage: Teorema di Rolle', at: 4 },
+      { t: 'learner', submission: { kind: 'thinking', text: 'mio ragionamento', confidence: 88 }, text: 'mio ragionamento', at: 5 }
+    ])
+    expect(s3.problems[0].confidence).toBe(88)
+    expect(s3.problems[0].attempts).toBe(1)
+    expect(s3.awaiting).toBe('tutor')
   })
 })
 

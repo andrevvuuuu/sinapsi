@@ -12,7 +12,9 @@ export function appendJsonl(file: string, record: unknown): Promise<void> {
     await mkdir(dirname(file), { recursive: true })
     await appendFile(file, line, 'utf8')
   })
-  chains.set(file, next.catch(() => undefined))
+  const tail = next.catch(() => undefined)
+  chains.set(file, tail)
+  void tail.then(() => { if (chains.get(file) === tail) chains.delete(file) })
   return next
 }
 

@@ -67,7 +67,10 @@ describe('variants follow the chosen types and do not block each other', () => {
       const id = /^(\w+) \| /m.exec(req.prompt)![1]
       return { data: req.schema.parse({ concepts: [{ id, exercises: [{ type: 'mc', prompt: 'q', options: ['a', 'b'], correct: 0, answer: 'a' }] }] }), fromCache: false, engine: 'agy' as const }
     })
-    const svc = createReviewService({ bridge: { ask } as never, memory: memoryStore(dir), variants: variantsStore(dir), graph: async () => graph, vault: async () => index, readNote: async () => '', settings: async () => ({ reviewSessionSize: 12, exerciseTypes: ['mc'] }), workDir: join(dir, 'w'), now: () => T0 })
+    const mem = memoryStore(dir)
+    await mem.append({ conceptId: 'a1', at: T0 - 86_400_000, grade: 1 })
+    await mem.append({ conceptId: 'b1', at: T0 - 86_400_000, grade: 1 })
+    const svc = createReviewService({ bridge: { ask } as never, memory: mem, variants: variantsStore(dir), graph: async () => graph, vault: async () => index, readNote: async () => '', settings: async () => ({ reviewSessionSize: 12, exerciseTypes: ['mc'] }), workDir: join(dir, 'w'), now: () => T0 })
     const [p1, p2] = await Promise.all([svc.plan(), svc.plan()])
     expect(peak).toBe(2)
     expect(ask).toHaveBeenCalledTimes(2)
@@ -106,6 +109,7 @@ describe('the review screen', () => {
     const { api, finishRecord } = mountReview([mc, { ...mc, conceptId: 'n_f', name: 'Fermat' }])
     fireEvent.click(await screen.findByRole('button', { name: 'Inizia ripasso' }))
     fireEvent.click(screen.getByRole('button', { name: /Giusta/ }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Sicuro' }))
     fireEvent.click(screen.getByRole('button', { name: 'Verifica' }))
     const next = await screen.findByRole('button', { name: 'Prossima' })
     fireEvent.click(next)
@@ -118,6 +122,7 @@ describe('the review screen', () => {
     const { finishRecord } = mountReview([mc, { ...mc, conceptId: 'n_f', name: 'Fermat' }])
     fireEvent.click(await screen.findByRole('button', { name: 'Inizia ripasso' }))
     fireEvent.click(screen.getByRole('button', { name: /Giusta/ }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Sicuro' }))
     fireEvent.click(screen.getByRole('button', { name: 'Verifica' }))
     const next = await screen.findByRole('button', { name: 'Prossima' })
     expect(document.activeElement).toBe(next)

@@ -8,6 +8,8 @@ import { FadeContext, SectionContext, type Layers, type Mode } from './context'
 import { fadeOf, sectionConcepts, type Fade } from './fading'
 import './nota.css'
 import { ScrollEdges, Seg, ViewScene } from '../components/glass'
+import { Skeleton } from '../components/Skeleton'
+import { useWaitStage } from '../components/useWaitStage'
 
 const LAYERS: [keyof Layers, string][] = [
   ['sessione', 'Sessione'],
@@ -45,7 +47,15 @@ function Elapsed({ since }: { since: number }): React.JSX.Element {
   return <>{s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`}</>
 }
 
-export function NotaView({ id, onBack }: { id: string; onBack: () => void }): React.JSX.Element {
+export function NotaView({
+  id,
+  onBack,
+  backLabel = '← Oggi'
+}: {
+  id: string
+  onBack: () => void
+  backLabel?: string
+}): React.JSX.Element {
   const api = window.sinapsi.notes
   const [n, setN] = useState<StoredNote | null>(null)
   const [mode, setMode] = useState<Mode>('leggi')
@@ -53,6 +63,10 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
   const [retrying, setRetrying] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [retryError, setRetryError] = useState<string | null>(null)
+  const [islandCompact, setIslandCompact] = useState(false)
+  const [writing, setWriting] = useState(false)
+  const prevSectionsCount = useRef(0)
+
   const retry = async (): Promise<void> => {
     setRetrying(true)
     setRetryError(null)
@@ -69,16 +83,36 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
     let alive = true
     const load = (): void =>
       void api.get(id).then(
-        (x) => alive && (setN(x), setLoadError(false)),
+        (x) => {
+          if (!alive) return
+          setN(x)
+          setLoadError(false)
+          const cnt = x.nota?.sections?.length ?? 0
+          if (cnt > prevSectionsCount.current) {
+            prevSectionsCount.current = cnt
+            setWriting(true)
+          }
+        },
         () => alive && setLoadError(true)
       )
     load()
-    const off = api.onUpdate((m) => m.id === id && load())
+    const off = api.onUpdate((m) => {
+      if (m.id === id) {
+        setWriting(true)
+        load()
+      }
+    })
     return () => {
       alive = false
       off()
     }
   }, [api, id])
+
+  const waitStage = useWaitStage({
+    engine: 'agy',
+    active: n?.status === 'generating',
+    writing
+  })
 
   // What he remembers of the note's concepts: proofs fade from the end as they consolidate (fading.ts).
   const [known, setKnown] = useState<{ graph: GraphData; memory: Record<string, Memory> } | null>(null)
@@ -96,9 +130,9 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
   }, [])
 
   const bar = (
-    <GlassSurface render={<nav />} radius="capsule" className="island glass-text" aria-label="Controlli della nota">
+    <GlassSurface render={<nav />} radius="capsule" className={`island glass-text${islandCompact ? ' compact' : ''}`} aria-label="Controlli della nota">
       <button type="button" className="back back-btn" onClick={onBack}>
-        ← Home
+        {backLabel}
       </button>
       {n?.status === 'ready' && (
         <>
@@ -144,15 +178,30 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
         <div className="state">
           <h1>{n.sourceTitle}</h1>
           {n.status === 'generating' ? (
-            <p role="status">
-              <span className="pulse" aria-hidden="true" />
-              Sto scrivendo la nota viva…
-              <br />
-              <small>
-                Gemini sta leggendo la tua nota{n.sessionId ? ' e la sessione' : ''}: di solito servono pochi minuti (<Elapsed since={n.updatedAt} />
-                ).
-              </small>
-            </p>
+            <div role="status">
+              <p>
+                <span className="pulse" aria-hidden="true" />
+                Sto scrivendo la nota viva…
+                {n.nota?.sections?.length && n.sourceSections?.length
+                  ? ` (Sezione ${n.nota.sections.length} di ${n.sourceSections.length})`
+                  : ''}
+                <br />
+                <span className="nv-stage-label">{waitStage.label}</span>
+                <br />
+                <small>
+                  Gemini sta leggendo la tua nota{n.sessionId ? ' e la sessione' : ''}: di solito servono pochi minuti (<Elapsed since={n.updatedAt} />
+                  ).
+                </small>
+              </p>
+              <div className="nv-skeleton-body" aria-hidden="true" style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Skeleton width="100%" height={18} radius="sm" />
+                <Skeleton width="92%" height={18} radius="sm" />
+                <Skeleton width="80%" height={18} radius="sm" style={{ marginBottom: 12 }} />
+                <Skeleton width="100%" height={18} radius="sm" />
+                <Skeleton width="88%" height={18} radius="sm" />
+                <Skeleton width="65%" height={18} radius="sm" />
+              </div>
+            </div>
           ) : (
             <>
               <p role="alert">{n.error ?? 'Qualcosa è andato storto.'}</p>
@@ -169,15 +218,94 @@ export function NotaView({ id, onBack }: { id: string; onBack: () => void }): Re
   return (
     <NotaContext.Provider value={{ layers, noteId: id }}>
       <NotaFrame bar={bar}>
-        <Page nota={n.nota} stored={n} mode={mode} fade={known ? (section) => fadeOf(sectionConcepts(known.graph, n.sourcePath, section), known.memory) : undefined} />
+        <Page
+          nota={n.nota}
+          stored={n}
+          mode={mode}
+          onHeroPass={setIslandCompact}
+          fade={known ? (section) => fadeOf(sectionConcepts(known.graph, n.sourcePath, section), known.memory) : undefined}
+        />
       </NotaFrame>
     </NotaContext.Provider>
   )
 }
 
-function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mode: Mode; fade?: (section: { num: string; title: string }) => Fade }): React.JSX.Element {
+function Page({
+  nota,
+  stored,
+  mode,
+  fade,
+  onHeroPass
+}: {
+  nota: Nota
+  stored: StoredNote
+  mode: Mode
+  fade?: (section: { num: string; title: string }) => Fade
+  onHeroPass?: (passed: boolean) => void
+}): React.JSX.Element {
+  const [activeId, setActiveId] = useState<string>(() => nota.sections[0]?.id ?? '')
+  const [indicatorStyle, setIndicatorStyle] = useState<{ y: number; h: number }>({ y: 0, h: 36 })
+  const contentRef = useRef<HTMLDivElement>(null)
+  const tocRef = useRef<HTMLElement>(null)
+  const heroSentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+    const container = contentRef.current
+    if (!container) return
+    const headings = container.querySelectorAll<HTMLElement>('.sec > header > h2')
+    if (headings.length === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const sec = entry.target.closest<HTMLElement>('.sec')
+            const id = sec?.id || entry.target.id.replace(/-h$/, '')
+            if (id) {
+              setActiveId((prev) => (prev === id ? prev : id))
+            }
+          }
+        }
+      },
+      { rootMargin: '0px 0px -60% 0px' }
+    )
+
+    headings.forEach((h) => observer.observe(h))
+    return () => {
+      observer.disconnect()
+    }
+  }, [nota.sections])
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+    const sentinel = heroSentinelRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry) return
+      onHeroPass?.(!entry.isIntersecting)
+    })
+
+    observer.observe(sentinel)
+    return () => {
+      observer.disconnect()
+    }
+  }, [onHeroPass])
+
+  useEffect(() => {
+    if (!tocRef.current) return
+    const activeLink = tocRef.current.querySelector<HTMLElement>(`a[href="#${activeId}"]`)
+    if (activeLink) {
+      setIndicatorStyle({
+        y: activeLink.offsetTop,
+        h: activeLink.offsetHeight
+      })
+    }
+  }, [activeId])
+
   const counts = nota.sections.flatMap((s) => s.blocks).reduce<Record<string, number>>((acc, b) => ((acc[b.type] = (acc[b.type] ?? 0) + 1), acc), {})
-  const toc = nota.sections.map((s) => (
+  const mtocItems = nota.sections.map((s) => (
     <li key={s.id}>
       <a href={`#${s.id}`}>
         <b>{s.num.replace('§', '')}</b>
@@ -233,6 +361,7 @@ function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mo
           </div>
         </aside>
       </header>
+      <div className="hero-sentinel" ref={heroSentinelRef} aria-hidden="true" style={{ height: 1, width: 1, pointerEvents: 'none' }} />
 
       <details className="prov">
         <summary>
@@ -273,21 +402,40 @@ function Page({ nota, stored, mode, fade }: { nota: Nota; stored: StoredNote; mo
       )}
 
       <div className="page">
-        <nav className="toc" aria-label="Indice">
+        <nav className="toc" aria-label="Indice" ref={tocRef}>
           <h2>Indice</h2>
-          <ol>
-            {toc}
+          <ol style={{ position: 'relative' }}>
+            <span
+              className="toc-indicator"
+              aria-hidden="true"
+              style={
+                {
+                  '--toc-y': `${indicatorStyle.y}px`,
+                  '--toc-h': `${indicatorStyle.h}px`,
+                  height: 'var(--toc-h, 36px)',
+                  transform: 'translateY(var(--toc-y, 0px))'
+                } as React.CSSProperties
+              }
+            />
+            {nota.sections.map((s) => (
+              <li key={s.id}>
+                <a href={`#${s.id}`} aria-current={activeId === s.id ? 'true' : undefined}>
+                  <b>{s.num.replace('§', '')}</b>
+                  <Inline md={s.title} />
+                </a>
+              </li>
+            ))}
             <li>
-              <a href="#nv-fine">
+              <a href="#nv-fine" aria-current={activeId === 'nv-fine' ? 'true' : undefined}>
                 <b>✓</b>Cosa ricordare
               </a>
             </li>
           </ol>
         </nav>
-        <div className="content">
+        <div className="content" ref={contentRef}>
           <details className="mtoc">
             <summary>Indice della nota</summary>
-            <ol>{toc}</ol>
+            <ol>{mtocItems}</ol>
           </details>
           {nota.sections.map((s) => (
             <section key={s.id} className="sec" id={s.id} aria-labelledby={`${s.id}-h`}>

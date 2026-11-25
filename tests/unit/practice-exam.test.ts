@@ -68,6 +68,7 @@ describe('exam', () => {
     await Promise.all([exam.deliver(id, { e1: 'r1', e2: 'r2' }), exam.deliver(id, { e1: 'r1', e2: 'r2' })])
     expect(ask).toHaveBeenCalledTimes(2)
     const gradeReq = ask.mock.calls[1][0] as unknown as { prompt: string }
+    expect(gradeReq).toMatchObject({ task: 'grade', engine: undefined })
     expect(gradeReq.prompt).toContain('SOL2')
     expect(gradeReq.prompt).toContain('r2')
     const s = await exam.get(id)
@@ -75,10 +76,24 @@ describe('exam', () => {
     expect(s.exam!.sheet.problems[1].modelSolution).toBe('SOL2')
     expect(await mem.read()).toMatchObject([
       { conceptId: 'n_1', at: t, grade: 3, correct: true, via: 'practice' },
-      { conceptId: 'n_2', at: t, grade: 2, correct: true, via: 'practice' }
+      { conceptId: 'n_2', at: t, grade: 1, correct: false, via: 'practice', miss: 'execution' }
     ])
     await exam.save(id, { e1: 'tardi' })
     expect((await exam.get(id)).exam!.answers.e1).toBe('r1')
+  })
+  it('applies the 0.9 share boundary: share >= 0.9 is correct (grade 3), below is partial/wrong (grade 1)', async () => {
+    // sheet problems normalized to 15 points each
+    // e1: 13.5 / 15 = 0.90 -> correct: true, grade: 3
+    // e2: 13.0 / 15 = 0.8667 -> correct: false, grade: 1
+    const { exam } = setup([sheet, { items: [{ id: 'e1', points: 13.5, comment: '' }, { id: 'e2', points: 13, comment: '' }], note: '' }])
+    const id = await exam.start(material, 30)
+    await exam.retry(id)
+    await exam.deliver(id, { e1: 'ans1', e2: 'ans2' })
+    const reviews = await mem.read()
+    expect(reviews).toMatchObject([
+      { conceptId: 'n_1', grade: 3, correct: true, via: 'practice' },
+      { conceptId: 'n_2', grade: 1, correct: false, via: 'practice' }
+    ])
   })
   it('never gives more points than a problem is worth, and gives the lode only to a perfect sheet', async () => {
     const { exam } = setup([sheet, { items: [{ id: 'e1', points: 40, comment: '' }, { id: 'e2', points: 15, comment: '' }], note: '' }])

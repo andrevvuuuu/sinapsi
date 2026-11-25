@@ -21,6 +21,18 @@ const input = (overrides: Partial<Parameters<typeof buildWeekPlan>[0]> = {}): Pa
 })
 
 describe('buildWeekPlan', () => {
+  it('books the FSRS reviews due each day before the lessons (overdue ones on the first day)', () => {
+    const at = (d: string): number => new Date(`${d}T09:00:00`).getTime()
+    const m = (due: number | null) => ({ due }) as never
+    const memories = { old: m(at('2026-11-10')), today: m(at('2026-11-16')), tomorrow1: m(at('2026-11-17')), tomorrow2: m(at('2026-11-17')), never: m(null) }
+    const plan = buildWeekPlan(input({ today: '2026-11-16', exams: [exam('A')], studyHours: Array(7).fill(1), memories }))
+    expect(plan.days[0].reviewConceptIds.sort()).toEqual(['old', 'today'])
+    expect(plan.days[0].reviewMinutes).toBe(3)
+    expect(plan.days[0].blocks.reduce((sum, block) => sum + block.minutes, 0)).toBe(60 - 9 - 3)
+    expect(plan.days[1].reviewConceptIds.sort()).toEqual(['tomorrow1', 'tomorrow2'])
+    expect(plan.days[2]).toMatchObject({ reviewMinutes: 0, reviewConceptIds: [] })
+  })
+
   it('uses weekday availability, subtracts buffer and leaves zero-hour days empty', () => {
     const plan = buildWeekPlan(input({ today: '2026-11-16', exams: [exam('A')], studyHours: [1, 2, 3, 4, 5, 6, 0] }))
     expect(plan.days[0].minutes).toBe(60)

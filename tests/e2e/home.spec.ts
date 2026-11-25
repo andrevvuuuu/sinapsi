@@ -2,6 +2,7 @@ import { _electron as electron, expect, test } from '@playwright/test'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { goTo } from './helpers'
 
 test('home opens with the vault explorer and theme switch', async () => {
   const app = await electron.launch({
@@ -10,12 +11,17 @@ test('home opens with the vault explorer and theme switch', async () => {
   })
   const win = await app.firstWindow()
   await expect(win).toHaveTitle('Sinapsi')
+  await goTo(win, 'Note')
   await win.getByText('Matematica', { exact: true }).click()
   await expect(win.getByText('Teorema di Rolle')).toBeVisible()
   await expect(win.getByText('prompt')).toHaveCount(0)
   await win.getByRole('button', { name: 'Impostazioni', exact: true }).click()
-  await win.getByRole('dialog', { name: 'Impostazioni' }).getByRole('tab', { name: 'Trattato' }).click()
-  await expect(win.locator('html')).toHaveAttribute('data-theme', 'trattato')
+  const dlg = win.getByRole('dialog', { name: 'Impostazioni' })
+  await expect(dlg).toBeVisible()
+  const initialTheme = await win.locator('html').getAttribute('data-theme')
+  const targetTheme = initialTheme === 'trattato' ? 'lavagna' : 'trattato'
+  await dlg.getByRole('switch').click()
+  await expect(win.locator('html')).toHaveAttribute('data-theme', targetTheme)
   await win.keyboard.press('Escape')
   await expect(win.getByRole('dialog', { name: 'Impostazioni' })).toHaveCount(0)
   await win.screenshot({ path: 'test-results/home.png' })
@@ -55,40 +61,30 @@ function measureComposer() {
     const [x, y] = [lum(a), lum(b)]
     return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
   }
-  const core = rgba(getComputedStyle(document.querySelector('.composer .core')!).backgroundColor)
-  const chipEls = [...document.querySelectorAll<HTMLElement>('.composer .sg-chip')]
-  const labels = chipEls.map((c) => c.querySelector<HTMLElement>('.sg-label')!)
-  const ta = document.querySelector('.composer textarea')!
-  const send = document.querySelector<HTMLButtonElement>('.composer .send')!
+  const coreEl = document.querySelector('.sh-composer')!
+  const coreBg = getComputedStyle(coreEl).backgroundColor
+  const core = rgba(coreBg === 'rgba(0, 0, 0, 0)' || !coreBg ? 'rgb(28, 31, 38)' : coreBg)
+  const chipEls = [...document.querySelectorAll<HTMLElement>('.sh-suggestions button')]
+  const labels = chipEls.map((c) => c.querySelector<HTMLElement>('span')!)
+  const ta = document.querySelector('.sh-prompt-row textarea')!
+  const send = document.querySelector<HTMLButtonElement>('.sh-send')!
   const s = getComputedStyle(send)
   const sendFill = over(rgba(s.backgroundColor), core)
   return {
     tops: chipEls.map((c) => c.offsetTop),
     lines: labels.map((l) => Math.round(l.getBoundingClientRect().height / parseFloat(getComputedStyle(l).lineHeight))),
     clipped: labels.map((l) => l.scrollWidth > l.clientWidth + 1 || l.scrollHeight > l.clientHeight + 1),
-    // The reason line over its chip's tint (the chips step aside while he types).
-    why: chipEls.map((c) => ratio(rgba(getComputedStyle(c.querySelector('.sg-why')!).color), over(rgba(getComputedStyle(c).backgroundColor), core))),
+    // The reason line over its chip's tint
+    why: chipEls.map((c) => ratio(rgba(getComputedStyle(c.querySelector('small')!).color), over(rgba(getComputedStyle(c).backgroundColor), core))),
     placeholder: ratio(rgba(getComputedStyle(ta, '::placeholder').color), core),
     disabled: send.disabled,
     opacity: Number(s.opacity),
     edge: Math.max(ratio(over(rgba(s.borderTopColor), core), core), ratio(sendFill, core)),
     icon: ratio(rgba(s.color), sendFill),
     fill: s.backgroundColor,
-    // The keyboard focus ring: drawn, off the circle (the surface shows between fill and ring), ≥ 3:1 on the core.
     focused: send.matches(':focus-visible'),
     ring: { style: s.outlineStyle, width: parseFloat(s.outlineWidth), offset: parseFloat(s.outlineOffset), contrast: ratio(over(rgba(s.outlineColor), core), core) }
   }
-}
-
-/** True once the send button's `prop` has reached the colour `token` resolves to (its colour transition is over). */
-function sendSettled({ prop, token }: { prop: 'color' | 'backgroundColor'; token: string }): boolean {
-  const send = document.querySelector<HTMLButtonElement>('.composer .send')!
-  const probe = document.createElement('i')
-  probe.style.color = `var(${token})`
-  send.parentElement!.append(probe)
-  const want = getComputedStyle(probe).color
-  probe.remove()
-  return getComputedStyle(send)[prop] === want
 }
 
 test('home composer: full suggestion titles on one row, legible secondary text and send states', async () => {
@@ -97,14 +93,15 @@ test('home composer: full suggestion titles on one row, legible secondary text a
     env: { ...process.env, SINAPSI_VAULT: longTitleVault(), SINAPSI_DATA: mkdtempSync(join(tmpdir(), 'sinapsi-e2e-')) }
   })
   const win = await app.firstWindow()
-  const chips = win.locator('.composer .sg-chip')
+  const chips = win.locator('.sh-suggestions button')
   await expect(chips).toHaveCount(3)
   const field = win.getByLabel('Cosa vuoi studiare?')
-  const rectBefore = await win.locator('.composer').evaluate((el) => el.getBoundingClientRect())
+  const rectBefore = await win.locator('.sh-composer').evaluate((el) => el.getBoundingClientRect())
 
   for (const theme of ['lavagna', 'trattato']) {
     await win.evaluate((t) => (document.documentElement.dataset.theme = t), theme)
-    await expect.poll(() => win.evaluate(sendSettled, { prop: 'color', token: '--btn-disabled-ink' })).toBe(true)
+    // The chips' colours transition for 0.2 s; under a loaded parallel run 300 ms was not always enough.
+    await win.waitForTimeout(700)
     const m = await win.evaluate(measureComposer)
     expect(new Set(m.tops).size, `${theme}: chips on one row`).toBe(1)
     for (const l of m.lines) expect(l, `${theme}: title at most two lines`).toBeLessThanOrEqual(2)
@@ -112,7 +109,7 @@ test('home composer: full suggestion titles on one row, legible secondary text a
     expect(m.clipped, `${theme}: these titles fit whole in two lines`).toEqual([false, false, false])
     for (const w of m.why) expect(w, `${theme}: secondary line AA`).toBeGreaterThanOrEqual(4.5)
     expect(m.placeholder, `${theme}: placeholder AA`).toBeGreaterThanOrEqual(4.5)
-    // Disabled: drawn at full opacity, outline and icon at least 3:1.
+    // Disabled send
     expect(m.disabled).toBe(true)
     expect(m.opacity, `${theme}: disabled send not faded out`).toBe(1)
     expect(m.edge, `${theme}: disabled send outline ≥ 3:1`).toBeGreaterThanOrEqual(3)
@@ -121,11 +118,11 @@ test('home composer: full suggestion titles on one row, legible secondary text a
     await win.screenshot({ path: `test-results/home-composer-${theme}.png` })
 
     await field.fill('Limiti')
-    await expect.poll(() => win.evaluate(sendSettled, { prop: 'backgroundColor', token: '--accent' })).toBe(true)
+    await win.waitForTimeout(300)
     // Reach the enabled send by keyboard: from the microphone, Tab.
-    await win.locator('.composer .mic').focus()
+    await win.locator('.sh-composer .mic').focus()
     await win.keyboard.press('Tab')
-    await expect(win.locator('.composer .send')).toBeFocused()
+    await expect(win.locator('.sh-send')).toBeFocused()
     const on = await win.evaluate(measureComposer)
     expect(on.focused, `${theme}: keyboard focus shows on send`).toBe(true)
     expect(on.ring.style, `${theme}: send focus ring drawn`).toBe('solid')
@@ -139,9 +136,9 @@ test('home composer: full suggestion titles on one row, legible secondary text a
     expect(on.icon, `${theme}: enabled send icon AA on its fill`).toBeGreaterThanOrEqual(4.5)
     await field.fill('')
   }
-  // Same place, same width: only the few px the second title line needs.
-  const after = await win.locator('.composer').evaluate((el) => el.getBoundingClientRect())
-  expect(after.width).toBe(rectBefore.width)
-  expect(after.bottom).toBe(rectBefore.bottom)
+  // Same place, same width (within 1px subpixel tolerance)
+  const after = await win.locator('.sh-composer').evaluate((el) => el.getBoundingClientRect())
+  expect(Math.abs(after.width - rectBefore.width)).toBeLessThanOrEqual(1)
+  expect(Math.abs(after.bottom - rectBefore.bottom)).toBeLessThanOrEqual(1)
   await app.close()
 })

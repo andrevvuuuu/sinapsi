@@ -16,6 +16,7 @@ describe('settings', () => {
     expect(s.vaultPath.endsWith('/Obsidian Vault')).toBe(true)
     expect(s.engines.teach.engine).toBe('claude')
     expect(s.engines.extract).toEqual({ engine: 'agy', model: 'gemini-3.8-flash-medium' })
+    expect(s.engines.variants).toEqual({ engine: 'agy', model: 'gemini-3.8-flash-medium' })
     expect(s.excludedFolders).toEqual(['.obsidian', '.antigravity', '.trash', 'Prompts'])
     expect(s.mastery).toEqual({ kOpen: 2, kChoice: 3, solidDays: 14 })
     expect(s.learnerProfile).toBe('')
@@ -81,5 +82,31 @@ describe('settings choices that equal an old default', () => {
       engine: 'agy',
       model: 'gemini-3.8-flash-high'
     })
+  })
+
+  it('migrates v3 extract and variants from flash-high to medium, but keeps them in v4', async () => {
+    const v3 = {
+      settingsVersion: 3,
+      engines: {
+        extract: { engine: 'agy', model: 'gemini-3.8-flash-high' },
+        variants: { engine: 'agy', model: 'gemini-3.8-flash-high' }
+      }
+    }
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(v3))
+    const s3 = await loadSettings()
+    expect(s3.engines.extract).toEqual({ engine: 'agy', model: 'gemini-3.8-flash-medium' })
+    expect(s3.engines.variants).toEqual({ engine: 'agy', model: 'gemini-3.8-flash-medium' })
+
+    const v4 = {
+      settingsVersion: 4,
+      engines: {
+        extract: { engine: 'agy', model: 'gemini-3.8-flash-high' },
+        variants: { engine: 'agy', model: 'gemini-3.8-flash-high' }
+      }
+    }
+    await writeFile(join(dir, 'settings.json'), JSON.stringify(v4))
+    const s4 = await loadSettings()
+    expect(s4.engines.extract).toEqual({ engine: 'agy', model: 'gemini-3.8-flash-high' })
+    expect(s4.engines.variants).toEqual({ engine: 'agy', model: 'gemini-3.8-flash-high' })
   })
 })

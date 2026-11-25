@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { makeHandlers } from '../../src/main/ipc-handlers'
+import { makeHandlers, SettingsPatch } from '../../src/main/ipc-handlers'
 import { scanVault } from '../../src/main/vault/scan'
 import { settingsSchema } from '../../src/shared/settings-schema'
 
@@ -35,6 +35,31 @@ describe('ipc handlers', () => {
     await expect(h.settingsSet({ theme: 'x' })).rejects.toThrow()
     await expect(h.settingsSet({ bogus: 1 })).rejects.toThrow()
     await expect(h.settingsSet({ theme: 'trattato' })).resolves.toMatchObject({ theme: 'trattato' })
+  })
+
+  it('saves the whole payload of the settings dialog', async () => {
+    const { h } = setup('/v')
+    const payload = {
+      engines: settingsSchema('/x').parse({}).engines,
+      backgroundExtraction: true,
+      dailyExtractionLimit: 6,
+      reviewSessionSize: 12,
+      gamesInSessions: true,
+      microPauses: false,
+      sessionLimit: true,
+      sessionLimitMinutes: 50,
+      mastery: { kOpen: 2, kChoice: 3, solidDays: 14 },
+      learnerProfile: '',
+      graderEngine: 'same',
+      fastStart: true
+    }
+    await expect(h.settingsSet(payload)).resolves.toMatchObject({ mastery: payload.mastery, graderEngine: 'same', fastStart: true })
+    await expect(h.settingsSet({ mastery: { kOpen: 9, kChoice: 3, solidDays: 14 } })).rejects.toThrow()
+    await expect(h.settingsSet({ learnerProfile: 'x'.repeat(2001) })).rejects.toThrow()
+  })
+
+  it('lets every stored setting be patched', () => {
+    expect(Object.keys(SettingsPatch.shape).sort()).toEqual(Object.keys(settingsSchema('/x').shape).sort())
   })
 
   it('opens only obsidian:// and https:// links', async () => {

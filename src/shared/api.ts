@@ -1,25 +1,25 @@
 import type { Engine, Settings } from './settings-schema'
 import type { VaultIndex } from './vault-types'
 import type { LearnerAnswer } from './teacher-protocol'
-import type { SessionState, SessionSummary } from '../main/session/events'
-import type { NoteMeta, StoredNote } from '../main/notes/store'
-import type { TutorCalendar } from '../main/tutor/calendar'
+import type { SessionState, SessionSummary } from './session-types'
+import type { NoteMeta, StoredNote } from './notes-types'
+import type { TutorCalendar } from './tutor-types'
 
 export type { SessionState, SessionSummary, NoteMeta, StoredNote }
 export type { GraphData, ExtractorStatus } from './graph-types'
 export type { Memory, ReviewLine, Grade } from './memory-types'
-export type { ReviewItem, ReviewPlan, GradeResult, ExplainResult } from '../main/memory/review'
-export type { ExplainTurn } from '../main/memory/explain'
+export type { ReviewItem, ReviewPlan, GradeResult, ExplainResult } from './review-types'
+export type { ExplainTurn } from './review-types'
 export type { Notebook, Source, SourceText, Excerpt } from './notebook-types'
 export type {
   PracticeState,
   PracticeSummary,
   PracticeItem,
   PracticeProblem
-} from '../main/practice/events'
+} from './practice-types'
 export type { Catalog, Material } from './practice-types'
-export type { ReviewSession } from '../main/memory/history'
-export type { Chip, ChipAction, Suggestions } from '../main/suggest/suggest'
+export type { ReviewSession } from './review-types'
+export type { Chip, ChipAction, Suggestions } from './suggest-types'
 export type {
   LessonEntry,
   LessonEvent,
@@ -66,12 +66,16 @@ export const CH = {
   notesUpdated: 'notes:updated',
   notesAttempt: 'notes:attempt',
   graphGet: 'graph:get',
+  graphChainSource: 'graph:chain-source',
+  graphExplainChain: 'graph:explain-chain',
   graphExtract: 'graph:extract',
   graphStatus: 'graph:status',
   graphChanged: 'graph:changed',
   graphPositions: 'graph:positions',
   graphSavePositions: 'graph:save-positions',
   reviewPlan: 'review:plan',
+  reviewPrerequisites: 'review:prerequisites',
+  reviewContest: 'review:contest',
   reviewGrade: 'review:grade',
   reviewExplain: 'review:explain',
   voiceTranscribe: 'voice:transcribe',
@@ -81,6 +85,7 @@ export const CH = {
   reviewMemory: 'review:memory',
   reviewCalibration: 'review:calibration',
   memoryStats: 'memory:stats',
+  memoryChanged: 'memory:changed',
   reviewIntervals: 'review:intervals',
   reviewSessions: 'review:sessions',
   notebookList: 'notebook:list',
@@ -148,7 +153,7 @@ export interface SinapsiApi {
     /** With several candidate notes the state waits on 'confirm' and lists state.candidates. */
     create(topic: string): Promise<string>
     confirm(id: string, notePath: string | null): Promise<void>
-    start(topic: string): Promise<string>
+    start(topic: string, opts?: { goalIds?: string[] }): Promise<string>
     list(): Promise<SessionSummary[]>
     get(id: string): Promise<SessionState>
     answer(id: string, a: LearnerAnswer): Promise<void>
@@ -173,6 +178,8 @@ export interface SinapsiApi {
   }
   graph: {
     get(): Promise<import('./graph-types').GraphData>
+    chainSource(chainId: string): Promise<import('./graph-types').ChainSource>
+    explainChain(chainId: string, opts?: { refresh?: boolean }): Promise<import('./graph-types').ChainExplanation>
     /** manual (default) always re-extracts; study skips a note unchanged since its last extraction. */
     extract(path: string, reason?: 'manual' | 'study'): Promise<void>
     status(): Promise<import('./graph-types').ExtractorStatus>
@@ -199,24 +206,44 @@ export interface SinapsiApi {
       conceptIds?: string[]
       weakest?: boolean
       misconceptions?: boolean
-    }): Promise<import('../main/memory/review').ReviewPlan>
+      examAt?: number
+      order?: 'due' | 'gain'
+    }): Promise<import('./review-types').ReviewPlan>
+    prerequisites(conceptId: string, budget: number): Promise<import('./review-types').ReviewItem[]>
+    contest(req: {
+      conceptId: string
+      exercise: import('./exercise-schema').Exercise
+      answer: string
+      confidence: number
+    }): Promise<import('./review-types').GradeResult>
     grade(req: {
       conceptId: string
       exercise: import('./exercise-schema').Exercise
       answer: string
       confidence: number
-    }): Promise<import('../main/memory/review').GradeResult>
+    }): Promise<import('./review-types').GradeResult>
     /** "Spiegalo tu": the whole dialogue so far, Andrea's last turn included. */
     explain(req: {
       conceptId: string
       exercise: import('./exercise-schema').Exercise
-      turns: import('../main/memory/explain').ExplainTurn[]
+      turns: import('./review-types').ExplainTurn[]
       confidence: number
-    }): Promise<import('../main/memory/review').ExplainResult>
-    record(r: import('./memory-types').ReviewLine): Promise<{
+    }): Promise<import('./review-types').ExplainResult>
+    record(
+      r:
+        | import('./memory-types').ReviewLine
+        | {
+            conceptId: string
+            at: number
+            type: 'chain'
+            checked?: boolean[]
+            grade?: import('./memory-types').Grade | null
+            record?: boolean
+          }
+    ): Promise<{
       memory: import('./memory-types').Memory
       intervals: Record<import('./memory-types').Grade, string>
-    }>
+    } | null>
     memory(): Promise<Record<string, import('./memory-types').Memory>>
     calibration(): Promise<
       Omit<import('./confidence').ConfidenceCalibration, 'confidentErrors'> & {
@@ -225,9 +252,11 @@ export interface SinapsiApi {
     >
     intervals(conceptId: string): Promise<Record<import('./memory-types').Grade, string>>
     /** Past Ripasso sittings, newest first. */
-    sessions(): Promise<import('../main/memory/history').ReviewSession[]>
+    sessions(): Promise<import('./review-types').ReviewSession[]>
   }
   memory: {
+    /** Fires (debounced) after new lines in reviews.jsonl, from any source: Ripasso, Pratica, esami, sessioni. */
+    onChanged(cb: () => void): () => void
     stats(): Promise<{
       calibration: import('./calibration').CalibrationLevel[]
       againRate: ReturnType<typeof import('./calibration').firstReviewAgainRate>
@@ -253,8 +282,8 @@ export interface SinapsiApi {
     create(material: import('./practice-types').Material): Promise<string>
     submit(id: string, s: import('./practice-protocol').Submission): Promise<void>
     retry(id: string): Promise<void>
-    get(id: string): Promise<import('../main/practice/events').PracticeState>
-    list(): Promise<import('../main/practice/events').PracticeSummary[]>
+    get(id: string): Promise<import('./practice-types').PracticeState>
+    list(): Promise<import('./practice-types').PracticeSummary[]>
     /** paper: the sheet and the clock only, answers typed or photographed afterwards. */
     examStart(
       material: import('./practice-types').Material,
@@ -272,7 +301,7 @@ export interface SinapsiApi {
     photo(id: string, bytes: Uint8Array): Promise<string>
     /** Asks macOS for the camera (Continuity Camera shows the iPhone among the cameras). */
     camera(): Promise<boolean>
-    onUpdate(cb: (s: import('../main/practice/events').PracticeState) => void): () => void
+    onUpdate(cb: (s: import('./practice-types').PracticeState) => void): () => void
   }
   lessons: {
     list(): Promise<import('./lesson-types').LessonEntry[]>
@@ -316,7 +345,7 @@ export interface SinapsiApi {
     }>
   }
   /** What to study, review or practise next, each with its reason (no AI). */
-  suggest: { get(): Promise<import('../main/suggest/suggest').Suggestions> }
+  suggest: { get(): Promise<import('./suggest-types').Suggestions> }
   /** macOS appearance settings the Liquid Glass material follows. */
   ui: {
     /** True when «Riduci trasparenza» is on: the glass becomes a solid surface. */

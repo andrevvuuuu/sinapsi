@@ -1,4 +1,4 @@
-import type { ReviewLine } from './memory-types'
+import { MISCONCEPTION_CONFIDENCE, type ReviewLine } from './memory-types'
 
 export type CalibrationStat = { n: number; meanConfidence: number; accuracy: number; gap: number }
 export type ConfidenceCalibration = { overall: CalibrationStat; groups: ({ key: string } & CalibrationStat)[]; confidentErrors: { conceptId: string; at: number; confidence: number }[] }
@@ -24,7 +24,7 @@ export function confidenceCalibration(lines: ReviewLine[], groupOf?: (conceptId:
   return {
     overall: stat(usable),
     groups: [...buckets].map(([key, rows]) => ({ key, ...stat(rows) })).filter((g) => g.n >= 5).sort((a, b) => a.key.localeCompare(b.key)),
-    confidentErrors: usable.filter((r) => !(r.correct ?? r.grade >= 3) && r.confidence! >= 70).sort((a, b) => b.at - a.at).slice(0, 20).map((r) => ({ conceptId: r.conceptId, at: r.at, confidence: r.confidence! }))
+    confidentErrors: usable.filter((r) => !(r.correct ?? r.grade >= 3) && r.confidence! >= MISCONCEPTION_CONFIDENCE).sort((a, b) => b.at - a.at).slice(0, 20).map((r) => ({ conceptId: r.conceptId, at: r.at, confidence: r.confidence! }))
   }
 }
 

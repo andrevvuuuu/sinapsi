@@ -9,8 +9,18 @@ import { readSubjects } from './subjects'
 // Old-style iCloud placeholder of a note that is not downloaded: ".Nota.md.icloud"
 const ICLOUD_RE = /^\.(.+)\.md\.icloud$/
 
-type Deps = { readFile: (path: string) => Promise<string>; readdir: (path: string) => Promise<Dirent[]> }
-const defaultDeps: Deps = { readFile: (p) => fsReadFile(p, 'utf8'), readdir: (p) => fsReaddir(p, { withFileTypes: true }) }
+export type ScanMemo = Map<string, { mtimeMs: number; size: number; note: VaultNote }>
+
+export type Deps = {
+  readFile: (path: string) => Promise<string>
+  readdir: (path: string) => Promise<Dirent[]>
+  stat: (path: string) => Promise<{ mtimeMs: number; size: number }>
+}
+const defaultDeps: Deps = {
+  readFile: (p) => fsReadFile(p, 'utf8'),
+  readdir: (p) => fsReaddir(p, { withFileTypes: true }),
+  stat: (p) => stat(p)
+}
 
 const asList = (v: unknown): string[] =>
   (Array.isArray(v) ? v : typeof v === 'string' ? v.split(/[,\s]+/) : []).map((x) => String(x).replace(/^#/, '').trim()).filter(Boolean)
@@ -54,9 +64,20 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R
 }
 
 /** Read-only index of the vault. Unreadable files (iCloud placeholders) are kept with available: false. */
-export async function scanVault(root: string, excluded: string[], partial: Partial<Deps> = {}): Promise<VaultIndex> {
+export async function scanVault(
+  root: string,
+  excluded: string[],
+  partial: Partial<Deps> = {},
+  memo?: ScanMemo
+): Promise<VaultIndex> {
   const deps: Deps = { ...defaultDeps, ...partial }
   const files = await listMarkdown(root, excluded, deps)
+  if (memo) {
+    const fileSet = new Set(files)
+    for (const p of memo.keys()) {
+      if (!fileSet.has(p)) memo.delete(p)
+    }
+  }
   const subjects = readSubjects(root)
   const notes = await mapLimit(files, 16, async (path): Promise<VaultNote> => {
     const rel = relative(root, path)
@@ -64,16 +85,47 @@ export async function scanVault(root: string, excluded: string[], partial: Parti
     const file = parts[parts.length - 1]
     const placeholder = file.match(ICLOUD_RE)
     const title = placeholder ? placeholder[1] : file.replace(/\.md$/, '')
-    const base: VaultNote = { path, title, folder: parts.slice(0, -1).join('/'), tags: [], aliases: [], links: [], headings: [], blockIds: [], subject: null, mtime: 0, size: 0, available: false }
+    const base: VaultNote = {
+      path,
+      title,
+      folder: parts.slice(0, -1).join('/'),
+      tags: [],
+      aliases: [],
+      links: [],
+      headings: [],
+      blockIds: [],
+      subject: null,
+      mtime: 0,
+      size: 0,
+      available: false
+    }
     if (placeholder) return base
     try {
-      const [text, st] = await Promise.all([deps.readFile(path), stat(path)])
+      let st: { mtimeMs: number; size: number } | null = null
+      try {
+        st = await deps.stat(path)
+      } catch {
+        // Fallback: file treated as changed, readFile will be called
+      }
+
+      if (memo && st) {
+        const cached = memo.get(path)
+        if (cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) {
+          return {
+            ...cached.note,
+            subject: subjects.find((s) => cached.note.tags.includes(s.tag))?.tag ?? null,
+            links: cached.note.links.map((l) => ({ ...l }))
+          }
+        }
+      }
+
+      const text = await deps.readFile(path)
       const { data, content } = matter(text)
       const body = stripCode(content)
       const tags = [...new Set([...asList(data.tags), ...[...body.matchAll(/(?:^|\s)#([\p{L}][\p{L}\p{N}_/-]*)/gu)].map((m) => m[1])])]
       const type = asList(data.Type ?? data.type)[0]
       const verifica = ['ok', 'dubbi', 'errori'].find((v) => v === String(data.Verifica ?? '').trim()) as VaultNote['verifica']
-      return {
+      const parsedNote: VaultNote = {
         ...base,
         tags,
         ...(type ? { type } : {}),
@@ -83,11 +135,25 @@ export async function scanVault(root: string, excluded: string[], partial: Parti
         headings: [...body.matchAll(/^#{1,6}\s+(.+?)\s*$/gm)].map((m) => m[1]),
         blockIds: [...body.matchAll(/(?:^|\s)\^([\w-]+)\s*$/gm)].map((m) => m[1]),
         subject: subjects.find((s) => tags.includes(s.tag))?.tag ?? null,
-        mtime: st.mtimeMs,
-        size: st.size,
+        mtime: st ? st.mtimeMs : 0,
+        size: st ? st.size : 0,
         available: true
       }
+
+      if (memo && st) {
+        memo.set(path, {
+          mtimeMs: st.mtimeMs,
+          size: st.size,
+          note: {
+            ...parsedNote,
+            links: parsedNote.links.map((l) => ({ ...l }))
+          }
+        })
+      }
+
+      return parsedNote
     } catch {
+      memo?.delete(path)
       return base
     }
   })

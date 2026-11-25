@@ -1,29 +1,31 @@
 import type { Grade, MemoryState } from '../../shared/memory-types'
-import { sessionGrade } from '../../shared/memory-types'
-import type { LearnerAnswer, Plan, Question, TeacherTurn } from '../../shared/teacher-protocol'
+import { MISCONCEPTION_CONFIDENCE, sessionGrade } from '../../shared/memory-types'
+import type { LearnerAnswer, Question, TeacherTurn } from '../../shared/teacher-protocol'
 import type { MinimalTree } from './minimal-tree'
 
-export type MasterySettings = { kOpen: number; kChoice: number; solidDays: number }
+import type {
+  ConceptProgress,
+  Evidence,
+  MasterySettings,
+  SessionState
+} from '../../shared/session-types'
+
+export type {
+  ChatItem,
+  ConceptProgress,
+  Evidence,
+  MasterySettings,
+  SessionState,
+  SessionSummary,
+  Stage
+} from '../../shared/session-types'
+
 export const DEFAULT_MASTERY: MasterySettings = { kOpen: 2, kChoice: 3, solidDays: 14 }
-export type Stage = 'goal' | 'probe' | 'plan' | 'teach' | 'repair' | 'consolidate' | 'done'
-export type ConceptProgress = {
-  status: 'unseen' | 'explained' | 'probed' | 'repairing' | 'mastered'
-  openStreak: number
-  choiceStreak: number
-  lastConfidences: number[]
-}
-export type Evidence = {
-  questionId: string
-  conceptId: string
-  kind: 'open' | 'choice' | 'game'
-  correct: boolean
-  verdict?: 'correct' | 'partial' | 'incorrect'
-  hintsUsed: number
-  confidence?: number
-  role: string
-  peeked: boolean
-  excluded: boolean
-  at: number
+export function isGenerativeEvidence(x: Evidence): boolean {
+  return (
+    (x.kind === 'open' || (x.kind === 'game' && x.gameType === 'taboo')) &&
+    x.verdict !== undefined
+  )
 }
 export type SessionEvent =
   | {
@@ -54,6 +56,7 @@ export type SessionEvent =
   | { t: 'validated'; questionId: string; ok: boolean; at: number }
   | { t: 'cancelled'; at: number }
   | { t: 'aborted'; at: number }
+  | { t: 'ungraded'; questionId: string; at: number }
   | {
       t: 'confirmed'
       notePath?: string
@@ -62,52 +65,6 @@ export type SessionEvent =
       prior?: Record<string, { state: MemoryState; S?: number; seen: boolean }>
       at: number
     }
-export type ChatItem =
-  | { kind: 'learner'; text: string; answer?: LearnerAnswer; question?: Question }
-  | { kind: 'teacher'; turn: TeacherTurn }
-  | { kind: 'error'; message: string }
-export type SessionState = {
-  id: string
-  topic: string
-  noteTitle?: string
-  notePath?: string
-  phase: TeacherTurn['phase']
-  plan?: Plan
-  currentNodeId?: string
-  doneNodeIds: string[]
-  items: ChatItem[]
-  pendingQuestion?: Question
-  awaiting: 'teacher' | 'learner' | 'retry' | 'confirm'
-  candidates: { title: string; path: string }[]
-  learnerProfile: string
-  summary?: TeacherTurn['summary']
-  conversationId?: string
-  hasTeacherTurn: boolean
-  lastLearnerText?: string
-  createdAt: number
-  updatedAt: number
-  tree?: MinimalTree
-  mastery: MasterySettings
-  prior: Record<string, { state: MemoryState; S?: number; seen: boolean }>
-  stage: Stage
-  concepts: Record<string, ConceptProgress>
-  probeCount: number
-  turnsSinceGame: number
-  pendingRetest?: { conceptId: string; afterTurns: number }
-  readyToFinish: boolean
-  recallDone: boolean
-  chunkSize: 1 | 2 | 3
-  misconceptionHits: { conceptId?: string; questionId: string; text: string; at: number }[]
-  evidence: Evidence[]
-  cancelled: boolean
-}
-export type SessionSummary = {
-  id: string
-  topic: string
-  phase: TeacherTurn['phase']
-  notePath?: string
-  updatedAt: number
-}
 const blank = (): ConceptProgress => ({
   status: 'unseen',
   openStreak: 0,
@@ -138,13 +95,16 @@ export function reduceSession(events: SessionEvent[]): SessionState {
     chunkSize: 2,
     misconceptionHits: [],
     evidence: [],
-    cancelled: false
+    cancelled: false,
+    unverifiedIds: []
   }
   const raw: Evidence[] = []
   const exclusions = new Map<string, boolean>()
   const dontKnow = new Set<string>()
   const graded = new Map<string, Extract<SessionEvent, { t: 'graded' }>>()
   const answered = new Set<string>()
+  const questionConcept = new Map<string, string>()
+  const ungradedQuestionIds: string[] = []
   for (const e of events) {
     s.updatedAt = Math.max(s.updatedAt, e.at)
     switch (e.t) {
@@ -182,7 +142,7 @@ export function reduceSession(events: SessionEvent[]): SessionState {
           if (q.role === 'probe') s.probeCount++
           if (q.role === 'recall') s.recallDone = true
           let correct: boolean | undefined
-          let kind: Evidence['kind'] =
+          const kind: Evidence['kind'] =
             q.kind === 'game' ? 'game' : q.kind === 'choice' ? 'choice' : 'open'
           let hints = 0
           const grade = graded.get(q.id)
@@ -197,19 +157,22 @@ export function reduceSession(events: SessionEvent[]): SessionState {
             correct = grade.verdict === 'correct'
             hints = grade.hintsUsed
           }
+          const gameType = q.kind === 'game' ? q.game?.type : undefined
+          if (q.nodeId) questionConcept.set(q.id, q.nodeId)
           // Goal and plan questions have no concept: they are never evidence.
           if (q.nodeId && (correct !== undefined || kind === 'open'))
             raw.push({
               questionId: q.id,
               conceptId: q.nodeId,
               kind,
+              gameType,
               correct: correct ?? false,
               hintsUsed: hints,
               verdict: grade?.verdict,
               confidence: a?.confidence,
               role: q.role,
               peeked: !!a?.peeked,
-              excluded: !!a?.peeked,
+              excluded: !!a?.peeked || q.role === 'predict',
               at: e.at
             })
           if (kind === 'game') s.turnsSinceGame = 0
@@ -229,6 +192,8 @@ export function reduceSession(events: SessionEvent[]): SessionState {
         if (e.turn.summary) s.summary = e.turn.summary
         const next = e.turn.question?.nodeId
         if (next) s.currentNodeId = next
+        if (e.turn.question?.id && e.turn.question.nodeId)
+          questionConcept.set(e.turn.question.id, e.turn.question.nodeId)
         s.pendingQuestion = e.turn.question
         s.awaiting = 'learner'
         if (s.hasTeacherTurn && s.stage === 'goal') s.stage = 'probe'
@@ -241,6 +206,9 @@ export function reduceSession(events: SessionEvent[]): SessionState {
       case 'error':
         s.items.push({ kind: 'error', message: e.message })
         s.awaiting = 'retry'
+        break
+      case 'ungraded':
+        ungradedQuestionIds.push(e.questionId)
         break
       case 'graded':
         graded.set(e.questionId, e)
@@ -267,6 +235,8 @@ export function reduceSession(events: SessionEvent[]): SessionState {
   s.turnsSinceGame += Math.max(0, answered.size - (s.turnsSinceGame === 0 ? 1 : 0))
   s.evidence = raw.map((x) => {
     const g = graded.get(x.questionId)
+    const isNonTabooGame = x.kind === 'game' && x.gameType !== 'taboo'
+    const isUnjudgedTaboo = x.kind === 'game' && x.gameType === 'taboo' && !g
     return {
       ...x,
       ...(g
@@ -276,9 +246,24 @@ export function reduceSession(events: SessionEvent[]): SessionState {
       excluded:
         x.excluded ||
         exclusions.has(x.questionId) ||
+        x.role === 'predict' ||
+        isNonTabooGame ||
+        isUnjudgedTaboo ||
         (x.kind === 'open' && !g && !dontKnow.has(x.questionId))
     }
   })
+  const ungradedCounts = new Map<string, number>()
+  for (const qid of ungradedQuestionIds) {
+    const cid = questionConcept.get(qid) ?? raw.find((r) => r.questionId === qid)?.conceptId
+    if (cid) {
+      ungradedCounts.set(cid, (ungradedCounts.get(cid) ?? 0) + 1)
+    }
+  }
+  for (const [cid, count] of ungradedCounts.entries()) {
+    if (count >= 2 && !s.unverifiedIds.includes(cid)) {
+      s.unverifiedIds.push(cid)
+    }
+  }
   const active = s.evidence.filter(
     (x) =>
       !x.excluded &&
@@ -295,13 +280,13 @@ export function reduceSession(events: SessionEvent[]): SessionState {
     const p = s.concepts[x.conceptId] ?? (s.concepts[x.conceptId] = blank())
     p.status = x.correct ? 'probed' : 'repairing'
     if (x.correct) {
-      if (x.kind === 'open') p.openStreak++
+      if (x.kind === 'open' || (x.kind === 'game' && x.gameType === 'taboo')) p.openStreak++
       else p.choiceStreak++
     } else {
       p.openStreak = 0
       p.choiceStreak = 0
       s.pendingRetest = { conceptId: x.conceptId, afterTurns: 1 }
-      if ((x.confidence ?? 0) >= 63)
+      if ((x.confidence ?? 0) >= MISCONCEPTION_CONFIDENCE)
         s.misconceptionHits.push({
           conceptId: x.conceptId,
           questionId: x.questionId,
@@ -316,9 +301,27 @@ export function reduceSession(events: SessionEvent[]): SessionState {
     const p = s.concepts[n.id] ?? (s.concepts[n.id] = blank())
     const prior = s.prior[n.id]
     const ev = active.filter((x) => x.conceptId === n.id)
-    const cold =
-      prior?.state === 'la sai' && (prior.S ?? 0) >= s.mastery.solidDays && ev[0]?.correct
-    if (p.openStreak >= s.mastery.kOpen || p.choiceStreak >= s.mastery.kChoice || cold) {
+    const isUnverified = s.unverifiedIds.includes(n.id)
+
+    let mastered: boolean
+    if (isUnverified) {
+      const oldCold =
+        prior?.state === 'la sai' && (prior.S ?? 0) >= s.mastery.solidDays && ev[0]?.correct
+      mastered = p.openStreak >= s.mastery.kOpen || p.choiceStreak >= s.mastery.kChoice || oldCold
+    } else {
+      const hasGenerative = ev.some((x) => isGenerativeEvidence(x) && x.correct)
+      const cold =
+        prior?.state === 'la sai' &&
+        (prior.S ?? 0) >= s.mastery.solidDays &&
+        ev[0]?.correct &&
+        isGenerativeEvidence(ev[0])
+      mastered =
+        p.openStreak >= s.mastery.kOpen ||
+        (p.choiceStreak >= s.mastery.kChoice && hasGenerative) ||
+        cold
+    }
+
+    if (mastered) {
       p.status = 'mastered'
       if (!s.doneNodeIds.includes(n.id)) s.doneNodeIds.push(n.id)
     }
@@ -333,7 +336,7 @@ export function reduceSession(events: SessionEvent[]): SessionState {
     cur?.status === 'repairing' ||
     !!s.tree?.nodes.find((n) => n.id === s.currentNodeId)?.weaknesses.length
       ? 1
-      : (cur?.lastConfidences.length === 2 && cur.lastConfidences.every((c) => c >= 63)) ||
+      : (cur?.lastConfidences.length === 2 && cur.lastConfidences.every((c) => c >= MISCONCEPTION_CONFIDENCE)) ||
           s.prior[s.currentNodeId ?? '']?.state === 'la sai'
         ? 3
         : 2
@@ -367,12 +370,31 @@ export function stageInstruction(state: SessionState): string {
   const retest = state.pendingRetest
     ? `${state.pendingRetest.conceptId} (dopo un turno su un altro concetto)`
     : 'nessuno'
-  return `[Stato sessione] fase: ${state.stage}; concetto: ${id ? `${id} «${n?.name ?? id}» (${state.concepts[id]?.status ?? 'unseen'})` : 'nessuno'}; passi per blocco: ${state.chunkSize}; retest da fare: ${retest}; probe rimasti: ${Math.max(0, 3 - state.probeCount)}; padroneggiati: ${mastered}; obiettivo: ${state.tree?.goalIds.join(', ') || state.topic}.`
+  const coldGoals = (state.tree?.goalIds ?? []).filter(
+    (goalId) => state.prior[goalId]?.seen && !state.evidence.some((e) => e.conceptId === goalId && e.role === 'probe')
+  )
+  const goalProbeInstruction = coldGoals.length
+    ? `; prima di insegnare prerequisiti, fai un probe freddo sull'obiettivo già visto ${coldGoals.join(', ')}; dai priorità a questi obiettivi rispetto agli altri probe nel limite di 3`
+    : ''
+  const hasGenerativeCorrect =
+    !!id &&
+    state.evidence.some(
+      (e) => !e.excluded && e.conceptId === id && isGenerativeEvidence(e) && e.correct
+    )
+  const openInstruction =
+    id && !hasGenerativeCorrect
+      ? '; per padroneggiare serve almeno una risposta aperta corretta'
+      : ''
+  const predictInstruction =
+    id && !state.prior[id]?.seen && (state.concepts[id]?.status ?? 'unseen') === 'unseen'
+      ? '; apri con una domanda di previsione (role predict) prima di spiegare'
+      : ''
+  return `[Stato sessione] fase: ${state.stage}; concetto: ${id ? `${id} «${n?.name ?? id}» (${state.concepts[id]?.status ?? 'unseen'})` : 'nessuno'}; passi per blocco: ${state.chunkSize}; retest da fare: ${retest}; probe rimasti: ${Math.max(0, 3 - state.probeCount)}; padroneggiati: ${mastered}; obiettivo: ${state.tree?.goalIds.join(', ') || state.topic}${goalProbeInstruction}${openInstruction}${predictInstruction}.`
 }
 export function fsrsEvidence(state: SessionState): {
   conceptId: string
   grade: Grade
-  evidence: 'probe' | 'retest' | 'recall'
+  evidence: 'probe' | 'retest' | 'recall' | 'immediate'
   source: 'session-llm' | 'session-choice'
   confidence?: number
   correct: boolean
@@ -381,28 +403,53 @@ export function fsrsEvidence(state: SessionState): {
   const out: {
     conceptId: string
     grade: Grade
-    evidence: 'probe' | 'retest' | 'recall'
+    evidence: 'probe' | 'retest' | 'recall' | 'immediate'
     source: 'session-llm' | 'session-choice'
     confidence?: number
     correct: boolean
     at: number
   }[] = []
-  for (const id of new Set(state.evidence.filter((e) => !e.excluded).map((e) => e.conceptId))) {
-    const es = state.evidence.filter((e) => e.conceptId === id && !e.excluded)
+  const treeNodeIds = state.tree ? new Set(state.tree.nodes.map((n) => n.id)) : null
+  const validEvidences = state.evidence.filter(
+    (e) =>
+      !e.excluded &&
+      e.conceptId &&
+      !e.conceptId.startsWith('new:') &&
+      (!treeNodeIds || treeNodeIds.has(e.conceptId))
+  )
+  for (const id of new Set(validEvidences.map((e) => e.conceptId))) {
+    const es = validEvidences.filter((e) => e.conceptId === id)
     const prior = state.prior[id]?.seen
-    const x = prior
-      ? (es.find((e) => e.role === 'probe') ?? es[0])
-      : // New concept: the first check right after its explanation is not a cold retrieval;
-        // the next evidence on it (a retest or the final recall) is.
-        (es[1] ?? es.find((e) => e.role === 'recall') ?? es[0])
-    if (!x) continue
+    let x: (typeof es)[number] | undefined
+    let evKind: 'probe' | 'retest' | 'recall' | 'immediate'
+
+    if (prior) {
+      x = es.find((e) => e.role === 'probe')
+      if (!x) continue
+      evKind = (x.role === 'probe' ? 'probe' : x.role === 'recall' ? 'recall' : 'retest')
+    } else {
+      // Concetto nuovo (!prior.seen): scegliere es[1] ?? recall;
+      // se esiste solo la prima evidenza (subito dopo la spiegazione), scriverla comunque con evidence: 'immediate'.
+      const recall = es.find((e) => e.role === 'recall')
+      if (es[1]) {
+        x = es[1]
+        evKind = x.role === 'recall' ? 'recall' : x.role === 'probe' ? 'probe' : 'retest'
+      } else if (recall) {
+        x = recall
+        evKind = 'recall'
+      } else if (es[0]) {
+        x = es[0]
+        evKind = 'immediate'
+      } else {
+        continue
+      }
+    }
     const verdict = x.verdict ?? (x.correct ? 'correct' : 'incorrect')
     out.push({
       conceptId: id,
       grade: sessionGrade({ verdict, hintsUsed: x.hintsUsed }),
-      evidence: (x.role === 'probe' ? 'probe' : x.role === 'recall' ? 'recall' : 'retest') as
-        'probe' | 'retest' | 'recall',
-      source: (x.kind === 'choice' || x.kind === 'game' ? 'session-choice' : 'session-llm') as
+      evidence: evKind,
+      source: (x.kind === 'choice' ? 'session-choice' : 'session-llm') as
         'session-choice' | 'session-llm',
       ...(x.confidence !== undefined ? { confidence: x.confidence } : {}),
       correct: x.correct,

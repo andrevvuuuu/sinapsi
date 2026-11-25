@@ -65,6 +65,18 @@ export function calibrationByLevel(reviews: ReviewLine[]): CalibrationLevel[] {
   return buckets.map((bucket, i) => ({ ...bucket, correctRate: bucket.n ? sums[i] / bucket.n : 0 }))
 }
 
+export function calibrationByConcept(lines: ReviewLine[]): Map<string, { n: number; bias: number }> {
+  const grouped = new Map<string, { n: number; total: number }>()
+  for (const line of lines) {
+    if (line.confidence === undefined || line.correct === undefined) continue
+    const current = grouped.get(line.conceptId) ?? { n: 0, total: 0 }
+    current.n++
+    current.total += line.confidence - (line.correct ? 100 : 0)
+    grouped.set(line.conceptId, current)
+  }
+  return new Map([...grouped].map(([id, v]) => [id, { n: v.n, bias: v.total / v.n }]))
+}
+
 export function firstReviewAgainRate(reviews: ReviewLine[]): {
   afterSession: { n: number; againRate: number }
   noSession: { n: number; againRate: number }

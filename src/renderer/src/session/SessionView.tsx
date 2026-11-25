@@ -7,10 +7,13 @@ import { useDockHeight } from '../components/useDockHeight'
 import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
 import { GlassShell, ViewScene } from '../components/glass'
 import { AnswerCard } from './AnswerCard'
+import { ConfirmButton } from '../components/ConfirmButton'
 import { PlanMap } from './PlanMap'
 import { QuestionDock } from './QuestionDock'
 import { RichText } from './RichText'
 import { sessionScore } from '../../../shared/score'
+import { Skeleton } from '../components/Skeleton'
+import { useWaitStage } from '../components/useWaitStage'
 import './session.css'
 
 const PHASE: Record<SessionState['phase'], string> = {
@@ -72,11 +75,13 @@ function CalibrationBlock({
 export function SessionView({
   id,
   onBack,
-  onOpenNota
+  onOpenNota,
+  backLabel = '← Oggi'
 }: {
   id: string
   onBack: () => void
   onOpenNota?: (id: string) => void
+  backLabel?: string
 }): React.JSX.Element {
   const api = window.sinapsi.session
   const [s, setS] = useState<SessionState | null>(null)
@@ -153,11 +158,8 @@ export function SessionView({
   const measureDock = useDockHeight(scroller, dockwrap, s !== null)
   const q = s?.awaiting === 'learner' ? s.pendingQuestion : undefined
 
-  const isRetrieval = Boolean(
-    q &&
-    (['check', 'recall', 'probe'].includes(q.role) ||
-      (s?.stage && ['probe', 'consolidate'].includes(s.stage)))
-  )
+  // Closed-book only when the tutor says so (hideLesson) on a recall-type question: a question about what is on screen keeps it visible.
+  const isRetrieval = Boolean(q && q.hideLesson === true && ['check', 'recall', 'probe'].includes(q.role))
   const isPeeked =
     (q && peekedQIds.has(q.id)) ||
     Boolean(s?.evidence?.some((e) => e.questionId === q?.id && e.peeked))
@@ -181,7 +183,44 @@ export function SessionView({
       el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
   }, [s?.items.length, s?.awaiting, q?.id, measureDock])
 
-  if (!s) return <div className="sess" />
+  const isAwaitingTeacher = s?.awaiting === 'teacher'
+  const waitStage = useWaitStage({
+    engine: 'claude',
+    active: Boolean(s && isAwaitingTeacher),
+    writing: Boolean(partialText)
+  })
+
+  if (!s) {
+    return (
+      <div className="sess">
+        <header className="top drag glass-bar" aria-hidden="true">
+          <Skeleton width={80} height={28} radius="pill" />
+          <Skeleton width={180} height={22} radius="sm" />
+          <span className="sp" />
+          <Skeleton width={110} height={24} radius="pill" />
+        </header>
+        <main className="body split" aria-hidden="true">
+          <div className="scroll">
+            <div className="col">
+              <div className="history">
+                <div className="msg t-msg">
+                  <Skeleton width="65%" height={56} radius="lg" />
+                </div>
+                <div className="msg l-msg">
+                  <Skeleton width="45%" height={40} radius="lg" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <aside className="dockwrap ops">
+            <div className="dock">
+              <Skeleton width="100%" height={120} radius="lg" />
+            </div>
+          </aside>
+        </main>
+      </div>
+    )
+  }
   const score = sessionScore(s.items)
   const sendFree = (): void => {
     if (busy || !free.trim()) return
@@ -201,16 +240,18 @@ export function SessionView({
       <StudyPacer onEnd={onBack} />
       <GlassSurface render={<header />} radius={0} className="top drag glass-bar glass-text">
         <button type="button" className="nodrag back-btn" onClick={onBack}>
-          ← Home
+          {backLabel}
         </button>
         <h1>{s.topic}</h1>
         <span className="phase mono">
           {s.items.length <= 1 && !s.hasTeacherTurn ? 'Obiettivo' : PHASE[s.phase]}
         </span>
         {s.phase !== 'done' && (
-          <button type="button" className="nodrag end-btn" onClick={() => void api.end(id)}>
-            Termina ora
-          </button>
+          <ConfirmButton
+            className="nodrag end-btn"
+            label="Termina ora"
+            onConfirm={() => void api.end(id)}
+          />
         )}
         <span className="sp" />
         {(score.points > 0 || score.games > 0) && (
@@ -237,90 +278,96 @@ export function SessionView({
           aria-label="La lezione"
         >
           <div className="col" aria-live="polite">
-            {s.items.map((it, i) => {
-              if (it.kind === 'teacher')
+            <div
+              className="history"
+              data-blurred={isBlurred || undefined}
+              aria-hidden={isBlurred || undefined}
+            >
+              {s.items.map((it, i) => {
+                if (it.kind === 'teacher')
+                  return (
+                    <div
+                      key={i}
+                      className="msg"
+                      ref={i === s.items.length - 1 ? lastTutor : undefined}
+                    >
+                      {it.turn.blocks.map((b, j) => (
+                        <RichText key={j} md={b.md} />
+                      ))}
+                      {it.turn.summary && (
+                        <div className="summary">
+                          <h3>Hai imparato</h3>
+                          <ul>
+                            {it.turn.summary.learned.map((x, k) => (
+                              <li key={k}>
+                                <RichText md={x} className="inline" />
+                              </li>
+                            ))}
+                          </ul>
+                          {it.turn.summary.shaky.length > 0 && (
+                            <>
+                              <h3>Ancora incerto</h3>
+                              <ul>
+                                {it.turn.summary.shaky.map((x, k) => (
+                                  <li key={k}>
+                                    <RichText md={x} className="inline" />
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                          <p className="score-line">
+                            {`Punti ${score.points} · serie migliore ${score.bestStreak}${score.games ? ` · giochi ${score.games}` : ''}${score.calibration !== null ? ` · calibrazione ${score.calibration}%` : ''}`}
+                          </p>
+                          <CalibrationBlock stats={memoryStats} />
+                          {it.turn.summary.misconceptions.length > 0 && (
+                            <>
+                              <h3>Misconcezioni</h3>
+                              <ul>
+                                {it.turn.summary.misconceptions.map((x, k) => (
+                                  <li key={k}>
+                                    <RichText md={x} className="inline" />
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                if (it.kind === 'error')
+                  return (
+                    <div key={i} className="card err" role="alert">
+                      <p>{it.message}</p>
+                      {i === s.items.length - 1 && s.awaiting === 'retry' && (
+                        <button type="button" className="pri" onClick={() => void api.retry(id)}>
+                          Riprova
+                        </button>
+                      )}
+                    </div>
+                  )
+                if (it.question && it.answer) {
+                  const ev = s.evidence?.find((e) => e.questionId === it.question!.id)
+                  return (
+                    <AnswerCard
+                      key={i}
+                      q={it.question}
+                      a={it.answer}
+                      sessionId={id}
+                      evidence={ev}
+                      onContest={(qid) => void api.contest(id, qid)}
+                      onFlag={(qid) => void api.flag(id, qid)}
+                    />
+                  )
+                }
                 return (
-                  <div
-                    key={i}
-                    className={`msg ${isBlurred ? 'retrieval-blurred' : ''}`}
-                    ref={i === s.items.length - 1 ? lastTutor : undefined}
-                  >
-                    {it.turn.blocks.map((b, j) => (
-                      <RichText key={j} md={b.md} />
-                    ))}
-                    {it.turn.summary && (
-                      <div className="summary">
-                        <h3>Hai imparato</h3>
-                        <ul>
-                          {it.turn.summary.learned.map((x, k) => (
-                            <li key={k}>
-                              <RichText md={x} className="inline" />
-                            </li>
-                          ))}
-                        </ul>
-                        {it.turn.summary.shaky.length > 0 && (
-                          <>
-                            <h3>Ancora incerto</h3>
-                            <ul>
-                              {it.turn.summary.shaky.map((x, k) => (
-                                <li key={k}>
-                                  <RichText md={x} className="inline" />
-                                </li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-                        <p className="score-line">
-                          {`Punti ${score.points} · serie migliore ${score.bestStreak}${score.games ? ` · giochi ${score.games}` : ''}${score.calibration !== null ? ` · calibrazione ${score.calibration}%` : ''}`}
-                        </p>
-                        <CalibrationBlock stats={memoryStats} />
-                        {it.turn.summary.misconceptions.length > 0 && (
-                          <>
-                            <h3>Misconcezioni</h3>
-                            <ul>
-                              {it.turn.summary.misconceptions.map((x, k) => (
-                                <li key={k}>
-                                  <RichText md={x} className="inline" />
-                                </li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-                      </div>
-                    )}
+                  <div key={i} className="msg you">
+                    <div>{i === 0 ? s.topic : it.text}</div>
                   </div>
                 )
-              if (it.kind === 'error')
-                return (
-                  <div key={i} className="card err" role="alert">
-                    <p>{it.message}</p>
-                    {i === s.items.length - 1 && s.awaiting === 'retry' && (
-                      <button type="button" className="pri" onClick={() => void api.retry(id)}>
-                        Riprova
-                      </button>
-                    )}
-                  </div>
-                )
-              if (it.question && it.answer) {
-                const ev = s.evidence?.find((e) => e.questionId === it.question!.id)
-                return (
-                  <AnswerCard
-                    key={i}
-                    q={it.question}
-                    a={it.answer}
-                    sessionId={id}
-                    evidence={ev}
-                    onContest={(qid) => void api.contest(id, qid)}
-                    onFlag={(qid) => void api.flag(id, qid)}
-                  />
-                )
-              }
-              return (
-                <div key={i} className="msg you">
-                  <div>{i === 0 ? s.topic : it.text}</div>
-                </div>
-              )
-            })}
+              })}
+            </div>
             {isBlurred && (
               <div className="retrieval-gate" role="region" aria-label="Recupero attivo">
                 <p>La lezione è nascosta per stimolare il richiamo attivo.</p>
@@ -357,7 +404,9 @@ export function SessionView({
                       <i />
                       <i />
                     </span>
-                    <span className="lab mono">Il tutor sta pensando…</span>
+                    <span className="lab mono" role="status" aria-live="polite">
+                      {waitStage.label}
+                    </span>
                     <button
                       type="button"
                       className="cancel-btn"

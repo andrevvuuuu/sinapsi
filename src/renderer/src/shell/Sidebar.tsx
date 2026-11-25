@@ -173,10 +173,15 @@ export function Sidebar(p: {
             aria-current={p.current === 'review' ? 'page' : undefined}
             type="button"
             onClick={p.onReview}
-            aria-label="Ripassa"
-            title="Ripassa"
+            aria-label={p.due > 0 ? `Ripassa, ${p.due} dovuti` : 'Ripassa'}
+            title={p.due > 0 ? `Ripassa, ${p.due} dovuti` : 'Ripassa'}
           >
             <IconReview />
+            {p.due > 0 && (
+              <span className="sh-badge" aria-hidden="true">
+                {p.due > 99 ? '99+' : p.due}
+              </span>
+            )}
             <span>Ripassa</span>
             <small>{p.due} dovuti</small>
           </button>

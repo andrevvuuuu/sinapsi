@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { StudyPacer } from '../components/StudyPacer'
-import type { PracticeProblem, PracticeState } from '../../../main/practice/events'
+import type { PracticeProblem, PracticeState } from '../../../shared/practice-types'
 import { hintGate, RUNG_IT, MODE_IT, OUTCOME_IT, type Submission } from '../../../shared/practice-protocol'
 import { ConfusionCompassCard } from './ConfusionCompassCard'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { useDockHeight } from '../components/useDockHeight'
 import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
-import { GlassShell, ScrollEdges, ViewScene } from '../components/glass'
+import { GlassShell, ScrollEdges, ViewScene, Seg } from '../components/glass'
+import { CONFIDENCE_OPTIONS, type ConfKey } from '../components/confidence'
 import { RichText } from '../session/RichText'
 import { ExamView } from './ExamView'
-import { snippet } from './exam-format'
 import { PhotoButton } from './PhotoButton'
+import { ConfirmButton } from '../components/ConfirmButton'
+import { learnerBubble } from './submission-copy'
 import './practice.css'
 import { focusWhenShown } from '../components/glass-theme'
 
@@ -26,6 +28,29 @@ const clean = (e: unknown): string =>
     /^Error invoking remote method '[^']+': (Error: )?/,
     ''
   )
+
+const SHOW_CONFIDENCE_KEY = 'sinapsi:practice:show-confidence'
+
+function getStoredShowConfidence(): boolean {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return true
+    const v = window.localStorage.getItem(SHOW_CONFIDENCE_KEY)
+    return v === null ? true : v === 'true'
+  } catch {
+    return true
+  }
+}
+
+function setStoredShowConfidence(show: boolean): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(SHOW_CONFIDENCE_KEY, String(show))
+    }
+  } catch {
+    // ignore
+  }
+}
+
 function ProblemDock({
   problem,
   sessionId,
@@ -39,11 +64,24 @@ function ProblemDock({
   const [line, setLine] = useState<number | undefined>(undefined)
   const [photoText, setPhotoText] = useState('')
   const [busy, setBusy] = useState(false)
+  const [confidence, setConfidence] = useState<number | null>(null)
+  const [showConfidence, setShowConfidence] = useState(getStoredShowConfidence)
+  const [triageText, setTriageText] = useState(problem.triage ?? '')
+  const [triageSkipped, setTriageSkipped] = useState(false)
+  const [triageConfirmed, setTriageConfirmed] = useState(Boolean(problem.triage))
   const sending = useRef(false)
   const area = useRef<HTMLTextAreaElement>(null)
   const dictation = useDictation({ target: area, value: text, onChange: setText })
   const dictating = dictation.state !== 'idle'
   const middle = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setConfidence(null)
+    setTriageText(problem.triage ?? '')
+    setTriageSkipped(false)
+    setTriageConfirmed(Boolean(problem.triage))
+  }, [problem.id, problem.triage])
+
   // One request at a time: a double click must not cost a second hint.
   const once = async (sub: Submission): Promise<boolean> => {
     if (sending.current) return false
@@ -64,11 +102,24 @@ function ProblemDock({
   const ready = problem.needsRestate ? !!text.trim() : !!text.trim() || !!photoText || line !== undefined
   const send = async (): Promise<void> => {
     if (!ready || dictating) return
+    if (
+      problem.triageActive &&
+      problem.attempts === 0 &&
+      !problem.needsRestate &&
+      !triageSkipped &&
+      !triageConfirmed &&
+      triageText.trim() &&
+      !problem.triage
+    ) {
+      await onSend({ kind: 'triage', text: triageText.trim() })
+      setTriageConfirmed(true)
+    }
     const sub: Submission = {
       kind: problem.needsRestate ? 'restate' : 'thinking',
       ...(line !== undefined ? { line } : {}),
       ...(text.trim() ? { text: text.trim() } : {}),
-      ...(photoText ? { photoText } : {})
+      ...(photoText ? { photoText } : {}),
+      ...(!problem.needsRestate && problem.attempts === 0 && confidence !== null ? { confidence } : {})
     }
     if (!(await once(sub))) return
     setText('')
@@ -87,6 +138,67 @@ function ProblemDock({
           <RichText md={problem.statement} />
         </div>
         <div className="dock-scroll" ref={middle}>
+          {problem.triageActive && problem.attempts === 0 && !problem.needsRestate && !triageSkipped && (
+            triageConfirmed || problem.triage ? (
+              <div className="pr-triage-badge">
+                <span>Strumento ipotizzato: <strong>{triageText || problem.triage}</strong></span>
+                <button
+                  type="button"
+                  className="linkish"
+                  onClick={() => setTriageConfirmed(false)}
+                >
+                  Modifica
+                </button>
+              </div>
+            ) : (
+              <div className="pr-triage" role="region" aria-label="Triage strumento">
+                <div className="pr-triage-head">
+                  <label className="lab" htmlFor="pr-tr-in">Quale strumento useresti? (opzionale)</label>
+                  <button
+                    type="button"
+                    className="linkish"
+                    onClick={() => setTriageSkipped(true)}
+                  >
+                    Salta
+                  </button>
+                </div>
+                <div className="pr-triage-row">
+                  <input
+                    id="pr-tr-in"
+                    type="text"
+                    className="pr-triage-input"
+                    placeholder="Es. Teorema di Rolle, conservazione dell'energia…"
+                    value={triageText}
+                    onChange={(e) => setTriageText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        if (triageText.trim()) {
+                          setTriageConfirmed(true)
+                          void onSend({ kind: 'triage', text: triageText.trim() })
+                          area.current?.focus()
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="ghost"
+                    disabled={!triageText.trim() || busy}
+                    onClick={() => {
+                      if (triageText.trim()) {
+                        setTriageConfirmed(true)
+                        void onSend({ kind: 'triage', text: triageText.trim() })
+                        area.current?.focus()
+                      }
+                    }}
+                  >
+                    Conferma
+                  </button>
+                </div>
+              </div>
+            )
+          )}
           {problem.lines && (
             <div className="lines" role="group" aria-label="Righe della dimostrazione">
               {problem.lines.map((l, i) => (
@@ -133,6 +245,45 @@ function ProblemDock({
               </div>
             )}
           </div>
+          {problem.attempts === 0 && !problem.needsRestate && (
+            showConfidence ? (
+              <div className="pr-conf" role="group" aria-labelledby="pr-cf-l">
+                <div className="pr-conf-head">
+                  <span className="lab" id="pr-cf-l">Fiducia</span>
+                  <button
+                    type="button"
+                    className="linkish pr-conf-toggle"
+                    onClick={() => {
+                      setShowConfidence(false)
+                      setStoredShowConfidence(false)
+                    }}
+                  >
+                    Nascondi
+                  </button>
+                </div>
+                <Seg<ConfKey>
+                  label="Fiducia"
+                  track="plain"
+                  value={confidence !== null ? (String(confidence) as ConfKey) : null}
+                  onChange={(v) => setConfidence(Number(v))}
+                  options={CONFIDENCE_OPTIONS}
+                />
+              </div>
+            ) : (
+              <div className="pr-conf-hidden">
+                <button
+                  type="button"
+                  className="linkish pr-conf-toggle"
+                  onClick={() => {
+                    setShowConfidence(true)
+                    setStoredShowConfidence(true)
+                  }}
+                >
+                  + Mostra fiducia
+                </button>
+              </div>
+            )
+          )}
         </div>
         <div className="row">
           {!problem.needsRestate && <PhotoButton
@@ -148,20 +299,11 @@ function ProblemDock({
           >
             {hintGate(problem) === 'attempt' ? 'Prima un tentativo' : 'Dammi un indizio'}
           </button>}
-          <button
-            type="button"
+          <ConfirmButton
             className="ghost quiet"
-            onClick={() => {
-              if (
-                window.confirm(
-                  'Lasciare questo problema? Vedrai la soluzione e tornerà nel ritest.'
-                )
-              )
-                void once({ kind: 'dismiss' })
-            }}
-          >
-            Lascia il problema
-          </button>
+            label="Lascia il problema"
+            onConfirm={() => void once({ kind: 'dismiss' })}
+          />
           <span className="sp" />
           <span className="hintk">↵ invia</span>
           <button
@@ -195,7 +337,9 @@ function Arc({ state }: { state: PracticeState }): React.JSX.Element {
             <ul>
               {list.map((p) => (
                 <li key={p.id}>
-                  <span>{snippet(p.statement)}</span>
+                  <span>
+                    <RichText md={p.statement} inline className="arc-title" />
+                  </span>
                   {p.status === 'active' ? (
                     <span className="chip">in corso</span>
                   ) : (
@@ -210,7 +354,9 @@ function Arc({ state }: { state: PracticeState }): React.JSX.Element {
               {phase === 'retest' &&
                 queued.map((p) => (
                   <li key={'q' + p.id}>
-                    <span>{snippet(p.statement)}</span>
+                    <span>
+                      <RichText md={p.statement} inline className="arc-title" />
+                    </span>
                     <span className="chip mid">in coda</span>
                   </li>
                 ))}
@@ -230,11 +376,13 @@ function Arc({ state }: { state: PracticeState }): React.JSX.Element {
 export function PracticeView({
   id,
   onBack,
-  onStarted
+  onStarted,
+  backLabel = '← Oggi'
 }: {
   id: string
   onBack: () => void
   onStarted: (id: string) => void
+  backLabel?: string
 }): React.JSX.Element {
   const api = window.sinapsi.practice
   const [s, setS] = useState<PracticeState | null>(null)
@@ -264,7 +412,7 @@ export function PracticeView({
   }, [s?.items.length, s?.awaiting, measureDock])
 
   if (!s) return <div className="pr" />
-  if (s.mode === 'exam') return <ExamView state={s} onBack={onBack} onStarted={onStarted} />
+  if (s.mode === 'exam') return <ExamView state={s} onBack={onBack} onStarted={onStarted} backLabel={backLabel} />
 
   const send = async (sub: Submission): Promise<void> => {
     setError(null)
@@ -288,26 +436,19 @@ export function PracticeView({
       <StudyPacer onEnd={onBack} />
       <GlassSurface render={<header />} radius={0} className="pr-top drag glass-bar glass-text">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
-          ← Home
+          {backLabel}
         </button>
         <h1>Pratica</h1>
         <span className="lab">{PHASE_IT[s.phase]}</span>
         <span className="lab pr-topic">{s.topic}</span>
         <span className="sp" />
         {s.phase !== 'done' && (
-          <button
-            type="button"
+          <ConfirmButton
             className="pill nodrag"
             disabled={!learner}
-            onClick={() => {
-              if (
-                window.confirm('Chiudere la sessione? Il tutor fa il punto di ciò che hai fatto.')
-              )
-                void send({ kind: 'end' }).catch(() => undefined)
-            }}
-          >
-            Termina
-          </button>
+            label="Termina"
+            onConfirm={() => void send({ kind: 'end' }).catch(() => undefined)}
+          />
         )}
       </GlassSurface>
       <div className="pr-body">
@@ -328,7 +469,7 @@ export function PracticeView({
                   )
                 return (
                   <div key={i} className="you">
-                    <div>{it.text}</div>
+                    <div>{learnerBubble(it.submission) ?? it.text}</div>
                   </div>
                 )
               }

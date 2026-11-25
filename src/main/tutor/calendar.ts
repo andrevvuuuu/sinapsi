@@ -10,12 +10,8 @@ const Courses = z.array(z.unknown()).catch([]).transform((xs) => xs.flatMap((x) 
 const weekday: Record<string, number> = { lun: 1, mar: 2, mer: 3, gio: 4, ven: 5, sab: 6, dom: 0 }
 const localDate = (date: Date): string => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
-export type TutorCalendar = {
-  courses: { id: string; nome: string; orario: { giorno: string; ora: string }[]; esami: { nome: string; data: string }[] }[]
-  lessons: { course: string; courseName: string; date: string; number?: number; text: string; coverage: { total: number; covered: number; missing: string[] } }[]
-  nextLesson: { course: string; courseName: string; date: string; time: string } | null
-  exams: { course: string; courseName: string; name: string; date: string }[]
-}
+import type { TutorCalendar } from '../../shared/tutor-types'
+export type { TutorCalendar } from '../../shared/tutor-types'
 
 function validFile<T>(value: string, schema: z.ZodType<T>, fallback: T): T {
   try { return schema.parse(JSON.parse(value)) } catch { return fallback }

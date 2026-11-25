@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NotaView } from '../../src/renderer/src/nota/NotaView'
 import { NotePicker } from '../../src/renderer/src/nota/NotePicker'
@@ -59,6 +59,46 @@ describe('NotaView', () => {
     expect(await screen.findByText('Gemini ci ha messo troppo tempo.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Riprova' }))
     expect(notes.retry).toHaveBeenCalledWith(ID)
+  })
+  it('updates activeId and puts aria-current on the right toc item when section enters view', async () => {
+    const callbacks: IntersectionObserverCallback[] = []
+    class FakeIntersectionObserver {
+      constructor(cb: IntersectionObserverCallback) {
+        callbacks.push(cb)
+      }
+      observe = vi.fn()
+      unobserve = vi.fn()
+      disconnect = vi.fn()
+    }
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver)
+
+    mountNota(ready)
+    expect(await screen.findByText('Cosa ricordare', { exact: false })).toBeTruthy()
+
+    const toc = screen.getByRole('navigation', { name: 'Indice' })
+    const links = within(toc).getAllByRole('link')
+    expect(links.length).toBeGreaterThan(1)
+    expect(links[0].getAttribute('aria-current')).toBe('true')
+
+    const secHeadings = document.querySelectorAll('.sec > header > h2')
+    expect(secHeadings.length).toBeGreaterThan(1)
+
+    act(() => {
+      callbacks.forEach((cb) => {
+        cb(
+          [
+            {
+              target: secHeadings[1],
+              isIntersecting: true
+            } as unknown as IntersectionObserverEntry
+          ],
+          {} as IntersectionObserver
+        )
+      })
+    })
+
+    expect(links[1].getAttribute('aria-current')).toBe('true')
+    expect(links[0].getAttribute('aria-current')).toBeNull()
   })
 })
 

@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 import type { LessonEntry, LaunchDestination } from '../../../shared/lesson-types'
 import type { Readiness, WeekPlan } from '../../../shared/plan-types'
 import type { Settings } from '../../../shared/settings-schema'
+import type { TutorCalendar } from '../../../shared/tutor-types'
+import { GlassRange } from '../components/glass'
 import { ReadinessPanel } from './ReadinessPanel'
+import { ExamManager } from './ExamManager'
 import './plan.css'
 
 type PlanData = { plan: WeekPlan; readiness: Readiness[] }
@@ -11,18 +14,22 @@ const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
 export function PlanView({
   onBack,
   onOpenPracticeSetup,
-  onLaunched
+  onLaunched,
+  onReview,
+  addExam
 }: {
-  onBack: () => void
+  onBack?: () => void
   onOpenPracticeSetup: (conceptIds: string[], exam: boolean) => void
   onLaunched: (result: LaunchDestination) => void
+  onReview?: (query?: string, conceptIds?: string[]) => void
+  addExam?: boolean
 }): React.JSX.Element {
   const [data, setData] = useState<PlanData | null>(null)
   const [lessons, setLessons] = useState<LessonEntry[]>([])
   const [sinapsiExams, setSinapsiExams] = useState<import('../../../shared/exam-types').ExamEntry[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
   const [error, setError] = useState('')
-  const [tutor, setTutor] = useState<import('../../../main/tutor/calendar').TutorCalendar | null>(null)
+  const [tutor, setTutor] = useState<TutorCalendar | null>(null)
 
   async function reload(): Promise<void> {
     try {
@@ -64,9 +71,11 @@ export function PlanView({
   return (
     <main className="week-plan">
       <header className="week-plan-header">
-        <button type="button" onClick={onBack}>
-          Indietro
-        </button>
+        {onBack && (
+          <button type="button" onClick={onBack}>
+            Indietro
+          </button>
+        )}
         <h1>Piano della settimana</h1>
       </header>
       {error && <p role="alert">{error}</p>}
@@ -97,19 +106,26 @@ export function PlanView({
             </label>
           ))}
         </div>
-        <label htmlFor="plan-buffer">Margine non assegnabile</label>
+        <label id="plan-buffer-label" htmlFor="plan-buffer">Margine non assegnabile</label>
         <div className="plan-buffer-control">
-          <input
+          <GlassRange
             id="plan-buffer"
-            type="range"
-            min="0.15"
-            max="0.2"
-            step="0.01"
+            aria-labelledby="plan-buffer-label"
+            aria-label="Margine non assegnabile"
+            min={0.15}
+            max={0.2}
+            step={0.01}
             value={settings?.planBuffer ?? 0.15}
-            onChange={(event) =>
-              settings && setSettings({ ...settings, planBuffer: Number(event.target.value) })
-            }
-            onMouseUp={() => settings && void saveAvailability({ planBuffer: settings.planBuffer })}
+            onValueChange={(val) => {
+              if (!settings) return
+              const planBuffer = Number(val)
+              setSettings({ ...settings, planBuffer })
+            }}
+            onValueCommitted={(val) => {
+              if (!settings) return
+              const planBuffer = Number(val)
+              void saveAvailability({ planBuffer })
+            }}
             onPointerUp={() =>
               settings && void saveAvailability({ planBuffer: settings.planBuffer })
             }
@@ -119,24 +135,71 @@ export function PlanView({
         </div>
       </section>
       <section className="plan-days" aria-label="Prossimi sette giorni">
-        {data?.plan.days.map((day) => (
-          <article className="plan-day" key={day.date}>
-            <header>
-              <h2>
-                {new Date(`${day.date}T12:00:00`).toLocaleDateString('it-IT', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long'
-                })}
-              </h2>
-              <span>
-                {day.minutes / 60} ore · margine {day.bufferMinutes} min
-              </span>
-            </header>
-            {day.blocks.length === 0 ? (
-              <p>Nessun blocco assegnato.</p>
-            ) : (
-              day.blocks.map((block, index) => {
+        {data?.plan.days.map((day) => {
+          const todayDate = new Date()
+          const pad = (n: number): string => String(n).padStart(2, '0')
+          const todayLocal = `${todayDate.getFullYear()}-${pad(todayDate.getMonth() + 1)}-${pad(todayDate.getDate())}`
+          const isToday = day.date === todayDate.toISOString().slice(0, 10) || day.date === todayLocal
+          const hasReview = (day.reviewMinutes ?? 0) > 0
+          const reviewCount = day.reviewConceptIds?.length ?? 0
+
+          return (
+            <article className="plan-day" key={day.date}>
+              <header>
+                <h2>
+                  {new Date(`${day.date}T12:00:00`).toLocaleDateString('it-IT', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long'
+                  })}
+                </h2>
+                <span>
+                  {day.minutes / 60} ore · margine {day.bufferMinutes} min
+                </span>
+              </header>
+              {hasReview && (
+                <div
+                  className={`plan-block plan-block-review ${isToday && onReview ? 'is-actionable' : ''}`}
+                  onClick={isToday && onReview ? () => onReview(undefined, day.reviewConceptIds) : undefined}
+                  role={isToday && onReview ? 'button' : undefined}
+                  tabIndex={isToday && onReview ? 0 : undefined}
+                  onKeyDown={
+                    isToday && onReview
+                      ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            onReview(undefined, day.reviewConceptIds)
+                          }
+                        }
+                      : undefined
+                  }
+                  aria-label={
+                    isToday && onReview
+                      ? `Ripassa ${reviewCount} concetti dovuti oggi`
+                      : undefined
+                  }
+                >
+                  <h3>
+                    Ripasso FSRS · {reviewCount} concetti · {day.reviewMinutes} min
+                  </h3>
+                  <p>Ripasso a intervalli programmato per questa giornata</p>
+                  {isToday && onReview && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onReview(undefined, day.reviewConceptIds)
+                      }}
+                    >
+                      Avvia ripasso
+                    </button>
+                  )}
+                </div>
+              )}
+              {day.blocks.length === 0 && !hasReview ? (
+                <p>Nessun blocco assegnato.</p>
+              ) : (
+                day.blocks.map((block, index) => {
                 const blockLessons = block.lessonIds
                   .map((id) => lessons.find((lesson) => lesson.id === id))
                   .filter((lesson): lesson is LessonEntry => !!lesson)
@@ -178,8 +241,9 @@ export function PlanView({
               })
             )}
           </article>
-        ))}
+        )})}
       </section>
+      <ExamManager className="plan-exams" autoFocusForm={addExam} onChanged={reload} />
       <ReadinessPanel items={[
         ...(data?.readiness ?? []),
         ...(tutor?.exams ?? []).filter(e => !sinapsiExams.some(x => x.courseId.trim().toLowerCase() === e.courseName.trim().toLowerCase() && x.date === e.date)).map((e) => ({

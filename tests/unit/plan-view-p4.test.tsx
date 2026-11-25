@@ -32,6 +32,51 @@ describe('PlanView', () => {
     fireEvent.click(await screen.findByRole('button',{name:'Avvia simulazione'}))
     expect(open).toHaveBeenCalledWith(['c1'],true)
   })
+
+  it('hides back button when onBack is omitted', async () => {
+    attach()
+    render(<PlanView onOpenPracticeSetup={vi.fn()} onLaunched={vi.fn()} />)
+    expect(await screen.findByText('Piano della settimana')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Indietro' })).toBeNull()
+  })
+
+  it('shows Ripasso FSRS when reviewMinutes > 0 and clicking today calls onReview', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const reviewDays = [
+      {
+        date: today,
+        minutes: 180,
+        bufferMinutes: 27,
+        blocks: [],
+        reviewMinutes: 20,
+        reviewConceptIds: ['c1', 'c2']
+      }
+    ]
+    attach({ plan: { week: vi.fn().mockResolvedValue({ plan: { days: reviewDays }, readiness: [] }) } })
+    const onReview = vi.fn()
+    render(<PlanView onOpenPracticeSetup={vi.fn()} onLaunched={vi.fn()} onReview={onReview} />)
+    expect(await screen.findByText(/Ripasso FSRS · 2 concetti · 20 min/i)).toBeTruthy()
+    const reviewBlock = screen.getByRole('button', { name: /Ripassa 2 concetti dovuti oggi/i })
+    fireEvent.click(reviewBlock)
+    expect(onReview).toHaveBeenCalledWith(undefined, ['c1', 'c2'])
+  })
+
+  it('renders GlassRange for plan buffer with Margine non assegnabile label', async () => {
+    attach()
+    render(<PlanView onOpenPracticeSetup={vi.fn()} onLaunched={vi.fn()} />)
+    expect(await screen.findByText('Margine non assegnabile')).toBeTruthy()
+    expect(screen.getByRole('slider', { name: 'Margine non assegnabile' })).toBeTruthy()
+  })
+
+  it('mounts ExamManager in section Esami and autofocuses the first field when addExam is true', async () => {
+    attach()
+    render(<PlanView addExam={true} onOpenPracticeSetup={vi.fn()} onLaunched={vi.fn()} />)
+    expect(await screen.findByRole('region', { name: 'Esami' })).toBeTruthy()
+    const courseInput = screen.getByLabelText('Corso')
+    await waitFor(() => {
+      expect(document.activeElement).toBe(courseInput)
+    })
+  })
 })
 
 describe('ReadinessPanel', () => {

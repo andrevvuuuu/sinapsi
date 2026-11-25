@@ -2,7 +2,7 @@ import { _electron as electron, expect, test } from '@playwright/test'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { makeNotaViva } from './helpers'
+import { goTo, makeNotaViva } from './helpers'
 
 const launch = () =>
   electron.launch({
@@ -17,9 +17,11 @@ test('a training session: material, a problem, a hint, the solution, the next pr
   // concepts in the graph: open Rolle once
   await makeNotaViva(win, 'Teorema di Rolle')
 
-  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: 'Pratica', exact: true }).click()
-  await win.getByLabel('Cosa vuoi studiare?').fill('rolle')
-  await win.getByRole('button', { name: 'Inizia' }).click()
+  await goTo(win, 'Oggi')
+  const composer = win.getByRole('region', { name: 'Compositore di studio' })
+  await composer.getByRole('button', { name: 'Esercitati' }).click()
+  await composer.getByRole('textbox', { name: 'Cosa vuoi studiare?' }).fill('rolle')
+  await composer.getByRole('button', { name: 'Inizia studio' }).click()
   await expect(win.getByRole('status').filter({ hasText: 'per «rolle»' })).toBeVisible()
   await win.screenshot({ path: 'test-results/practice-setup.png' })
   await win.getByRole('button', { name: 'Inizia allenamento' }).click()
@@ -51,17 +53,20 @@ test('an exam: a timed sheet, answers, delivery, a grade in thirtieths', async (
   const app = await launch()
   const win = await app.firstWindow()
   win.on('pageerror', (e) => console.log('PAGEERROR', e.message))
-  await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: 'Pratica', exact: true }).click()
-  await win.getByLabel('Cosa vuoi studiare?').fill('limiti notevoli')
-  await win.getByRole('button', { name: 'Inizia' }).click()
+  await goTo(win, 'Oggi')
+  const composer = win.getByRole('region', { name: 'Compositore di studio' })
+  await composer.getByRole('button', { name: 'Esercitati' }).click()
+  await composer.getByRole('textbox', { name: 'Cosa vuoi studiare?' }).fill('limiti notevoli')
+  await composer.getByRole('button', { name: 'Inizia studio' }).click()
   await win.getByRole('radio', { name: /Simulazione d'esame/ }).click()
   await win.getByRole('tab', { name: '30 min' }).click()
   await win.getByRole('button', { name: 'Inizia simulazione · 30 min' }).click()
   await expect(win.getByRole('timer')).toBeVisible()
   await win.getByLabel('Risposta all’esercizio 1').fill('Vale $1$.')
   await win.screenshot({ path: 'test-results/practice-exam.png' })
-  win.once('dialog', (d) => void d.accept())
   await win.getByRole('button', { name: 'Consegna' }).click()
+  // Irreversible: the inline confirmation replaces the native dialog.
+  await win.getByRole('button', { name: 'Conferma', exact: true }).click()
   await expect(win.getByText('21/30')).toBeVisible()
   await expect(win.getByText('Manca la derivabilità.')).toBeVisible()
   await win.screenshot({ path: 'test-results/practice-grade.png' })
@@ -73,9 +78,11 @@ test('an exam on paper: sheet and clock, pens down, self-grade before the correc
   const win = await app.firstWindow()
   win.on('pageerror', (e) => console.log('PAGEERROR', e.message))
   for (const [round, selfs] of [[1, ['12', '16']], [2, ['10', '9,5']]] as const) {
-    await win.getByRole('tablist', { name: 'Tipo di sessione' }).getByRole('tab', { name: 'Pratica', exact: true }).click()
-    await win.getByLabel('Cosa vuoi studiare?').fill('limiti notevoli')
-    await win.getByRole('button', { name: 'Inizia' }).click()
+    await goTo(win, 'Oggi')
+    const composer = win.getByRole('region', { name: 'Compositore di studio' })
+    await composer.getByRole('button', { name: 'Esercitati' }).click()
+    await composer.getByRole('textbox', { name: 'Cosa vuoi studiare?' }).fill('limiti notevoli')
+    await composer.getByRole('button', { name: 'Inizia studio' }).click()
     await win.getByRole('radio', { name: /Simulazione d'esame/ }).click()
     await win.getByRole('tab', { name: '30 min' }).click()
     await win.getByRole('tab', { name: 'Carta e penna' }).click()
@@ -84,8 +91,9 @@ test('an exam on paper: sheet and clock, pens down, self-grade before the correc
     await expect(win.getByText('Enuncia e dimostra il teorema di Rolle.')).toBeVisible()
     await expect(win.getByLabel('Risposta all’esercizio 1')).toHaveCount(0)
     if (round === 1) await win.screenshot({ path: 'test-results/paper-sheet.png' })
-    win.once('dialog', (d) => void d.accept())
     await win.getByRole('button', { name: 'Ho finito: consegno' }).click()
+    // Irreversible: the inline confirmation replaces the native dialog.
+    await win.getByRole('button', { name: 'Conferma', exact: true }).click()
     await expect(win.getByRole('heading', { name: 'Penne giù' })).toBeVisible()
     await expect(win.getByText('Weierstrass e Fermat.')).toBeVisible()
     await expect(win.getByRole('timer')).toHaveCount(0)
@@ -98,8 +106,9 @@ test('an exam on paper: sheet and clock, pens down, self-grade before the correc
     await win.getByLabel('Risposta all’esercizio 1').fill('Vale $1$.')
     await win.getByLabel('Risposta all’esercizio 2').fill('Per Weierstrass ha max e min.')
     if (round === 1) await win.screenshot({ path: 'test-results/paper-self.png' })
-    win.once('dialog', (d) => void d.accept())
     await win.getByRole('button', { name: 'Correggi' }).click()
+    // Irreversible: the inline confirmation replaces the native dialog.
+    await win.getByRole('button', { name: 'Conferma', exact: true }).click()
     await expect(win.getByRole('region', { name: 'Voto' }).getByText('21/30')).toBeVisible()
     const panel = win.getByRole('region', { name: 'Calibrazione' })
     await expect(panel).toBeVisible()
@@ -107,7 +116,7 @@ test('an exam on paper: sheet and clock, pens down, self-grade before the correc
       await expect(panel.getByText('28/30')).toBeVisible()
       await expect(panel.getByText('Ti sei sopravvalutato di 3,5 punti in media a esercizio.')).toBeVisible()
       await win.screenshot({ path: 'test-results/paper-grade.png' })
-      await win.getByRole('button', { name: '← Home' }).click()
+      await win.getByRole('button', { name: /^← / }).click()
     } else {
       await expect(panel.getByText('Su 2 simulazioni a carta', { exact: false })).toBeVisible()
       await win.screenshot({ path: 'test-results/paper-history.png', fullPage: true })

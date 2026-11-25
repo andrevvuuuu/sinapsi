@@ -1,22 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { NotePeek } from '../components/NotePeek'
 import { StudyPacer } from '../components/StudyPacer'
-import type { ExplainTurn } from '../../../main/memory/explain'
-import type { ReviewItem } from '../../../main/memory/review'
-import { proposeGrade, type ExerciseType, type Grade } from '../../../shared/memory-types'
+import type { ExplainTurn, ReviewItem } from '../../../shared/review-types'
+import { GUESS_CONFIDENCE, MISCONCEPTION_CONFIDENCE, proposeGrade, type ExerciseType, type Grade } from '../../../shared/memory-types'
 import { EXERCISE_TYPES } from '../../../shared/memory-types'
 import { GlassContent } from '@glass-sdk/liquid-glass'
-import { GlassRange, ScrollEdges, ViewScene } from '../components/glass'
+import { ScrollEdges, Seg, ViewScene } from '../components/glass'
 import { RichText } from '../session/RichText'
 import { MODE, TYPE_LABEL } from './labels'
 import { ExerciseView, type ExerciseState } from './ExerciseView'
 import './review.css'
 import { ConfidencePanel } from './ConfidencePanel'
+import { CONFIDENCE_OPTIONS, type ConfKey } from '../components/confidence'
+import { Skeleton } from '../components/Skeleton'
+import { useWaitStage } from '../components/useWaitStage'
 
 const GRADES: [Grade, string][] = [
   [1, 'Di nuovo'],
   [2, 'Difficile'],
-  [3, 'Bene'],
-  [4, 'Facile']
+  [3, 'Bene']
 ]
 
 type Verdict = {
@@ -32,6 +34,7 @@ type Result = {
   before: number | null
   after: number | null
   misconception: boolean
+  interval?: string
 }
 const pct = (r: number | null): string => (r === null ? 'nuovo' : `${Math.round(r * 100)}%`)
 const remote = (e: unknown): string =>
@@ -40,34 +43,77 @@ const remote = (e: unknown): string =>
     ''
   )
 
+function ToStudyBlock({
+  items,
+  onStudy
+}: {
+  items: { conceptId: string; name: string; noteTitle: string }[]
+  onStudy: (name: string) => void
+}): React.JSX.Element | null {
+  if (items.length === 0) return null
+  return (
+    <section className="rv-study-block" aria-label="Da studiare">
+      <div className="lab">Da studiare</div>
+      <ul className="rv-list">
+        {items.map((c) => (
+          <li key={c.conceptId}>
+            <span>
+              <span>{c.name}</span>
+              <small>{c.noteTitle}</small>
+            </span>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => onStudy(c.name)}
+            >
+              Studia
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 /** The Ripasso session: what is fading, asked in a new form each time (prototype ripasso-v1). */
 export function ReviewView({
   query,
   conceptIds,
+  examAt,
+  order,
   onBack,
   onStudy,
-  onOpenNote
+  onPractice,
+  onOpenNote,
+  backLabel = '← Oggi'
 }: {
   query?: string
   conceptIds?: string[]
+  cascadeWeak?: string[]
+  examAt?: number
+  order?: 'due' | 'gain'
   onBack: () => void
   onStudy: (name: string) => void
+  onPractice?: (conceptIds: string[]) => void
   onOpenNote: (path: string) => void
+  backLabel?: string
 }): React.JSX.Element {
   const api = window.sinapsi
   const [items, setItems] = useState<ReviewItem[] | null>(null)
+  const [toStudy, setToStudy] = useState<{ conceptId: string; name: string; noteTitle: string }[]>([])
   const [due, setDue] = useState(0)
   const [clinicEmpty, setClinicEmpty] = useState(false)
   const [types, setTypes] = useState<ExerciseType[]>([...EXERCISE_TYPES])
   const [i, setI] = useState(-1)
   const [state, setState] = useState<ExerciseState>({ answer: '', correct: null, ready: false })
-  const [confidence, setConfidence] = useState(50)
+  const [confidence, setConfidence] = useState<number | null>(null)
+  const [contested, setContested] = useState(false)
+  const [contesting, setContesting] = useState(false)
   const [verdict, setVerdict] = useState<Verdict | null>(null)
   // "Spiegalo tu": the dialogue with the picky student, Andrea's turns and its questions.
   const [turns, setTurns] = useState<ExplainTurn[]>([])
   const [checking, setChecking] = useState(false)
   const [grade, setGrade] = useState<Grade>(3)
-  const [intervals, setIntervals] = useState<Record<Grade, string> | null>(null)
   const [results, setResults] = useState<Result[]>([])
   const [error, setError] = useState<string | null>(null)
   const [typeError, setTypeError] = useState<string | null>(null)
@@ -78,11 +124,23 @@ export function ReviewView({
   const questionRef = useRef<HTMLDivElement>(null)
   const [startedAt] = useState(() => Date.now())
   const [endedAt, setEndedAt] = useState<number | null>(null)
+  const [peekItem, setPeekItem] = useState<ReviewItem | null>(null)
+  const peekTriggerRef = useRef<HTMLButtonElement | null>(null)
 
   const load = useCallback(
-    async (opts?: { conceptIds?: string[]; weakest?: boolean; misconceptions?: boolean }, reset = true) => {
+    async (
+      opts?: {
+        conceptIds?: string[]
+        weakest?: boolean
+        misconceptions?: boolean
+        examAt?: number
+        order?: 'due' | 'gain'
+      },
+      reset = true
+    ) => {
       if (reset) {
         setItems(null)
+        setToStudy([])
         setError(null)
       }
       try {
@@ -101,8 +159,14 @@ export function ReviewView({
             .map((c) => c.id)
           o = { conceptIds: ids }
         }
-        const p = await api.review.plan(o)
+        const planOpts = {
+          ...(examAt !== undefined ? { examAt } : {}),
+          ...(order !== undefined ? { order } : {}),
+          ...o
+        }
+        const p = await api.review.plan(planOpts)
         setItems(p.items)
+        setToStudy(p.toStudy ?? [])
         setClinicEmpty(!!opts?.misconceptions && p.items.length === 0)
         setDue(p.due)
         setI(-1)
@@ -111,9 +175,10 @@ export function ReviewView({
       } catch (e) {
         setError(remote(e))
         setItems([])
+        setToStudy([])
       }
     },
-    [api, conceptIds, query]
+    [api, conceptIds, query, examAt, order]
   )
   useEffect(() => {
     // Deferred: the first plan sets state asynchronously, never during the effect itself.
@@ -142,15 +207,18 @@ export function ReviewView({
     if (items && i + 1 >= items.length) setEndedAt(Date.now())
     setI((k) => k + 1)
     setState({ answer: '', correct: null, ready: false })
-    setConfidence(50)
+    setConfidence(null)
     setVerdict(null)
     setTurns([])
-    setIntervals(null)
+    setContested(false)
+    setContesting(false)
   }
 
   async function check(dontKnow = false): Promise<void> {
+    if (!dontKnow && turns.length === 0 && confidence === null) return
     const item = items![i]
     setChecking(true)
+    const conf = confidence ?? 50
     try {
       let v: Verdict
       if (item.exercise.type === 'explain' && (!dontKnow || turns.length)) {
@@ -163,7 +231,7 @@ export function ReviewView({
           conceptId: item.conceptId,
           exercise: item.exercise,
           turns: said,
-          confidence
+          confidence: conf
         })
         if (g.kind === 'question') {
           setTurns([...said, { by: 'claude', text: g.question }])
@@ -171,7 +239,7 @@ export function ReviewView({
           return
         }
         setTurns(said)
-        const wrongSure = g.verdict === 'wrong' && confidence >= 70
+        const wrongSure = g.verdict === 'wrong' && conf >= MISCONCEPTION_CONFIDENCE
         v = {
           kind: wrongSure ? 'mis' : g.verdict,
           feedback: g.feedback,
@@ -192,9 +260,9 @@ export function ReviewView({
           conceptId: item.conceptId,
           exercise: item.exercise,
           answer: state.answer,
-          confidence
+          confidence: conf
         })
-        const wrongSure = g.verdict === 'wrong' && confidence >= 70
+        const wrongSure = g.verdict === 'wrong' && conf >= MISCONCEPTION_CONFIDENCE
         v = {
           kind: wrongSure ? 'mis' : g.verdict,
           feedback: g.feedback,
@@ -204,27 +272,60 @@ export function ReviewView({
         }
       } else {
         const ok = state.correct === true
-        const kind = ok ? 'ok' : confidence >= 70 ? 'mis' : 'wrong'
+        const kind = ok ? 'ok' : conf >= MISCONCEPTION_CONFIDENCE ? 'mis' : 'wrong'
         const feedback = ok
-          ? confidence < 50
+          ? conf < GUESS_CONFIDENCE
             ? 'Giusto, ma eri incerto: lo considero fragile e torna prima.'
             : 'Esatto.'
           : kind === 'mis'
-            ? `Eri sicuro al ${confidence}%. È il segnale più importante: probabilmente c'è un'idea sbagliata da correggere, non solo un vuoto.`
+            ? `Eri sicuro al ${conf}%. È il segnale più importante: probabilmente c'è un'idea sbagliata da correggere, non solo un vuoto.`
             : 'Guarda la risposta di riferimento: torna presto, con una domanda diversa.'
         v = {
           kind,
           feedback,
-          proposed: proposeGrade({ correct: ok, confidence }),
+          proposed: proposeGrade({ correct: ok, confidence: conf }),
           correct: ok,
           dontKnow: false
         }
       }
       setVerdict(v)
       setGrade(v.proposed)
-      setIntervals(await api.review.intervals(item.conceptId).catch(() => null))
     } finally {
       setChecking(false)
+    }
+  }
+
+  async function handleContest(): Promise<void> {
+    if (contesting || saving || contested || !verdict) return
+    const item = items![i]
+    setContesting(true)
+    try {
+      let answerText = state.answer.trim()
+      if (item.exercise.type === 'explain') {
+        const studentTurns = turns.filter((t) => t.by === 'andrea').map((t) => t.text)
+        answerText = studentTurns.join('\n') || state.answer.trim()
+      }
+      const res = await api.review.contest({
+        conceptId: item.conceptId,
+        exercise: item.exercise,
+        answer: answerText,
+        confidence: confidence ?? 50
+      })
+      const wrongSure = res.verdict === 'wrong' && (confidence ?? 50) >= MISCONCEPTION_CONFIDENCE
+      const newVerdict: Verdict = {
+        kind: wrongSure ? 'mis' : res.verdict,
+        feedback: res.feedback,
+        proposed: res.proposed,
+        correct: res.verdict === 'ok',
+        dontKnow: false
+      }
+      setVerdict(newVerdict)
+      setGrade(res.proposed)
+      setContested(true)
+    } catch (e) {
+      setError(remote(e))
+    } finally {
+      setContesting(false)
     }
   }
 
@@ -234,21 +335,85 @@ export function ReviewView({
     const v = verdict!
     setSaving(true)
     try {
-      const r = await api.review.record({
-        conceptId: item.conceptId,
-        at: Date.now(),
-        grade,
-        confidence: v.dontKnow ? undefined : confidence,
-        correct: v.correct,
-        dontKnow: v.dontKnow || undefined,
-        variantId: item.variantId ?? undefined,
-        type: item.exercise.type,
-        misconception: v.kind === 'mis' || undefined
-      })
-      setResults((rs) => [
-        ...rs,
-        { item, grade, before: item.R, after: r.memory.R, misconception: v.kind === 'mis' }
-      ])
+      const isRepresented = Boolean(item.represented)
+      let r: any = null
+      if (!isRepresented) {
+        r = await api.review.record({
+          conceptId: item.conceptId,
+          at: Date.now(),
+          grade,
+          confidence: v.dontKnow ? undefined : (confidence ?? undefined),
+          correct: v.correct,
+          dontKnow: v.dontKnow || undefined,
+          variantId: item.variantId ?? undefined,
+          type: item.exercise.type,
+          misconception: v.kind === 'mis' || undefined,
+          contested: contested || undefined
+        })
+        const interval = r?.intervals?.[grade]
+        setResults((rs) => [
+          ...rs,
+          {
+            item,
+            grade,
+            before: item.R,
+            after: r ? r.memory.R : item.R,
+            misconception: v.kind === 'mis',
+            interval: interval ? `Torna tra ${interval}` : undefined
+          }
+        ])
+      }
+      const representedCount = item.representedCount ?? 0
+      const shouldRepresent = grade === 1 && representedCount < 2
+      const reItem: ReviewItem = {
+        ...item,
+        represented: true,
+        representedCount: representedCount + 1
+      }
+      const budget = items ? Math.max(0, items.length - 1 - i) : 0
+      let additions: ReviewItem[] = []
+      if (!item.cascadeOf && grade <= 2 && budget > 0 && api.review?.prerequisites) {
+        try {
+          additions = (await api.review.prerequisites(item.conceptId, budget)) ?? []
+        } catch {
+          // Keep the original goal queue usable if prerequisites cannot be loaded.
+        }
+      }
+      if (shouldRepresent || additions.length > 0) {
+        setItems((current) => {
+          if (!current) return current
+          const head = current.slice(0, i + 1)
+          const unstarted = current.slice(i + 1)
+          const existing = new Set(head.map((x) => x.conceptId))
+          const filteredAdditions = additions.filter((x) => !existing.has(x.conceptId))
+
+          let availableSlots = unstarted.length
+          let unstartedQueue = [...unstarted]
+
+          if (shouldRepresent && availableSlots > 0) {
+            const dropIdx = unstartedQueue.findLastIndex((it) => !it.represented)
+            if (dropIdx >= 0) {
+              unstartedQueue.splice(dropIdx, 1)
+            } else {
+              unstartedQueue.pop()
+            }
+            availableSlots--
+          }
+
+          if (filteredAdditions.length > 0 && availableSlots > 0) {
+            const count = Math.min(filteredAdditions.length, availableSlots)
+            const kept = unstartedQueue.slice(0, unstartedQueue.length - count)
+            unstartedQueue = [...filteredAdditions.slice(0, count), ...kept]
+          }
+
+          if (shouldRepresent) {
+            const insertIndex = Math.min(3, unstartedQueue.length)
+            unstartedQueue.splice(insertIndex, 0, reItem)
+          }
+
+          return [...head, ...unstartedQueue]
+        })
+      }
     } catch (e) {
       setError(remote(e))
       return
@@ -257,6 +422,69 @@ export function ReviewView({
     }
     setError(null)
     next()
+  }
+
+  async function handleChainRecord(checked: boolean[], record: boolean): Promise<void> {
+    if (saving) return
+    const item = items![i]
+    const ex = item.exercise
+    const conclusionId = ex.type === 'chain' ? ex.conclusion.id : item.conceptId
+    setSaving(true)
+    try {
+      const fraction = checked.length ? checked.filter(Boolean).length / checked.length : 0
+      const calculatedGrade: Grade = fraction === 0 ? 1 : fraction < 0.5 ? 2 : 3
+      let afterR = item.R
+      const isRepresented = Boolean(item.represented)
+      if (record && !isRepresented) {
+        const r = await api.review.record({
+          conceptId: conclusionId,
+          at: Date.now(),
+          type: 'chain',
+          checked
+        })
+        if (r?.memory?.R !== undefined) afterR = r.memory.R
+        setResults((rs) => [
+          ...rs,
+          { item, grade: calculatedGrade, before: item.R, after: afterR, misconception: false }
+        ])
+      } else if (!isRepresented) {
+        await api.review.record({
+          conceptId: conclusionId,
+          at: Date.now(),
+          type: 'chain',
+          record: false
+        })
+      }
+      const representedCount = item.representedCount ?? 0
+      const shouldRepresent = record && calculatedGrade === 1 && representedCount < 2
+      if (shouldRepresent) {
+        const reItem: ReviewItem = {
+          ...item,
+          represented: true,
+          representedCount: representedCount + 1
+        }
+        setItems((current) => {
+          if (!current) return current
+          const head = current.slice(0, i + 1)
+          const unstarted = current.slice(i + 1)
+          const unstartedQueue = [...unstarted]
+          if (unstartedQueue.length > 0) {
+            const dropIdx = unstartedQueue.findLastIndex((it) => !it.represented)
+            if (dropIdx >= 0) unstartedQueue.splice(dropIdx, 1)
+            else unstartedQueue.pop()
+          }
+          const insertIndex = Math.min(3, unstartedQueue.length)
+          unstartedQueue.splice(insertIndex, 0, reItem)
+          return [...head, ...unstartedQueue]
+        })
+      }
+      setError(null)
+      next()
+    } catch (e) {
+      setError(remote(e))
+    } finally {
+      setSaving(false)
+    }
   }
 
   // Keyboard and VoiceOver users land where the next action is: "Prossima" after the check,
@@ -271,7 +499,7 @@ export function ReviewView({
   const top = (
     <header className="rv-top drag">
       <button type="button" className="pill nodrag back-btn" onClick={onBack}>
-        ← Home
+        {backLabel}
       </button>
       <span className="rv-title">Ripasso</span>
       {items && items.length > 0 && i >= 0 && (
@@ -294,6 +522,12 @@ export function ReviewView({
     </header>
   )
 
+  const waitStage = useWaitStage({
+    engine: 'agy',
+    active: !items,
+    writing: false
+  })
+
   if (!items)
     return (
       <ViewScene className="rv">
@@ -301,10 +535,21 @@ export function ReviewView({
         <ScrollEdges target={page} size={72} edges={['top']} />
         <GlassContent layout="scroll" className="rv-scroll edge-fade" ref={page}>
           <main className="rv-main">
-            <p className="rv-loading" role="status">
-              Preparo le domande… (la prima volta Gemini scrive le varianti: può servire qualche
-              minuto)
-            </p>
+            <div className="rv-loading" role="status">
+              <div className="rv-skeleton-card" aria-hidden="true" style={{ marginBottom: 16 }}>
+                <Skeleton width="30%" height={20} radius="sm" style={{ marginBottom: 12 }} />
+                <Skeleton width="100%" height={48} radius="md" style={{ marginBottom: 16 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <Skeleton width="100%" height={38} radius="md" />
+                  <Skeleton width="100%" height={38} radius="md" />
+                  <Skeleton width="100%" height={38} radius="md" />
+                </div>
+              </div>
+              <p>
+                Preparo le domande… ({waitStage.label} — la prima volta Gemini scrive le varianti: può servire qualche
+                minuto)
+              </p>
+            </div>
           </main>
         </GlassContent>
       </ViewScene>
@@ -331,7 +576,11 @@ export function ReviewView({
                   <h1>Niente da ripassare oggi.</h1>
                   <p>
                     {error ??
-                      (clinicEmpty ? 'Non ci sono misconception attive da ripassare.' : 'Tutto quello che hai studiato è ancora nitido. I concetti arrivano dalle note che apri e studi.')}
+                      (clinicEmpty
+                        ? 'Non ci sono misconception attive da ripassare.'
+                        : toStudy.length > 0
+                          ? 'Nessun ripasso in scadenza: ci sono nuovi concetti da studiare dalle tue note.'
+                          : 'Tutto quello che hai studiato è ancora nitido. I concetti arrivano dalle note che apri e studi.')}
                   </p>
                   <div className="rv-acts">
                     <button
@@ -346,6 +595,7 @@ export function ReviewView({
                     </button>
                   </div>
                   <ConfidencePanel onClinic={() => void load({ misconceptions: true })} />
+                  <ToStudyBlock items={toStudy} onStudy={onStudy} />
                 </>
               ) : (
                 <>
@@ -385,6 +635,7 @@ export function ReviewView({
                       </li>
                     ))}
                   </ul>
+                  <ToStudyBlock items={toStudy} onStudy={onStudy} />
                   <div className="rv-types">
                     <div className="lab">Esercizi</div>
                     {typeError && (
@@ -467,7 +718,10 @@ export function ReviewView({
                   <div key={r.item.conceptId} className="rv-row">
                     <span>
                       {r.item.name}
-                      <small>{r.item.noteTitle}</small>
+                      <small>
+                        {r.item.noteTitle}
+                        {r.interval ? ` · ${r.interval}` : ''}
+                      </small>
                     </span>
                     <span
                       className="bars"
@@ -475,16 +729,22 @@ export function ReviewView({
                     >
                       <i
                         className="before"
-                        style={{ width: `${Math.round((r.before ?? 0) * 100)}%` }}
+                        style={{ '--v': Math.max(0, Math.min(1, r.before ?? 0)) } as React.CSSProperties}
                       />
                       <i
                         className="after"
-                        style={{ width: `${Math.round((r.after ?? 0) * 100)}%` }}
+                        style={
+                          {
+                            '--v': Math.max(0, Math.min(1, r.after ?? 0)),
+                            '--from': Math.max(0, Math.min(1, r.before ?? 0))
+                          } as React.CSSProperties
+                        }
                       />
                     </span>
                   </div>
                 ))}
               </div>
+              <ToStudyBlock items={toStudy} onStudy={onStudy} />
               <div className="rv-acts">
                 <button type="button" className="pri" onClick={onBack}>
                   Torna alla home
@@ -508,6 +768,9 @@ export function ReviewView({
 
   // Item
   const item = items[i]
+  const isLLM = item.exercise.type === 'open' || item.exercise.type === 'explain'
+  const canContest = isLLM && verdict !== null && verdict.kind !== 'ok' && !verdict.dontKnow && !contested
+  const isFallback = Boolean(verdict?.feedback.startsWith('Non sono riuscito a correggere'))
   const TITLE: Record<Verdict['kind'], string> = {
     ok: 'Corretto',
     partial: 'Quasi',
@@ -527,6 +790,7 @@ export function ReviewView({
               <span className="chip">{item.noteTitle}</span>
               <span className="chip">{MODE[item.exercise.type]}</span>
               <span className="chip">{TYPE_LABEL[item.exercise.type]}</span>
+              {item.represented && <span className="chip">Ripresentato</span>}
             </div>
             <div id="rv-q" className="rv-q" ref={questionRef} tabIndex={-1}>
               <RichText md={item.exercise.prompt} />
@@ -549,38 +813,44 @@ export function ReviewView({
             )}
             <div
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && state.ready && !verdict)
+                if (
+                  e.key === 'Enter' &&
+                  (e.metaKey || e.ctrlKey) &&
+                  state.ready &&
+                  !verdict &&
+                  item.exercise.type !== 'chain'
+                ) {
+                  if (turns.length === 0 && confidence === null) return
                   void check()
+                }
               }}
             >
               {!(verdict && item.exercise.type === 'explain') && (
                 <ExerciseView
                   key={`${item.conceptId}-${i}-${turns.length}`}
                   exercise={item.exercise}
-                  locked={!!verdict}
+                  locked={!!verdict || saving}
                   followUp={turns.length > 0}
                   onChange={setState}
+                  onRecordChain={(chk) => void handleChainRecord(chk, true)}
+                  onSkipChain={() => void handleChainRecord([], false)}
                 />
               )}
             </div>
-            {!verdict && (
+            {!verdict && item.exercise.type !== 'chain' && (
               <>
                 {turns.length === 0 && (
-                  <div className="rv-conf">
+                  <div className="rv-conf" role="group" aria-labelledby="rv-cf-l">
                     <span className="lab" id="rv-cf-l">
-                      Quanto sei sicuro?
+                      Fiducia
                     </span>
-                    <GlassRange
-                      ground="bg"
-                      aria-labelledby="rv-cf-l"
-                      min={0}
-                      max={100}
-                      step={10}
-                      value={confidence}
-                      onValueChange={(v) => setConfidence(v)}
-                      thumbProps={{ getAriaValueText: (_text, v) => `${v}%` }}
+                    <Seg<ConfKey>
+                      label="Fiducia"
+                      track="plain"
+                      value={confidence !== null ? (String(confidence) as ConfKey) : null}
+                      onChange={(v) => setConfidence(Number(v))}
+                      options={CONFIDENCE_OPTIONS}
                     />
-                    <output aria-hidden="true">{confidence}%</output>
                   </div>
                 )}
                 <div className="rv-acts">
@@ -595,7 +865,9 @@ export function ReviewView({
                   <button
                     type="button"
                     className="pri"
-                    disabled={!state.ready || checking}
+                    disabled={
+                      !state.ready || checking || (turns.length === 0 && confidence === null)
+                    }
                     onClick={() => void check()}
                   >
                     {checking ? 'Correggo…' : turns.length ? 'Rispondi' : 'Verifica'}
@@ -603,11 +875,34 @@ export function ReviewView({
                 </div>
               </>
             )}
-            {verdict && (
+            {verdict && item.exercise.type !== 'chain' && (
               <div className="rv-reveal">
                 <div className={`rv-verdict ${verdict.kind}`} role="status">
                   <b>{TITLE[verdict.kind]}</b>
                   <RichText md={verdict.feedback} />
+                  {onPractice && !verdict.correct && (
+                    <div className="rv-practice-act">
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => onPractice([item.conceptId])}
+                      >
+                        Allenati su questo
+                      </button>
+                    </div>
+                  )}
+                  {canContest && (
+                    <div className="rv-contest">
+                      <button
+                        type="button"
+                        className="link"
+                        disabled={contesting || saving}
+                        onClick={() => void handleContest()}
+                      >
+                        {contesting ? 'Contesto…' : 'Contesta la correzione'}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="rv-model">
                   <span className="lab">Risposta di riferimento</span>
@@ -617,22 +912,31 @@ export function ReviewView({
                   Quanto ti è costato ricordarlo?
                 </div>
                 <div className="rv-grade" role="group" aria-labelledby="rv-gl">
-                  {GRADES.map(([g, label]) => (
-                    <button
-                      key={g}
-                      type="button"
-                      aria-pressed={grade === g}
-                      onClick={() => setGrade(g)}
-                    >
-                      {g === verdict.proposed && <span className="sug">proposta</span>}
-                      {label}
-                      <small>{intervals?.[g] ?? ''}</small>
-                    </button>
-                  ))}
+                  {GRADES.map(([g, label]) => {
+                    const isAboveProposed = g > verdict.proposed
+                    const disabled = !isFallback && isAboveProposed
+                    return (
+                      <button
+                        key={g}
+                        type="button"
+                        aria-pressed={grade === g}
+                        disabled={disabled}
+                        onClick={() => setGrade(g)}
+                      >
+                        {g === verdict.proposed && <span className="sug">proposta</span>}
+                        {label}
+                      </button>
+                    )
+                  })}
                 </div>
                 {error && <p role="alert">{error}</p>}
                 <div className="rv-foot">
-                  <button type="button" className="link" onClick={() => onOpenNote(item.notePath)}>
+                  <button
+                    type="button"
+                    className="link"
+                    ref={peekTriggerRef}
+                    onClick={() => setPeekItem(item)}
+                  >
                     Apri nella nota
                   </button>
                   <button
@@ -650,6 +954,27 @@ export function ReviewView({
           </article>
         </main>
       </GlassContent>
+      {peekItem && (
+        <NotePeek
+          concept={{
+            id: peekItem.conceptId,
+            name: peekItem.name,
+            birth: peekItem.notePath,
+            statement:
+              'exercise' in peekItem && peekItem.exercise && 'prompt' in peekItem.exercise
+                ? (peekItem.exercise.answer ?? peekItem.exercise.prompt)
+                : undefined
+          }}
+          notePath={peekItem.notePath}
+          noteTitle={peekItem.noteTitle}
+          triggerRef={peekTriggerRef}
+          onClose={() => setPeekItem(null)}
+          onOpenNote={(path) => {
+            setPeekItem(null)
+            onOpenNote(path)
+          }}
+        />
+      )}
     </ViewScene>
   )
 }

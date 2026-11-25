@@ -7,7 +7,8 @@ import { capNote } from '../session/prompt'
 export const MAX_QUESTIONS = 2
 export const EXPLAIN_MARK = 'STUDENTE PIGNOLO'
 
-export type ExplainTurn = { by: 'andrea' | 'claude'; text: string }
+import type { ExplainTurn } from '../../shared/review-types'
+export type { ExplainTurn } from '../../shared/review-types'
 
 const Ask = z.object({ action: z.literal('ask'), question: z.string().trim().min(1).max(500) })
 const Judge = z.object({ action: z.literal('grade'), verdict: z.enum(['ok', 'partial', 'wrong']), feedback: z.string().trim().min(1).max(900) })

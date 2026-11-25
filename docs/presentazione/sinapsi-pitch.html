@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sinapsi — Pitch</title>
+<!-- Geist and Geist Mono, the current app's fonts, shipped next to the deck: works offline. -->
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<style>
+/* === TOKENS (taken from the app's light theme) === */
+:root{
+  --paper:#EEF0F6; --surface:#FFFFFF; --band:#E4E7F0;
+  --ink:#1D1D1F; --muted:#5F6573; --line:rgba(17,19,24,.12);
+  --accent:#6654A9; --accent-2:#7868C8; --coral:#A94D30; --ok:#237648; --amber:#845600;
+  --serif:'Geist',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --sans:'Geist',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --spring:cubic-bezier(.2,.9,.25,1.12); --out:cubic-bezier(.2,.7,.2,1);
+}
+
+/* === FIXED 16:9 STAGE: 1920x1080, scaled as a whole, never reflowed === */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#15140f;overflow:hidden}
+.viewport{position:fixed;inset:0;overflow:hidden}
+.stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;
+  transform:translate(-50%,-50%) scale(var(--s,1));transform-origin:center;
+  background:radial-gradient(900px 700px at 0% 100%,rgba(120,104,200,.16),transparent 70%),radial-gradient(1000px 700px at 100% 0%,rgba(110,150,230,.14),transparent 70%),var(--paper);color:var(--ink);font-family:var(--sans);overflow:hidden;
+  -webkit-font-smoothing:antialiased}
+.slide{position:absolute;inset:0;visibility:hidden;opacity:0;pointer-events:none;
+  transition:opacity .5s var(--out),visibility 0s linear .5s}
+.slide.active{visibility:visible;opacity:1;pointer-events:auto;transition:opacity .5s var(--out)}
+
+/* === SHARED TYPE === */
+.kicker{position:absolute;left:120px;top:84px;font:500 19px/1 var(--mono);letter-spacing:.14em;color:var(--muted)}
+.kicker b{color:var(--accent);font-weight:500}
+h1{font:500 104px/1.02 var(--sans);letter-spacing:-.045em}
+.mono{font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.muted{color:var(--muted)}
+em.acc,.acc{color:var(--accent);font-style:normal}
+
+/* === FRAGMENTS: revealed one click at a time === */
+[data-f]{opacity:0;transform:translateY(16px);transition:opacity .45s var(--out),transform .55s var(--spring)}
+[data-f][data-fx="fade"]{transform:none}
+[data-f].on{opacity:1;transform:none}
+
+/* === SCREENSHOT FRAME === */
+.shot{border-radius:22px;overflow:hidden;background:var(--surface);
+  box-shadow:0 0 0 1px var(--line),0 30px 60px -28px rgba(0,0,0,.38),0 8px 18px -10px rgba(0,0,0,.2)}
+.shot img{display:block}
+
+/* === CHROME === */
+.chrome{position:absolute;left:120px;bottom:34px;font:500 15px/1 var(--mono);letter-spacing:.12em;color:var(--muted);z-index:6}
+.bar{position:absolute;left:0;bottom:0;height:4px;background:var(--accent);width:0;transition:width .5s var(--out);z-index:6}
+#graph{position:absolute;inset:0;z-index:5;pointer-events:none}
+#graph text{font:500 21px var(--sans);fill:var(--ink);text-anchor:middle}
+
+/* === SLIDE 1 — PROBLEM === */
+#s1 h1{position:absolute;left:120px;top:128px}
+#s1 .rule{position:absolute;left:980px;top:300px;width:1px;height:520px;background:var(--line)}
+#s1 .h{position:absolute;top:286px;font:600 38px/1.15 var(--sans);letter-spacing:-.01em}
+#s1 .hl{left:120px} #s1 .hr{left:1050px}
+#s1 .subl{position:absolute;left:120px;top:752px;width:800px;font:400 29px/1.35 var(--sans);color:var(--muted)}
+#s1 .n48{position:absolute;left:1050px;top:366px;display:flex;align-items:baseline;gap:22px}
+#s1 .n48 .num{font:500 96px/1 var(--sans);letter-spacing:-.04em;color:var(--muted)}
+#s1 .cap{font:400 29px/1 var(--sans);color:var(--muted)}
+#s1 .n17{position:absolute;left:1040px;top:476px;display:flex;align-items:baseline;gap:28px}
+#s1 .n17 .num{font:500 236px/1 var(--sans);color:var(--coral);letter-spacing:-.06em}
+#s1 .n17 .cap{color:var(--ink);font-weight:500}
+#s1 .src{position:absolute;left:1050px;top:786px;font:500 17px/1.5 var(--mono);letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+#s1 .close{position:absolute;left:120px;right:120px;top:900px;font:500 44px/1.15 var(--sans);letter-spacing:-.025em;
+  border-top:1px solid var(--line);padding-top:32px}
+
+/* === SLIDE 2 — IDEA === */
+#s2 .col{position:absolute;left:120px;top:128px;width:660px;bottom:190px;display:flex;flex-direction:column}
+#s2 h1{font-size:76px;margin-bottom:44px}
+#s2 .rules{display:grid;gap:24px}
+#s2 .r b{display:block;font:600 31px/1.2 var(--sans);margin-bottom:6px}
+#s2 .r span{font:400 25px/1.35 var(--sans);color:var(--muted)}
+#s2 .r{padding-left:22px;border-left:3px solid var(--line);transition:opacity .45s var(--out),transform .55s var(--spring),border-color .4s}
+#s2 .r.on{border-left-color:var(--accent)}
+#s2 .foot{margin-top:auto;font:400 19px/1.6 var(--mono);color:var(--muted)}
+#s2 .app{position:absolute;left:840px;top:160px;width:1000px}
+#s2 .app img{width:1000px}
+#s2 .pin{position:absolute;width:38px;height:38px;margin:-19px 0 0 -19px;border-radius:50%;background:var(--accent);color:#fff;
+  font:500 18px/38px var(--mono);text-align:center;border:3px solid var(--surface);box-sizing:content-box;margin:-22px 0 0 -22px;transform:scale(.3)}
+#s2 .pin.on{transform:scale(1)}
+#s2 .legend{position:absolute;left:840px;top:826px;width:1000px;display:flex;gap:26px;font:500 15.5px/1 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+#s2 .legend i{font-style:normal;color:var(--accent);margin-right:8px}
+#s2 .metro{position:absolute;left:120px;right:120px;top:924px;height:90px}
+#s2 .metro .track{position:absolute;left:0;right:0;top:12px;height:2px;background:var(--line)}
+#s2 .metro .fill{position:absolute;left:0;top:12px;height:2px;width:0;background:var(--ink);transition:width .9s var(--out)}
+#s2 .metro.on .fill{width:100%}
+#s2 .stop{position:absolute;top:0;transform:translateX(-50%);text-align:center;white-space:nowrap}
+#s2 .stop.first{transform:none;text-align:left} #s2 .stop.last{transform:translateX(-100%);text-align:right}
+#s2 .stop u{display:inline-block;width:26px;height:26px;border-radius:50%;background:var(--paper);border:2px solid var(--ink);transition:background .3s}
+#s2 .metro.on .stop u{background:var(--ink)} #s2 .metro.on .stop.last u{background:var(--accent);border-color:var(--accent)}
+#s2 .stop:nth-of-type(4) u{transition-delay:.2s}#s2 .stop:nth-of-type(5) u{transition-delay:.4s}#s2 .stop:nth-of-type(6) u{transition-delay:.6s}#s2 .stop:nth-of-type(7) u{transition-delay:.8s}
+#s2 .stop span{display:block;margin-top:14px;font:500 19px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase}
+#s2 .stop span small{font-size:19px;color:var(--muted)}
+
+/* === SLIDE 3 — USE SCENARIO === */
+#s3 h1{position:absolute;left:120px;top:126px;font-size:68px}
+#s3 .sub{position:absolute;left:120px;top:218px;font:400 29px/1.3 var(--sans);color:var(--muted)}
+#s3 .cols{position:absolute;left:120px;right:120px;top:294px;display:grid;grid-template-columns:repeat(3,528px);gap:48px}
+#s3 .no{font:500 20px/1 var(--mono);letter-spacing:.12em;color:var(--accent);margin-bottom:14px}
+#s3 .shot{width:528px;height:350px;position:relative;opacity:.25;transition:opacity .45s var(--out),transform .5s var(--spring)}
+#s3 .ring{position:absolute;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;border:3px solid var(--accent);opacity:0}
+@keyframes pulse{0%{transform:scale(.5);opacity:0}30%{opacity:1}100%{transform:scale(1.7);opacity:0}}
+#s3[data-step="1"] .c1 .shot,#s3[data-step="2"] .c2 .shot,#s3[data-step="3"] .c3 .shot{opacity:1;transform:translateY(-12px)}
+#s3[data-step="2"] .c1 .shot,#s3[data-step="3"] .c1 .shot,#s3[data-step="3"] .c2 .shot{opacity:.6}
+#s3[data-step="4"] .shot{opacity:1}
+#s3[data-step="1"] .c1 .ring,#s3[data-step="2"] .c2 .ring,#s3[data-step="3"] .c3 .ring{animation:pulse 1.3s ease-out .4s 2}
+#s3 .capt{margin-top:16px;font:500 15px/1 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+#s3 .step{margin-top:22px}
+#s3 .step b{display:block;font:600 30px/1.2 var(--sans);margin-bottom:10px}
+#s3 .step b i{font-style:normal;color:var(--accent)}
+#s3 .step p{font:400 24px/1.4 var(--sans);color:var(--muted)}
+#s3 .arrow{position:absolute;top:494px;font:400 34px/1 var(--sans);color:var(--line);transition:color .4s}
+#s3 .a1{left:654px} #s3 .a2{left:1230px}
+#s3[data-step="2"] .a1,#s3[data-step="3"] .a1,#s3[data-step="4"] .a1,#s3[data-step="3"] .a2,#s3[data-step="4"] .a2{color:var(--accent)}
+#s3 .last{position:absolute;left:120px;right:120px;top:962px;font:500 36px/1 var(--sans);letter-spacing:-.02em}
+
+/* === SLIDE 4 — TARGET === */
+#s4 .col{position:absolute;left:120px;top:128px;width:700px;display:flex;flex-direction:column}
+#s4 h1{font-size:72px;margin-bottom:40px}
+#s4 .who{display:grid;gap:22px}
+#s4 .row{display:flex;gap:22px;align-items:flex-start}
+#s4 .ic{flex:none;width:56px;height:56px;border-radius:14px;background:var(--surface);box-shadow:0 0 0 1px var(--line);display:grid;place-items:center}
+#s4 .ic svg{width:28px;height:28px;fill:none;stroke:var(--ink);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+#s4 .row p{font:400 26px/1.35 var(--sans);color:var(--muted)}
+#s4 .row p b{color:var(--ink);font-weight:600}
+#s4 .nums{position:absolute;left:890px;top:136px;width:910px;display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+#s4 .n{border-top:2px solid var(--ink);padding-top:20px}
+#s4 .n .num{font:500 96px/1 var(--sans);letter-spacing:-.05em;white-space:nowrap}
+#s4 .n:nth-child(2) .num{color:var(--accent)}
+#s4 .n p{margin-top:12px;font:400 25px/1.3 var(--sans)}
+#s4 .n small{display:block;margin-top:12px;font:500 15px/1.4 var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+#s4 .plan{position:absolute;left:890px;top:476px;display:flex;gap:44px;align-items:center}
+#s4 .plan .shot{width:392px;height:300px}
+#s4 .plan img{width:2053px;margin:-121px 0 0 -1661px}
+#s4 .plan .t{width:440px}
+#s4 .plan .t .mono{font-size:16px;font-weight:500;color:var(--muted);line-height:1.6}
+#s4 .plan .t q{display:block;margin-top:18px;font:500 40px/1.12 var(--sans);letter-spacing:-.03em;quotes:none}
+#s4 .bandf{position:absolute;left:0;right:0;top:838px;height:160px;background:var(--band);display:grid;grid-template-columns:1fr 1fr;padding:0 120px;align-items:center;gap:60px}
+#s4 .bandf .mono{font-size:16px;font-weight:500;color:var(--accent);margin-bottom:12px}
+#s4 .bandf p{font:400 27px/1.3 var(--sans)}
+
+/* === SLIDE 5 — SUCCESS MEASURES === */
+#s5 h1{position:absolute;left:120px;top:128px;font-size:92px}
+#s5 .sub{position:absolute;left:120px;top:240px;width:1250px;font:400 28px/1.4 var(--sans);color:var(--muted)}
+#s5 .ghost{position:absolute;left:560px;top:300px;width:800px;opacity:.1;filter:blur(1.5px);
+  -webkit-mask-image:linear-gradient(#000 40%,transparent 92%);mask-image:linear-gradient(#000 40%,transparent 92%)}
+#s5 .ghost img{width:800px;display:block}
+#s5 .kpis{position:absolute;left:120px;right:120px;top:352px;display:grid;grid-template-columns:repeat(3,1fr)}
+#s5 .k{padding:0 40px;position:relative}
+#s5 .k::before{content:'';position:absolute;left:0;top:0;bottom:0;width:1px;background:var(--line)}
+#s5 .k:first-child{padding-left:0}
+#s5 .k:first-child::before{display:none}
+#s5 .k .mono{font-size:18px;font-weight:500;color:var(--muted)}
+#s5 .k .num{font:500 150px/1.04 var(--sans);letter-spacing:-.06em;margin-top:6px;white-space:nowrap}
+#s5 .k:nth-child(2) .num{color:var(--accent)}
+#s5 .k .say{font:500 27px/1.3 var(--sans);margin-top:6px;min-height:70px}
+#s5 .k .how{font:400 21px/1.4 var(--sans);color:var(--muted);margin-top:14px;min-height:60px}
+#s5 .k .srcs{font:500 14px/1 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-top:16px}
+#s5 .k .num[data-f]{transition-duration:.18s,.18s}
+#s5 .k:nth-child(2) .num{transition-delay:.1s} #s5 .k:nth-child(3) .num{transition-delay:.2s}
+#s5 .ready{position:absolute;left:120px;right:120px;top:796px;display:flex;align-items:center;gap:14px}
+#s5 .ready .mono{font-size:16px;font-weight:500;color:var(--muted);margin-right:14px;white-space:nowrap}
+#s5 .pill{font:500 21px/1 var(--sans);padding:15px 22px;border-radius:99px;box-shadow:inset 0 0 0 1.5px var(--line);white-space:nowrap;
+  transition:background .3s,color .3s}
+#s5 .ready.on .pill{background:var(--ink);color:var(--paper)}
+#s5 .pill:nth-child(3){transition-delay:.12s}#s5 .pill:nth-child(4){transition-delay:.24s}#s5 .pill:nth-child(5){transition-delay:.36s}#s5 .pill:nth-child(6){transition-delay:.48s}
+#s5 .next{position:absolute;left:120px;top:886px;font:500 38px/1 var(--sans);letter-spacing:-.025em;color:var(--accent)}
+#s5 .next b{font:500 18px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;margin-right:18px;vertical-align:middle}
+#s5 .note{position:absolute;left:120px;top:960px;font:400 18px/1 var(--mono);color:var(--muted)}
+
+/* === SLIDE 6 — 60-SECOND PITCH === */
+#s6 .c{position:absolute;left:0;right:0;top:560px;text-align:center}
+#s6 .brand{display:inline-flex;align-items:center;gap:26px}
+#s6 .brand svg{width:118px;height:118px}
+#s6 .brand span{font:500 170px/1 var(--sans);letter-spacing:-.06em}
+#s6 .tag{margin-top:26px;font:500 54px/1.1 var(--sans);letter-spacing:-.035em}
+#s6 .flow{margin-top:44px;font:500 18px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+#s6 .clock{position:absolute;right:120px;bottom:34px;font:500 15px/1 var(--mono);letter-spacing:.12em;color:var(--muted)}
+
+/* === EDIT MODE (press E) === */
+.edit-hint{position:fixed;left:14px;top:12px;font:500 12px/1 ui-monospace,monospace;color:#fff;background:#6654A9;padding:7px 10px;border-radius:6px;display:none;z-index:9}
+body.editing .edit-hint{display:block}
+body.editing [contenteditable]{outline:1px dashed rgba(102,84,169,.5);outline-offset:4px}
+
+/* === REDUCED MOTION === */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;transition-delay:0s!important}
+}
+</style>
+</head>
+<body>
+<div class="edit-hint">EDIT MODE · click any text · Ctrl/Cmd+S saves a copy · E to exit</div>
+<div class="viewport"><div class="stage" id="stage">
+
+<!-- ============ SLIDE 1 — PROBLEM ============ -->
+<section class="slide" id="s1">
+  <div class="kicker"><b>01</b> · THE PROBLEM</div>
+  <h1>Two ways to fail.</h1>
+  <div class="rule" data-f="1" data-fx="fade"></div>
+  <div class="h hl" data-f="1">One lecture, two hundred students.</div>
+  <p class="subl" data-f="2">Miss one prerequisite in week 3 and everything built on it is noise.</p>
+  <div class="h hr" data-f="3">A chatbot that thinks for you.</div>
+  <div class="n48" data-f="3"><span class="num" data-count="48" data-pre="+" data-suf="%" data-dur="450">+48%</span><span class="cap">in practice</span></div>
+  <div class="n17" data-f="4" data-fx="fade"><span class="num" data-count="17" data-pre="−" data-suf="%" data-dur="1000">−17%</span><span class="cap">on the real exam</span></div>
+  <div class="src" data-f="4" data-fx="fade">Bastani et al., 2024 · randomized trial<br>high-school students · unrestricted GPT</div>
+  <p class="close" data-f="5" data-fx="fade">The question isn’t whether to use AI. It’s <em class="acc">how it is built.</em></p>
+</section>
+
+<!-- ============ SLIDE 2 — IDEA ============ -->
+<section class="slide" id="s2">
+  <div class="kicker"><b>02</b> · THE IDEA</div>
+  <div class="col">
+  <h1>Start from what you already know.</h1>
+  <div class="rules">
+    <div class="r" data-f="1"><b>Read-only.</b><span>Sinapsi never writes to your Obsidian vault.</span></div>
+    <div class="r" data-f="2"><b>Attempt first.</b><span>No answer, no hint, before you have tried.</span></div>
+    <div class="r" data-f="3"><b>Measured mastery.</b><span>The recall probability FSRS-5 estimates from your answers. Not a tick.</span></div>
+  </div>
+  <div class="foot" data-f="5" data-fx="fade">Gemini extracts and generates · Claude tutors and grades<br>your own subscriptions, no server<br>Builds on LearnHarness and DeepTutor</div>
+  </div>
+  <div class="app shot"><img src="assets/grafo.png" alt="Sinapsi today: the concept map, the side rail and the dock"></div>
+  <div class="pin" data-f="1" style="left:862px;top:362px">1</div>
+  <div class="pin" data-f="2" style="left:1362px;top:684px">2</div>
+  <div class="pin" data-f="3" style="left:1420px;top:372px">3</div>
+  <div class="legend" data-f="1" data-fx="fade"><span><i>1</i>Your notes · read-only</span><span><i>2</i>Today · graph · plan</span><span><i>3</i>Concept graph · traced to your notes</span></div>
+  <div class="metro" data-f="4" data-fx="fade">
+    <div class="track"></div><div class="fill"></div>
+    <div class="stop first" style="left:0"><u></u><span>Your notes <small>read-only</small></span></div>
+    <div class="stop" style="left:25%"><u></u><span>Concept graph</span></div>
+    <div class="stop" style="left:50%"><u></u><span>Memory <small>FSRS-5</small></span></div>
+    <div class="stop" style="left:75%"><u></u><span>Socratic practice</span></div>
+    <div class="stop last" style="left:100%"><u></u><span>Exam readiness</span></div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 3 — USE SCENARIO ============ -->
+<section class="slide" id="s3">
+  <div class="kicker"><b>03</b> · USE SCENARIO</div>
+  <h1>Tuesday, 6 pm. Calculus lecture this morning.</h1>
+  <p class="sub">A first-year STEM student, an oral exam in six weeks, notes in Obsidian.</p>
+  <div class="arrow a1">→</div><div class="arrow a2">→</div>
+  <div class="cols">
+    <div class="c1">
+      <div class="no">01</div>
+      <div class="shot"><img src="assets/session-misura.png" alt="Study session: prerequisite check with confidence and reasoning" style="width:1080px;margin:-294px 0 0 -172px"><i class="ring" style="left:275px;top:194px"></i></div>
+      <div class="capt">Prerequisite check · confidence · reasoning</div>
+      <div class="step" data-f="1"><b><i>Step 1</i> · Measure, then teach.</b><p>The tutor checks what you really remember about Rolle before it touches Lagrange. You predict, it explains, you verify.</p></div>
+    </div>
+    <div class="c2">
+      <div class="no">02</div>
+      <div class="shot"><img src="assets/nota-errore.png" alt="Living note: a gap in the student's note, flagged with a proposed correction" style="width:1044px;margin:-58px 0 0 -249px"><i class="ring" style="left:107px;top:240px"></i></div>
+      <div class="capt">Living note · your mistake, flagged</div>
+      <div class="step" data-f="2"><b><i>Step 2</i> · The note comes alive.</b><p>Each theorem as formula, plain language and intuition. Proofs stay hidden until you try. A mistake in your own notes is flagged, not absorbed.</p></div>
+    </div>
+    <div class="c3">
+      <div class="no">03</div>
+      <div class="shot"><img src="assets/review.png" alt="Review card with the confidence slider" style="width:1056px;margin:-82px 0 0 -287px"><i class="ring" style="left:303px;top:186px"></i></div>
+      <div class="capt">Confidence before answering</div>
+      <div class="step" data-f="3"><b><i>Step 3</i> · Review with a stake.</b><p>You say how sure you are before answering. Wrong at 80% isn’t a gap, it’s a misconception, and it comes back.</p></div>
+    </div>
+  </div>
+  <p class="last" data-f="4" data-fx="fade">Within 24 hours of the lecture, before forgetting does the work for you.</p>
+</section>
+
+<!-- ============ SLIDE 4 — TARGET USER AND CONTEXT ============ -->
+<section class="slide" id="s4">
+  <div class="kicker"><b>04</b> · WHO IT IS FOR</div>
+  <div class="col">
+  <h1>Students who build knowledge in layers.</h1>
+  <div class="who">
+    <div class="row" data-f="0"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg></div><p><b>Who.</b> First and second-year STEM students: Calculus, Linear Algebra, Physics.</p></div>
+    <div class="row" data-f="0"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg></div><p><b>When.</b> The 24 hours after a lecture, and the six weeks before an exam.</p></div>
+    <div class="row" data-f="0"><div class="ic"><svg viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4M10 12h5M10 15.5h5"/></svg></div><p><b>Already has.</b> Their own notes in Markdown, and an AI subscription they use badly.</p></div>
+    <div class="row" data-f="0"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 4l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/></svg></div><p><b>Pain.</b> Courses are cumulative. One missing prerequisite blocks the next ten theorems.</p></div>
+  </div>
+  </div>
+  <div class="nums" data-f="1">
+    <div class="n"><div class="num" data-count="18.8" data-dec="1" data-suf="M" data-dur="1200">18.8M</div><p>tertiary students in the EU</p><small>Eurostat, 2022</small></div>
+    <div class="n"><div class="num" data-count="5" data-pre="≈ " data-suf="M" data-dur="1200">≈ 5M</div><p>of them in STEM (26.9%)</p><small>Eurostat, 2023</small></div>
+    <div class="n"><div class="num" data-count="1.9" data-dec="1" data-pre="≈ " data-suf="M" data-dur="1200">≈ 1.9M</div><p>university students in Italy</p><small>MUR · to confirm on USTAT</small></div>
+  </div>
+  <div class="plan" data-f="2">
+    <div class="shot"><img src="assets/session-piano.png" alt="The plan: Rolle now, then the chord slope, goal Lagrange"></div>
+    <div class="t"><div class="mono">The plan starts from what<br>this student knows</div><q>Goal: Lagrange.<br>First stop: Rolle.</q></div>
+  </div>
+  <div class="bandf" data-f="3" data-fx="fade">
+    <div><div class="mono">Left out today</div><p>No Mac · no Claude or Gemini subscription · notes not in Markdown · interface in Italian.</p></div>
+    <div><div class="mono">Where we start</div><p>Our own classrooms: first-year AI and Maths at Sapienza.</p></div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 5 — SUCCESS MEASURES ============ -->
+<section class="slide" id="s5">
+  <div class="kicker"><b>05</b> · HOW WE WILL KNOW</div>
+  <h1>Measured, not felt.</h1>
+  <p class="sub">We haven’t run a classroom trial, so we won’t invent results. Here is the evidence we build on, and what the app already measures.</p>
+  <div class="kpis">
+    <div class="k"><div class="mono">Retention</div><div class="num" data-f="1" data-fx="fade">20–30%</div>
+      <div data-f="2" data-fx="fade"><div class="say">fewer reviews for the same recall, FSRS vs SM-2</div><div class="how">The app logs predicted vs observed recall, per concept.</div><div class="srcs">open-spaced-repetition benchmark</div></div></div>
+    <div class="k"><div class="mono">Independence</div><div class="num" data-f="1" data-fx="fade">/30</div>
+      <div data-f="2" data-fx="fade"><div class="say">timed exam simulation, no hints, graded out of thirty</div><div class="how">The app logs hints used, and problems solved twice without help.</div><div class="srcs">in the app today</div></div></div>
+    <div class="k"><div class="mono">Calibration</div><div class="num" data-f="1" data-fx="fade">80%</div>
+      <div data-f="2" data-fx="fade"><div class="say">wrong at this confidence is a misconception, not a gap</div><div class="how">The app logs declared confidence vs actual correctness.</div><div class="srcs">in the app today</div></div></div>
+  </div>
+  <div class="ready" data-f="3" data-fx="fade">
+    <span class="mono">Readiness index · 5 signals</span>
+    <span class="pill">Unassisted simulations</span><span class="pill">Errors cleared</span><span class="pill">Concepts consolidated</span><span class="pill">“Explain it yourself” passed</span><span class="pill">Doubts closed</span>
+  </div>
+  <p class="next" data-f="4"><b>Next</b>One course, one exam session, real grades against the readiness index.</p>
+  <p class="note" data-f="4" data-fx="fade">Guardrailed tutor: +127% in practice with no exam penalty · Bastani et al., 2024</p>
+</section>
+
+<!-- ============ SLIDE 6 — 60-SECOND PITCH ============ -->
+<section class="slide" id="s6">
+  <div class="kicker"><b>06</b> · SIXTY SECONDS</div>
+  <div class="c">
+    <div class="brand">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><path fill="#1D1D1F" d="M 28 24 C 42 15 64 15 76 26 C 86 35 86 49 78 57 C 71 63 62 61 57 54 C 54 49 55 42 61 37 C 69 31 69 24 59 22 C 49 20 37 22 28 24 Z"/><path fill="#1D1D1F" d="M 72 76 C 58 85 36 85 24 74 C 14 65 14 51 22 43 C 29 37 38 39 43 46 C 46 51 45 58 39 63 C 31 69 31 76 41 78 C 51 80 63 78 72 76 Z"/><path fill="#6654A9" d="M 50 43.5 Q 50 50 56.5 50 Q 50 50 50 56.5 Q 50 50 43.5 50 Q 50 50 50 43.5 Z"/></svg>
+      <span>Sinapsi</span>
+    </div>
+    <p class="tag">AI that helps you think, and <em class="acc">never thinks for you.</em></p>
+    <p class="flow">Your notes → concept graph → memory → practice → readiness</p>
+  </div>
+  <div class="clock" id="clock">0:00 / 1:00</div>
+</section>
+
+<!-- Shared concept graph: one layer that travels across slides 1, 2 and 6 -->
+<svg id="graph" viewBox="0 0 1920 1080" aria-hidden="true">
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#1D1B18"/></marker></defs>
+  <g id="edges"></g><g id="nodes"></g>
+</svg>
+
+<div class="chrome" id="count">01 / 06</div><div class="bar" id="bar"></div>
+</div></div>
+
+<script>
+/* === STAGE SCALING: the 1920x1080 canvas scales as one piece === */
+const stage=document.getElementById('stage');
+function fit(){stage.style.setProperty('--s',Math.min(innerWidth/1920,innerHeight/1080))}
+addEventListener('resize',fit);fit();
+const RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const Q=new URLSearchParams(location.search);            // ?s=3 opens slide 3, ?all shows every step
+
+/* === CONCEPT GRAPH LAYER === */
+const N=[['cont','Continuity'],['der','Derivative'],['wei','Weierstrass'],['fer','Fermat'],['rol','Rolle'],['lag','Lagrange'],['cau','Cauchy'],['tay','Taylor']];
+const E=[['cont','wei'],['der','fer'],['wei','rol'],['fer','rol'],['rol','lag'],['rol','cau'],['lag','tay'],['cau','tay']];
+const P1={cont:[200,440],der:[200,640],wei:[400,440],fer:[400,640],rol:[590,540],lag:[760,440],cau:[760,640],tay:[900,540]};   // slide 1: left half
+const P2={rol:[1363,410],lag:[1242,458],wei:[1406,503],fer:[1482,507]};                                                              // slide 2: on top of the app's own nodes
+const P6={cont:[360,170],der:[360,400],wei:[660,170],fer:[660,400],rol:[960,285],lag:[1260,170],cau:[1260,400],tay:[1560,285]}; // slide 6: across the top
+const UP=new Set(['cont','wei','lag']);
+const NS='http://www.w3.org/2000/svg',cur={},el={},eel=[];
+const mk=(t,p)=>p.appendChild(document.createElementNS(NS,t));
+E.forEach(()=>{const l=mk('line',document.getElementById('edges'));l.setAttribute('stroke','#1D1B18');l.setAttribute('stroke-width','1.6');l.setAttribute('marker-end','url(#ah)');eel.push(l)});
+N.forEach(([id,name])=>{const g=mk('g',document.getElementById('nodes')),c=mk('circle',g),t=mk('text',g);t.textContent=name;el[id]={g,c,t};
+  cur[id]={x:P1[id][0],y:P1[id][1],o:0,f:1,r:13,lo:1,broken:false,accent:false}});
+function draw(){
+  N.forEach(([id])=>{const n=cur[id],{g,c,t}=el[id];g.setAttribute('opacity',n.o);
+    c.setAttribute('cx',n.x);c.setAttribute('cy',n.y);c.setAttribute('r',n.r);
+    const col=n.accent||n.broken?'#6654A9':'#1D1B18';
+    c.setAttribute('fill',n.accent?'#6654A9':'#1D1B18');c.setAttribute('fill-opacity',n.f);
+    c.setAttribute('stroke',col);c.setAttribute('stroke-width',2);c.setAttribute('stroke-dasharray',n.broken?'5 5':'none');
+    t.setAttribute('x',n.x);t.setAttribute('y',UP.has(id)?n.y-n.r-14:n.y+n.r+30);t.setAttribute('opacity',n.lo)});
+  E.forEach(([a,b],i)=>{const A=cur[a],B=cur[b],l=eel[i],dx=B.x-A.x,dy=B.y-A.y,d=Math.hypot(dx,dy)||1,ga=A.r+5,gb=B.r+9;
+    l.setAttribute('x1',A.x+dx/d*ga);l.setAttribute('y1',A.y+dy/d*ga);l.setAttribute('x2',B.x-dx/d*gb);l.setAttribute('y2',B.y-dy/d*gb);
+    const br=A.broken;l.setAttribute('stroke-dasharray',br?'3 13':'none');l.setAttribute('opacity',Math.min(A.o,B.o)*(br?.55:1)*Math.min(1,d/60))})}
+let raf=0;
+function tween(target,dur=800,stagger=0){
+  cancelAnimationFrame(raf);const from={},t0=performance.now();
+  N.forEach(([id],i)=>{from[id]={...cur[id]};cur[id].broken=target[id].broken;cur[id].accent=target[id].accent;from[id].d=i*stagger});
+  if(RM)dur=1,stagger=0;
+  (function step(now){let done=true;
+    N.forEach(([id])=>{const k=Math.min(1,Math.max(0,(now-t0-from[id].d)/dur)),e=1-Math.pow(1-k,3);if(k<1)done=false;
+      for(const p of['x','y','o','f','r','lo'])cur[id][p]=from[id][p]+(target[id][p]-from[id][p])*e});
+    draw();if(!done)raf=requestAnimationFrame(step)})(t0)}
+const base=(P,o=1)=>Object.fromEntries(N.map(([id])=>[id,{x:P[id][0],y:P[id][1],o,f:1,r:13,lo:1,broken:false,accent:false}]));
+let landT=0,fillT=0,filled=0,clockT=0;
+function graphFor(i,step){
+  clearTimeout(landT);clearInterval(fillT);clearInterval(clockT);
+  if(i===0){const t=base(P1,step>=1?1:0);
+    if(step>=2){t.rol.f=0;t.rol.broken=true;for(const id of['lag','cau','tay'])t[id].o=.28}
+    tween(t,step===2?650:700,step===1?70:step===2?130:0)}
+  else if(i===1){const t=base(P1,0);
+    N.forEach(([id])=>{t[id].x=1340;t[id].y=480;t[id].lo=0;t[id].r=9});
+    for(const id in P2)Object.assign(t[id],{x:P2[id][0],y:P2[id][1],o:1,f:0,r:9});
+    if(cur.rol.o<.05){for(const id in P2)t[id].o=0;tween(t,1)}       // arriving from elsewhere: no flight
+    else{tween(t,900);landT=setTimeout(()=>{const u=JSON.parse(JSON.stringify(t));for(const id in P2)u[id].o=0;tween(u,450)},1000)}}
+  else if(i===5){const order=N.map(n=>n[0]);
+    const make=()=>{const t=base(P6,.9);order.forEach((id,k)=>{t[id].f=k<filled?1:0;t[id].lo=.75});if(filled>=order.length)t.tay.accent=true;return t};
+    filled=Q.has('all')?order.length:0;tween(make(),900,60);
+    fillT=setInterval(()=>{if(filled<order.length){filled++;tween(make(),600)}else clearInterval(fillT)},7000);
+    const c=document.getElementById('clock'),s0=Date.now();c.textContent='0:00 / 1:00';
+    clockT=setInterval(()=>{const s=Math.min(60,Math.floor((Date.now()-s0)/1000));c.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' / 1:00';c.style.color=s>=60?'#6654A9':''},500)}
+  else{const t=JSON.parse(JSON.stringify(cur));N.forEach(([id])=>{t[id].o=0});tween(t,350)}}
+
+/* === NUMBER COUNTERS === */
+function count(n){const to=+n.dataset.count,dec=+(n.dataset.dec||0),pre=n.dataset.pre||'',suf=n.dataset.suf||'',dur=RM?1:+(n.dataset.dur||800),t0=performance.now();
+  (function f(now){const k=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-k,3);n.textContent=pre+(to*e).toFixed(dec)+suf;if(k<1)requestAnimationFrame(f)})(t0)}
+
+/* === NAVIGATION: each click reveals one step, then moves to the next slide === */
+const slides=[...document.querySelectorAll('.slide')];
+const maxStep=s=>Math.max(0,...[...s.querySelectorAll('[data-f]')].map(e=>+e.dataset.f));
+let I=0,S=0;
+function show(i,s){
+  I=Math.max(0,Math.min(slides.length-1,i));const sl=slides[I];S=Math.max(0,Math.min(maxStep(sl),s));
+  slides.forEach((x,k)=>x.classList.toggle('active',k===I));sl.dataset.step=S;
+  sl.querySelectorAll('[data-f]').forEach(e=>{const on=+e.dataset.f<=S,was=e.classList.contains('on');e.classList.toggle('on',on);
+    if(on&&!was&&!Q.has('all'))(e.matches('[data-count]')?[e]:[...e.querySelectorAll('[data-count]')]).forEach(count)});
+  document.getElementById('count').textContent=String(I+1).padStart(2,'0')+' / '+String(slides.length).padStart(2,'0');
+  document.getElementById('bar').style.width=((I+1)/slides.length*100)+'%';
+  graphFor(I,S);history.replaceState(null,'',location.pathname+location.search+'#'+(I+1))}
+const next=()=>S<maxStep(slides[I])?show(I,S+1):I<slides.length-1&&show(I+1,0);
+const prev=()=>S>0?show(I,S-1):I>0&&show(I-1,99);
+addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'&&document.body.classList.contains('editing')){e.preventDefault();save();return}
+  if(e.key.toLowerCase()==='e'&&!e.metaKey&&!e.ctrlKey&&!(document.activeElement&&document.activeElement.isContentEditable)){toggleEdit();return}
+  if(e.key==='Escape'&&document.body.classList.contains('editing')){toggleEdit();return}
+  if(document.body.classList.contains('editing'))return;
+  if(['ArrowRight','ArrowDown',' ','PageDown','Enter'].includes(e.key)){e.preventDefault();next()}
+  else if(['ArrowLeft','ArrowUp','PageUp','Backspace'].includes(e.key)){e.preventDefault();prev()}
+  else if(e.key==='Home')show(0,0);else if(e.key==='End')show(slides.length-1,0);
+  else if(e.key.toLowerCase()==='f')document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()});
+stage.addEventListener('click',()=>{if(!document.body.classList.contains('editing'))next()});
+let tx=0;addEventListener('touchstart',e=>tx=e.touches[0].clientX,{passive:true});
+addEventListener('touchend',e=>{const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50)d<0?next():prev()},{passive:true});
+
+/* === INLINE EDITING: E toggles, Ctrl/Cmd+S downloads an edited copy === */
+const TEXT='h1,p,b,span,small,q,.h,.mono,.kicker,.capt,.pill,.cap,.src,.foot,.num,.no';
+function toggleEdit(){const on=document.body.classList.toggle('editing');
+  document.querySelectorAll('.slide '+TEXT).forEach(e=>{if(!e.querySelector(TEXT))on?e.setAttribute('contenteditable','true'):e.removeAttribute('contenteditable')})}
+function save(){const d=document.documentElement.cloneNode(true);
+  d.querySelector('body').classList.remove('editing');d.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
+  d.querySelectorAll('.on,.active').forEach(e=>e.classList.remove('on','active'));d.querySelectorAll('#edges,#nodes').forEach(e=>e.innerHTML='');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['<!doctype html>\n'+d.outerHTML],{type:'text/html'}));a.download='sinapsi-pitch.html';a.click()}
+
+const start=+(Q.get('s')||location.hash.slice(1)||1)-1;
+show(start,Q.has('all')?99:0);
+</script>
+</body>
+</html>

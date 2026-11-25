@@ -4,9 +4,9 @@ import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeTutor } from '../../src/main/practice/fake-tutor'
 import { PRACTICE_SYSTEM_PROMPT } from '../../src/main/practice/prompt'
-import { createPracticeRunner } from '../../src/main/practice/runner'
+import { createPracticeRunner, gradeFor } from '../../src/main/practice/runner'
 import { memoryStore, type MemoryStore } from '../../src/main/memory/store'
-import type { PracticeTurn } from '../../src/shared/practice-protocol'
+import type { PracticeTurn, Submission } from '../../src/shared/practice-protocol'
 
 const material = { conceptIds: ['n_1', 'n_2'], sourceIds: [], free: '' }
 const problem = { id: 'p1', statement: 'Mostra che…', mode: 'recall' as const, targets: ['n_1', 'n_2'], modelSolution: 'Valor medio.' }
@@ -43,7 +43,7 @@ describe('training', () => {
   it('sends hints and thinking, and writes the outcome into memory for every target', async () => {
     const { runner, converse } = setup([
       { phase: 'warmup', blocks: [], problem },
-      { phase: 'warmup', blocks: [], hint: { rung: 3, md: 'Il teorema del valor medio.' } },
+      { phase: 'warmup', blocks: [], hint: { rung: 3, md: 'Il teorema del valor medio.', conceptId: 'n_1' } },
       { phase: 'warmup', blocks: [{ type: 'text', md: 'La tua riformulazione è corretta.' }] },
       { phase: 'warmup', blocks: [], conclude: { outcome: 'solved_hints', verdict: 'Con aiuti.', retest: true } }
     ])
@@ -57,28 +57,34 @@ describe('training', () => {
     await runner.submit(id, { kind: 'restate', text: 'applico il teorema alla funzione' })
     expect((converse.mock.calls[2][0] as unknown as { prompt: string; resume: boolean })).toMatchObject({ prompt: "Riformulo l'indizio con parole mie: applico il teorema alla funzione", resume: true })
     await runner.submit(id, { kind: 'thinking', text: 'uso il valor medio' })
-    const reviews = await mem.read()
-    expect(reviews).toMatchObject([
-      { conceptId: 'n_1', at: 1000, grade: 1, correct: true, via: 'practice' },
-      { conceptId: 'n_2', at: 1000, grade: 1, correct: true, via: 'practice' }
-    ])
+    await vi.waitFor(async () => expect((await mem.read()).map((r) => r.conceptId)).toEqual(['n_1']))
+    expect((await mem.read())[0]).toMatchObject({ at: 1000, grade: 2, correct: false, via: 'practice' })
     expect((await runner.get(id)).paused).toBe(true)
     expect([...(await runner.practiced())].sort()).toEqual(['n_1', 'n_2'])
   })
   it.each([
-    ['solved', undefined, 3],
-    ['solved_hints', 1, 2],
-    ['surrendered', undefined, 1]
-  ] as const)('grades %s (max rung %s) as %i', async (outcome, rung, grade) => {
+    ['solved', undefined, 3, true],
+    ['solved', 2, 2, false],
+    ['solved_hints', 1, 2, false],
+    ['solved_hints', 5, 2, false],
+    ['surrendered', undefined, 1, false]
+  ] as const)('grades %s (max rung %s) as %i', async (outcome, rung, grade, correct) => {
     const turns: PracticeTurn[] = [{ phase: 'body', blocks: [], problem: { ...problem, targets: ['n_1'] } }]
-    if (rung !== undefined) turns.push({ phase: 'body', blocks: [], hint: { rung, md: 'x' } })
+    if (rung !== undefined) turns.push({ phase: 'body', blocks: [], hint: { rung, md: 'x', conceptId: 'n_1' } })
     turns.push({ phase: 'body', blocks: [], conclude: { outcome, verdict: 'v', retest: false } })
     const { runner } = setup(turns)
     const id = await runner.create(material)
     await runner.retry(id)
     if (rung !== undefined) await runner.submit(id, { kind: 'thinking', text: 'boh' })
-    await runner.submit(id, outcome === 'surrendered' ? { kind: 'dismiss' } : { kind: 'thinking', text: 'x' })
-    expect((await mem.read())[0]).toMatchObject({ grade, correct: outcome !== 'surrendered' })
+    const finalSub: Submission =
+      outcome === 'surrendered'
+        ? { kind: 'dismiss' }
+        : rung !== undefined && rung >= 3
+          ? { kind: 'restate', text: 'x' }
+          : { kind: 'thinking', text: 'x' }
+    await runner.submit(id, finalSub)
+    if (outcome === 'surrendered') expect(await mem.read()).toEqual([])
+    else await vi.waitFor(async () => expect((await mem.read())[0]).toMatchObject({ grade, correct }))
   })
   it('asks once to fix a turn that breaks the session rules, then gives up with Riprova', async () => {
     const bad: PracticeTurn = { phase: 'warmup', blocks: [], conclude: { outcome: 'solved', verdict: 'x', retest: false } }
@@ -118,7 +124,7 @@ describe('training', () => {
     const { runner, material: lessonMaterial } = setup([
       { phase: 'warmup', blocks: [], problem },
       { phase: 'warmup', blocks: [], hint: { rung: 1, md: 'x' } },
-      { phase: 'warmup', blocks: [], hint: { rung: 1, md: 'mirato' } },
+      { phase: 'warmup', blocks: [], hint: { rung: 1, md: 'mirato', conceptId: 'n_1' } },
       { phase: 'warmup', blocks: [], conclude: { outcome: 'solved_hints', verdict: 'ok', retest: false } }
     ], { lessonId: 'lesson-1', onCompass, onSolved })
     const id = await runner.create(lessonMaterial)
@@ -128,7 +134,7 @@ describe('training', () => {
     expect(onCompass).toHaveBeenCalledWith('lesson-1', 'Quale ipotesi serve?')
     await runner.submit(id, { kind: 'thinking', text: 'risolto' })
     expect(onSolved).toHaveBeenCalledWith('lesson-1', ['Quale ipotesi serve?'])
-    expect((await mem.read())[0].rung).toBe(1)
+    await vi.waitFor(async () => expect((await mem.read())[0]?.rung).toBe(1))
   })
   it('sends back a hint above rung 0 when nothing has been tried yet', async () => {
     const { runner, converse } = setup([
@@ -238,5 +244,62 @@ describe('fake tutor', () => {
     expect(onDone).toHaveBeenCalledTimes(1)
     await practice.get(id)
     expect(onDone).toHaveBeenCalledTimes(1)
+  })
+
+  it('only resolves weaknesses when solved unaided (rung 0)', async () => {
+    const resolveByEvidence = vi.fn()
+    const weaknesses = {
+      append: vi.fn(),
+      resolveByEvidence,
+      read: vi.fn(async () => []),
+      active: vi.fn(async () => [])
+    }
+    const turnsWithHint: PracticeTurn[] = [
+      { phase: 'body', blocks: [], problem: { ...problem, targets: ['n_1'] } },
+      { phase: 'body', blocks: [], hint: { rung: 2, md: 'hint' } },
+      { phase: 'body', blocks: [], conclude: { outcome: 'solved', verdict: 'ok', retest: false } }
+    ]
+    const converse = vi.fn(async (req: { conversationId: string; schema: { parse(x: unknown): unknown } }) => {
+      const t = turnsWithHint.shift()!
+      return { data: req.schema.parse(t), conversationId: req.conversationId, engine: 'claude' as const }
+    })
+    const runner = createPracticeRunner({
+      bridge: { converse, ask: vi.fn() } as never,
+      dir: join(dir, 'p_weak'),
+      material: async () => 'mat',
+      topic: async () => 'top',
+      memory: mem,
+      weaknesses: weaknesses as never,
+      onUpdate: vi.fn()
+    })
+    const id = await runner.create(material)
+    await runner.retry(id)
+    await runner.submit(id, { kind: 'thinking', text: 'ask hint' })
+    await runner.submit(id, { kind: 'thinking', text: 'solved it' })
+    expect(resolveByEvidence).not.toHaveBeenCalled()
+  })
+})
+
+describe('gradeFor', () => {
+  it('maps outcomes and rungs according to unified rubric', () => {
+    // solved unaided → 3
+    expect(gradeFor('solved', 0)).toBe(3)
+    expect(gradeFor('solved', null)).toBe(3)
+    expect(gradeFor('solved', undefined)).toBe(3)
+
+    // solved with hints (rung >= 1) → 2
+    expect(gradeFor('solved', 1)).toBe(2)
+    expect(gradeFor('solved', 3)).toBe(2)
+
+    // solved_hints (any rung) → 2
+    expect(gradeFor('solved_hints', 0)).toBe(2)
+    expect(gradeFor('solved_hints', 1)).toBe(2)
+    expect(gradeFor('solved_hints', 5)).toBe(2)
+    expect(gradeFor('solved_hints', null)).toBe(2)
+
+    // surrendered → 1
+    expect(gradeFor('surrendered', 0)).toBe(1)
+    expect(gradeFor('surrendered', 3)).toBe(1)
+    expect(gradeFor('surrendered', null)).toBe(1)
   })
 })

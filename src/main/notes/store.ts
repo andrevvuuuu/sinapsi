@@ -1,26 +1,15 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { Engine } from '../../shared/settings-schema'
-import type { Nota } from '../../shared/nota-schema'
+import type { MoveLine } from '../../shared/graph-types'
+import { resolvePath } from '../graph/resolve-path'
 
-export type StoredNote = {
-  id: string
-  createdAt: number
-  updatedAt: number
-  status: 'generating' | 'ready' | 'error'
-  error?: string
-  sourcePath: string
-  sourceTitle: string
-  /** sha256 of the Obsidian note it was written from: a different hash means the note changed since. */
-  sourceHash?: string
-  sessionId?: string
-  engine?: Engine
-  dropped?: number
-  nota?: Nota
-}
-export type NoteMeta = Omit<StoredNote, 'nota'> & { title: string }
+import type { NoteMeta, StoredNote } from '../../shared/notes-types'
+export type { NoteMeta, StoredNote } from '../../shared/notes-types'
 
-export const toMeta = ({ nota, ...rest }: StoredNote): NoteMeta => ({ ...rest, title: nota?.title ?? rest.sourceTitle })
+export const toMeta = ({ nota, sourceSections: _s, sourceIntroHash: _i, ...rest }: StoredNote): NoteMeta => ({
+  ...rest,
+  title: nota?.title ?? rest.sourceTitle
+})
 
 /** One JSON file per nota viva; whole-file writes through a temp file, so a crash never leaves half a note. */
 export type NoteStore = { write(n: StoredNote): Promise<void>; read(id: string): Promise<StoredNote>; all(): Promise<StoredNote[]> }
@@ -58,4 +47,4 @@ export function noteStore(dir: string): NoteStore {
 }
 
 /** Notes whose nota viva is ready: the only ones the graph shows and background extraction touches. */
-export const readySources = (list: Pick<NoteMeta, 'sourcePath' | 'status'>[]): Set<string> => new Set(list.filter((m) => m.status === 'ready').map((m) => m.sourcePath))
+export const readySources = (list: Pick<NoteMeta, 'sourcePath' | 'status'>[], moves: Pick<MoveLine, 'from' | 'to' | 'at'>[] = []): Set<string> => new Set(list.filter((m) => m.status === 'ready').map((m) => resolvePath(m.sourcePath, moves)))

@@ -61,8 +61,9 @@ button.back-btn.back-btn.back-btn:focus-visible{outline:var(--btn-focus-ring);ou
 .glass-shell{padding:6px}
 /* Segmented controls (Seg in glass.tsx): the library's tabs. The Tabs root takes no box, so the track sits where the old group did. */
 .seg-root{display:contents}
-/* The library dims unselected tabs to 85 %: the labels keep the app's AA colours instead. */
-.seg-track .lg-tab{opacity:1}
+/* The library dims unselected tabs to 85 %: the labels keep the app's AA colours instead. Its 26 px tab is a toolbar size: the app's
+   segmented pickers are 44 px targets (design.md), with the library's large label. */
+.seg-track .lg-tab{opacity:1;height:var(--ctl);padding-inline:12px;font-size:13px}
 .seg-track .lg-tab[data-active]{color:var(--ink)}
 /* The selection is ringed (--seg-edge, 3:1 on its track): inset, so the surface's outline does not clip it, and rounded as the
    outline the library draws (it flattens the radius inline and publishes it as --lg-radius). */

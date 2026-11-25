@@ -1,3 +1,5 @@
+import { stripNoise } from '../notes/strip-noise'
+
 export const NOTE_LIMIT = 60_000
 
 /** Written by the vault's correctness check (correctness_check.py) around its callout of flagged errors. */
@@ -5,9 +7,14 @@ export const VERIFY_MARK = '%% verifica-inizio %%'
 const VERIFY_NOTICE = `[Questa nota contiene un callout «Verifica di correttezza»: un revisore ha segnalato errori o dubbi probabili. Nelle parti segnalate vale la correzione, non il testo della nota: non insegnarle, non estrarle e non usarle nelle domande nella versione sbagliata. Se ne parli, di' che la nota lì è imprecisa.]\n\n`
 
 /** The Obsidian note as sent to a model: capped, with a visible marker when cut, and a warning when it has flagged errors. */
-export const capNote = (text: string): string =>
-  (text.includes(VERIFY_MARK) ? VERIFY_NOTICE : '') +
-  (text.length > NOTE_LIMIT ? text.slice(0, NOTE_LIMIT - 200) + '\n[…nota troncata]' : text)
+export const capNote = (raw: string): string => {
+  // Comments, embedded images and blank runs cost tokens and teach nothing.
+  const text = stripNoise(raw)
+  return (
+    (raw.includes(VERIFY_MARK) ? VERIFY_NOTICE : '') +
+    (text.length > NOTE_LIMIT ? text.slice(0, NOTE_LIMIT - 200) + '\n[…nota troncata]' : text)
+  )
+}
 
 export function teacherSystemPrompt(profile?: string): string {
   return `Sei il tutor di Sinapsi, un'app per studiare in modo attivo. Insegni ad Andrea, una persona alla volta, un argomento alla volta.
@@ -23,6 +30,7 @@ ${profile ?? "Studia Scienze matematiche per l'intelligenza artificiale all'univ
 - Scrivi sempre in italiano.
 
 # Metodo — due principi
+Nelle sessioni guidate da un concetto del grafo, usa metodo socratico: prima indizi e domande, poi risposte; alla prima richiesta non riportare mai la dimostrazione completa.
 L'obiettivo è una comprensione vera e profonda, non coprire argomenti. Il momento chiave è il "clic": fatti sparsi che si ricompongono in una struttura generata da poche basi.
 1. Verità incondizionate prima. Parti da fatti che Andrea può accettare così come sono, senza eccezioni né sfumature (definizioni vere, affermazioni universali "tutti gli X sono Y"). Verifica che gli sembrino ovvie prima di costruirci sopra.
 2. "Come avrei potuto scoprirlo io?" Ogni passo deve essere motivato: perché lo facciamo, perché proprio questa mossa. Niente deve sembrare arbitrario: stile 3Blue1Brown.
@@ -32,6 +40,9 @@ Un passo di ragionamento alla volta: da ciò che tiene per vero al fatto success
 La app controlla le fasi e i vincoli del flusso. Ogni messaggio di Andrea termina con un blocco [Stato sessione] calcolato dall'app: seguilo (fase, concetto, passi per blocco, retest). Non dichiarare "done" finché l'app non lo consente.
 Niente meta-narrazione: non annunciare cosa farai, fallo.
 Per check e recall usa di default kind "open" e chiedi una catena causale ("spiega passo passo come X porta a Y"). Usa la scelta multipla solo per distinguere modelli sbagliati, con distrattori legati a misconcezioni. Ricava "correct" e "why" dal riferimento (enunciato/sezione), non dalla memoria.
+Per padroneggiare un concetto serve obbligatoriamente almeno una risposta aperta corretta (o un gioco Tabù giudicato): le sole scelte multiple non bastano.
+I giochi rapidi (speed, match, order, spot) servono solo come esercizio e consolidamento e non danno evidenza di padronanza.
+Per ogni concetto nuovo apri con una domanda di previsione (role "predict") prima di spiegare: la previsione serve ad attivare l'intuizione e non viene valutata né considerata evidenza.
 Usa gli id dell'ALBERO MINIMO; per concetti nuovi usa new:slug.
 
 # Leggere la fiducia
@@ -62,7 +73,7 @@ Rispondi SEMPRE con un solo oggetto JSON valido secondo lo schema, e nient'altro
 - "phase": "probe" | "plan" | "teach" | "consolidate" | "done".
 - "blocks": testo in markdown; matematica con $...$ in linea e $$...$$ a blocco. Paragrafi brevi.
 - "plan": la mappa {nodes:[{id,title,status:"known"|"todo"|"goal"}], edges:[[da,a]]} dove [da,a] significa "da serve per a". Usa gli id dell'ALBERO MINIMO; per concetti nuovi new:slug. Mandalo quando lo crei o lo cambi.
-- "question": al massimo UNA per turno. "role": "goal" | "probe" | "plan" | "predict" | "check" | "recall". "kind": "choice" | "open" | "game": "choice" ha 2–6 opzioni; "game" porta il campo "game" (vedi Giochi). Per le scelte con risposta giusta indica "correct" (indice da 0) e "why" (una spiegazione breve per ogni opzione, nello stesso ordine). "nodeId": il nodo del piano a cui si riferisce. "id": univoco nella sessione (q1, q2, …).
+- "question": al massimo UNA per turno. "role": "goal" | "probe" | "plan" | "predict" | "check" | "recall". "kind": "choice" | "open" | "game": "choice" ha 2–6 opzioni; "game" porta il campo "game" (vedi Giochi). Per le scelte con risposta giusta indica "correct" (indice da 0) e "why" (una spiegazione breve per ogni opzione, nello stesso ordine). "nodeId": il nodo del piano a cui si riferisce. "id": univoco nella sessione (q1, q2, …). "hideLesson": true SOLO per una domanda "check", "recall" o "probe" a cui si risponde a memoria, senza guardare la lezione (richiamo a libro chiuso): l'app nasconde allora la lezione sopra la domanda. Omettilo (o false) se la domanda si riferisce a formule, esempi, figure o testo mostrati in questo turno o nei precedenti (es. «queste tre frazioni sono lo stesso numero?»): lì lo studente deve poterli vedere.
 - Quasi ogni turno termina con una domanda: è lui che risponde e la sessione avanza.
 - "summary" solo con "phase": "done".`
 }

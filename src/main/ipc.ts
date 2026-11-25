@@ -30,7 +30,8 @@ import {
   makeVoiceHandlers,
   makeLessonHandlers,
   makeExamHandlers,
-  practiceTopic
+  practiceTopic,
+  resolveOtherEngine
 } from './ipc-handlers'
 import { createExamService } from './practice/exam'
 import { fakeTutor } from './practice/fake-tutor'
@@ -47,7 +48,9 @@ import { memoryOf } from './memory/fsrs'
 import { memoryStore, weaknessStore } from './memory/store'
 import { reviewSessions } from './memory/history'
 import { variantsStore } from './memory/variants'
+import { confusableSiblings } from '../shared/siblings'
 import { transcribeVoice } from './memory/voice'
+import { misconceptionConceptIds } from '../shared/memory-types'
 import { createDictation, findWhisperPython, spawnWhisperServer } from './voice/dictation'
 import whisperServer from '../../resources/whisper_server.py?asset&asarUnpack'
 import { fakeExtractBridge } from './graph/fake-extract'
@@ -55,6 +58,7 @@ import { createExtractor, type Extractor } from './graph/jobs'
 import { graphStore } from './graph/store'
 import { fakeNoteBridge } from './notes/fake-note'
 import { createNoteGenerator } from './notes/generator'
+import { sectionText } from './notes/section-text'
 import { readySources } from './notes/store'
 import { createLinkedSync } from './vault/linked'
 import { fakeTeacher, LONG_MEASURE_SCRIPT } from './session/fake-teacher'
@@ -69,9 +73,17 @@ import { buildWeekPlan } from './planner/plan'
 import { readinessFor } from './planner/readiness'
 import { pendingDigest, reduceLessons } from './lessons/reduce'
 import { loadSettings, saveSettings } from './store/settings'
-import { scanVault } from './vault/scan'
+import type { EngineChoice } from '../shared/settings-schema'
+import { createVaultIndexCache } from './vault/index-cache'
 import { createRewatcher, watchVault } from './vault/watch'
 import { detectMoves, detectOfflineMoves } from './graph/moves'
+import { resolvePath } from './graph/resolve-path'
+import { createChainExplainer, fakeChainExplainBridge } from './graph/explain'
+
+/** Grading writes several review lines in a row: one memory:changed for the burst. */
+const MEMORY_CHANGED_DEBOUNCE_MS = 250
+
+export { resolveOtherEngine } from './ipc-handlers'
 
 export function registerIpc(): { bridge: Bridge } {
   // Assigned below; the session and note hooks only run after registration.
@@ -89,10 +101,12 @@ export function registerIpc(): { bridge: Bridge } {
         save: saveSettings
       }
     : { load: loadSettings, save: saveSettings }
+  const otherEngine = async (): Promise<EngineChoice> => resolveOtherEngine(await settings.load())
+  const vaultCache = createVaultIndexCache()
   const h = makeHandlers({
     loadSettings: settings.load,
     saveSettings: settings.save,
-    scan: scanVault,
+    scan: (root, excluded) => vaultCache.get(root, excluded),
     aiStatus: () => bridge.status(),
     openExternal: (url) => shell.openExternal(url),
     chooseFolder: async () => {
@@ -114,6 +128,7 @@ export function registerIpc(): { bridge: Bridge } {
   // eslint-disable-next-line prefer-const
   let linkedSync: ReturnType<typeof createLinkedSync> | undefined
   const rewatch = createRewatcher(settings.load, watchVault, async (paths) => {
+    vaultCache.invalidate()
     const idx = await h.vaultIndex()
     if ('error' in idx) return
     if (lastIndex) {
@@ -139,11 +154,15 @@ export function registerIpc(): { bridge: Bridge } {
 
   ipcMain.handle(CH.settingsGet, () => h.settingsGet())
   ipcMain.handle(CH.settingsSet, async (_e, patch) => {
+    if (patch && typeof patch === 'object' && ('vaultPath' in patch || 'excludedFolders' in patch)) {
+      vaultCache.invalidate()
+    }
     const s = await h.settingsSet(patch)
     if (patch && typeof patch === 'object' && 'vaultPath' in patch) void rewatch()
     return s
   })
   ipcMain.handle(CH.settingsChooseVault, async () => {
+    vaultCache.invalidate()
     const s = await h.settingsChooseVault()
     void rewatch()
     return s
@@ -154,8 +173,14 @@ export function registerIpc(): { bridge: Bridge } {
   bridge.onStatus((s) => broadcast(CH.aiStatusChanged, s))
 
   const memoryDir = join(dataDir(), 'memory')
-  const sessionMemory = memoryStore(memoryDir)
-  const sessionWeaknesses = weaknessStore(memoryDir)
+  // One instance each: their read caches (mtime + size) work only if every service shares them.
+  // Every review line goes through memStore, so one event tells the window the memory changed (debounced: grading writes in bursts).
+  let memoryTimer: ReturnType<typeof setTimeout> | undefined
+  const memStore = memoryStore(memoryDir, () => {
+    clearTimeout(memoryTimer)
+    memoryTimer = setTimeout(() => broadcast(CH.memoryChanged, null), MEMORY_CHANGED_DEBOUNCE_MS)
+  })
+  const weakStore = weaknessStore(memoryDir)
   const runner = createSessionRunner({
     bridge:
       process.env.SINAPSI_FAKE_TEACHER === '1'
@@ -172,14 +197,18 @@ export function registerIpc(): { bridge: Bridge } {
     },
     readNote: (path) => readFile(path, 'utf8'),
     games: async () => (await settings.load()).gamesInSessions,
-    memoryStore: sessionMemory,
+    memoryStore: memStore,
     memory: async (notePath) =>
       memoryBrief(
         await extractor.graph(),
-        memoryOf(await memoryStore(join(dataDir(), 'memory')).read(), Date.now()),
+        memoryOf(
+          await memStore.read(),
+          Date.now(),
+          misconceptionConceptIds(await weakStore.active())
+        ),
         notePath
       ),
-    weaknesses: sessionWeaknesses,
+    weaknesses: weakStore,
     graph: () => extractor.graph(),
     settings: async () => {
       const current = await settings.load()
@@ -190,22 +219,14 @@ export function registerIpc(): { bridge: Bridge } {
         fastStart: current.fastStart
       }
     },
-    otherEngine: async () => {
-      const current = await settings.load()
-      const teach = current.engines.teach
-      const grader = current.engines.grade
-      if (grader.engine !== teach.engine) return grader
-      return {
-        engine: teach.engine === 'claude' ? 'agy' : 'claude',
-        model: teach.engine === 'claude' ? 'gemini-3.8-flash-medium' : 'sonnet'
-      }
-    },
+    otherEngine,
     teachEngine: async () => (await settings.load()).engines.teach,
     onPartial: (id, text) => broadcast(CH.sessionPartial, { id, text }),
     onUpdate: (s) => {
       broadcast(CH.sessionUpdated, s)
     }
   })
+  void runner.recover().catch((e) => console.warn('[session] recover fallito', e))
   const sh = makeSessionHandlers(runner)
   // Turns can take a while: the window learns progress through session:updated, so these return at once.
   const background = (p: Promise<unknown>): void =>
@@ -215,8 +236,8 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.sessionConfirm, (_e, id, notePath) =>
     background(runner.confirm(String(id), notePath == null ? null : String(notePath)))
   )
-  ipcMain.handle(CH.sessionStart, async (_e, topic) => {
-    const id = await runner.create(String(topic))
+  ipcMain.handle(CH.sessionStart, async (_e, topic, opts) => {
+    const id = await runner.create(String(topic), opts?.goalIds)
     background(runner.retry(id))
     return id
   })
@@ -339,11 +360,12 @@ export function registerIpc(): { bridge: Bridge } {
             () => broadcast(CH.graphChanged, { status })
           )
     },
-    eligible: async () => readySources(await notes.list()),
+    eligible: async () => readySources(await notes.list(), (await store.read()).moves),
     priorities: async () => {
       const idx = await vaultOrNull()
       if (!idx) return []
-      const paths = new Set((await notes.list()).map((m) => m.sourcePath))
+      const moves = (await store.read()).moves
+      const paths = new Set((await notes.list()).map((m) => resolvePath(m.sourcePath, moves)))
       return [
         ...new Set(
           idx.notes.filter((n) => paths.has(n.path) && n.subject).map((n) => n.subject as string)
@@ -354,7 +376,7 @@ export function registerIpc(): { bridge: Bridge } {
   linkedSync = createLinkedSync({
     vault: vaultOrNull,
     readNote: (path) => readFile(path, 'utf8'),
-    studied: async () => readySources(await notes.list()),
+    studied: async () => readySources(await notes.list(), (await store.read()).moves),
     refreshNote: (path) => notes.refresh(path),
     reextract: (path) => extractor.request(path, 'linked')
   })
@@ -368,22 +390,41 @@ export function registerIpc(): { bridge: Bridge } {
       await rename(positionsFile + '.tmp', positionsFile)
     }
   })
+  const chainSource = async (chainId: string): Promise<import('../shared/graph-types').ChainSource> => {
+    const graph = await gh.get()
+    const chain = graph.chains.find((c) => c.id === chainId)
+    if (!chain) throw new Error('chain not found')
+    const byId = new Map(graph.concepts.map((c) => [c.id, c]))
+    const notePath = chain.notes[0] ?? byId.get(chain.conclusion)?.birth ?? ''
+    const content = notePath ? await readFile(notePath, 'utf8').catch(() => '') : ''
+    const concept = (id: string) => { const c = byId.get(id); return { id, name: c?.name ?? '', statement: c?.statement ?? '' } }
+    const ids = [...new Set([...chain.premises, chain.conclusion])]
+    return { chainId: chain.id, notePath, premises: chain.premises.map(concept), conclusion: concept(chain.conclusion), excerpts: content ? ids.map((id) => { const heading = byId.get(id)?.sections[notePath] ?? ''; return { conceptId: id, heading, text: sectionText(content, [heading]).slice(0, 1200) } }).filter((x) => !!x.heading && !!x.text) : [], ...(chain.why ? { why: chain.why } : {}) }
+  }
+  const chainExplainer = createChainExplainer({
+    bridge: process.env.SINAPSI_FAKE_EXPLAIN === '1' ? fakeChainExplainBridge() : bridge,
+    source: chainSource,
+    store,
+    engine: async () => (await settings.load()).engines.teach,
+    otherEngine
+  })
   ipcMain.handle(CH.graphGet, () => gh.get())
+  ipcMain.handle(CH.graphChainSource, (_e, chainId) => chainSource(String(chainId)))
+  ipcMain.handle(CH.graphExplainChain, (_e, chainId, opts) => chainExplainer(String(chainId), opts))
   ipcMain.handle(CH.graphStatus, () => gh.status())
   ipcMain.handle(CH.graphExtract, (_e, path, reason) => gh.extract(path, reason))
   ipcMain.handle(CH.graphPositions, () => gh.positions())
   ipcMain.handle(CH.graphSavePositions, (_e, p) => gh.savePositions(p))
 
-  const weaknesses = weaknessStore(memoryDir)
   const review = createReviewService({
     bridge: process.env.SINAPSI_FAKE_REVIEW === '1' ? fakeReviewBridge() : bridge,
-    memory: memoryStore(memoryDir),
+    memory: memStore,
     variants: variantsStore(memoryDir),
     graph: () => extractor.graph(),
     vault: vaultOrNull,
     readNote: (path) => readFile(path, 'utf8'),
     settings: async () => settings.load(),
-    weaknesses: () => weaknesses.active(),
+    weaknesses: () => weakStore.active(),
     pacerOf: async () => {
       const lessons = reduceLessons(await lessonStore(dataDir()).read())
       const map = new Map<
@@ -398,7 +439,8 @@ export function registerIpc(): { bridge: Bridge } {
         }
       return new Map([...map].map(([id, v]) => [id, v.type]))
     },
-    workDir: join(dataDir(), 'ai-work')
+    workDir: join(dataDir(), 'ai-work'),
+    otherEngine
   })
   const fakeVoice = process.env.SINAPSI_FAKE_MEDIA === '1'
   const dictation = createDictation({
@@ -427,17 +469,19 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.voiceMicrophone, () => vh.microphone())
   const rh = makeReviewHandlers(review)
   ipcMain.handle(CH.reviewPlan, (_e, opts) => rh.plan(opts))
+  ipcMain.handle(CH.reviewPrerequisites, (_e, id, budget) => rh.prerequisites(id, budget))
+  ipcMain.handle(CH.reviewContest, (_e, req) => rh.contest(req))
   ipcMain.handle(CH.reviewGrade, (_e, req) => rh.grade(req))
   ipcMain.handle(CH.reviewExplain, (_e, req) => rh.explain(req))
   ipcMain.handle(CH.reviewRecord, (_e, r) => rh.record(r))
   ipcMain.handle(CH.reviewMemory, () => rh.memory())
   ipcMain.handle(CH.memoryStats, async () => {
-    const reviews = await sessionMemory.read()
+    const reviews = await memStore.read()
     return { calibration: calibrationByLevel(reviews), againRate: firstReviewAgainRate(reviews) }
   })
   ipcMain.handle(CH.reviewCalibration, async () => {
     const [lines, graph, index] = await Promise.all([
-      memoryStore(memoryDir).read(),
+      memStore.read(),
       extractor.graph(),
       vaultOrNull()
     ])
@@ -458,7 +502,7 @@ export function registerIpc(): { bridge: Bridge } {
   ipcMain.handle(CH.reviewIntervals, (_e, id) => rh.intervals(id))
   ipcMain.handle(CH.reviewSessions, async () =>
     reviewSessions(
-      await memoryStore(memoryDir).read(),
+      await memStore.read(),
       new Map((await extractor.graph()).concepts.map((c) => [c.id, c.name]))
     )
   )
@@ -469,17 +513,40 @@ export function registerIpc(): { bridge: Bridge } {
     new Map((await extractor.graph()).concepts.map((c) => [c.id, c.name]))
   const practiceDeps = {
     bridge: practiceBridge,
+    otherEngine,
+    targetDetails: async (ids: string[]) => (await extractor.graph()).concepts.filter((concept) => ids.includes(concept.id)).map(({ id, name, statement }) => ({ id, name, statement })),
+    siblings: async (targetIds: string[]) => {
+      const graph = await extractor.graph()
+      const confMap = confusableSiblings(graph, targetIds, 2)
+      const conceptsById = new Map(graph.concepts.map((c) => [c.id, c]))
+      const result: { targetId: string; siblingId: string; targetName: string; siblingName: string }[] = []
+      for (const [targetId, sibIds] of confMap.entries()) {
+        const target = conceptsById.get(targetId)
+        if (!target) continue
+        for (const sibId of sibIds) {
+          const sib = conceptsById.get(sibId)
+          if (!sib) continue
+          result.push({
+            targetId,
+            siblingId: sibId,
+            targetName: target.name,
+            siblingName: sib.name
+          })
+        }
+      }
+      return result
+    },
     dir: practiceDir,
     material: async (m: import('../shared/practice-types').Material) =>
       buildMaterialContext({
         material: m,
         graph: await extractor.graph(),
         memory: memoryOf(
-          await memoryStore(memoryDir).read(),
+          await memStore.read(),
           Date.now(),
-          new Set((await weaknesses.active()).flatMap((w) => (w.conceptId ? [w.conceptId] : [])))
+          misconceptionConceptIds(await weakStore.active())
         ),
-        weaknesses: await weaknesses.active(),
+        weaknesses: await weakStore.active(),
         readNote: (path) => readFile(path, 'utf8'),
         sourceText: async (id) => {
           const src = await nbStore.source(id)
@@ -489,8 +556,8 @@ export function registerIpc(): { bridge: Bridge } {
       }),
     topic: async (m: import('../shared/practice-types').Material) =>
       practiceTopic(m, await conceptNames()),
-    memory: memoryStore(memoryDir),
-    weaknesses,
+    memory: memStore,
+    weaknesses: weakStore,
     onDone: async (lessonId: string): Promise<void> => {
       const entry = reduceLessons(await ls.read()).find((item) => item.id === lessonId)
       if (!entry) return
@@ -551,7 +618,7 @@ export function registerIpc(): { bridge: Bridge } {
     read: ls.read,
     append: ls.append,
     memory: () => review.memory(),
-    reviews: () => memoryStore(memoryDir).read(),
+    reviews: () => memStore.read(),
     readNote: (p) => readFile(p, 'utf8'),
     vaultRoot: async () => (await loadSettings()).vaultPath,
     createPractice: (m) => ph.create(m),
@@ -578,7 +645,7 @@ export function registerIpc(): { bridge: Bridge } {
   const sinapsiTutor = createSinapsiTutorService({
     vaultPath: async () => (await settings.load()).vaultPath,
     graph: () => extractor.graph(),
-    reviews: () => memoryStore(memoryDir).read(),
+    reviews: () => memStore.read(),
     memoryOf,
     vault: vaultOrNull
   })
@@ -597,7 +664,7 @@ export function registerIpc(): { bridge: Bridge } {
         eh.list(),
         ls.read(),
         review.memory(),
-        memoryStore(memoryDir).read(),
+        memStore.read(),
         settings.load(),
         practice.list()
       ])
@@ -672,7 +739,10 @@ export function registerIpc(): { bridge: Bridge } {
   const suggestions = createSuggester({
     cachedIndex: () => lastIndex,
     scan: vaultOrNull,
-    notes: () => notes.list(),
+    notes: async () => {
+      const [list, { moves }] = await Promise.all([notes.list(), store.read()])
+      return list.map((note) => ({ ...note, sourcePath: resolvePath(note.sourcePath, moves) }))
+    },
     sessions: () => runner.list(),
     practiced: () => practice.practiced(),
     memory: () => review.memory(),

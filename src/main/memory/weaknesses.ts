@@ -19,6 +19,7 @@ export function weaknessStore(dir: string): WeaknessStore {
     for (const line of await read()) latest.set(line.id, line)
     return [...latest.values()].filter((line) => line.status === 'active')
   }
+  let resolveChain = Promise.resolve()
   return {
     append: (line) => appendJsonl(file, line),
     read,
@@ -27,10 +28,28 @@ export function weaknessStore(dir: string): WeaknessStore {
       const ids = new Set(conceptIds)
       return (await active()).filter((line) => line.conceptId !== undefined && ids.has(line.conceptId))
     },
-    resolveByEvidence: async (conceptId, at, ref) => {
-      for (const line of await active()) {
-        if (line.conceptId === conceptId) await appendJsonl(file, { ...line, status: 'resolved', at, ...(ref === undefined ? {} : { ref }) })
-      }
+    resolveByEvidence: (conceptId, at, ref) => {
+      const next = resolveChain.then(async () => {
+        const all = await read()
+        const latest = new Map<string, WeaknessLine>()
+        for (const line of all) latest.set(line.id, line)
+        const candidates = [...latest.values()].filter(
+          (line) => line.conceptId === conceptId && line.status === 'active'
+        )
+        const resolvedIds = new Set(all.filter((l) => l.status === 'resolved').map((l) => l.id))
+        for (const line of candidates) {
+          if (ref !== undefined && all.some((l) => l.status === 'resolved' && l.id === line.id && l.ref === ref)) {
+            continue
+          }
+          if (resolvedIds.has(line.id)) {
+            continue
+          }
+          resolvedIds.add(line.id)
+          await appendJsonl(file, { ...line, status: 'resolved', at, ...(ref === undefined ? {} : { ref }) })
+        }
+      })
+      resolveChain = next.catch(() => undefined)
+      return next
     }
   }
 }

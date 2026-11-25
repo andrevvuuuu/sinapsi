@@ -16,6 +16,14 @@ describe('confidence calibration', () => {
     expect(grouped.confidentErrors).toHaveLength(20)
     expect(grouped.confidentErrors[0].at).toBe(23)
   })
+  it('filters confident errors with confidence >= MISCONCEPTION_CONFIDENCE', () => {
+    const c = confidenceCalibration([
+      row('a', 1, 63, false),
+      row('b', 2, 62, false),
+      row('c', 3, 70, false)
+    ])
+    expect(c.confidentErrors.map((e) => e.conceptId)).toEqual(['c', 'a'])
+  })
   it('describes empty, balanced, overconfident, and underconfident results', () => {
     expect(confidenceLine({ n: 0, meanConfidence: 0, accuracy: 0, gap: 0 })).toContain('Ancora nessuna')
     expect(confidenceLine({ n: 5, meanConfidence: 55, accuracy: 50, gap: 5 })).toContain('Ben calibrato')

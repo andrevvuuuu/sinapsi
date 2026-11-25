@@ -1,7 +1,7 @@
 .ai-status-trigger {
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
+  width: var(--ctl);
+  height: var(--ctl);
+  min-height: var(--ctl);
   flex: none;
   border-radius: 50%;
   border: 0;

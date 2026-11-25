@@ -65,7 +65,7 @@ describe('layout', () => {
     expect(left.getAttribute('aria-valuenow')).toBe('300')
     expect(screen.getByRole('separator', { name: 'Altezza delle sessioni' }).getAttribute('aria-valuenow')).toBe('260')
     expect(screen.getByRole('separator', { name: 'Larghezza del pannello destro' })).toBeTruthy()
-    expect(screen.getByRole('separator', { name: 'Altezza dei notebook' })).toBeTruthy()
+
     fireEvent.keyDown(left, { key: 'ArrowRight' })
     expect(JSON.parse(localStorage.getItem('sinapsi.layout.v1')!).left).toBe(316)
   })

@@ -27,7 +27,7 @@ ${cands || '(nessuna)'}`,
     { "id": "p1", "name": "…", "statement": "…", "section": "…" },
     { "ref": "n_…", "section": "…" }
   ],
-  "chains": [ { "premises": ["p1", "n_…"], "conclusion": "p2" } ]
+  "chains": [ { "premises": ["p1", "n_…"], "conclusion": "p2", "why": "Una frase in italiano che spiega perché le premesse implicano la conclusione." } ]
 }
 Gli id nuovi sono locali ("p1", "p2"…). Includi "chains": [] se la nota non argomenta.`,
     `NOTA OBSIDIAN «${input.noteTitle}»\n\n${capNote(input.noteText)}`,

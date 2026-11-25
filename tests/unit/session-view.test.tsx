@@ -105,7 +105,7 @@ describe('SessionView', () => {
 
   it('shows the typing indicator while the tutor works and can cancel via Annulla', async () => {
     const { cancel } = mount({ ...base, awaiting: 'teacher' })
-    expect(await screen.findByText('Il tutor sta pensando…')).toBeTruthy()
+    expect(await screen.findByText('Preparo…')).toBeTruthy()
     const cancelBtn = screen.getByRole('button', { name: 'Annulla' })
     fireEvent.click(cancelBtn)
     expect(cancel).toHaveBeenCalledWith(ID)
@@ -113,7 +113,7 @@ describe('SessionView', () => {
 
   it('streams partial markdown text when onPartial fires', async () => {
     const { emitPartial, cancel } = mount({ ...base, awaiting: 'teacher' })
-    expect(await screen.findByText('Il tutor sta pensando…')).toBeTruthy()
+    expect(await screen.findByText('Preparo…')).toBeTruthy()
     emitPartial('Ecco la **spiegazione** parziale.')
     expect(await screen.findByText('spiegazione')).toBeTruthy()
     const cancelBtn = screen.getByRole('button', { name: 'Annulla' })
@@ -134,18 +134,51 @@ describe('SessionView', () => {
   it('blurs preceding text in retrieval mode and unblurs calling peek once on Mostra lezione', async () => {
     const { peek } = mount({
       ...base,
+      items: [
+        { kind: 'learner', text: 'Voglio studiare: Lagrange' },
+        {
+          kind: 'teacher',
+          turn: { phase: 'plan', blocks: [{ type: 'text', md: 'Partiamo da **Rolle**.' }] }
+        },
+        {
+          question: {
+            id: 'q-prev',
+            role: 'probe',
+            kind: 'choice',
+            prompt: 'Precedente',
+            options: ['A', 'B'],
+            correct: 0
+          },
+          answer: { questionId: 'q-prev', choice: 0 }
+        }
+      ],
       awaiting: 'learner',
       stage: 'probe',
       pendingQuestion: {
         id: 'q-probe',
         role: 'probe',
         kind: 'open',
-        prompt: 'Qual è la tesi?'
+        prompt: 'Qual è la tesi?',
+        hideLesson: true
       }
     })
     expect(await screen.findByRole('region', { name: 'Recupero attivo' })).toBeTruthy()
-    const teacherMsg = screen.getByText('Rolle').closest('.msg')
-    expect(teacherMsg?.className).toContain('retrieval-blurred')
+
+    const history = document.querySelector('.history') as HTMLElement
+    expect(history).toBeTruthy()
+    expect(history.getAttribute('data-blurred')).toBe('true')
+
+    const youBubble = document.querySelector('.msg.you') as HTMLElement
+    expect(youBubble).toBeTruthy()
+    expect(history.contains(youBubble)).toBe(true)
+
+    const ansCard = document.querySelector('.card') as HTMLElement
+    expect(ansCard).toBeTruthy()
+    expect(history.contains(ansCard)).toBe(true)
+
+    const gate = screen.getByRole('region', { name: 'Recupero attivo' })
+    expect(history.contains(gate)).toBe(false)
+    expect(gate.closest('.history')).toBeNull()
 
     const peekBtn = screen.getByRole('button', { name: 'Mostra lezione' })
     fireEvent.click(peekBtn)
@@ -153,7 +186,23 @@ describe('SessionView', () => {
     expect(peek).toHaveBeenCalledWith(ID, 'q-probe')
 
     expect(screen.queryByRole('region', { name: 'Recupero attivo' })).toBeNull()
-    expect(teacherMsg?.className).not.toContain('retrieval-blurred')
+    expect(history.hasAttribute('data-blurred')).toBe(false)
+  })
+
+  it('keeps the lesson visible when the question is about what is on screen (no hideLesson)', async () => {
+    mount({
+      ...base,
+      items: [
+        { kind: 'learner', text: 'Voglio studiare: Razionali' },
+        { kind: 'teacher', turn: { phase: 'probe', blocks: [{ type: 'text', md: 'Considera $1/2$, $2/4$ e $-3/-6$.' }] } }
+      ],
+      awaiting: 'learner',
+      stage: 'probe',
+      pendingQuestion: { id: 'q-same', role: 'probe', kind: 'open', prompt: 'Queste tre frazioni sono lo stesso numero?' }
+    })
+    expect(await screen.findByText('Queste tre frazioni sono lo stesso numero?')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Recupero attivo' })).toBeNull()
+    expect(document.querySelector('.history')?.hasAttribute('data-blurred')).toBe(false)
   })
 
   it('shows note confirmation card and calls confirm with note path or null', async () => {
@@ -236,6 +285,7 @@ describe('SessionView', () => {
     const { end } = mount({ ...base, phase: 'teach' })
     const endBtn = await screen.findByRole('button', { name: 'Termina ora' })
     fireEvent.click(endBtn)
+    fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
     expect(end).toHaveBeenCalledWith(ID)
   })
 

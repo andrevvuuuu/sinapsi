@@ -1,0 +1,32 @@
+.skeleton {
+  background: var(--faint);
+  border: 1px solid var(--hair);
+  box-sizing: border-box;
+  animation: sk-shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes sk-shimmer {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.skeleton-sm {
+  border-radius: var(--r-sm);
+}
+
+.skeleton-md {
+  border-radius: var(--r-md);
+}
+
+.skeleton-lg {
+  border-radius: var(--r-lg);
+}
+
+.skeleton-pill {
+  border-radius: var(--r-pill);
+}

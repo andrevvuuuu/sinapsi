@@ -38,6 +38,15 @@ describe('linkedTo', () => {
   it('does not spread from a MOC', () => {
     expect(linkedTo(index, ['/v/Analisi MOC.md'])).toEqual([])
   })
+  it('recognizes title and tag MOCs without a MOC type', () => {
+    const titleMoc = note('Reti MOC', ['Densità'])
+    const tagMoc = note('Indice', ['Densità'], { tags: ['moc'] })
+    const withMocs = { ...index, notes: [...index.notes, titleMoc, tagMoc] }
+    expect(linkedTo(withMocs, [titleMoc.path])).toEqual([])
+    expect(linkedTo(withMocs, [tagMoc.path])).toEqual([])
+    expect(linkedTo(withMocs, ['/v/Densità.md'])).not.toContain(titleMoc.path)
+    expect(linkedTo(withMocs, ['/v/Densità.md'])).not.toContain(tagMoc.path)
+  })
   it('ignores notes it does not know (deleted ones)', () => {
     expect(linkedTo(index, ['/v/Sparita.md'])).toEqual([])
   })

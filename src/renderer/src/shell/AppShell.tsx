@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import type { Settings, Engine } from '../../../shared/settings-schema'
-import type { VaultResult, EngineStatus as Status, NoteMeta } from '../../../shared/api'
-import type { LessonEntry } from '../../../shared/lesson-types'
+import type { Settings } from '../../../shared/settings-schema'
+import type { VaultResult } from '../../../shared/api'
 import { SettingsDialog } from '../home/SettingsDialog'
 import { Sidebar } from './Sidebar'
 import { LiquidDock, type Destination } from './LiquidDock'
 import { MapView } from './MapView'
+import { useAppData } from './AppData'
+import { CommandPalette } from './CommandPalette'
 import './shell.css'
 
 type ShellView =
@@ -36,7 +37,8 @@ export function AppShell({
   livePaths,
   onSettingsChanged,
   onStudy,
-  onMapReview
+  onMapReview,
+  onMapAskTutor
 }: {
   view: ShellView
   children: ReactNode
@@ -52,42 +54,33 @@ export function AppShell({
   livePaths: string[]
   onSettingsChanged: (s: Settings) => void
   onStudy: (text: string) => void
-  onMapReview: (ids: string[]) => void
+  onMapReview: (ids: string[], opts?: { cascadeWeak?: string[] }) => void
+  onMapAskTutor?: (conceptId: string, name: string) => void
 }): React.JSX.Element {
-  const [settingsOpen, setSettingsOpen] = useState(false),
-    [lessons, setLessons] = useState<LessonEntry[]>([]),
-    [status, setStatus] = useState<Record<Engine, Status> | null>(null),
-    [settings, setSettings] = useState<Settings | null>(null),
-    [due, setDue] = useState(0),
-    [notes, setNotes] = useState<NoteMeta[]>([])
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [cmdOpen, setCmdOpen] = useState(false)
+
+  const {
+    settings,
+    setSettings,
+    lessons,
+    aiStatus: status,
+    due,
+    notes,
+    index: appIndex
+  } = useAppData()
+
+  const resolvedIndex = index ?? appIndex
 
   useEffect(() => {
-    const api = window.sinapsi
-    void api.lessons
-      .list()
-      .then(setLessons)
-      .catch(() => undefined)
-    void api.ai.status().then(setStatus)
-    void api.settings.get().then((value) => {
-      setSettings(value)
-      void import('./theme').then((theme) => theme.applyTheme(value.theme, true))
-    })
-    void api.notes
-      .list()
-      .then(setNotes)
-      .catch(() => undefined)
-    void api.review
-      .memory()
-      .then((m) =>
-        setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length)
-      )
-      .catch(() => undefined)
-    const off = api.ai.onStatus(setStatus)
-    const offNotes = api.notes.onUpdate(() => void api.notes.list().then(setNotes))
-    return () => {
-      off()
-      offNotes()
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault()
+        setCmdOpen((o) => !o)
+      }
     }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   const current =
@@ -109,11 +102,13 @@ export function AppShell({
     setSettings((s) => (s ? { ...s, theme: t } : s))
     void import('./theme').then((m) => m.applyTheme(t))
     if (!settings) return
-    void window.sinapsi.settings
-      .set({ theme: t })
+    void window.sinapsi?.settings
+      ?.set?.({ theme: t })
       .then((s) => {
-        setSettings(s)
-        onSettingsChanged(s)
+        if (s) {
+          setSettings(s)
+          onSettingsChanged(s)
+        }
       })
       .catch(() => undefined)
   }
@@ -123,7 +118,7 @@ export function AppShell({
   return (
     <div className="sh-shell">
       <Sidebar
-        index={index && 'notes' in index ? index : null}
+        index={resolvedIndex && 'notes' in resolvedIndex ? resolvedIndex : null}
         due={due}
         lessons={lessons}
         status={status}
@@ -143,11 +138,13 @@ export function AppShell({
         onSubjectPrefs={(prefs) => {
           // Optimistic: the sidebar reorders at once; the saved settings follow.
           setSettings((s) => (s ? { ...s, ...prefs } : s))
-          void window.sinapsi.settings
-            .set(prefs)
+          void window.sinapsi?.settings
+            ?.set?.(prefs)
             .then((s) => {
-              setSettings(s)
-              onSettingsChanged(s)
+              if (s) {
+                setSettings(s)
+                onSettingsChanged(s)
+              }
             })
             .catch(() => undefined)
         }}
@@ -156,7 +153,7 @@ export function AppShell({
         <main className="sh-main" key={view}>
           {view === 'map' ? (
             <MapView
-              index={index && 'notes' in index ? index : null}
+              index={resolvedIndex && 'notes' in resolvedIndex ? resolvedIndex : null}
               livePaths={[
                 ...new Set([
                   ...livePaths,
@@ -164,6 +161,7 @@ export function AppShell({
                 ])
               ]}
               onReview={onMapReview}
+              onAskTutor={onMapAskTutor}
               onOpenNote={onOpenSource}
               onStudy={onStudy}
             />
@@ -180,8 +178,24 @@ export function AppShell({
           onSaved={(s) => {
             setSettings(s)
             onSettingsChanged(s)
+            setSettingsOpen(false)
           }}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+      {cmdOpen && (
+        <CommandPalette
+          onClose={() => setCmdOpen(false)}
+          onOpenSource={onOpenSource}
+          onStudy={onStudy}
+          onMapReview={onMapReview}
+          onLesson={onLesson}
+          onReview={onReview}
+          onPractice={onPractice}
+          onNavigate={onNavigate}
+          onNotes={onNotes}
+          onLessons={onLessons}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
       )}
     </div>

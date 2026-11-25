@@ -79,104 +79,281 @@ export function createBridge(deps: {
 }): Bridge {
   const now = deps.now ?? Date.now
   const state: Record<Engine, EngineStatus> = { agy: 'idle', claude: 'idle' }
-  type Job = { priority: 'interactive' | 'background'; run: () => Promise<unknown>; resolve: (v: unknown) => void; reject: (e: unknown) => void; signal?: AbortSignal; abort?: () => void }
-  const queues: Record<Engine, Job[]> = { agy: [], claude: [] }
-  const running: Record<Engine, boolean> = { agy: false, claude: false }
+  const activeCalls: Record<Engine, number> = { agy: 0, claude: 0 }
+  type Priority = 'interactive' | 'background'
+  type Job = {
+    priority: Priority
+    run: () => Promise<unknown>
+    resolve: (v: unknown) => void
+    reject: (e: unknown) => void
+    signal?: AbortSignal
+    abort?: () => void
+  }
+  const queues: Record<Engine, Record<Priority, Job[]>> = {
+    agy: { interactive: [], background: [] },
+    claude: { interactive: [], background: [] }
+  }
+  const running: Record<Engine, Record<Priority, boolean>> = {
+    agy: { interactive: false, background: false },
+    claude: { interactive: false, background: false }
+  }
   const listeners = new Set<(s: Record<Engine, EngineStatus>) => void>()
   const setState = (e: Engine, s: EngineStatus): void => {
     state[e] = s
     listeners.forEach((l) => l({ ...state }))
   }
 
-  function pump(engine: Engine): void {
-    if (running[engine]) return
-    const q = queues[engine]
-    const index = q.findIndex((j) => j.priority === 'interactive')
-    const job = q.splice(index < 0 ? 0 : index, 1)[0]
-    if (!job) return
+  /** Studying comes first: no background job starts on an engine while one of its interactive jobs runs or waits. */
+  const interactiveBusy = (engine: Engine): boolean =>
+    running[engine].interactive || queues[engine].interactive.length > 0
+
+  function pumpLane(engine: Engine, priority: Priority): void {
+    if (running[engine][priority]) return
+    if (priority === 'background' && interactiveBusy(engine)) return
+    const q = queues[engine][priority]
+    const job = q.shift()
+    if (!job) {
+      // The interactive lane just emptied: the background work it held back can start.
+      if (priority === 'interactive') pumpLane(engine, 'background')
+      return
+    }
     job.signal?.removeEventListener('abort', job.abort!)
-    if (job.signal?.aborted) { job.reject(new AiAbortError()); pump(engine); return }
-    running[engine] = true
-    void job.run().then(job.resolve, job.reject).finally(() => { running[engine] = false; pump(engine) })
+    if (job.signal?.aborted) {
+      job.reject(new AiAbortError())
+      pumpLane(engine, priority)
+      return
+    }
+    running[engine][priority] = true
+    void job
+      .run()
+      .then(job.resolve, job.reject)
+      .finally(() => {
+        running[engine][priority] = false
+        pumpLane(engine, priority)
+      })
   }
-  function enqueue<R>(engine: Engine, priority: 'interactive' | 'background', signal: AbortSignal | undefined, job: () => Promise<R>): Promise<R> {
+
+  function pump(engine: Engine, priority?: Priority): void {
+    if (priority) {
+      pumpLane(engine, priority)
+    } else {
+      pumpLane(engine, 'interactive')
+      pumpLane(engine, 'background')
+    }
+  }
+
+  function enqueue<R>(
+    engine: Engine,
+    priority: Priority,
+    signal: AbortSignal | undefined,
+    job: () => Promise<R>
+  ): Promise<R> {
     if (signal?.aborted) return Promise.reject(new AiAbortError())
     return new Promise<R>((resolve, reject) => {
-      const queued: Job = { priority, run: job, resolve: resolve as (v: unknown) => void, reject, signal }
-      queued.abort = () => { const i = queues[engine].indexOf(queued); if (i >= 0) { queues[engine].splice(i, 1); reject(new AiAbortError()) } }
+      const queued: Job = {
+        priority,
+        run: job,
+        resolve: resolve as (v: unknown) => void,
+        reject,
+        signal
+      }
+      queued.abort = () => {
+        const q = queues[engine][priority]
+        const i = q.indexOf(queued)
+        if (i >= 0) {
+          q.splice(i, 1)
+          reject(new AiAbortError())
+          if (priority === 'interactive') pumpLane(engine, 'background')
+        }
+      }
       signal?.addEventListener('abort', queued.abort, { once: true })
-      queues[engine].push(queued)
-      pump(engine)
+      queues[engine][priority].push(queued)
+      pump(engine, priority)
     })
   }
 
-  async function callOnce(task: Task, engine: Engine, prompt: string, timeoutMs: number, opts: CallOptions & { cwd?: string; signal?: AbortSignal; onPartial?: (text: string) => void; partialField?: string; retry?: boolean } = {}): Promise<{ text: string; conversationId?: string }> {
+  async function callOnce(
+    task: Task,
+    engine: Engine,
+    prompt: string,
+    timeoutMs: number,
+    opts: CallOptions & {
+      cwd?: string
+      signal?: AbortSignal
+      onPartial?: (text: string) => void
+      partialField?: string
+      retry?: boolean
+    } = {}
+  ): Promise<{ text: string; conversationId?: string }> {
     const model = opts.model
     const streaming = engine === 'claude' && !!opts.onPartial && !opts.retry
     const { cmd, args } = buildArgs(engine, prompt, { ...opts, stream: streaming, timeoutMs })
     const t0 = now()
+
+    let active = true
+    activeCalls[engine]++
     setState(engine, 'busy')
+
+    const finishActive = (errStatus?: EngineStatus): void => {
+      if (!active) return
+      active = false
+      activeCalls[engine]--
+      if (errStatus) {
+        setState(engine, errStatus)
+      } else if (activeCalls[engine] === 0) {
+        setState(engine, 'idle')
+      }
+    }
+
     let res
     try {
-      let streamBuffer = ''
-      let outputJson = ''
-      let fieldValue = ''
-      res = await deps.spawn(cmd, args, { timeoutMs, cwd: opts.cwd, signal: opts.signal, onOutput: streaming ? (chunk) => {
-        streamBuffer += chunk
-        const lines = streamBuffer.split('\n'); streamBuffer = lines.pop() ?? ''
-        for (const line of lines) {
-          try {
-            const event = JSON.parse(line)
-            if (event.type === 'stream_event') {
-              const delta = event.event?.delta
-              if (delta?.type === 'input_json_delta') outputJson += String(delta.partial_json ?? '')
-              else if (delta?.type === 'text_delta') outputJson += String(delta.text ?? '')
-              const next = extractPartialString(outputJson, opts.partialField ?? 'lesson')
-              if (next !== null && next.length > fieldValue.length) { fieldValue = next; opts.onPartial?.(next) }
-            }
-          } catch { /* ignore incomplete or auxiliary event lines */ }
+      try {
+        let streamBuffer = ''
+        let outputJson = ''
+        let fieldValue = ''
+        res = await deps.spawn(cmd, args, {
+          timeoutMs,
+          cwd: opts.cwd,
+          signal: opts.signal,
+          onOutput: streaming
+            ? (chunk) => {
+                streamBuffer += chunk
+                const lines = streamBuffer.split('\n')
+                streamBuffer = lines.pop() ?? ''
+                for (const line of lines) {
+                  try {
+                    const event = JSON.parse(line)
+                    if (event.type === 'stream_event') {
+                      const delta = event.event?.delta
+                      if (delta?.type === 'input_json_delta')
+                        outputJson += String(delta.partial_json ?? '')
+                      else if (delta?.type === 'text_delta')
+                        outputJson += String(delta.text ?? '')
+                      const next = extractPartialString(outputJson, opts.partialField ?? 'lesson')
+                      if (next !== null && next.length > fieldValue.length) {
+                        fieldValue = next
+                        opts.onPartial?.(next)
+                      }
+                    }
+                  } catch {
+                    /* ignore incomplete or auxiliary event lines */
+                  }
+                }
+              }
+            : undefined
+        })
+      } catch (e) {
+        if (opts.signal?.aborted) {
+          finishActive()
+          await logUsage({
+            ts: t0,
+            task,
+            engine,
+            model,
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
+            costUsd: 0,
+            ms: now() - t0,
+            ok: false,
+            retry: !!opts.retry
+          })
+          throw new AiAbortError()
         }
-      } : undefined })
-    } catch (e) {
-      if (opts.signal?.aborted) {
-        setState(engine, 'idle')
-        await logUsage({ ts: t0, task, engine, model, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, costUsd: 0, ms: now() - t0, ok: false, retry: !!opts.retry })
+        const missing = (e as NodeJS.ErrnoException).code === 'ENOENT'
+        finishActive(missing ? 'missing' : 'error')
+        throw missing ? new EngineMissingError(engine) : e
+      }
+      if (opts.signal?.aborted || (res.code === null && opts.signal?.aborted)) {
+        finishActive()
+        await logUsage({
+          ts: t0,
+          task,
+          engine,
+          model,
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+          costUsd: 0,
+          ms: now() - t0,
+          ok: false,
+          retry: !!opts.retry
+        })
         throw new AiAbortError()
       }
-      const missing = (e as NodeJS.ErrnoException).code === 'ENOENT'
-      setState(engine, missing ? 'missing' : 'error')
-      throw missing ? new EngineMissingError(engine) : e
-    }
-    if (opts.signal?.aborted || res.code === null && opts.signal?.aborted) {
-      setState(engine, 'idle')
-      await logUsage({ ts: t0, task, engine, model, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, costUsd: 0, ms: now() - t0, ok: false, retry: !!opts.retry })
-      throw new AiAbortError()
-    }
-    if (!res.timedOut && res.code === 0) {
-      try {
-        const out = parseOutput(engine, streaming ? lastResultLine(res.stdout) : res.stdout)
-        await logUsage({ ts: t0, task, engine, model, inputTokens: out.inputTokens, outputTokens: out.outputTokens, cacheReadTokens: out.cacheReadTokens, cacheCreationTokens: out.cacheCreationTokens, costUsd: out.costUsd, ms: now() - t0, ok: true, retry: !!opts.retry })
-        setState(engine, 'idle')
-        return { text: out.text, conversationId: out.conversationId }
-      } catch {
-        /* not a valid reply: fall through to the failure checks */
+      if (!res.timedOut && res.code === 0) {
+        try {
+          const out = parseOutput(engine, streaming ? lastResultLine(res.stdout) : res.stdout)
+          await logUsage({
+            ts: t0,
+            task,
+            engine,
+            model,
+            inputTokens: out.inputTokens,
+            outputTokens: out.outputTokens,
+            cacheReadTokens: out.cacheReadTokens,
+            cacheCreationTokens: out.cacheCreationTokens,
+            costUsd: out.costUsd,
+            ms: now() - t0,
+            ok: true,
+            retry: !!opts.retry
+          })
+          finishActive()
+          return { text: out.text, conversationId: out.conversationId }
+        } catch {
+          /* not a valid reply: fall through to the failure checks */
+        }
       }
+      if (AUTH_RE.test(res.stdout) || AUTH_RE.test(res.stderr)) {
+        finishActive('auth')
+        throw new AuthRequiredError(engine)
+      }
+      const agyPrintTimeout =
+        engine === 'agy' &&
+        (res.code === 3 ||
+          /print timeout/i.test(res.stdout) ||
+          /print timeout/i.test(res.stderr))
+      if (res.timedOut || agyPrintTimeout) {
+        finishActive('error')
+        await logUsage({
+          ts: t0,
+          task,
+          engine,
+          model,
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+          costUsd: 0,
+          ms: now() - t0,
+          ok: false,
+          retry: !!opts.retry
+        })
+        throw new AiTimeoutError(engine, timeoutMs)
+      }
+      finishActive('error')
+      await logUsage({
+        ts: t0,
+        task,
+        engine,
+        model,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        costUsd: 0,
+        ms: now() - t0,
+        ok: false,
+        retry: !!opts.retry
+      })
+      const stderrTail = res.stderr.trim().replace(/\s+/g, ' ').slice(-200).trim()
+      const detail = stderrTail ? ` — ${stderrTail}` : ''
+      throw new AiOutputError(`${engine}: risposta non valida (codice ${res.code})${detail}`)
+    } finally {
+      if (active) finishActive('error')
     }
-    if (AUTH_RE.test(res.stdout) || AUTH_RE.test(res.stderr)) {
-      setState(engine, 'auth')
-      throw new AuthRequiredError(engine)
-    }
-    const agyPrintTimeout = engine === 'agy' && (res.code === 3 || /print timeout/i.test(res.stdout) || /print timeout/i.test(res.stderr))
-    if (res.timedOut || agyPrintTimeout) {
-      setState(engine, 'error')
-      await logUsage({ ts: t0, task, engine, model, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, costUsd: 0, ms: now() - t0, ok: false, retry: !!opts.retry })
-      throw new AiTimeoutError(engine, timeoutMs)
-    }
-    setState(engine, 'error')
-    await logUsage({ ts: t0, task, engine, model, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, costUsd: 0, ms: now() - t0, ok: false, retry: !!opts.retry })
-    const stderrTail = res.stderr.trim().replace(/\s+/g, ' ').slice(-200).trim()
-    const detail = stderrTail ? ` — ${stderrTail}` : ''
-    throw new AiOutputError(`${engine}: risposta non valida (codice ${res.code})${detail}`)
   }
 
   // Bookkeeping must never cost the user an answer they already paid for.
@@ -188,21 +365,44 @@ export function createBridge(deps: {
     }
   }
 
-  async function converse<T>(req: ConverseRequest<T>): Promise<{ data: T; conversationId: string; engine: Engine }> {
+  async function converse<T>(
+    req: ConverseRequest<T>
+  ): Promise<{ data: T; conversationId: string; engine: Engine }> {
     const { engine, model } = (await deps.engines())[req.task]
     const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT
-    return enqueue(engine, req.priority ?? (req.task === 'teach' || req.task === 'grade' ? 'interactive' : 'background'), req.signal, async () => {
-      const base = { model, systemPrompt: req.systemPrompt, jsonSchema: req.jsonSchema, cwd: req.cwd }
-      const first = await callOnce(req.task, engine, req.prompt, timeoutMs, { ...base, signal: req.signal, onPartial: req.onPartial, partialField: req.partialField, conversation: { id: req.conversationId, resume: req.resume } })
-      const convId = first.conversationId ?? req.conversationId
-      const v1 = validate(req.schema, first.text)
-      if (v1.ok) return { data: v1.value, conversationId: convId, engine }
-      const retry = `La risposta precedente non era valida: ${v1.error}. Rispondi di nuovo, solo con JSON valido secondo lo schema.`
-      const second = await callOnce(req.task, engine, retry, timeoutMs, { ...base, signal: req.signal, conversation: { id: convId, resume: true, }, retry: true })
-      const v2 = validate(req.schema, second.text)
-      if (v2.ok) return { data: v2.value, conversationId: second.conversationId ?? convId, engine }
-      throw new AiSchemaError(v2.error)
-    })
+    return enqueue(
+      engine,
+      req.priority ?? (req.task === 'teach' || req.task === 'grade' ? 'interactive' : 'background'),
+      req.signal,
+      async () => {
+        const base = {
+          model,
+          systemPrompt: req.systemPrompt,
+          jsonSchema: req.jsonSchema,
+          cwd: req.cwd
+        }
+        const first = await callOnce(req.task, engine, req.prompt, timeoutMs, {
+          ...base,
+          signal: req.signal,
+          onPartial: req.onPartial,
+          partialField: req.partialField,
+          conversation: { id: req.conversationId, resume: req.resume }
+        })
+        const convId = first.conversationId ?? req.conversationId
+        const v1 = validate(req.schema, first.text)
+        if (v1.ok) return { data: v1.value, conversationId: convId, engine }
+        const retry = `La risposta precedente non era valida: ${v1.error}. Rispondi di nuovo, solo con JSON valido secondo lo schema.`
+        const second = await callOnce(req.task, engine, retry, timeoutMs, {
+          ...base,
+          signal: req.signal,
+          conversation: { id: convId, resume: true },
+          retry: true
+        })
+        const v2 = validate(req.schema, second.text)
+        if (v2.ok) return { data: v2.value, conversationId: second.conversationId ?? convId, engine }
+        throw new AiSchemaError(v2.error)
+      }
+    )
   }
 
   return {
@@ -215,7 +415,9 @@ export function createBridge(deps: {
     async ask<T>(req: AskRequest<T>): Promise<AskResult<T>> {
       const choice = req.engine ?? (await deps.engines())[req.task]
       const { engine, model } = choice
-      const key = createHash('sha256').update([engine, model ?? '', req.prompt, req.schemaName ?? schemaId(req.schema)].join('|')).digest('hex')
+      const key = createHash('sha256')
+        .update([engine, model ?? '', req.prompt, req.schemaName ?? schemaId(req.schema)].join('|'))
+        .digest('hex')
       const cacheFile = join(deps.cacheDir, `${key}.json`)
       if (req.cache) {
         try {
@@ -228,25 +430,79 @@ export function createBridge(deps: {
         }
       }
       const timeoutMs = req.timeoutMs ?? DEFAULT_TIMEOUT
-      const data = await enqueue(engine, req.priority ?? (req.task === 'teach' || req.task === 'grade' ? 'interactive' : 'background'), req.signal, async () => {
-        const text = (await callOnce(req.task, engine, req.prompt, timeoutMs, { model, cwd: req.cwd, noTools: req.noTools, readOnly: req.readOnly, signal: req.signal, onPartial: req.onPartial, partialField: req.partialField })).text
-        if (!req.schema) return text
-        const first = validate(req.schema, text)
-        if (first.ok) return first.value
-        // Kept aside: if the retry comes back worse, a first answer that only failed the optional checks still counts.
-        const firstLoose = req.fallback ? validate(req.fallback, text) : null
-        const retryPrompt = `${req.prompt}\n\nLa risposta precedente non era valida: ${first.error}. Rispondi solo con JSON valido.`
-        const secondText = (await callOnce(req.task, engine, retryPrompt, timeoutMs, { model, cwd: req.cwd, noTools: req.noTools, readOnly: req.readOnly, signal: req.signal, retry: true })).text
-        const second = validate(req.schema, secondText)
-        if (second.ok) return second.value
-        const loose = req.fallback ? validate(req.fallback, secondText) : null
-        const kept = loose?.ok ? loose : firstLoose?.ok ? firstLoose : null
-        if (kept) {
-          console.warn(`[ai] ${req.task}: ${loose?.ok ? 'seconda' : 'prima'} risposta accettata senza i controlli facoltativi (${second.error})`)
-          return kept.value
+      const jsonSchema = engine === 'claude' ? extractClaudeJsonSchema(req.schema) : undefined
+      const data = await enqueue(
+        engine,
+        req.priority ?? (req.task === 'teach' || req.task === 'grade' ? 'interactive' : 'background'),
+        req.signal,
+        async () => {
+          const firstCall = await callOnce(req.task, engine, req.prompt, timeoutMs, {
+            model,
+            jsonSchema,
+            cwd: req.cwd,
+            noTools: req.noTools,
+            readOnly: req.readOnly,
+            signal: req.signal,
+            onPartial: req.onPartial,
+            partialField: req.partialField
+          })
+          const text = firstCall.text
+          if (!req.schema) return text
+          const first = validate(req.schema, text)
+          if (first.ok) return first.value
+          // Kept aside: if the retry comes back worse, a first answer that only failed the optional checks still counts.
+          const firstLoose = req.fallback ? validate(req.fallback, text) : null
+
+          let secondText: string | undefined
+          if (firstCall.conversationId) {
+            try {
+              const shortPrompt = `La risposta precedente non era valida: ${first.error}. Rispondi di nuovo, solo con JSON valido secondo il formato richiesto.`
+              const secondCall = await callOnce(req.task, engine, shortPrompt, timeoutMs, {
+                model,
+                jsonSchema,
+                cwd: req.cwd,
+                noTools: req.noTools,
+                readOnly: req.readOnly,
+                signal: req.signal,
+                retry: true,
+                conversation: { id: firstCall.conversationId, resume: true }
+              })
+              secondText = secondCall.text
+            } catch (err) {
+              if (err instanceof AiAbortError || err instanceof AuthRequiredError) {
+                throw err
+              }
+              // Ripiega sul retry con prompt completo
+            }
+          }
+
+          if (secondText === undefined) {
+            const retryPrompt = `${req.prompt}\n\nLa risposta precedente non era valida: ${first.error}. Rispondi solo con JSON valido.`
+            const secondCall = await callOnce(req.task, engine, retryPrompt, timeoutMs, {
+              model,
+              jsonSchema,
+              cwd: req.cwd,
+              noTools: req.noTools,
+              readOnly: req.readOnly,
+              signal: req.signal,
+              retry: true
+            })
+            secondText = secondCall.text
+          }
+
+          const second = validate(req.schema, secondText)
+          if (second.ok) return second.value
+          const loose = req.fallback ? validate(req.fallback, secondText) : null
+          const kept = loose?.ok ? loose : firstLoose?.ok ? firstLoose : null
+          if (kept) {
+            console.warn(
+              `[ai] ${req.task}: ${loose?.ok ? 'seconda' : 'prima'} risposta accettata senza i controlli facoltativi (${second.error})`
+            )
+            return kept.value
+          }
+          throw new AiSchemaError(second.error)
         }
-        throw new AiSchemaError(second.error)
-      })
+      )
       if (req.cache) {
         try {
           await mkdir(deps.cacheDir, { recursive: true })
@@ -257,6 +513,28 @@ export function createBridge(deps: {
       }
       return { data: data as T | string, fromCache: false, engine }
     }
+  }
+}
+
+function extractClaudeJsonSchema(schema?: z.ZodType<unknown>): object | undefined {
+  if (!schema) return undefined
+  try {
+    const s = z.toJSONSchema(schema, { io: 'input', unrepresentable: 'any' }) as Record<string, unknown>
+    if (!s || typeof s !== 'object' || Array.isArray(s)) return undefined
+    if (
+      s.type === 'object' &&
+      s.properties &&
+      typeof s.properties === 'object' &&
+      Object.keys(s.properties).length > 0
+    ) {
+      return s
+    }
+    if (s.type === 'array' && s.items !== undefined && s.items !== null) {
+      return s
+    }
+    return undefined
+  } catch {
+    return undefined
   }
 }
 

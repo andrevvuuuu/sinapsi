@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import type { PracticeState } from '../../../main/practice/events'
+import type { PracticeState } from '../../../shared/practice-types'
 import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
 import { ScrollEdges, ViewScene } from '../components/glass'
+import { ConfirmButton } from '../components/ConfirmButton'
 import { RichText } from '../session/RichText'
 import { PhotoButton } from './PhotoButton'
 import { AnswerBox, CalibrationPanel, PaperReview } from './PaperExam'
@@ -16,11 +17,13 @@ export const TIME_UP_WAIT = 5_000
 export function ExamView({
   state,
   onBack,
-  onStarted
+  onStarted,
+  backLabel = '← Oggi'
 }: {
   state: PracticeState
   onBack: () => void
   onStarted: (id: string) => void
+  backLabel?: string
 }): React.JSX.Element {
   const api = window.sinapsi.practice
   const exam = state.exam
@@ -110,7 +113,7 @@ export function ExamView({
   const header = (
     <GlassSurface render={<header />} radius={0} className="pr-top drag glass-bar glass-text">
       <button type="button" className="pill nodrag back-btn" onClick={onBack}>
-        ← Home
+        {backLabel}
       </button>
       <h1>{paper ? 'Simulazione su carta' : 'Simulazione d’esame'}</h1>
       <span className="lab">{state.topic}</span>
@@ -292,15 +295,11 @@ export function ExamView({
           ))}
           <div className="row">
             <span className="sp" />
-            <button
-              type="button"
+            <ConfirmButton
               className="pri exam"
-              onClick={() => {
-                if (window.confirm('Consegnare? Il tempo si ferma e vedrai le soluzioni.')) hand()
-              }}
-            >
-              Ho finito: consegno
-            </button>
+              label="Ho finito: consegno"
+              onConfirm={hand}
+            />
           </div>
         </GlassContent>
       </ViewScene>
@@ -351,17 +350,12 @@ export function ExamView({
         )}
         <div className="row">
           <span className="sp" />
-          <button
-            type="button"
+          <ConfirmButton
             className="pri exam"
             disabled={dictating.any}
-            onClick={() => {
-              if (window.confirm('Consegnare il compito? Dopo non potrai più modificarlo.'))
-                deliver()
-            }}
-          >
-            Consegna
-          </button>
+            label="Consegna"
+            onConfirm={deliver}
+          />
         </div>
       </GlassContent>
     </ViewScene>

@@ -78,7 +78,7 @@ describe('nota viva with notebook sources', () => {
       await store.writeText(id, { segments: [{ label: 'inizio', text }], warnings: [] })
       await store.setStatus(id, { status: 'ready' })
     }
-    const find = notebookSourcesFor({ store, vault: async () => null })
+    const find = notebookSourcesFor({ store, vault: async () => ({ root: '/v', notes: [{ path: '/v/Rolle.md', subject: 'Analisi' }] }) as never })
     const ex = await find('/v/Rolle.md', 'Rolle', '## Enunciato')
     expect(ex.map((e) => e.sourceId)).toEqual(['s1'])
     expect(await find('/v/Altro.md', 'Altro', '')).toEqual([])

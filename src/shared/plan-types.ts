@@ -7,7 +7,15 @@ export type PlanBlock = {
   reason: string
   phase: 'fondamenta' | 'pratica' | 'simulazioni'
 }
-export type DayPlan = { date: string; minutes: number; bufferMinutes: number; blocks: PlanBlock[] }
+export type DayPlan = {
+  date: string
+  minutes: number
+  bufferMinutes: number
+  blocks: PlanBlock[]
+  /** FSRS reviews falling due that day (overdue ones on the first day): estimated time, taken before the lessons. */
+  reviewMinutes: number
+  reviewConceptIds: string[]
+}
 export type WeekPlan = { days: DayPlan[] }
 export type Signal = {
   key: 'papers' | 'errors' | 'network' | 'teach' | 'doubts'

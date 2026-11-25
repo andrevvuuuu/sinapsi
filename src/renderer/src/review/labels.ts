@@ -11,7 +11,8 @@ export const TYPE_LABEL: Record<ExerciseType, string> = {
   estimate: 'Stima',
   spoterror: "Trova l'errore",
   graph: 'Sul grafico',
-  explain: 'Spiegalo tu'
+  explain: 'Spiegalo tu',
+  chain: 'Spiega la catena'
 }
 export const MODE: Record<ExerciseType, string> = {
   open: 'Richiamo',
@@ -24,5 +25,6 @@ export const MODE: Record<ExerciseType, string> = {
   estimate: 'Composizione',
   spoterror: 'Composizione',
   graph: 'Sul grafico',
-  explain: 'Elaborazione'
+  explain: 'Elaborazione',
+  chain: 'Composizione'
 }

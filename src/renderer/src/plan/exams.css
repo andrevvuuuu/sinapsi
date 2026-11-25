@@ -1,0 +1,314 @@
+/* Gestione esami - condiviso tra Registro (LessonLogView) e Piano (PlanView) */
+.lesson-exams {
+  padding: 20px 22px;
+  border: 1px solid var(--hair);
+  border-radius: var(--sh-r-shell, 18px);
+  background: var(--sh-shell-bg, linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 60px) color-mix(in srgb, var(--surface) 88%, transparent));
+  box-shadow: var(--sh-spec, inset 0 1px 0 rgba(255, 255, 255, 0.1)), var(--sh-shell-shadow, 0 8px 24px rgba(0, 0, 0, 0.22));
+  backdrop-filter: var(--sh-blur, blur(16px));
+  -webkit-backdrop-filter: var(--sh-blur, blur(16px));
+  contain: paint;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+[data-theme="trattato"] .lesson-exams {
+  background: var(--sh-shell-bg, linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, transparent 60px) color-mix(in srgb, var(--surface) 94%, transparent));
+  box-shadow: var(--sh-spec, inset 0 1px 0 rgba(255, 255, 255, 0.9)), var(--sh-shell-shadow, 0 4px 16px rgba(29, 29, 31, 0.06));
+}
+
+.lesson-exams-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+}
+.lesson-exams-header h2 {
+  margin: 0;
+  font: var(--font-callout);
+  font-size: 15px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--track-title);
+  color: var(--ink);
+}
+
+/* Tutor detected exams (Esami in arrivo) */
+.tc-exams-box h3 {
+  font: var(--font-caption);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--muted);
+  margin: 8px 0 4px;
+}
+.tc-exams-list,
+.lesson-exams-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tc-exam,
+.lesson-exam-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font: var(--font-footnote);
+  transition: background-color 0.15s var(--ease-out);
+}
+.tc-exam:hover,
+.lesson-exam-row:hover {
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+.tc-exams-list .tc-exam:first-child,
+.lesson-exams-list .lesson-exam-row:first-child {
+  background: color-mix(in srgb, var(--ink) 6%, var(--surface-raised));
+}
+[data-theme="trattato"] .tc-exams-list .tc-exam:first-child,
+[data-theme="trattato"] .lesson-exams-list .lesson-exam-row:first-child {
+  background: color-mix(in srgb, var(--ink) 4%, var(--surface-raised));
+}
+.tc-exam-main {
+  color: var(--ink);
+  font-weight: var(--fw-medium);
+}
+.tc-exam-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tc-exam-date,
+.lesson-exam-sub-row time,
+.lesson-exam-countdown {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.tc-exam .btn.tc-exam-add {
+  min-height: 26px;
+  height: 26px;
+  padding: 0 10px;
+  font: 500 11px/1 var(--mono);
+}
+
+.lesson-exam-countdown {
+  color: var(--warn);
+}
+.lesson-exam-main-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lesson-exam-title-row strong {
+  color: var(--ink);
+  font-weight: var(--fw-semibold);
+}
+.lesson-exam-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.lesson-exam-status {
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--faint);
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  font: 500 11px/1 var(--mono);
+  letter-spacing: var(--track-caption);
+  text-transform: uppercase;
+}
+.lesson-exam-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.lesson-exam-btn-group button {
+  min-height: 26px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--ctl-edge);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font: 500 11px/1 var(--mono);
+  cursor: pointer;
+  transition: var(--btn-transition);
+}
+.lesson-exam-btn-group button:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+/* Exam Form */
+.lesson-exam-form {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hair);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lesson-exam-form h3 {
+  margin: 0;
+  font: var(--font-caption);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--muted);
+}
+.exam-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.exam-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.exam-field-full {
+  grid-column: 1 / -1;
+}
+.exam-field label {
+  font: var(--font-caption);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.exam-field input {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--ctl-edge);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--ink) 4%, var(--bg));
+  color: var(--ink);
+  font: var(--font-footnote);
+  transition: border-color 0.15s var(--ease-out), background-color 0.15s var(--ease-out);
+}
+.exam-field input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+[data-theme="trattato"] .exam-field input {
+  background: color-mix(in srgb, var(--ink) 2%, var(--surface));
+}
+.exam-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Buttons in lesson-exams */
+.lesson-exams .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--ctl-edge);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  font: var(--font-footnote);
+  cursor: pointer;
+  transition: var(--btn-transition);
+}
+.lesson-exams .btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border-color: var(--ink);
+}
+.lesson-exams .btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  transform: scale(0.98);
+}
+.lesson-exams .btn:focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: var(--btn-focus-offset);
+}
+.lesson-exams .btn.pri {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
+  border-color: var(--btn-primary-bg);
+  font-weight: var(--fw-medium);
+}
+.lesson-exams .btn.pri:hover:not(:disabled) {
+  background: var(--btn-primary-bg-hover);
+  border-color: var(--btn-primary-bg-hover);
+  transform: scale(1.02);
+}
+.lesson-exams .btn.pri:active:not(:disabled) {
+  background: var(--btn-primary-bg-pressed);
+  border-color: var(--btn-primary-bg-pressed);
+  transform: scale(0.98);
+}
+.lesson-exams .btn:disabled,
+.lesson-exams .btn.pri:disabled {
+  background: var(--btn-disabled-bg);
+  border-color: var(--btn-disabled-border);
+  color: var(--btn-disabled-ink);
+  cursor: not-allowed;
+}
+
+/* Shell Material Overrides */
+.lesson-exams {
+  border: 0;
+  border-radius: var(--sh-r-shell);
+  background: var(--sh-shell-bg);
+  box-shadow: var(--sh-spec), var(--sh-shell-shadow);
+  backdrop-filter: var(--sh-blur);
+  -webkit-backdrop-filter: var(--sh-blur);
+  contain: paint;
+}
+[data-theme="trattato"] .lesson-exams {
+  background: var(--sh-shell-bg);
+  box-shadow: var(--sh-spec), var(--sh-shell-shadow);
+}
+.lesson-exams .exam-field input {
+  border: 0;
+  border-radius: var(--sh-r-inner);
+  background: var(--sh-inner-bg);
+  box-shadow: var(--sh-inner-shadow);
+  color: var(--sh-text);
+}
+.lesson-exams .exam-field input:focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: 2px;
+  box-shadow: var(--sh-inner-shadow);
+}
+.lesson-exams .lesson-exam-row,
+.lesson-exams .tc-exam {
+  border: 0;
+  border-radius: var(--sh-r-inner);
+  background: var(--sh-inner-bg);
+  box-shadow: var(--sh-inner-shadow);
+}
+.lesson-exams .lesson-exam-row:hover,
+.lesson-exams .tc-exam:hover {
+  background: color-mix(in srgb, var(--sh-text) 7%, var(--sh-inner-bg));
+}
+
+@media (max-width: 800px) {
+  .exam-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .exam-field-full {
+    grid-column: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lesson-exams,
+  .lesson-exams * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

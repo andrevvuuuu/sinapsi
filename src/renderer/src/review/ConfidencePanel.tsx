@@ -14,6 +14,15 @@ export function ConfidencePanel({ onClinic }: { onClinic: (n: number) => void })
     {data.groups.map((g) => <p key={g.key}><b>{g.key}</b> · {confidenceLine(g)}</p>)}
     {data.confidentErrors.length > 0 && <p>Errori dati con sicurezza: {data.confidentErrors.slice(0, 5).map((e) => e.name).join(', ')}</p>}
     {data.overall.n === 0 && <p>Indica la confidenza dopo le risposte per vedere come si accorda con l’esito.</p>}
-    <button type="button" className="ghost" disabled={!active} onClick={() => onClinic(active)}>Ripassa gli errori sicuri ({active})</button>
+    <button
+      type="button"
+      className="ghost"
+      disabled={!active}
+      aria-disabled={!active}
+      title={active ? undefined : 'Nessun errore sicuro da ripassare'}
+      onClick={() => onClinic(active)}
+    >
+      Ripassa gli errori sicuri ({active})
+    </button>
   </section>
 }

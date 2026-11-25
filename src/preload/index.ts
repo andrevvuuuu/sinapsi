@@ -25,7 +25,7 @@ const api: SinapsiApi = {
   session: {
     create: (topic) => ipcRenderer.invoke(CH.sessionCreate, topic),
     confirm: (id, notePath) => ipcRenderer.invoke(CH.sessionConfirm, id, notePath),
-    start: (topic) => ipcRenderer.invoke(CH.sessionStart, topic),
+    start: (topic, opts) => ipcRenderer.invoke(CH.sessionStart, topic, opts),
     list: () => ipcRenderer.invoke(CH.sessionList),
     get: (id) => ipcRenderer.invoke(CH.sessionGet, id),
     answer: (id, a) => ipcRenderer.invoke(CH.sessionAnswer, id, a),
@@ -49,6 +49,8 @@ const api: SinapsiApi = {
   },
   graph: {
     get: () => ipcRenderer.invoke(CH.graphGet),
+    chainSource: (id) => ipcRenderer.invoke(CH.graphChainSource, id),
+    explainChain: (id, opts) => ipcRenderer.invoke(CH.graphExplainChain, id, opts),
     extract: (path, reason) => ipcRenderer.invoke(CH.graphExtract, path, reason),
     status: () => ipcRenderer.invoke(CH.graphStatus),
     onChange: (cb) => subscribe(CH.graphChanged, cb),
@@ -62,6 +64,8 @@ const api: SinapsiApi = {
   },
   review: {
     plan: (opts) => ipcRenderer.invoke(CH.reviewPlan, opts),
+    prerequisites: (id, budget) => ipcRenderer.invoke(CH.reviewPrerequisites, id, budget),
+    contest: (req) => ipcRenderer.invoke(CH.reviewContest, req),
     grade: (req) => ipcRenderer.invoke(CH.reviewGrade, req),
     explain: (req) => ipcRenderer.invoke(CH.reviewExplain, req),
     record: (r) => ipcRenderer.invoke(CH.reviewRecord, r),
@@ -70,7 +74,7 @@ const api: SinapsiApi = {
     intervals: (id) => ipcRenderer.invoke(CH.reviewIntervals, id),
     sessions: () => ipcRenderer.invoke(CH.reviewSessions)
   },
-  memory: { stats: () => ipcRenderer.invoke(CH.memoryStats) },
+  memory: { stats: () => ipcRenderer.invoke(CH.memoryStats), onChanged: (cb) => subscribe(CH.memoryChanged, cb) },
   notebook: {
     list: () => ipcRenderer.invoke(CH.notebookList),
     create: (name) => ipcRenderer.invoke(CH.notebookCreate, name),

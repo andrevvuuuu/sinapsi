@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { PracticeState } from '../../../main/practice/events'
+import type { PracticeState } from '../../../shared/practice-types'
 import {
   calibrationLine,
   calibrationOf,
@@ -8,6 +8,7 @@ import {
 } from '../../../shared/calibration'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
+import { ConfirmButton } from '../components/ConfirmButton'
 import { RichText } from '../session/RichText'
 import { PhotoButton } from './PhotoButton'
 import { fmtPoints } from './exam-format'
@@ -207,20 +208,12 @@ export function PaperReview({
           </span>
         )}
         <span className="sp" />
-        <button
-          type="button"
+        <ConfirmButton
           className="pri exam"
           disabled={missing > 0 || dictating.any}
-          onClick={() => {
-            const empty = exam.sheet.problems.filter((p) => !answers[p.id]?.trim()).length
-            const ask = empty
-              ? `${empty === 1 ? 'Un esercizio è' : `${empty} esercizi sono`} senza risposta e varranno 0. Mandare alla correzione?`
-              : 'Mandare alla correzione? Dopo non potrai più modificare le risposte.'
-            if (window.confirm(ask)) onDeliver()
-          }}
-        >
-          Correggi
-        </button>
+          label="Correggi"
+          onConfirm={onDeliver}
+        />
       </div>
     </>
   )

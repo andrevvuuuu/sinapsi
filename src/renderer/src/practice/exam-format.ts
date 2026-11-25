@@ -1,4 +1,4 @@
-import type { PracticeState } from '../../../main/practice/events'
+import type { PracticeState } from '../../../shared/practice-types'
 
 export function fmtClock(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000))

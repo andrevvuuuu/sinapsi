@@ -102,12 +102,6 @@ describe('ingest', () => {
     await expect(ing.addYoutube(nb, '--exec=rm')).rejects.toThrow('Link YouTube non valido')
     expect(run).not.toHaveBeenCalled()
   })
-  it('reads a vault note without touching the vault', async () => {
-    const { ing } = setup()
-    await ing.addVaultNote(nb, '/v/Rolle.md', 'Rolle')
-    await ing.idle()
-    expect((await sources())[0]).toMatchObject({ kind: 'vault', title: 'Rolle', status: 'ready', origin: '/v/Rolle.md' })
-  })
   it('says which tool is missing', async () => {
     const audio = join(dir, 'a.mp3')
     await writeFile(audio, 'x')

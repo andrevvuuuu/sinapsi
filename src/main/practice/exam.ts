@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { toTitleCase } from '../../shared/subjects'
 import { mkdir } from 'node:fs/promises'
-import type { Grade } from '../../shared/memory-types'
+import { gradeFromOutcome, type Grade } from '../../shared/memory-types'
 import { ExamGradeReplySchema, ExamSheetSchema, type ExamGrade, type ExamSheet, type Material } from '../../shared/practice-types'
 import type { PracticeState } from './events'
 import { friendly, type PracticeDeps, type PracticeRunner } from './runner'
@@ -104,7 +104,7 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
     runner.inflight.add(id)
     deps.onUpdate({ ...s, awaiting: 'tutor' })
     try {
-      const r = await deps.bridge.ask({ task: 'teach', prompt: gradePrompt(sheet, s.exam.answers, !!s.paper), schema: ExamGradeReplySchema, timeoutMs: TIMEOUT, cwd: deps.dir })
+      const r = await deps.bridge.ask({ task: 'grade', prompt: gradePrompt(sheet, s.exam.answers, !!s.paper), schema: ExamGradeReplySchema, timeoutMs: TIMEOUT, cwd: deps.dir, engine: await deps.otherEngine?.() })
       const reply = r.data as Omit<ExamGrade, 'total' | 'lode'>
       // The grader sometimes renames the ids ("1", "Esercizio 1"): fall back to the order, else refuse.
       const byId = sheet.problems.every((p) => reply.items.some((x) => x.id === p.id))
@@ -119,10 +119,11 @@ export function createExamService(deps: PracticeDeps & { runner: PracticeRunner 
       // Idempotent: a grading that runs again after a crash finds its lines already written.
       const written = new Set((await deps.memory.read()).filter((r) => r.ref?.startsWith(`exam:${id}:`)).map((r) => `${r.ref}|${r.conceptId}`))
       for (const [i, p] of sheet.problems.entries()) {
-        const share = items[i].points / p.points
-        const g: Grade = share >= 1 ? 3 : share >= 0.5 ? 2 : 1
+        const share = p.points > 0 ? items[i].points / p.points : 0
+        const correct = share >= 0.9
+        const g: Grade = gradeFromOutcome({ outcome: correct ? 'correct' : share > 0 ? 'partial' : 'wrong' })
         const ref = `exam:${id}:${p.id}`
-        for (const conceptId of new Set(p.targets)) if (!written.has(`${ref}|${conceptId}`)) await deps.memory.append({ conceptId, at: now(), grade: g, correct: share >= 0.5, via: 'practice', ref })
+        for (const conceptId of new Set(p.targets)) if (!written.has(`${ref}|${conceptId}`)) await deps.memory.append({ conceptId, at: now(), grade: g, correct, via: 'practice', ref, miss: items[i].miss })
       }
       runner.inflight.delete(id)
       await runner.append(id, { t: 'graded', grade: { items, note: unescapeOver(reply.note), total, lode }, at: now() })

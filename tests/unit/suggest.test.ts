@@ -54,6 +54,24 @@ describe('Apprendimento', () => {
     expect(s[0]).toMatchObject({ label: 'Induzione', reason: 'sessione da finire', action: { kind: 'resume', id: 's9' } })
     expect(s.filter((c) => c.label === 'Induzione')).toHaveLength(1)
   })
+  it('unfinished session from list is suggested as "sessione da finire", while cancelled/abandoned/completed are excluded', () => {
+    const s = suggest(
+      input(course, {
+        sessions: [
+          { id: 's-resumable', topic: 'Induzione', phase: 'teach', notePath: '/v/Induzione.md', updatedAt: NOW - 1000 },
+          { id: 's-cancelled', topic: 'Numeri Naturali', phase: 'done', notePath: '/v/Numeri Naturali.md', updatedAt: NOW - 2000, status: 'cancelled' },
+          { id: 's-abandoned', topic: 'Numeri Interi', phase: 'done', notePath: '/v/Numeri Interi.md', updatedAt: NOW - 3000, status: 'abandoned' },
+          { id: 's-completed', topic: 'Da scrivere', phase: 'done', notePath: '/v/Da scrivere.md', updatedAt: NOW - 4000, status: 'completed' }
+        ]
+      })
+    ).learn
+    expect(s[0]).toMatchObject({
+      label: 'Induzione',
+      reason: 'sessione da finire',
+      action: { kind: 'resume', id: 's-resumable' }
+    })
+    expect(s.map((chip) => (chip.action.kind === 'resume' ? chip.action.id : undefined)).filter(Boolean)).toEqual(['s-resumable'])
+  })
   it('a note many others build on is a base worth studying', () => {
     const notes = [note('Limiti'), note('Continuità', ['Limiti']), note('Derivate', ['Limiti']), note('Serie', ['Limiti'])]
     expect(suggest(input(notes)).learn[0]).toMatchObject({ label: 'Limiti', reason: 'base di 3 note' })

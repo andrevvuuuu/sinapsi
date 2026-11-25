@@ -28,7 +28,8 @@ describe('the graph of the notes vive', () => {
     const { graph: g, index: i } = liveOnly(graph, index, ['/v/Lagrange.md'])
     expect(g.concepts.map((c) => [c.id, c.birth])).toEqual([['n_r', '/v/Lagrange.md'], ['n_l', '/v/Lagrange.md']])
     expect(g.chains).toHaveLength(1)
-    expect(i.notes[0].links).toEqual([])
+    // la frontiera (link a note non ancora scritte) resta visibile
+    expect(i.notes[0].links).toEqual([{ target: 'Futura', resolved: false }])
   })
 })
 

@@ -44,8 +44,14 @@ describe('subjects', () => {
 describe('toTitleCase', () => {
   it('capitalises every word and keeps the rest as typed', () => {
     expect(toTitleCase('numeri naturali')).toBe('Numeri Naturali')
-    expect(toTitleCase('introduzione ai sistemi')).toBe('Introduzione Ai Sistemi')
-    expect(toTitleCase("  teorema  dell'algebra e LaTeX in FSRS ")).toBe("Teorema Dell'Algebra E LaTeX In FSRS")
-    expect(toTitleCase('équazioni di primo-grado (lineari)')).toBe('Équazioni Di Primo-Grado (Lineari)')
+    expect(toTitleCase('introduzione ai sistemi')).toBe('Introduzione ai Sistemi')
+    expect(toTitleCase("  teorema  dell'algebra e LaTeX in FSRS ")).toBe("Teorema dell'Algebra e LaTeX in FSRS")
+    expect(toTitleCase('équazioni di primo-grado (lineari)')).toBe('Équazioni di Primo-Grado (Lineari)')
+  })
+  it('keeps Italian articles, prepositions and conjunctions lowercase inside a title', () => {
+    expect(toTitleCase('teorema di lagrange e del valor medio')).toBe('Teorema di Lagrange e del Valor Medio')
+    expect(toTitleCase('il teorema')).toBe('Il Teorema')
+    expect(toTitleCase("l'integrale di riemann")).toBe("L'Integrale di Riemann")
+    expect(toTitleCase('analisi In due variabili')).toBe('Analisi In Due Variabili')
   })
 })

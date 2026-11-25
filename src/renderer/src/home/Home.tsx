@@ -36,7 +36,8 @@ type HomeProps = {
   onOpenSession?: (id: string) => void
   onOpenNota?: (id: string) => void
   onOpenSource?: (path: string) => void
-  onOpenReview?: (query: string, conceptIds?: string[]) => void
+  onOpenReview?: (query: string, conceptIds?: string[], opts?: { cascadeWeak?: string[] }) => void
+  onAskTutor?: (conceptId: string, name: string) => void
   onOpenPractice?: (text: string, initial?: { conceptIds: string[]; exam?: boolean }) => void
   onOpenPracticeSession?: (id: string) => void
   onOpenLessons?: () => void
@@ -49,6 +50,7 @@ export default function Home({
   onOpenNota,
   onOpenSource,
   onOpenReview,
+  onAskTutor,
   onOpenPractice,
   onOpenPracticeSession,
   onOpenLessons,
@@ -344,7 +346,8 @@ export default function Home({
           <GraphView
             index={index}
             livePaths={notes.filter((n) => n.status === 'ready').map((n) => n.sourcePath)}
-            onReview={(ids) => onOpenReview?.('', ids)}
+            onReview={(ids, opts) => onOpenReview?.('', ids, opts)}
+            onAskTutor={onAskTutor}
             onOpenNote={(path) => onOpenSource?.(path)}
             onStudy={study}
           />

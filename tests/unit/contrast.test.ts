@@ -172,3 +172,66 @@ describe.each<Theme>(['lavagna', 'trattato'])('contrast in %s', (theme) => {
     }
   })
 })
+
+/** Controls that used to carry their own colours: the graph's zoom stack and the chosen chips of Pratica (PR 1.3). */
+describe.each<Theme>(['lavagna', 'trattato'])('token controls in %s', (theme) => {
+  const t = tokens(theme)
+  const c = (n: string): RGBA => color(t, n)
+  const tint = (n: string, a: number, base: RGBA): RGBA => over([...c(n).slice(0, 3), a] as RGBA, base)
+
+  it('zoom buttons: ink icons on the stack, solid or over the page; a 3:1 outline', () => {
+    expect(ratio(c('--ink'), c('--surface'))).toBeGreaterThanOrEqual(4.5)
+    expect(ratio(c('--ink'), tint('--surface', 0.88, c('--bg')))).toBeGreaterThanOrEqual(4.5)
+    expect(ratio(c('--ctl-edge'), c('--bg'))).toBeGreaterThanOrEqual(3)
+  })
+
+  it('the shell call-to-action fill (--sh-send-bg) keeps its white label AA', () => {
+    const accent = c('--accent')
+    // shell.css: lavagna darkens the accent (color-mix 66% with black), trattato uses it as it is.
+    const fill: RGBA = theme === 'lavagna' ? [accent[0] * 0.66, accent[1] * 0.66, accent[2] * 0.66, 1] : accent
+    expect(ratio([255, 255, 255, 1], fill)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('shell secondary text is the AA --muted on the shell grounds', () => {
+    expect(ratio(c('--muted'), tint('--surface', 0.72, c('--bg')))).toBeGreaterThanOrEqual(4.5)
+    // Rows and chips (--sh-inner-bg: --surface in both themes), also hovered (8 % ink over them, shell.css).
+    const inner = c('--surface')
+    expect(ratio(c('--muted'), inner)).toBeGreaterThanOrEqual(4.5)
+    expect(ratio(c('--muted'), tint('--ink', 0.08, inner))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('a chosen chip: ink text and × on the accent tint; its accent ring 3:1', () => {
+    const chip = tint('--accent', 0.12, c('--surface'))
+    expect(ratio(c('--ink'), chip)).toBeGreaterThanOrEqual(4.5)
+    expect(ratio(c('--accent'), chip)).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('the token controls keep their contract', () => {
+  const strip = (p: string): string => readFileSync(resolve(__dirname, '../../src/renderer/src', p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  const rules = (src: string, sel: RegExp): string[] => [...src.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter((m) => sel.test(m[1])).map((m) => m[2])
+
+  it('the zoom stack uses no raw colours and its buttons stay 34 px (DENSE in screens.spec)', () => {
+    const graph = strip('graph/graph.css')
+    const zoom = rules(graph, /\.gzoom/)
+    expect(zoom.length).toBeGreaterThan(0)
+    for (const body of zoom) expect(body.replace(/box-shadow:[^;]*;/g, '')).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(/i)
+    expect(rules(graph, /^\s*\.graph \.gzoom button\s*$/).join('')).toMatch(/width:\s*34px/)
+  })
+
+  it('the notch dock uses no raw colours outside box-shadows', () => {
+    const graph = strip('graph/graph.css')
+    const dock = rules(graph, /\.gnotch-dock/)
+    expect(dock.length).toBeGreaterThan(0)
+    for (const body of dock) {
+      const withoutShadow = body.replace(/box-shadow:[^;]*;/g, '')
+      expect(withoutShadow).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(255/i)
+    }
+  })
+
+  it('a chosen chip is not filled with the call-to-action violet', () => {
+    const chosen = rules(strip('practice/practice.css'), /\.mt-chip\.on(?![\w-])/)
+    expect(chosen.length).toBeGreaterThan(0)
+    for (const body of chosen) expect(body).not.toMatch(/--sh-send-bg|#fff\b/i)
+  })
+})

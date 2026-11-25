@@ -63,7 +63,7 @@ export const COLOR_PALETTE = {
   ink: 'var(--sh-send-bg, #7664c2)',
   textActive: 'var(--sg-ink-active-text, #ffffff)',
   textSecondary: 'var(--sh-text-2, rgba(236,236,239,0.7))',
-  activeSecondary: 'color-mix(in srgb, var(--sg-ink-active-text, #ffffff) 72%, transparent)',
+  activeSecondary: 'var(--sg-ink-active-text, #ffffff)',
   divider: 'color-mix(in srgb, var(--sh-send-bg, #7664c2) 40%, transparent)',
   borderInactive: 'var(--sh-send-bg, #7664c2)',
   textInactive: 'var(--sh-text, #F3F4F6)',

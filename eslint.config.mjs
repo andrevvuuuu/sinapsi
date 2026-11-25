@@ -28,5 +28,16 @@ export default defineConfig(
       ...eslintPluginReactRefresh.configs.vite.rules
     }
   },
+  {
+    files: ['src/renderer/**/*.{ts,tsx}', 'src/shared/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': ['error', {
+        patterns: [
+          { group: ['**/main', '**/main/**'], message: 'Il renderer e shared non importano da src/main: sposta il tipo in src/shared.' },
+          { group: ['node:*'], message: 'Niente moduli Node nel renderer e in shared: passa da preload/api.' }
+        ]
+      }]
+    }
+  },
   eslintConfigPrettier
 )

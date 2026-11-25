@@ -2,6 +2,7 @@ import { _electron as electron, expect, test, type Page } from '@playwright/test
 import { copyFileSync, mkdirSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { goTo } from './helpers'
 
 /**
  * The nota viva of the user's Lagrange note (tests/fixtures/nota-lagrange.json, copied as written by Gemini):
@@ -36,7 +37,8 @@ test('every formula of the Lagrange nota viva is typeset, and §5 is a real diag
   const win = await app.firstWindow()
   const errors: string[] = []
   win.on('pageerror', (e) => errors.push(e.message))
-  await win.getByRole('region', { name: 'Note vive' }).getByRole('button', { name: /Teorema di Lagrange/ }).click()
+  await goTo(win, 'Note')
+  await win.getByRole('region', { name: 'Note' }).getByRole('button', { name: /Teorema di Lagrange/ }).click()
   await expect(win.getByRole('heading', { level: 1, name: /Teorema di Lagrange/ })).toBeVisible()
 
   // §5: the flowchart is drawn as an SVG, named after its section.

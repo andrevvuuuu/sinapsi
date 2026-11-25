@@ -1,6 +1,5 @@
 import type { Plan } from '../../../shared/teacher-protocol'
-import type { MinimalTree } from '../../../main/session/minimal-tree'
-import type { ConceptProgress } from '../../../main/session/events'
+import type { ConceptProgress, MinimalTree } from '../../../shared/session-types'
 
 export interface PlanMapProps {
   plan?: Plan | null

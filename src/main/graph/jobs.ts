@@ -2,8 +2,9 @@ import { createHash, randomBytes } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
 import type { Bridge } from '../ai/bridge'
 import { AuthRequiredError, EngineMissingError } from '../ai/errors'
-import type { ExtractionLine, ExtractorStatus, GraphData } from '../../shared/graph-types'
+import type { ExtractionLine, ExtractorStatus, GraphData, Ledgers } from '../../shared/graph-types'
 import type { VaultIndex } from '../../shared/vault-types'
+import { isMoc } from '../../shared/moc'
 import { deriveGraph } from './derive'
 import { ExtractReplySchema, mergeExtraction, pickCandidates } from './extract'
 import { buildExtractPrompt } from './extract-prompt'
@@ -23,6 +24,10 @@ export type Extractor = {
 
 const hash = (t: string): string => createHash('sha256').update(t).digest('hex')
 const day = (ms: number): string => new Date(ms).toDateString()
+const graphOptions = (index: VaultIndex) => {
+  const byPath = new Map(index.notes.map((n) => [n.path, n]))
+  return { excluded: (path: string) => { const n = byPath.get(path); return !!n && isMoc(n) }, missing: (path: string) => !byPath.has(path) }
+}
 
 function friendly(e: unknown): string {
   if (e instanceof AuthRequiredError) return `${e.engine === 'claude' ? 'Claude' : 'Gemini'} chiede di rifare l'accesso: apri il Terminale e scrivi ${e.engine}.`
@@ -69,7 +74,7 @@ export function createExtractor(deps: {
     try {
       const text = await deps.readNote(path)
       const h = hash(text)
-      const g = deriveGraph(await deps.store.read())
+      const g = deriveGraph(await deps.store.read(), graphOptions(index))
       if (reason !== 'manual' && reason !== 'linked' && g.extracted[path]?.hash === h) {
         // Touched but unchanged: record it, so the background pass does not pick it again.
         if (reason === 'background') await deps.store.append('extraction', { notePath: path, hash: h, at: now(), reason, nodes: 0, chains: 0, dropped: 0, ok: true, skipped: true })
@@ -121,9 +126,17 @@ export function createExtractor(deps: {
     return done
   }
 
+  let lastLedgers: Ledgers | null = null
+  let lastVaultIndex: VaultIndex | null = null
+  let lastGraphData: GraphData | null = null
+  let inFlightGraph: Promise<GraphData> | null = null
+  let inFlightLedgers: Ledgers | null = null
+  let inFlightVaultIndex: VaultIndex | null = null
+
   return {
     async request(path, reason) {
       const index = await available(path)
+      if (isMoc(index.notes.find((n) => n.path === path)!)) throw new Error('Le MOC non vengono estratte')
       return enqueue(path, reason, index)
     },
     async backgroundTick({ idleSeconds, enabled, dailyLimit }) {
@@ -133,7 +146,7 @@ export function createExtractor(deps: {
       if (ledgers.extractions.filter((e) => e.reason === 'background' && !e.skipped && day(e.at) === today).length >= dailyLimit) return null
       const index = await deps.vault()
       if (!index) return null
-      const g = deriveGraph(ledgers)
+      const g = deriveGraph(ledgers, graphOptions(index))
       // A note that failed in the background today is not retried until tomorrow.
       const failedToday = new Set(ledgers.extractions.filter((e) => !e.ok && day(e.at) === today).map((e) => e.notePath))
       const subjects = new Set((await deps.priorities?.()) ?? [])
@@ -145,13 +158,38 @@ export function createExtractor(deps: {
       // Never extracted, or edited in Obsidian after the last extraction.
       const stale = (n: VaultIndex['notes'][number]): boolean => !extractedPaths.has(n.path) || n.mtime > g.extracted[n.path].at
       const allowed = deps.eligible ? await deps.eligible() : null
-      const candidates = index.notes.filter((n) => n.available && stale(n) && !failedToday.has(n.path) && (!allowed || allowed.has(n.path))).sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title, 'it'))
+      const candidates = index.notes.filter((n) => n.available && !isMoc(n) && stale(n) && !failedToday.has(n.path) && (!allowed || allowed.has(n.path))).sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title, 'it'))
       const next = candidates[0]
       if (!next) return null
       await enqueue(next.path, 'background', index)
       return next.path
     },
     status: () => ({ ...status, queued: [...status.queued] }),
-    graph: async () => deriveGraph(await deps.store.read())
+    graph: async () => {
+      const [ledgers, index] = await Promise.all([deps.store.read(), deps.vault()])
+      if (lastGraphData && ledgers === lastLedgers && index === lastVaultIndex) {
+        return lastGraphData
+      }
+      if (inFlightGraph && ledgers === inFlightLedgers && index === inFlightVaultIndex) {
+        return inFlightGraph
+      }
+      inFlightLedgers = ledgers
+      inFlightVaultIndex = index
+      const p = (async () => {
+        try {
+          const result = deriveGraph(ledgers, index ? graphOptions(index) : undefined)
+          lastLedgers = ledgers
+          lastVaultIndex = index
+          lastGraphData = result
+          return result
+        } finally {
+          inFlightGraph = null
+          inFlightLedgers = null
+          inFlightVaultIndex = null
+        }
+      })()
+      inFlightGraph = p
+      return p
+    }
   }
 }

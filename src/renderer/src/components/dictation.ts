@@ -11,6 +11,7 @@ export type Dictation = {
   stage: DictationStage | null
   error: string | null
   toggle: () => void
+  levelRef?: React.RefObject<HTMLElement | null>
 }
 type Field = HTMLTextAreaElement | HTMLInputElement
 
@@ -79,6 +80,32 @@ export function useDictation(opts: {
   const stageOff = useRef<(() => void) | null>(null)
   const caret = useRef<number | null>(null)
   const [me] = useState(() => ({ stop: () => recorder.current?.stop() }))
+  const levelRef = useRef<HTMLElement | null>(null)
+  const audioCtx = useRef<AudioContext | null>(null)
+  const audioSource = useRef<MediaStreamAudioSourceNode | null>(null)
+  const rafId = useRef<number | null>(null)
+
+  const cleanupAudio = (): void => {
+    if (rafId.current != null) {
+      cancelAnimationFrame(rafId.current)
+      rafId.current = null
+    }
+    if (audioSource.current) {
+      try {
+        audioSource.current.disconnect()
+      } catch {}
+      audioSource.current = null
+    }
+    if (audioCtx.current) {
+      try {
+        void audioCtx.current.close()
+      } catch {}
+      audioCtx.current = null
+    }
+    if (levelRef.current) {
+      levelRef.current.style.removeProperty('--mic-level')
+    }
+  }
 
   async function start(): Promise<void> {
     const field = target.current
@@ -98,6 +125,30 @@ export function useDictation(opts: {
       return setError('Non riesco ad aprire il microfono.')
     }
     if (!alive.current) return stream.getTracks().forEach((t) => t.stop())
+
+    const AudioContextClass =
+      typeof window !== 'undefined'
+        ? window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        : undefined
+
+    let ctx: AudioContext | null = null
+    let source: MediaStreamAudioSourceNode | null = null
+    let analyser: AnalyserNode | null = null
+    if (typeof AudioContextClass !== 'undefined') {
+      try {
+        ctx = new AudioContextClass()
+        source = ctx.createMediaStreamSource(stream)
+        analyser = ctx.createAnalyser()
+        analyser.fftSize = 256
+        source.connect(analyser)
+        audioCtx.current = ctx
+        audioSource.current = source
+      } catch {
+        cleanupAudio()
+      }
+    }
+
     // Where the words go: the caret (or selection) when recording starts.
     const el = target.current
     const len = latest.current.value.length
@@ -108,12 +159,14 @@ export function useDictation(opts: {
     try {
       r = new MediaRecorder(stream)
     } catch {
+      cleanupAudio()
       // No recorder, no recording: the microphone must not stay on (the orange dot in the menu bar).
       stream.getTracks().forEach((t) => t.stop())
       return setError('Non riesco ad aprire il microfono.')
     }
     r.ondataavailable = (e) => void (e.data.size && chunks.push(e.data))
     r.onstop = () => {
+      cleanupAudio()
       stream.getTracks().forEach((t) => t.stop())
       recorder.current = null
       if (recording === me) recording = null
@@ -159,6 +212,7 @@ export function useDictation(opts: {
     try {
       r.start()
     } catch {
+      cleanupAudio()
       stream.getTracks().forEach((t) => t.stop())
       return setError('Non riesco ad aprire il microfono.')
     }
@@ -167,6 +221,30 @@ export function useDictation(opts: {
     recorder.current = r
     setSeconds(0)
     setState('recording')
+    if (analyser && ctx) {
+      const prefersReducedMotion =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+
+      if (!prefersReducedMotion) {
+        const data = new Uint8Array(analyser.frequencyBinCount || 128)
+        const tick = (): void => {
+          if (!alive.current || recorder.current?.state !== 'recording') return
+          analyser.getByteTimeDomainData(data)
+          let sum = 0
+          for (let i = 0; i < data.length; i++) {
+            const v = (data[i] - 128) / 128
+            sum += v * v
+          }
+          const rms = Math.min(1, Math.sqrt(sum / data.length))
+          if (levelRef.current) {
+            levelRef.current.style.setProperty('--mic-level', rms.toFixed(3))
+          }
+          rafId.current = requestAnimationFrame(tick)
+        }
+        rafId.current = requestAnimationFrame(tick)
+      }
+    }
   }
 
   const toggle = (): void => {
@@ -193,6 +271,7 @@ export function useDictation(opts: {
     fields.add(entry)
     return () => {
       alive.current = false
+      cleanupAudio()
       fields.delete(entry)
       if (fields.size === 0) window.removeEventListener('keydown', onKey, true)
       if (recording === me) recording = null
@@ -202,6 +281,9 @@ export function useDictation(opts: {
       if (r && r.state !== 'inactive') r.stop()
     }
   }, [target, me])
+  useEffect(() => {
+    if (state !== 'recording') cleanupAudio()
+  }, [state])
   useEffect(() => {
     if (state !== 'recording') return
     const id = setInterval(() => setSeconds((s) => s + 1), 1000)
@@ -217,5 +299,5 @@ export function useDictation(opts: {
     caret.current = null
   }, [value, target])
 
-  return { state, seconds, stage, error, toggle }
+  return { state, seconds, stage, error, toggle, levelRef }
 }

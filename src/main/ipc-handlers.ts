@@ -8,7 +8,15 @@ import type { NoteGenerator } from './notes/generator'
 import { access } from 'node:fs/promises'
 import { z } from 'zod'
 import type { EngineStatus, VaultResult } from '../shared/api'
-import { TASKS, type Engine, type Settings } from '../shared/settings-schema'
+import {
+  GraderEngineField,
+  LearnerProfileField,
+  MasteryField,
+  TASKS,
+  type Engine,
+  type EngineChoice,
+  type Settings
+} from '../shared/settings-schema'
 import { LearnerAnswerSchema, type LearnerAnswer } from '../shared/teacher-protocol'
 import type { SessionRunner } from './session/runner'
 import type { VaultIndex } from '../shared/vault-types'
@@ -54,10 +62,16 @@ const Patch = z
     sessionLimit: z.boolean(),
     sessionLimitMinutes: z.number().int().min(10).max(180),
     subjectOrder: z.array(z.string().max(300)).max(500),
-    universitySubjects: z.array(z.string().max(300)).max(500).nullable()
+    universitySubjects: z.array(z.string().max(300)).max(500).nullable(),
+    mastery: MasteryField,
+    learnerProfile: LearnerProfileField,
+    graderEngine: GraderEngineField,
+    fastStart: z.boolean()
   })
   .partial()
   .strict()
+/** Exported for the parity test: every stored setting must be patchable. */
+export const SettingsPatch = Patch
 
 export interface HandlerDeps {
   loadSettings(): Promise<Settings>
@@ -397,7 +411,20 @@ const PlanOpts = z
   .object({
     conceptIds: z.array(z.string().min(1).max(64)).max(200).optional(),
     weakest: z.boolean().optional(),
-    misconceptions: z.boolean().optional()
+    misconceptions: z.boolean().optional(),
+    examAt: z.number().int().positive().optional(),
+    order: z.enum(['due', 'gain']).optional()
+  })
+  .strict()
+/** «Spiega la catena»: the self-checked idea units (graded ≤ 3 by the service), or a skip that records nothing. */
+const ChainResult = z
+  .object({
+    conceptId: z.string().min(1).max(64),
+    at: z.number(),
+    type: z.literal('chain'),
+    checked: z.array(z.boolean()).max(50).optional(),
+    grade: z.null().optional(),
+    record: z.boolean().optional()
   })
   .strict()
 const GradeReq = z.object({
@@ -421,12 +448,31 @@ const ExplainReq = z.object({
   confidence: z.number().min(0).max(100)
 })
 
+export function resolveOtherEngine(settings: Settings): EngineChoice {
+  const teach = settings.engines.teach
+  const grader = settings.engines.grade
+  if (grader.engine !== teach.engine) return grader
+  return {
+    engine: teach.engine === 'claude' ? 'agy' : 'claude',
+    model: teach.engine === 'claude' ? 'gemini-3.8-flash-medium' : 'sonnet'
+  }
+}
+
 export function makeReviewHandlers(svc: ReviewService) {
   return {
     plan: async (opts: unknown) => svc.plan(PlanOpts.parse(opts ?? {})),
+    prerequisites: async (id: unknown, budget: unknown) =>
+      svc.prerequisites(
+        z.string().min(1).max(64).parse(id),
+        z.number().int().min(0).max(100).parse(budget)
+      ),
+    contest: async (req: unknown) => svc.contest(GradeReq.parse(req)),
     grade: async (req: unknown) => svc.grade(GradeReq.parse(req)),
     explain: async (req: unknown) => svc.explain(ExplainReq.parse(req)),
-    record: async (r: unknown) => svc.record(ReviewLineSchema.parse(r)),
+    record: async (r: unknown) => {
+      const chain = ChainResult.safeParse(r)
+      return svc.record(chain.success ? chain.data : ReviewLineSchema.parse(r))
+    },
     memory: () => svc.memory(),
     intervals: async (id: unknown) => svc.intervals(z.string().min(1).max(64).parse(id))
   }
@@ -518,6 +564,7 @@ const Answers = z
 
 /** "Rolle, Lagrange, Fermat e altri 2 · 1 fonte": the label of a practice session in lists. */
 export function practiceTopic(m: Material, names: Map<string, string>): string {
+  if (m.blind) return 'Allenamento misto'
   const concepts = m.conceptIds.map((id) => names.get(id) ?? id)
   let head =
     concepts.slice(0, 3).join(', ') + (concepts.length > 3 ? ` e altri ${concepts.length - 3}` : '')
