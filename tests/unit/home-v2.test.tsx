@@ -3,6 +3,9 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Composer } from '../../src/renderer/src/home/Composer'
 import Home from '../../src/renderer/src/home/Home'
+import { TodayView } from '../../src/renderer/src/shell/TodayView'
+import { Sidebar } from '../../src/renderer/src/shell/Sidebar'
+import { AppDataProvider } from '../../src/renderer/src/shell/AppData'
 import type { VaultResult } from '../../src/shared/api'
 import { settingsSchema } from '../../src/shared/settings-schema'
 
@@ -144,5 +147,121 @@ describe('composer', () => {
     expect(send).toHaveProperty('disabled', false)
     fireEvent.click(send)
     expect(onSubmit).toHaveBeenCalledWith('Apprendimento', 'Limiti')
+  })
+})
+
+describe('TodayView metrics & memory listener', () => {
+  it('renders no .sh-spark-bars when due = 0, clicks Dovuti card to call onReview, and reacts to memory.onChanged', async () => {
+    let memoryCallback: (() => void) | undefined
+    const unsubscribe = vi.fn()
+    const memoryFn = vi.fn(async () => ({}))
+    const settings = settingsSchema('/Users/x').parse({})
+    window.sinapsi = {
+      settings: { get: vi.fn(async () => settings), set: vi.fn(async () => settings) },
+      vault: { index: vi.fn(async () => idx), onChange: () => () => undefined },
+      ai: { status: vi.fn(async () => ({ agy: 'idle', claude: 'idle' })), onStatus: () => () => undefined },
+      session: { list: vi.fn(async () => []) },
+      practice: { list: vi.fn(async () => []) },
+      lessons: { list: vi.fn(async () => [{ id: 'l1', topic: 'Teorema', pending: 1, digest: null }]) },
+      plan: { week: vi.fn(async () => ({ plan: { days: [] }, readiness: [] })) },
+      review: { memory: memoryFn },
+      suggest: { get: vi.fn(async () => ({ learn: [], review: [], practice: [] })) },
+      memory: {
+        onChanged: vi.fn((cb: () => void) => {
+          memoryCallback = cb
+          return unsubscribe
+        })
+      }
+    } as never
+
+    const onReview = vi.fn()
+    const onLessons = vi.fn()
+    const onPlan = vi.fn()
+    const { container, unmount } = render(
+      <AppDataProvider>
+        <TodayView
+          focusStudy={false}
+          onFocusDone={vi.fn()}
+          onStudy={vi.fn()}
+          onPractice={vi.fn()}
+          onReview={onReview}
+          onLessons={onLessons}
+          onPlan={onPlan}
+          onLaunched={vi.fn()}
+          onSession={vi.fn()}
+          onPracticeSession={vi.fn()}
+        />
+      </AppDataProvider>
+    )
+
+    // With due = 0, no .sh-spark-bars in the DOM
+    expect(await screen.findByText('Dovuti oggi')).toBeTruthy()
+    expect(container.querySelectorAll('.sh-spark-bars')).toHaveLength(0)
+
+    // Clicking "Dovuti oggi" card calls onReview with no arguments
+    const dueBtn = screen.getByRole('button', { name: /Ripassa i 0 concetti dovuti/i })
+    fireEvent.click(dueBtn)
+    expect(onReview).toHaveBeenCalledWith()
+
+    // Clicking "Lezioni da rielaborare" calls onLessons
+    const lessonsBtn = screen.getByRole('button', { name: /Apri il registro delle lezioni/i })
+    fireEvent.click(lessonsBtn)
+    expect(onLessons).toHaveBeenCalled()
+
+    // Clicking "Aggiungi esame" CTA calls onPlan({ addExam: true })
+    const addExamBtn = screen.getByRole('button', { name: 'Aggiungi esame' })
+    fireEvent.click(addExamBtn)
+    expect(onPlan).toHaveBeenCalledWith({ addExam: true })
+
+    // Calling the registered memory.onChanged callback triggers review.memory again
+    expect(memoryFn).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      memoryCallback?.()
+    })
+    expect(memoryFn).toHaveBeenCalledTimes(2)
+
+    // Cleanup unsubscribes
+    unmount()
+    expect(unsubscribe).toHaveBeenCalled()
+  })
+})
+
+describe('Sidebar badge', () => {
+  const dummyProps = {
+    index: null,
+    lessons: [],
+    status: null,
+    current: null as null,
+    onHome: vi.fn(),
+    onReview: vi.fn(),
+    onPractice: vi.fn(),
+    onOpenSource: vi.fn(),
+    onLessons: vi.fn(),
+    onNotes: vi.fn(),
+    onSettings: vi.fn(),
+    subjectPrefs: { subjectOrder: [], universitySubjects: [] },
+    onSubjectPrefs: vi.fn()
+  }
+
+  it('renders badge "3" and updated aria-label when due = 3', () => {
+    const { container } = render(<Sidebar {...dummyProps} due={3} />)
+    const badge = container.querySelector('.sh-badge')
+    expect(badge).toBeTruthy()
+    expect(badge?.textContent).toBe('3')
+    expect(screen.getByRole('button', { name: 'Ripassa, 3 dovuti' })).toBeTruthy()
+  })
+
+  it('renders no badge and simple aria-label when due = 0', () => {
+    const { container } = render(<Sidebar {...dummyProps} due={0} />)
+    expect(container.querySelector('.sh-badge')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Ripassa' })).toBeTruthy()
+  })
+
+  it('renders "99+" badge when due = 120', () => {
+    const { container } = render(<Sidebar {...dummyProps} due={120} />)
+    const badge = container.querySelector('.sh-badge')
+    expect(badge).toBeTruthy()
+    expect(badge?.textContent).toBe('99+')
+    expect(screen.getByRole('button', { name: 'Ripassa, 120 dovuti' })).toBeTruthy()
   })
 })

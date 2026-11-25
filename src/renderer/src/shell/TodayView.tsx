@@ -1,20 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
   ChipAction,
-  EngineStatus as Status,
   PracticeSummary,
   SessionSummary,
-  Suggestions,
-  VaultResult
+  Suggestions
 } from '../../../shared/api'
-import type { LessonEntry } from '../../../shared/lesson-types'
-import type { Engine } from '../../../shared/settings-schema'
 import type { WeekPlan } from '../../../shared/plan-types'
 import type { LaunchDestination } from '../../../shared/lesson-types'
+import type { TutorCalendar } from '../../../shared/tutor-types'
 import { useDictation } from '../components/dictation'
 import { DictationError, MicButton } from '../components/MicButton'
 import { InkModes, type Mode } from './InkModes'
 import { IconArrowUp, IconArrowUpRight, IconSpark } from './icons'
+import { useAppData } from './AppData'
 
 type Props = {
   focusStudy: boolean
@@ -23,7 +21,7 @@ type Props = {
   onPractice: (text: string, initial?: { conceptIds: string[]; exam?: boolean }) => void
   onReview: (query?: string, conceptIds?: string[]) => void
   onLessons: () => void
-  onPlan: () => void
+  onPlan: (opts?: { addExam?: boolean }) => void
   onLaunched: (result: LaunchDestination) => void
   onSession: (id: string) => void
   onPracticeSession: (id: string) => void
@@ -31,85 +29,58 @@ type Props = {
 
 export function TodayView(p: Props): React.JSX.Element {
   const { focusStudy, onFocusDone } = p
-  const [tutor, setTutor] = useState<import('../../../main/tutor/calendar').TutorCalendar | null>(
-    null
-  )
+  const [tutor, setTutor] = useState<TutorCalendar | null>(null)
+  const { index, due, lessons, aiStatus: status, refreshMemory } = useAppData()
   const api = window.sinapsi,
-    [index, setIndex] = useState<VaultResult | null>(null),
-    [status, setStatus] = useState<Record<Engine, Status> | null>(null),
     [sessions, setSessions] = useState<SessionSummary[]>([]),
     [practices, setPractices] = useState<PracticeSummary[]>([]),
-    [due, setDue] = useState(0),
-    [lessons, setLessons] = useState<LessonEntry[]>([]),
     [week, setWeek] = useState<WeekPlan | null>(null),
     [readiness, setReadiness] = useState<import('../../../shared/plan-types').Readiness[]>([]),
     [suggestions, setSuggestions] = useState<Suggestions | null>(null),
     [mode, setMode] = useState<Mode>('Studia'),
     [text, setText] = useState(''),
-    [error, setError] = useState<string | null>(null)
+    [error] = useState<string | null>(null)
 
   const field = useRef<HTMLTextAreaElement>(null),
     dictation = useDictation({ target: field, value: text, onChange: setText })
 
-  const reload = useCallback(async () => {
-    try {
-      const [s, i] = await Promise.all([api.settings.get(), api.vault.index()])
-      setIndex(i)
-      ;(await import('./theme')).applyTheme(s.theme, true)
-      setError(null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    }
-  }, [api])
-
   useEffect(() => {
-    void api.tutor
-      ?.calendar()
+    void api?.tutor
+      ?.calendar?.()
       .then(setTutor)
       .catch(() => undefined)
-    const load = setTimeout(() => void reload(), 0)
-    void api.ai.status().then(setStatus)
-    void api.session?.list().then(setSessions)
-    void api.practice
-      ?.list()
+    void api?.session?.list?.().then(setSessions).catch(() => undefined)
+    void api?.practice
+      ?.list?.()
       .then(setPractices)
       .catch(() => undefined)
-    void api.lessons
-      ?.list()
-      .then(setLessons)
-      .catch(() => undefined)
-    void api.plan
-      ?.week()
+    void api?.plan
+      ?.week?.()
       .then((x) => {
         setWeek(x.plan)
         setReadiness(x.readiness)
       })
       .catch(() => undefined)
+
     const refresh = (): void => {
-      void api.review
-        ?.memory()
-        .then((m) =>
-          setDue(Object.values(m).filter((x) => x.due !== null && x.due <= Date.now()).length)
-        )
-        .catch(() => undefined)
-      void api.suggest
-        ?.get()
+      void refreshMemory()
+      void api?.suggest
+        ?.get?.()
         .then(setSuggestions)
         .catch(() => undefined)
     }
-    refresh()
+    void api?.suggest
+      ?.get?.()
+      .then(setSuggestions)
+      .catch(() => undefined)
     window.addEventListener('focus', refresh)
     const timer = setInterval(refresh, 600000)
-    const offVault = api.vault.onChange(setIndex),
-      offAi = api.ai.onStatus(setStatus)
+
     return () => {
       window.removeEventListener('focus', refresh)
       clearInterval(timer)
-      clearTimeout(load)
-      offVault()
-      offAi()
     }
-  }, [api, reload])
+  }, [api, refreshMemory])
 
   useEffect(() => {
     if (focusStudy) {
@@ -289,42 +260,38 @@ export function TodayView(p: Props): React.JSX.Element {
         <DictationError dictation={dictation} />
       </section>
       <section className="sh-metrics" aria-label="Le tue metriche">
-        <article className="sh-card sh-metric">
+        <button
+          type="button"
+          className="sh-card sh-metric"
+          onClick={() => p.onReview()}
+          aria-label={`Ripassa i ${due} concetti dovuti`}
+        >
           <span className="sh-label">Dovuti oggi</span>
           <div className="sh-metric-line">
             <strong>
               {due} <small>concetti</small>
             </strong>
-            <div className="sh-spark-bars" aria-hidden="true">
-              <i style={{ height: '35%' }} />
-              <i style={{ height: '55%' }} />
-              <i style={{ height: '40%' }} />
-              <i style={{ height: '75%' }} />
-              <i style={{ height: '100%' }} />
-            </div>
           </div>
           <small className="sh-metric-note">
             {due ? 'Concetti pronti per il ripasso' : 'Nessun ripasso in scadenza'}
           </small>
-        </article>
-        <article className="sh-card sh-metric">
+        </button>
+        <button
+          type="button"
+          className="sh-card sh-metric"
+          onClick={p.onLessons}
+          aria-label="Apri il registro delle lezioni"
+        >
           <span className="sh-label">Lezioni da rielaborare</span>
           <div className="sh-metric-line">
             <strong>
               {lessons.filter((x) => x.pending != null).length} <small>lezioni</small>
             </strong>
-            <div className="sh-spark-bars" aria-hidden="true">
-              <i style={{ height: '30%' }} />
-              <i style={{ height: '50%' }} />
-              <i style={{ height: '45%' }} />
-              <i style={{ height: '70%' }} />
-              <i style={{ height: '95%' }} />
-            </div>
           </div>
           <small className="sh-metric-note">
             {lessons.length ? 'Dal tuo registro' : 'Nessuna lezione registrata'}
           </small>
-        </article>
+        </button>
         <article className="sh-card sh-metric">
           <span className="sh-label">Prontezza esame</span>
           <div className="sh-metric-line">
@@ -332,13 +299,6 @@ export function TodayView(p: Props): React.JSX.Element {
               {examScore == null ? '—' : examScore}
               {examScore != null && <small>%</small>}
             </strong>
-            <div className="sh-spark-bars" aria-hidden="true">
-              <i style={{ height: '30%' }} />
-              <i style={{ height: '48%' }} />
-              <i style={{ height: '42%' }} />
-              <i style={{ height: '65%' }} />
-              <i style={{ height: '90%' }} />
-            </div>
           </div>
           {examScore == null ? (
             <div className="sh-exam-empty">
@@ -354,7 +314,7 @@ export function TodayView(p: Props): React.JSX.Element {
                   ? `${tutorReadiness.courseName} · ${tutorReadiness.date} · Tutor`
                   : (readiness[0]?.courseId ?? 'Nessun esame nel piano')}
               </small>
-              <button type="button" className="sh-link" onClick={p.onPlan}>
+              <button type="button" className="sh-link" onClick={() => p.onPlan({ addExam: true })}>
                 Aggiungi esame
               </button>
             </div>
@@ -374,7 +334,7 @@ export function TodayView(p: Props): React.JSX.Element {
             <h2>Coda di oggi</h2>
             <p>Il prossimo passo, senza fretta</p>
           </div>
-          <button type="button" className="sh-link" onClick={p.onPlan}>
+          <button type="button" className="sh-link" onClick={() => p.onPlan()}>
             <span>Piano della settimana</span>
             <IconArrowUpRight />
           </button>

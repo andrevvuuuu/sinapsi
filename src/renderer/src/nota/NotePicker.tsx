@@ -10,11 +10,13 @@ import { Inline } from './Md'
 export function NotePicker({
   path,
   onOpenNota,
-  onBack
+  onBack,
+  backLabel = '← Oggi'
 }: {
   path: string
   onOpenNota: (id: string) => void
   onBack: () => void
+  backLabel?: string
 }): React.JSX.Element {
   const api = window.sinapsi
   const [title, setTitle] = useState(path.split('/').pop()?.replace(/\.md$/, '') ?? path)
@@ -82,7 +84,7 @@ export function NotePicker({
       bar={
         <GlassSurface render={<nav />} radius="capsule" className="island glass-text" aria-label="Controlli">
           <button type="button" className="back back-btn" onClick={onBack}>
-            ← Home
+            {backLabel}
           </button>
         </GlassSurface>
       }

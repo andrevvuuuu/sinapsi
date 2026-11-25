@@ -2,9 +2,8 @@ import './lessons.css'
 import { useEffect, useMemo, useState } from 'react'
 import type { LaunchDestination, LessonEntry } from '../../../shared/lesson-types'
 import { LaunchButton } from './LaunchButton'
-import type { ExamEntry } from '../../../shared/exam-types'
-import type { Readiness } from '../../../shared/plan-types'
-import type { SinapsiTutorReport, TutorItemState } from '../../../shared/tutor-types'
+import { ExamManager } from '../plan/ExamManager'
+import type { SinapsiTutorReport, TutorCalendar, TutorItemState } from '../../../shared/tutor-types'
 
 const STATE_IT: Record<TutorItemState, string> = {
   interiorizzato: 'Interiorizzato',
@@ -31,24 +30,9 @@ export function LessonLogView({
   const [course, setCourse] = useState('')
   const [pendingOnly, setPendingOnly] = useState(false)
   const [error, setError] = useState('')
-  const [exams, setExams] = useState<ExamEntry[]>([])
-  const [readiness, setReadiness] = useState<Readiness[]>([])
-  const [examCourse, setExamCourse] = useState('')
-  const [examTitle, setExamTitle] = useState('')
-  const [examDate, setExamDate] = useState('')
-  const [examWeight, setExamWeight] = useState('')
-  const [editingExam, setEditingExam] = useState<string | null>(null)
-  const [tutor, setTutor] = useState<import('../../../main/tutor/calendar').TutorCalendar | null>(null)
+  const [tutor, setTutor] = useState<TutorCalendar | null>(null)
   const [expandedTutorLessons, setExpandedTutorLessons] = useState<string[]>([])
   const [vaultPath, setVaultPath] = useState('')
-  const reloadExams = (): void => {
-    void Promise.all([window.sinapsi.exams.list(), window.sinapsi.plan.week()])
-      .then(([items, plan]) => {
-        setExams(items)
-        setReadiness(plan.readiness)
-      })
-      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)))
-  }
   const [report, setReport] = useState<SinapsiTutorReport | null>(null)
   const [extracting, setExtracting] = useState<string[]>([])
   const reloadReport = (): void => {
@@ -77,7 +61,6 @@ export function LessonLogView({
       .list()
       .then(setLessons)
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)))
-    reloadExams()
     void (window.sinapsi.tutor?.calendar() ?? Promise.resolve(null)).then(setTutor).catch(() => setTutor(null))
     reloadReport()
     void window.sinapsi.settings.get().then((s) => setVaultPath(s.vaultPath)).catch(() => undefined)
@@ -92,30 +75,6 @@ export function LessonLogView({
         (!course || lesson.courseId === course) && (!pendingOnly || lesson.pending !== null)
     )
     .sort((a, b) => b.date.localeCompare(a.date))
-  const saveExam = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    event.preventDefault()
-    const payload = {
-      courseId: examCourse,
-      ...(examTitle || editingExam ? { title: examTitle } : {}),
-      date: examDate,
-      ...(examWeight !== '' ? { weight: Number(examWeight) } : {})
-    }
-    if (editingExam) await window.sinapsi.exams.update(editingExam, payload)
-    else await window.sinapsi.exams.create(payload)
-    setEditingExam(null)
-    setExamCourse('')
-    setExamTitle('')
-    setExamDate('')
-    setExamWeight('')
-    reloadExams()
-  }
-  const editExam = (exam: ExamEntry): void => {
-    setEditingExam(exam.id)
-    setExamCourse(exam.courseId)
-    setExamTitle(exam.title ?? '')
-    setExamDate(exam.date)
-    setExamWeight(exam.weight === undefined ? '' : String(exam.weight))
-  }
   return (
     <main className="lessons">
       <header className="lesson-page-header">
@@ -197,7 +156,7 @@ export function LessonLogView({
           <header className="tc-calendar-head">
             <h2>Calendario</h2>
           </header>
-          {!tutor || (!tutor.courses.length && !tutor.lessons.length && !tutor.exams.length) ? (
+          {!tutor || (!tutor.courses.length && !tutor.lessons.length) ? (
             <p className="tc-calendar-empty">
               Collega il tutor delle lezioni di Obsidian: {vaultPath || '<vault>'}/.antigravity/tutor
             </p>
@@ -221,133 +180,11 @@ export function LessonLogView({
                   </div>
                 </div>
               )}
-              {tutor.exams.length > 0 && (
-                <div className="tc-exams-box">
-                  <h3>Esami in arrivo</h3>
-                  <div className="tc-exams-list">
-                    {tutor.exams.map((e) => (
-                      <div className="tc-exam" key={`${e.course}-${e.date}-${e.name}`}>
-                        <span className="tc-exam-main">
-                          {e.courseName} · {e.name}
-                        </span>
-                        <time className="tc-exam-date">{e.date}</time>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </section>
 
-        <section className="lesson-exams">
-          <header className="lesson-exams-header">
-            <h2>Esami</h2>
-            <button className="btn" type="button" onClick={onOpenPlan}>
-              Piano della settimana
-            </button>
-          </header>
-          <div className="lesson-exams-list">
-            {exams.map((exam) => {
-              const examDay = new Date(`${exam.date}T00:00:00`)
-              const today = new Date()
-              today.setHours(0, 0, 0, 0)
-              const days = Math.ceil((examDay.getTime() - today.getTime()) / 86400000)
-              const ready = readiness.find((item) => item.examId === exam.id)
-              return (
-                <article className="lesson-exam-row" key={exam.id}>
-                  <div className="lesson-exam-main-col">
-                    <div className="lesson-exam-title-row">
-                      <strong>{exam.courseId}</strong>
-                      {exam.title ? ` · ${exam.title}` : ''}
-                    </div>
-                  </div>
-                  <div className="lesson-exam-sub-row">
-                    <time dateTime={exam.date}>{exam.date}</time>
-                    <span className="lesson-exam-countdown">tra {days} giorni</span>
-                  </div>
-                  <span className="lesson-exam-status">{ready?.status ?? 'da misurare'}</span>
-                  <div className="lesson-exam-btn-group">
-                    <button type="button" onClick={() => editExam(exam)}>
-                      Modifica
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void window.sinapsi.exams.archive(exam.id).then(reloadExams)}
-                    >
-                      Archivia
-                    </button>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-          <form className="lesson-exam-form" onSubmit={(event) => void saveExam(event)}>
-            <h3>{editingExam ? 'Modifica esame' : 'Aggiungi esame'}</h3>
-            <div className="exam-form-grid">
-              <div className="exam-field exam-field-full">
-                <label htmlFor="exam-course">Corso</label>
-                <input
-                  id="exam-course"
-                  list="exam-courses"
-                  value={examCourse}
-                  onChange={(event) => setExamCourse(event.target.value)}
-                  required
-                  maxLength={200}
-                  placeholder="es. Analisi 1"
-                />
-                <datalist id="exam-courses">
-                  {courses.map((name) => (
-                    <option key={name} value={name} />
-                  ))}
-                </datalist>
-              </div>
-              <div className="exam-field">
-                <label htmlFor="exam-date">Data</label>
-                <input
-                  id="exam-date"
-                  type="date"
-                  value={examDate}
-                  onChange={(event) => setExamDate(event.target.value)}
-                  required
-                />
-              </div>
-              <div className="exam-field">
-                <label htmlFor="exam-title">Titolo</label>
-                <input
-                  id="exam-title"
-                  value={examTitle}
-                  onChange={(event) => setExamTitle(event.target.value)}
-                  maxLength={200}
-                  placeholder="es. Scritto"
-                />
-              </div>
-              <div className="exam-field exam-field-full">
-                <label htmlFor="exam-weight">Peso (0–1, facoltativo)</label>
-                <input
-                  id="exam-weight"
-                  type="number"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={examWeight}
-                  onChange={(event) => setExamWeight(event.target.value)}
-                  placeholder="1.0"
-                />
-              </div>
-            </div>
-            <div className="exam-form-actions">
-              <button className="btn pri" type="submit">
-                {editingExam ? 'Salva modifiche' : 'Aggiungi esame'}
-              </button>
-              {editingExam && (
-                <button className="btn" type="button" onClick={() => setEditingExam(null)}>
-                  Annulla
-                </button>
-              )}
-            </div>
-          </form>
-        </section>
+        <ExamManager onOpenPlan={onOpenPlan} />
       </div>
 
       {error && (

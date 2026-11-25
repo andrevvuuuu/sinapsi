@@ -9,6 +9,7 @@ import { DICTATION_SHORT, useDictation } from '../components/dictation'
 import { GlassContent, GlassSurface } from '@glass-sdk/liquid-glass'
 import { SceneBoundary } from '../components/glass'
 import { RichText } from '../session/RichText'
+import { NotePeek } from '../components/NotePeek'
 import { draw, radiusOf, type Colors, type Lens, type Sel } from './draw'
 import { warmUp, createLayout, type Layout, type LayoutMode, type SimNode } from './layout'
 import { GraphNotchDock } from './GraphNotchDock'
@@ -224,6 +225,8 @@ function GraphBody({
   const showRef = useRef(show)
   const selStateRef = useRef(sel)
   const pathRef = useRef(path)
+  const pulseStartRef = useRef<number | null>(null)
+  const prevSelRef = useRef<Sel | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -302,6 +305,42 @@ function GraphBody({
   )
   const modelRef = useRef(model)
   const indexRef = useRef(index)
+
+  const [peekTarget, setPeekTarget] = useState<{
+    concept: VConcept
+    originTitle?: string
+    sectionTitle?: string
+    chainIds: string[]
+  } | null>(null)
+  const peekTriggerRef = useRef<HTMLButtonElement | null>(null)
+
+  const handleOpenPeek = useCallback(
+    (c: VConcept, trigger?: HTMLButtonElement | null) => {
+      if (trigger) peekTriggerRef.current = trigger
+      const originTitle = index.notes.find((n) => n.path === c.birth)?.title ?? c.birth
+      const sectionTitle = c.sections?.[c.birth]
+      const chainIds = new Set<string>()
+      if (model) {
+        for (const j of model.junctions) {
+          if (j.conclusion === c.id || j.premises.includes(c.id)) {
+            chainIds.add(j.id)
+          }
+        }
+        for (const a of model.arrows) {
+          if (a.from === c.id || a.to === c.id) {
+            chainIds.add(a.chain)
+          }
+        }
+      }
+      setPeekTarget({
+        concept: c,
+        originTitle,
+        sectionTitle,
+        chainIds: [...chainIds]
+      })
+    },
+    [index, model]
+  )
   // The draw loop reads these refs: they must follow every new model (an empty deps list left the canvas blank).
   useEffect(() => {
     modelRef.current = model
@@ -554,6 +593,17 @@ function GraphBody({
       const model = modelRef.current
       if (dirty.current && l && model) {
         dirty.current = false
+        let pulse: { t: number } | undefined
+        if (pulseStartRef.current != null) {
+          const t = (performance.now() - pulseStartRef.current) / 800
+          if (t < 1) {
+            pulse = { t }
+            dirty.current = true
+            schedule()
+          } else {
+            pulseStartRef.current = null
+          }
+        }
         const ctx = cv.getContext('2d')
         if (ctx) {
           const dpr = cv.width / size.current.W
@@ -580,7 +630,8 @@ function GraphBody({
             examAt: examAtRef.current,
             orphansSet: orphansSetRef.current,
             suspectSet: suspectSetRef.current,
-            aggregation: aggregationRef.current
+            aggregation: aggregationRef.current,
+            pulse
           })
           labels.current = out.regionLabels
         }
@@ -600,6 +651,18 @@ function GraphBody({
   useEffect(() => {
     modeRef.current = mode
     showRef.current = show
+    if (sel !== prevSelRef.current) {
+      prevSelRef.current = sel
+      const reduceMotion =
+        typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+          ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          : false
+      if (!reduceMotion && sel) {
+        pulseStartRef.current = performance.now()
+      } else {
+        pulseStartRef.current = null
+      }
+    }
     selStateRef.current = sel
     pathRef.current = path
     markDirty()
@@ -1022,6 +1085,22 @@ function GraphBody({
           onAskTutor={onAskTutor}
           graph={shown?.graph ?? graph}
           suspectSet={suspectSet}
+          onOpenPeek={handleOpenPeek}
+        />
+      )}
+      {peekTarget && (
+        <NotePeek
+          concept={peekTarget.concept}
+          notePath={peekTarget.concept.birth}
+          noteTitle={peekTarget.originTitle}
+          sectionTitle={peekTarget.sectionTitle}
+          chainIds={peekTarget.chainIds}
+          triggerRef={peekTriggerRef}
+          onClose={() => setPeekTarget(null)}
+          onOpenNote={(path) => {
+            setPeekTarget(null)
+            onOpenNote(path)
+          }}
         />
       )}
     </div>
@@ -1060,6 +1139,7 @@ type CardProps = {
   onAskTutor?: (conceptId: string, name: string) => void
   graph?: GraphData | null
   suspectSet?: Set<string>
+  onOpenPeek?: (c: VConcept, trigger?: HTMLButtonElement | null) => void
 }
 
 function proceduralStatus(procedural?: { independent: boolean } | null): string {
@@ -1078,7 +1158,8 @@ function ConceptCardBody({
   onPath,
   onReview,
   onAskTutor,
-  onOpenNote
+  onOpenNote,
+  onOpenPeek
 }: {
   c: VConcept
   model: GraphModel
@@ -1094,6 +1175,7 @@ function ConceptCardBody({
   ) => void
   onAskTutor?: (conceptId: string, name: string) => void
   onOpenNote: (path: string) => void
+  onOpenPeek?: (c: VConcept, trigger?: HTMLButtonElement | null) => void
 }): React.JSX.Element {
   const anc = ancestorsOf(model, c.id)
   const ps = model.parents.get(c.id) ?? []
@@ -1283,7 +1365,13 @@ function ConceptCardBody({
             Chiedi al Tutor
           </button>
         )}
-        <button type="button" onClick={() => onOpenNote(c.birth)}>
+        <button
+          type="button"
+          onClick={(e) => {
+            if (onOpenPeek) onOpenPeek(c, e.currentTarget)
+            else onOpenNote(c.birth)
+          }}
+        >
           Apri la nota
         </button>
       </div>
@@ -1560,7 +1648,8 @@ function Card({
   onReview,
   onAskTutor,
   graph,
-  suspectSet
+  suspectSet,
+  onOpenPeek
 }: CardProps): React.JSX.Element {
   const conceptRow = (id: string, tag?: string): React.JSX.Element | null => {
     const c = model.concepts.find((x) => x.id === id)
@@ -1601,6 +1690,7 @@ function Card({
         onReview={onReview}
         onAskTutor={onAskTutor}
         onOpenNote={onOpenNote}
+        onOpenPeek={onOpenPeek}
       />
     )
   } else if (sel.kind === 'chain') {

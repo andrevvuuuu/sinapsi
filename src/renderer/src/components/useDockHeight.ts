@@ -26,9 +26,32 @@ export function useDockHeight(
     const d = dock.current
     measure()
     if (!d || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(measure)
+    let rafId: number | null = null
+    const scheduleMeasure = (): void => {
+      if (typeof requestAnimationFrame !== 'function') return measure()
+      if (rafId !== null) return
+      // One measure per frame: the reveal transition resizes the dock on every frame.
+      rafId = requestAnimationFrame(() => {
+        rafId = null
+        measure()
+      })
+    }
+    const ro = new ResizeObserver(scheduleMeasure)
     ro.observe(d)
-    return () => ro.disconnect()
+    const onTransitionEnd = (e: TransitionEvent): void => {
+      if (
+        e.propertyName === 'grid-template-rows' &&
+        (e.target as HTMLElement | null)?.classList?.contains('qd-reveal')
+      ) {
+        measure()
+      }
+    }
+    d.addEventListener('transitionend', onTransitionEnd as EventListener)
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId)
+      d.removeEventListener('transitionend', onTransitionEnd as EventListener)
+      ro.disconnect()
+    }
   }, [measure, mounted])
   return measure
 }

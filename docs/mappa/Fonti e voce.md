@@ -11,4 +11,6 @@
 ## Dettatura
 `createDictation()` in `src/main/voice/dictation.ts`: avvia `resources/whisper_server.py` (Whisper in locale con MLX) e parla con lui a righe JSON. Componenti: `src/renderer/src/components/MicButton.tsx`, `dictation.ts`.
 
+- Mentre registra, `dictation.ts` legge il livello RMS con un `AnalyserNode` e lo scrive in `--mic-level` sul bottone (nessun setState); audio context chiuso appena la registrazione finisce o il campo sparisce. Con «Riduci movimento» niente loop.
+
 Collegate: [[Note vive]], [[Processi e IPC]].

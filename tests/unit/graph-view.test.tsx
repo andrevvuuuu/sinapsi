@@ -260,4 +260,43 @@ describe('GraphView', () => {
     expect(screen.getByText('Verificata sulla nota')).toBeTruthy()
     expect(screen.getByText('Dimostrazione verificata dai passaggi nella nota.')).toBeTruthy()
   })
+
+  it('aprire anteprima dalla card non smonta il canvas e non cambia la selezione; .lg-scene non aumenta', async () => {
+    mount()
+    await screen.findByText(/4 concetti/)
+
+    // Select concept Rolle
+    await select('rolle', /Teorema di Rolle.*concetto/)
+    const card = screen.getByRole('dialog', { name: 'Dettagli' })
+    expect(card).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Teorema di Rolle' })).toBeTruthy()
+
+    const canvasBefore = document.querySelector('canvas')
+    expect(canvasBefore).toBeTruthy()
+    const sceneCountBefore = document.querySelectorAll('.lg-scene').length
+
+    // Click "Apri la nota" inside the concept card
+    const openNoteBtn = within(card).getByRole('button', { name: 'Apri la nota' })
+    fireEvent.click(openNoteBtn)
+
+    // NotePeek drawer is now open
+    const peekDialog = await screen.findByRole('dialog', { name: 'Teorema di Rolle' })
+    expect(peekDialog).toBeTruthy()
+    expect(peekDialog.classList.contains('note-peek')).toBe(true)
+
+    // Canvas is still mounted and unchanged
+    const canvasAfter = document.querySelector('canvas')
+    expect(canvasAfter).toBe(canvasBefore)
+
+    // Selection card is still open and unchanged
+    expect(screen.getByRole('dialog', { name: 'Dettagli' })).toBeTruthy()
+
+    // Number of .lg-scene elements in the DOM did not increase
+    const sceneCountAfter = document.querySelectorAll('.lg-scene').length
+    expect(sceneCountAfter).toBe(sceneCountBefore)
+
+    // Closing NotePeek returns focus to the button that opened it
+    fireEvent.click(within(peekDialog).getByRole('button', { name: 'Chiudi' }))
+    expect(document.activeElement).toBe(openNoteBtn)
+  })
 })

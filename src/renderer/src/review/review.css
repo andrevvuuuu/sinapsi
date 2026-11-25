@@ -794,16 +794,28 @@
   left: 0;
   top: 0;
   bottom: 0;
+  width: 100%;
+  transform-origin: left;
+  transform: scaleX(var(--v, 0));
   border-radius: var(--r-pill);
 }
 .rv-row .bars .after {
   background: var(--good);
+  animation: rv-bar-grow 600ms var(--ease-out) forwards;
 }
 .rv-row .bars .before {
   background: color-mix(in srgb, var(--ink) 30%, transparent);
   z-index: 1;
   height: 4px;
   top: 3px;
+}
+@keyframes rv-bar-grow {
+  from {
+    transform: scaleX(var(--from, 0));
+  }
+  to {
+    transform: scaleX(var(--v, 0));
+  }
 }
 @media (max-width: 640px) {
   .rv-grade {

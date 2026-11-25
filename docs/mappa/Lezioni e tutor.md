@@ -15,6 +15,6 @@
 `suggest()` / `createSuggester()` in `src/main/suggest/suggest.ts`: i chip di studio della vista Oggi.
 
 ## Interfaccia
-`src/renderer/src/lessons/` (`LessonLogView.tsx`, `LessonEditor.tsx`, `LessonDetail.tsx`, `LaunchButton.tsx`).
+`src/renderer/src/lessons/` (`LessonLogView.tsx`, `LessonEditor.tsx`, `LessonDetail.tsx`, `LaunchButton.tsx`). La gestione esami nel Registro delega a `<ExamManager />` in `src/renderer/src/plan/ExamManager.tsx`.
 
 Collegate: [[Memoria e ripasso]], [[Pratica ed esami]], [[Grafo dei concetti]].

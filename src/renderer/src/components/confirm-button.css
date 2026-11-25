@@ -1,0 +1,55 @@
+.confirm-btn-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  vertical-align: middle;
+}
+
+.confirm-btn-primary,
+.confirm-btn-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--ctl);
+  padding: 0 var(--s-3);
+  font: var(--font-footnote);
+  font-weight: var(--fw-medium);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--btn-transition);
+}
+
+.confirm-btn-primary {
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
+  border: 0;
+}
+
+.confirm-btn-primary:hover {
+  background: var(--btn-primary-bg-hover);
+}
+
+.confirm-btn-primary:active {
+  background: var(--btn-primary-bg-pressed);
+}
+
+.confirm-btn-cancel {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-ink);
+  border: 1px solid var(--btn-secondary-border);
+}
+
+.confirm-btn-cancel:hover {
+  background: var(--btn-secondary-bg-hover);
+}
+
+.confirm-btn-cancel:active {
+  background: var(--btn-secondary-bg-pressed);
+}
+
+.confirm-btn-primary:focus-visible,
+.confirm-btn-cancel:focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: var(--btn-focus-offset);
+}

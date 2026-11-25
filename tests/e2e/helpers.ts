@@ -11,7 +11,7 @@ export async function goTo(win: Page, dest: Destination): Promise<void> {
       if (await sidebar.isVisible()) {
         await sidebar.getByRole('button', { name: 'Oggi' }).click()
       } else {
-        const back = win.getByRole('button', { name: /← Home|Torna alla home/ })
+        const back = win.getByRole('button', { name: /^← |Torna alla home/ })
         if (await back.isVisible()) await back.click()
       }
       await expect(dock).toBeVisible()
@@ -20,7 +20,7 @@ export async function goTo(win: Page, dest: Destination): Promise<void> {
   } else {
     const sidebar = win.getByRole('navigation', { name: 'Azioni rapide' })
     if (!(await sidebar.isVisible())) {
-      const back = win.getByRole('button', { name: /← Home|Torna alla home/ })
+      const back = win.getByRole('button', { name: /^← |Torna alla home/ })
       if (await back.isVisible()) {
         await back.click()
         await expect(sidebar).toBeVisible()
@@ -61,7 +61,7 @@ export async function makeNotaViva(win: Page, title: string): Promise<void> {
       { timeout: 15_000 }
     )
     .toBeGreaterThan(0)
-  await win.getByRole('button', { name: '← Home' }).click()
+  await win.getByRole('button', { name: /^← / }).click()
 }
 
 /** Starts a study session on Today view with the specified topic. */

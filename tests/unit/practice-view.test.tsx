@@ -269,6 +269,23 @@ describe('PracticeView — training', () => {
     await act(async () => fireEvent.click(within(dock).getByRole('button', { name: 'Invia' })))
     expect(a.practice.submit).toHaveBeenCalledWith(ID, { kind: 'thinking', text: 'senza fiducia' })
   })
+  it('does not display "gradino" in learner bubble when submission copy is applied', async () => {
+    const hintState: PracticeState = {
+      ...open,
+      items: [
+        ...open.items,
+        {
+          kind: 'learner',
+          submission: { kind: 'hint' },
+          text: 'Mi serve un indizio. Non ho ancora scritto un tentativo: solo gradino 0.'
+        }
+      ]
+    }
+    api(hintState)
+    render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
+    expect(await screen.findByText('Mi serve un indizio')).toBeTruthy()
+    expect(screen.queryByText(/gradino/)).toBeNull()
+  })
 })
 
 describe('PracticeView — exam', () => {
@@ -277,7 +294,6 @@ describe('PracticeView — exam', () => {
   it('runs the clock, saves drafts and delivers on confirmation', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const { a } = api(exam(Date.now() + 30 * 60_000 + 1_500))
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
     expect(await screen.findByRole('timer')).toBeTruthy()
     expect(screen.getByRole('timer').textContent).toMatch(/^(30:00|29:5\d)$/)
@@ -286,6 +302,7 @@ describe('PracticeView — exam', () => {
     await act(async () => void vi.advanceTimersByTime(10_500))
     expect(a.practice.examSave).toHaveBeenCalledWith(ID, { e1: 'vale 1' })
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Consegna' })))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Conferma' })))
     expect(a.practice.examDeliver).toHaveBeenCalledWith(ID, { e1: 'vale 1' })
   })
   it('delivers by itself, once, when the time is over', async () => {
@@ -334,7 +351,6 @@ describe('PracticeView — exam on paper', () => {
   })
   it('asks for the self-grade before the answer, and sends to the grader only when every problem has one', async () => {
     const { a, push } = api(paper({ handed: true, self: {}, sheet: solved }))
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
     render(<PracticeView id={ID} onBack={vi.fn()} onStarted={vi.fn()} />)
     expect(await screen.findByText('Weierstrass e Fermat.')).toBeTruthy()
     expect(screen.queryByRole('timer')).toBeNull()
@@ -349,7 +365,7 @@ describe('PracticeView — exam on paper', () => {
     expect(screen.getByText('10,5 / 12')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Risposta all’esercizio 1'), { target: { value: 'vale 1' } })
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Correggi' })))
-    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Un esercizio è senza risposta'))
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Conferma' })))
     expect(a.practice.examDeliver).toHaveBeenCalledWith(ID, { e1: 'vale 1' })
   })
   it('shows both grades and the calibration, now and over time', async () => {

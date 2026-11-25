@@ -19,13 +19,15 @@ export function PracticeSetup({
   initialText = '',
   initial,
   onBack,
-  onStarted
+  onStarted,
+  backLabel = '← Oggi'
 }: {
   initialText?: string
   /** From a suggestion chip: these concepts, maybe as an exam. */
   initial?: { conceptIds: string[]; exam?: boolean }
   onBack: () => void
   onStarted: (id: string) => void
+  backLabel?: string
 }): React.JSX.Element {
   const api = window.sinapsi.practice
   const [catalog, setCatalog] = useState<Catalog | null>(null)
@@ -133,7 +135,7 @@ export function PracticeSetup({
     <ViewScene className="pr">
       <header className="pr-top drag">
         <button type="button" className="pill nodrag back-btn" onClick={onBack}>
-          ← Home
+          {backLabel}
         </button>
         <h1>Pratica</h1>
       </header>

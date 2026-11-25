@@ -300,6 +300,23 @@ describe('ReviewView', () => {
     await screen.findByText('Corretto')
     expect(screen.queryByRole('button', { name: 'Contesta la correzione' })).toBeNull()
   })
+  it('renders summary bars with scaleX var(--v) style and keeps aria-label', async () => {
+    mount([mc])
+    await start()
+    fireEvent.click(screen.getByRole('button', { name: /La continuità/ }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Sicuro' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Verifica' }))
+    await screen.findByText('Corretto')
+    fireEvent.click(screen.getByRole('button', { name: 'Vedi riepilogo' }))
+    await screen.findByRole('heading', { name: /nitido/ })
+
+    const bars = screen.getByLabelText(/Prima \d+%, dopo \d+%/)
+    expect(bars).toBeTruthy()
+
+    const afterBar = bars.querySelector('.after') as HTMLElement
+    expect(afterBar).toBeTruthy()
+    expect(afterBar.style.getPropertyValue('--v')).toBeTruthy()
+  })
   it('cascades prerequisites within remaining budget and does not grow queue length', async () => {
     const itemA: ReviewItem = { ...mc, conceptId: 'c_a', name: 'Concetto A' }
     const itemB: ReviewItem = { ...mc, conceptId: 'c_b', name: 'Concetto B' }
@@ -429,5 +446,25 @@ describe('ReviewView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Verifica' }))
     await screen.findByText('Corretto')
     expect(screen.queryByRole('button', { name: 'Allenati su questo' })).toBeNull()
+  })
+
+  it('opens NotePeek when clicking "Apri nella nota" and allows opening note', async () => {
+    const { onOpenNote } = mount([mc])
+    await start()
+    fireEvent.click(screen.getByRole('button', { name: /La continuità/ }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Sicuro' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Verifica' }))
+    await screen.findByText('Corretto')
+
+    const openNoteBtn = screen.getByRole('button', { name: 'Apri nella nota' })
+    fireEvent.click(openNoteBtn)
+
+    const peekDialog = await screen.findByRole('dialog', { name: 'Teorema di Weierstrass' })
+    expect(peekDialog).toBeTruthy()
+    expect(within(peekDialog).getByText('Teorema di Rolle')).toBeTruthy()
+
+    const openComplete = within(peekDialog).getByRole('button', { name: 'Apri la nota' })
+    fireEvent.click(openComplete)
+    expect(onOpenNote).toHaveBeenCalledWith('/v/Rolle.md')
   })
 })

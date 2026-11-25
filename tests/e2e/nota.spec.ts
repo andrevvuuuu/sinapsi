@@ -34,9 +34,9 @@ test('a nota viva written from an Obsidian note, with live figure and quiz', asy
   await expect(win.getByText('Perché almeno un estremo è interno?')).toBeVisible()
   await win.screenshot({ path: 'test-results/nota.png', fullPage: true })
 
-  // back home: returns to today view, and the nota is listed in Note
-  await win.getByRole('button', { name: '← Home' }).click()
-  await expect(win.getByRole('heading', { level: 1, name: 'Oggi' })).toBeVisible()
+  // back: returns to the view that opened the nota (the note's page), and the nota is listed in Note
+  await win.getByRole('button', { name: /^← / }).click()
+  await expect(win.getByRole('navigation', { name: 'Indice' })).toHaveCount(0)
   await goTo(win, 'Note')
   await expect(win.getByRole('region', { name: 'Note' }).getByText(/Teorema di Rolle/)).toBeVisible()
   await app.close()

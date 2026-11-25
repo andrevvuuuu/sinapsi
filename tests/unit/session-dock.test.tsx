@@ -99,7 +99,8 @@ describe('the question dock and the conversation above it', () => {
     const scroller = container.querySelector('.scroll') as HTMLElement
     dock.getBoundingClientRect = () => ({ height: 412.4 }) as DOMRect
     act(() => resize([], {} as ResizeObserver))
-    expect(scroller.style.getPropertyValue('--dock-h')).toBe('413px')
+    // Measured on the next frame (one measure per frame while the dock animates).
+    await waitFor(() => expect(scroller.style.getPropertyValue('--dock-h')).toBe('413px'))
   })
 
   it('scrolls the start of the new tutor message into view when a question arrives', async () => {

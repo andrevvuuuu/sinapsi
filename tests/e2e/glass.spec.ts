@@ -147,7 +147,7 @@ test('Liquid Glass on the controls, solid surfaces under the text, content scrol
   await expectLens(win, '.nota .island .lg-tab-indicator')
   await expectNoNestedGlass(win)
   await shoot(win, 'nota')
-  await win.getByRole('button', { name: '← Home' }).click()
+  await win.getByRole('button', { name: /^← / }).click()
 
   // Graph: zoom controls are glass when a live note exists.
   await goTo(win, 'Grafo')
@@ -162,7 +162,8 @@ test('Liquid Glass on the controls, solid surfaces under the text, content scrol
   await win.getByRole('button', { name: 'Invia risposta' }).click()
   await expect(win.getByRole('button', { name: /^A:/ })).toBeVisible()
   await expectGlass(win, ['.sess .top'])
-  // Select confidence to reveal tab indicator lens
+  // Confidence appears once an option is chosen (progressive disclosure), then select it to reveal the tab indicator lens
+  await win.getByRole('button', { name: /^A:/ }).click()
   await win.getByRole('tab', { name: 'Sicuro', exact: true }).click()
   // Fiducia segmented tab indicator is a lens
   await expectLens(win, '.sess .conf .lg-tab-indicator')

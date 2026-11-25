@@ -127,7 +127,7 @@ test('home, settings, nota viva, graph', async () => {
   await win.getByRole('button', { name: 'Crea la nota viva' }).click()
   await expect(win.getByRole('heading', { level: 1, name: /Teorema di Rolle/ })).toBeVisible()
   await screen(win, 'nota')
-  await win.getByRole('button', { name: '← Home' }).click()
+  await win.getByRole('button', { name: /^← / }).click()
 
   await goTo(win, 'Grafo')
   await expect(win.locator('.graph .gzoom')).toBeVisible()
@@ -261,7 +261,7 @@ test('practice: training and exam', async () => {
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1280, 820))
   await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(820)
   await win.getByRole('button', { name: 'Chiudi' }).click()
-  await win.getByRole('button', { name: '← Home' }).click()
+  await win.getByRole('button', { name: /^← / }).click()
 
   await goTo(win, 'Oggi')
   await win.getByRole('radiogroup', { name: 'Modalità di studio' }).getByRole('button', { name: 'Esercitati' }).click()

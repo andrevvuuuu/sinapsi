@@ -18,6 +18,9 @@ Avviato da `createLinkedSync()` (→ [[Vault Obsidian]]), dopo 2 minuti di quiet
 ## Interfaccia
 `src/renderer/src/nota/` (`NotaView.tsx`, `BlockView.tsx`, `blocks/`, `figure/` per le figure interattive).
 
+- L'indice (`.toc`) segue la lettura con un `IntersectionObserver` (voce attiva `aria-current`, indicatore spostato con `transform`); `.island` si compatta dopo l'intestazione. Nessun listener di scroll; il testo non si muove.
+- Durante la generazione: skeleton e stadio (`useWaitStage`), che avanza a ogni `notes:updated`.
+
 ## Regole
 - Le sezioni della nota viva seguono le sezioni `##` della nota Obsidian: è ciò che rende possibile l'aggiornamento parziale.
 - Mai correggere la nota in silenzio: gli errori diventano blocchi `flag`.

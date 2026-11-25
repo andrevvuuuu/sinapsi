@@ -51,7 +51,28 @@
   height: var(--ctl-sm);
   padding: 0 var(--s-2);
 }
+.mic-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.mic-halo {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--bad);
+  opacity: calc(0.25 + var(--mic-level, 0) * 0.45);
+  transform: scale(calc(1 + var(--mic-level, 0) * 0.35));
+  pointer-events: none;
+  z-index: 0;
+}
 .mic svg {
+  position: relative;
+  z-index: 1;
   width: 16px;
   height: 16px;
   flex: none;

@@ -214,11 +214,17 @@
   padding: 2px;
   border-radius: 999px;
   overflow: hidden;
-  background: var(--sh-shell-bg, rgba(28, 31, 38, 0.72));
+  /* Theme tokens only: ink on surface is AA in both themes; --ctl-edge is the control's 3:1 outline. */
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--inner), 0 8px 24px rgba(0, 0, 0, 0.24);
+  border: 1px solid var(--ctl-edge);
+}
+:root:not([data-glass="on"]) .graph .gzoom {
+  background: var(--surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 .graph .gzoom button {
   width: 34px;
@@ -228,13 +234,13 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: #F3F4F6;
+  color: var(--ink);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   cursor: pointer;
-  transition: background-color 0.15s var(--ease-out, ease-out), color 0.15s ease-out;
+  transition: var(--btn-transition);
 }
 .graph .gzoom button:first-child {
   border-top-left-radius: 999px;
@@ -251,18 +257,18 @@
   stroke-width: 1.6;
 }
 .graph .gzoom button:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #FFFFFF;
+  background: var(--btn-secondary-bg-hover);
+  color: var(--ink);
 }
 .graph .gzoom button:active {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--btn-secondary-bg-pressed);
 }
 .graph .gzoom button:focus-visible {
-  outline: 2px solid #FFFFFF;
+  outline: var(--btn-focus-ring);
   outline-offset: -2px;
 }
 .graph .gzoom button + button {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--hair);
 }
 .graph .gcard {
   position: absolute;
@@ -497,10 +503,10 @@
   overflow: visible;
   z-index: 10;
   user-select: none;
-  color: #F3F4F6;
+  color: var(--ink);
   font-family: var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
 }
-.graph .gnotch-svg {
+.graph .gnotch-dock .gnotch-svg {
   position: absolute;
   top: -18px;
   right: 0;
@@ -509,7 +515,16 @@
   overflow: visible;
   filter: drop-shadow(-8px 12px 28px rgba(0, 0, 0, 0.55)) drop-shadow(-2px 2px 6px rgba(0, 0, 0, 0.4));
 }
-.graph .gnotch-rail {
+.graph .gnotch-dock .gnotch-svg path:first-child {
+  fill: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+.graph .gnotch-dock .gnotch-svg path:last-child {
+  stroke: var(--hair);
+}
+:root:not([data-glass="on"]) .graph .gnotch-dock .gnotch-svg path:first-child {
+  fill: var(--surface);
+}
+.graph .gnotch-dock .gnotch-rail {
   position: absolute;
   top: 10px;
   right: 0;
@@ -521,12 +536,12 @@
   gap: 6px;
   z-index: 2;
 }
-.graph .gnotch-rail-group {
+.graph .gnotch-dock .gnotch-rail-group {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
-.graph .gnotch-btn {
+.graph .gnotch-dock .gnotch-btn {
   width: 36px;
   height: 36px;
   min-width: 36px;
@@ -534,7 +549,7 @@
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: #F3F4F6;
+  color: var(--ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -542,50 +557,51 @@
   padding: 0;
   transition: transform 0.15s var(--ease-out, ease-out), background-color 0.15s ease-out, color 0.15s ease-out;
 }
-.graph .gnotch-btn svg {
+.graph .gnotch-dock .gnotch-btn svg {
   width: 18px;
   height: 18px;
   color: currentColor;
   stroke: currentColor;
   transition: color 0.15s ease-out;
 }
-.graph .gnotch-btn:hover {
-  background: rgba(255, 255, 255, 0.09);
-  color: #FFFFFF;
+.graph .gnotch-dock .gnotch-btn:hover {
+  background: var(--btn-secondary-bg-hover);
+  color: var(--ink);
   transform: scale(1.05);
 }
-.graph .gnotch-btn:active {
+.graph .gnotch-dock .gnotch-btn:active {
+  background: var(--btn-secondary-bg-pressed);
   transform: scale(0.95);
 }
-.graph .gnotch-btn.on {
-  background: #FFFFFF !important;
-  color: #0B0C0E !important;
+.graph .gnotch-dock .gnotch-btn.on {
+  background: var(--accent) !important;
+  color: var(--btn-primary-ink) !important;
   border-radius: 50%;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   transform: scale(1.04);
 }
-.graph .gnotch-btn.on svg {
-  color: #0B0C0E !important;
-  stroke: #0B0C0E !important;
+.graph .gnotch-dock .gnotch-btn.on svg {
+  color: var(--btn-primary-ink) !important;
+  stroke: var(--btn-primary-ink) !important;
 }
-.graph .gnotch-btn:focus-visible {
-  outline: 2px solid #FFFFFF;
+.graph .gnotch-dock .gnotch-btn:focus-visible {
+  outline: var(--btn-focus-ring);
   outline-offset: 2px;
 }
-.graph .gnotch-rings {
+.graph .gnotch-dock .gnotch-rings {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
   margin-top: 2px;
 }
-.graph .gnotch-ring-track {
-  stroke: #23262F;
+.graph .gnotch-dock .gnotch-ring-track {
+  stroke: var(--hair);
 }
-.graph .gnotch-ring-track.zero {
-  stroke: #2A2E38;
+.graph .gnotch-dock .gnotch-ring-track.zero {
+  stroke: var(--ctl-edge);
 }
-.graph .gnotch-ring-btn {
+.graph .gnotch-dock .gnotch-ring-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -597,20 +613,20 @@
   border-radius: 4px;
   transition: transform 0.15s ease-out;
 }
-.graph .gnotch-ring-btn:hover {
+.graph .gnotch-dock .gnotch-ring-btn:hover {
   transform: scale(1.08);
 }
-.graph .gnotch-ring-btn:focus-visible {
-  outline: 2px solid #FFFFFF;
+.graph .gnotch-dock .gnotch-ring-btn:focus-visible {
+  outline: var(--btn-focus-ring);
   outline-offset: 2px;
 }
-.graph .gnotch-ring-pct {
+.graph .gnotch-dock .gnotch-ring-pct {
   font-size: 10px;
   font-family: var(--mono, monospace);
   font-weight: 500;
   line-height: 1;
 }
-.graph .gnotch-mini-badge {
+.graph .gnotch-dock .gnotch-mini-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -618,9 +634,9 @@
   margin-top: 2px;
   padding: 2px 5px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  color: #8E95A5;
+  background: var(--btn-secondary-bg);
+  border: 1px solid var(--ctl-edge);
+  color: var(--muted);
   font-size: 10px;
   font-family: var(--mono, monospace);
   font-weight: 500;
@@ -628,18 +644,18 @@
   white-space: nowrap;
   transition: background-color 0.15s ease-out, color 0.15s ease-out;
 }
-.graph .gnotch-mini-badge:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #F3F4F6;
+.graph .gnotch-dock .gnotch-mini-badge:hover {
+  background: var(--btn-secondary-bg-hover);
+  color: var(--ink);
 }
-.graph .gnotch-mini-badge:focus-visible {
-  outline: 2px solid #FFFFFF;
+.graph .gnotch-dock .gnotch-mini-badge:focus-visible {
+  outline: var(--btn-focus-ring);
   outline-offset: 2px;
 }
-.graph .gnotch-mini-badge .sep {
+.graph .gnotch-dock .gnotch-mini-badge .sep {
   opacity: 0.5;
 }
-.graph .gnotch-sr-only {
+.graph .gnotch-dock .gnotch-sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -649,7 +665,7 @@
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
-.graph .gnotch-content {
+.graph .gnotch-dock .gnotch-content {
   position: absolute;
   top: 10px;
   right: 58px;
@@ -666,7 +682,7 @@
   padding-right: 6px;
   transition: opacity 0.15s ease-out, transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.graph .gnotch-content.enter {
+.graph .gnotch-dock .gnotch-content.enter {
   animation: gnotch-content-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes gnotch-content-enter {
@@ -679,30 +695,30 @@
     transform: translateX(0);
   }
 }
-.graph .gnotch-content::-webkit-scrollbar {
+.graph .gnotch-dock .gnotch-content::-webkit-scrollbar {
   width: 4px;
 }
-.graph .gnotch-content::-webkit-scrollbar-track {
+.graph .gnotch-dock .gnotch-content::-webkit-scrollbar-track {
   background: transparent;
 }
-.graph .gnotch-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+.graph .gnotch-dock .gnotch-content::-webkit-scrollbar-thumb {
+  background: var(--hair);
   border-radius: 4px;
 }
-.graph .gnotch-content h3 {
+.graph .gnotch-dock .gnotch-content h3 {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: var(--track-label, 0.05em);
-  color: #8E95A5;
+  color: var(--muted);
   margin: 0 0 6px 0;
 }
-.graph .gnotch-menu-list {
+.graph .gnotch-dock .gnotch-menu-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.graph .gnotch-menu-row {
+.graph .gnotch-dock .gnotch-menu-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -712,7 +728,7 @@
   border-radius: 6px;
   border: 0;
   background: transparent;
-  color: #D1D5DB;
+  color: var(--ink);
   font: 500 13px/1 var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
   cursor: pointer;
   width: 100%;
@@ -720,48 +736,80 @@
   box-sizing: border-box;
   transition: background-color 0.12s ease-out, color 0.12s ease-out;
 }
-.graph .gnotch-menu-row:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #FFFFFF;
+.graph .gnotch-dock .gnotch-menu-row:hover {
+  background: var(--btn-secondary-bg-hover);
+  color: var(--ink);
 }
-.graph .gnotch-menu-row.active {
-  background: rgba(255, 255, 255, 0.09);
-  color: #FFFFFF;
+.graph .gnotch-dock .gnotch-menu-row.active {
+  background: var(--surface-raised);
+  color: var(--ink);
 }
-.graph .gnotch-menu-row:focus-visible {
-  outline: 2px solid #FFFFFF;
+.graph .gnotch-dock .gnotch-menu-row:focus-visible {
+  outline: var(--btn-focus-ring);
   outline-offset: -1px;
 }
-.graph .gnotch-menu-label {
+.graph .gnotch-dock .gnotch-menu-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.graph .gnotch-menu-dot {
+.graph .gnotch-dock .gnotch-menu-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #FFFFFF;
+  background: var(--accent);
   flex: none;
   margin-left: 8px;
-  box-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 3px var(--accent);
 }
-.graph .gnotch-status-rows {
+.graph .gnotch-dock .gnotch-status-rows {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin: 4px 0 8px 0;
+  gap: 0;
+  margin: 2px 0 6px;
+  padding: 2px 4px;
 }
-.graph .gnotch-status-row {
-  font: 500 13px/1.35 var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  color: #F3F4F6;
+.graph .gnotch-dock .gnotch-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  gap: 12px;
+  font: 400 12px/1.35 var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  color: var(--muted);
   white-space: normal;
 }
-.graph .gnotch-status-rows{gap:0;margin:2px 0 6px;padding:2px 4px}
-.graph .gnotch-status-row{display:flex;align-items:center;justify-content:space-between;min-height:28px;gap:12px;font:400 12px/1.35 var(--sans,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif);color:#8E95A5}
-.graph .gnotch-status-row strong{color:#F3F4F6;font-weight:600;font-variant-numeric:tabular-nums}
-.graph .gnotch-status-row:not(:has(span)){justify-content:center;color:#8E95A5}
-.graph .gnotch-dock .gstatus{font-family:var(--sans);font-size:12px;line-height:1.4}
+.graph .gnotch-dock .gnotch-status-row strong {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.graph .gnotch-dock .gnotch-status-row:not(:has(span)) {
+  justify-content: center;
+  color: var(--muted);
+}
+.graph .gnotch-dock .gstatus {
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+  margin: 6px 0 0;
+}
+.graph .gnotch-dock .gstatus.err {
+  color: var(--warn);
+}
+.graph .gnotch-dock .gstatus button {
+  background: var(--btn-secondary-bg);
+  color: var(--ink);
+  border: 1px solid var(--ctl-edge);
+  border-radius: var(--r-pill, 9999px);
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.graph .gnotch-dock .gstatus button:hover {
+  background: var(--btn-secondary-bg-hover);
+}
 .graph .gnotch-dock .gsearch {
   min-width: 200px;
 }
@@ -770,23 +818,26 @@
   height: 34px;
   min-height: 34px;
   border-radius: 17px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.08);
-  color: #F3F4F6;
+  border: 1px solid var(--ctl-edge);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--ink);
   font-size: 13px;
   padding: 0 34px 0 12px;
   outline: none;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
   transition: border-color 0.15s ease-out, background-color 0.15s ease-out;
 }
+:root:not([data-glass="on"]) .graph .gnotch-dock .gsearch input {
+  background: var(--surface);
+}
 .graph .gnotch-dock .gsearch input::placeholder {
-  color: #8E95A5;
+  color: var(--muted);
 }
 .graph .gnotch-dock .gsearch input:focus-visible {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+  border-color: var(--accent);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .graph .gnotch-dock .gsearch .mic-field {
   position: relative;
@@ -802,11 +853,14 @@
   margin: 6px 0 0;
   padding: 4px;
   border-radius: 10px;
-  background: #14161C;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+  border: 1px solid var(--hair);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   max-height: calc(100vh - 160px);
   overflow-y: auto;
+}
+:root:not([data-glass="on"]) .graph .gnotch-dock .gresults {
+  background: var(--surface-raised);
 }
 .graph .gnotch-dock .gresults li {
   display: flex;
@@ -817,18 +871,18 @@
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
-  color: #F3F4F6;
+  color: var(--ink);
   transition: background-color 0.12s ease-out;
 }
 .graph .gnotch-dock .gresults li:hover,
 .graph .gnotch-dock .gresults li[aria-selected="true"] {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--btn-secondary-bg-hover);
 }
 .graph .gnotch-dock .gresults small {
   margin-left: auto;
   font-size: 11px;
   font-family: var(--mono, monospace);
-  color: #8E95A5;
+  color: var(--muted);
 }
 .graph .gnotch-dock .gsec {
   margin: 0;
@@ -839,29 +893,12 @@
   margin-top: 10px;
 }
 .graph .gnotch-dock .hint {
-  color: #8E95A5;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.35;
   margin: 6px 0 0;
 }
-.graph .gnotch-dock .gstatus {
-  color: #8E95A5;
-  font-size: 12px;
-  margin: 6px 0 0;
-}
-.graph .gnotch-dock .gstatus.err {
-  color: #ed9572;
-}
-.graph .gnotch-dock .gstatus button {
-  background: rgba(255, 255, 255, 0.15);
-  color: #FFFFFF;
-  border: none;
-  border-radius: var(--r-pill, 9999px);
-  padding: 2px 8px;
-  font-size: 11px;
-  cursor: pointer;
-}
-.graph .gnotch-hidden-lens {
+.graph .gnotch-dock .gnotch-hidden-lens {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -874,14 +911,14 @@
   opacity: 0;
   pointer-events: none;
 }
-.graph .gnotch-live-status {
+.graph .gnotch-dock .gnotch-live-status {
   position: absolute;
   top: 100%;
   right: 12px;
   left: auto;
   margin-top: 14px;
-  background: #0B0C0E;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--hair);
   border-radius: var(--r-pill, 9999px);
   padding: 6px 14px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
@@ -889,33 +926,36 @@
   white-space: nowrap;
   animation: gnotch-content-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.graph .gnotch-live-status .gstatus {
+.graph .gnotch-dock .gnotch-live-status .gstatus {
   margin: 0;
   font-size: 11px;
-  color: #8E95A5;
+  color: var(--muted);
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.graph .gnotch-live-status .gstatus.err {
-  color: #ed9572;
+.graph .gnotch-dock .gnotch-live-status .gstatus.err {
+  color: var(--warn);
 }
-.graph .gnotch-live-status .gstatus button {
-  background: rgba(255, 255, 255, 0.15);
-  color: #FFFFFF;
-  border: none;
+.graph .gnotch-dock .gnotch-live-status .gstatus button {
+  background: var(--btn-secondary-bg);
+  color: var(--ink);
+  border: 1px solid var(--ctl-edge);
   border-radius: var(--r-pill, 9999px);
   padding: 2px 8px;
   font-size: 11px;
   cursor: pointer;
   margin-left: 6px;
 }
+.graph .gnotch-dock .gnotch-live-status .gstatus button:hover {
+  background: var(--btn-secondary-bg-hover);
+}
 @media (prefers-reduced-motion: reduce) {
   .graph .gnotch-dock,
-  .graph .gnotch-btn,
-  .graph .gnotch-content,
-  .graph .gnotch-ring-btn,
-  .graph .gnotch-live-status {
+  .graph .gnotch-dock .gnotch-btn,
+  .graph .gnotch-dock .gnotch-content,
+  .graph .gnotch-dock .gnotch-ring-btn,
+  .graph .gnotch-dock .gnotch-live-status {
     animation: none !important;
     transition: none !important;
   }

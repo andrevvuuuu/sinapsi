@@ -5,7 +5,7 @@ import {
   type LearnerAnswer,
   type Question
 } from '../../../shared/teacher-protocol'
-import type { Evidence } from '../../../main/session/events'
+import type { Evidence } from '../../../shared/session-types'
 import { RichText } from './RichText'
 
 export function AnswerCard({

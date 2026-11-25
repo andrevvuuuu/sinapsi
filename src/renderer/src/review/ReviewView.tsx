@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { NotePeek } from '../components/NotePeek'
 import { StudyPacer } from '../components/StudyPacer'
-import type { ExplainTurn } from '../../../main/memory/explain'
-import type { ReviewItem } from '../../../main/memory/review'
+import type { ExplainTurn, ReviewItem } from '../../../shared/review-types'
 import { GUESS_CONFIDENCE, MISCONCEPTION_CONFIDENCE, proposeGrade, type ExerciseType, type Grade } from '../../../shared/memory-types'
 import { EXERCISE_TYPES } from '../../../shared/memory-types'
 import { GlassContent } from '@glass-sdk/liquid-glass'
@@ -12,6 +12,8 @@ import { ExerciseView, type ExerciseState } from './ExerciseView'
 import './review.css'
 import { ConfidencePanel } from './ConfidencePanel'
 import { CONFIDENCE_OPTIONS, type ConfKey } from '../components/confidence'
+import { Skeleton } from '../components/Skeleton'
+import { useWaitStage } from '../components/useWaitStage'
 
 const GRADES: [Grade, string][] = [
   [1, 'Di nuovo'],
@@ -82,7 +84,8 @@ export function ReviewView({
   onBack,
   onStudy,
   onPractice,
-  onOpenNote
+  onOpenNote,
+  backLabel = '← Oggi'
 }: {
   query?: string
   conceptIds?: string[]
@@ -93,6 +96,7 @@ export function ReviewView({
   onStudy: (name: string) => void
   onPractice?: (conceptIds: string[]) => void
   onOpenNote: (path: string) => void
+  backLabel?: string
 }): React.JSX.Element {
   const api = window.sinapsi
   const [items, setItems] = useState<ReviewItem[] | null>(null)
@@ -120,6 +124,8 @@ export function ReviewView({
   const questionRef = useRef<HTMLDivElement>(null)
   const [startedAt] = useState(() => Date.now())
   const [endedAt, setEndedAt] = useState<number | null>(null)
+  const [peekItem, setPeekItem] = useState<ReviewItem | null>(null)
+  const peekTriggerRef = useRef<HTMLButtonElement | null>(null)
 
   const load = useCallback(
     async (
@@ -493,7 +499,7 @@ export function ReviewView({
   const top = (
     <header className="rv-top drag">
       <button type="button" className="pill nodrag back-btn" onClick={onBack}>
-        ← Home
+        {backLabel}
       </button>
       <span className="rv-title">Ripasso</span>
       {items && items.length > 0 && i >= 0 && (
@@ -516,6 +522,12 @@ export function ReviewView({
     </header>
   )
 
+  const waitStage = useWaitStage({
+    engine: 'agy',
+    active: !items,
+    writing: false
+  })
+
   if (!items)
     return (
       <ViewScene className="rv">
@@ -523,10 +535,21 @@ export function ReviewView({
         <ScrollEdges target={page} size={72} edges={['top']} />
         <GlassContent layout="scroll" className="rv-scroll edge-fade" ref={page}>
           <main className="rv-main">
-            <p className="rv-loading" role="status">
-              Preparo le domande… (la prima volta Gemini scrive le varianti: può servire qualche
-              minuto)
-            </p>
+            <div className="rv-loading" role="status">
+              <div className="rv-skeleton-card" aria-hidden="true" style={{ marginBottom: 16 }}>
+                <Skeleton width="30%" height={20} radius="sm" style={{ marginBottom: 12 }} />
+                <Skeleton width="100%" height={48} radius="md" style={{ marginBottom: 16 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <Skeleton width="100%" height={38} radius="md" />
+                  <Skeleton width="100%" height={38} radius="md" />
+                  <Skeleton width="100%" height={38} radius="md" />
+                </div>
+              </div>
+              <p>
+                Preparo le domande… ({waitStage.label} — la prima volta Gemini scrive le varianti: può servire qualche
+                minuto)
+              </p>
+            </div>
           </main>
         </GlassContent>
       </ViewScene>
@@ -706,11 +729,16 @@ export function ReviewView({
                     >
                       <i
                         className="before"
-                        style={{ width: `${Math.round((r.before ?? 0) * 100)}%` }}
+                        style={{ '--v': Math.max(0, Math.min(1, r.before ?? 0)) } as React.CSSProperties}
                       />
                       <i
                         className="after"
-                        style={{ width: `${Math.round((r.after ?? 0) * 100)}%` }}
+                        style={
+                          {
+                            '--v': Math.max(0, Math.min(1, r.after ?? 0)),
+                            '--from': Math.max(0, Math.min(1, r.before ?? 0))
+                          } as React.CSSProperties
+                        }
                       />
                     </span>
                   </div>
@@ -903,7 +931,12 @@ export function ReviewView({
                 </div>
                 {error && <p role="alert">{error}</p>}
                 <div className="rv-foot">
-                  <button type="button" className="link" onClick={() => onOpenNote(item.notePath)}>
+                  <button
+                    type="button"
+                    className="link"
+                    ref={peekTriggerRef}
+                    onClick={() => setPeekItem(item)}
+                  >
                     Apri nella nota
                   </button>
                   <button
@@ -921,6 +954,27 @@ export function ReviewView({
           </article>
         </main>
       </GlassContent>
+      {peekItem && (
+        <NotePeek
+          concept={{
+            id: peekItem.conceptId,
+            name: peekItem.name,
+            birth: peekItem.notePath,
+            statement:
+              'exercise' in peekItem && peekItem.exercise && 'prompt' in peekItem.exercise
+                ? (peekItem.exercise.answer ?? peekItem.exercise.prompt)
+                : undefined
+          }}
+          notePath={peekItem.notePath}
+          noteTitle={peekItem.noteTitle}
+          triggerRef={peekTriggerRef}
+          onClose={() => setPeekItem(null)}
+          onOpenNote={(path) => {
+            setPeekItem(null)
+            onOpenNote(path)
+          }}
+        />
+      )}
     </ViewScene>
   )
 }

@@ -43,6 +43,7 @@ export function MicButton({
   return (
     <>
       <button
+        ref={d.levelRef as React.Ref<HTMLButtonElement>}
         type="button"
         className={`mic${size === 'sm' ? ' mic-sm' : ''}`}
         aria-label={on ? 'Ferma la dettatura' : 'Detta'}
@@ -51,7 +52,10 @@ export function MicButton({
         title={on ? 'Ferma la dettatura (⌥ Spazio)' : 'Detta (⌥ Spazio)'}
         onClick={d.toggle}
       >
-        {on ? <IconStop /> : <IconMic />}
+        <span className="mic-icon-wrap">
+          {on && <span className="mic-halo" aria-hidden="true" />}
+          {on ? <IconStop /> : <IconMic />}
+        </span>
         {on && <span className="mic-time">{clock(d.seconds)}</span>}
         {/* What it is doing, beside the icon like the elapsed time; the live region below says it in full. */}
         {busy && (

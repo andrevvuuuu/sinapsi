@@ -64,8 +64,9 @@ test('an exam: a timed sheet, answers, delivery, a grade in thirtieths', async (
   await expect(win.getByRole('timer')).toBeVisible()
   await win.getByLabel('Risposta all’esercizio 1').fill('Vale $1$.')
   await win.screenshot({ path: 'test-results/practice-exam.png' })
-  win.once('dialog', (d) => void d.accept())
   await win.getByRole('button', { name: 'Consegna' }).click()
+  // Irreversible: the inline confirmation replaces the native dialog.
+  await win.getByRole('button', { name: 'Conferma', exact: true }).click()
   await expect(win.getByText('21/30')).toBeVisible()
   await expect(win.getByText('Manca la derivabilità.')).toBeVisible()
   await win.screenshot({ path: 'test-results/practice-grade.png' })
@@ -90,8 +91,9 @@ test('an exam on paper: sheet and clock, pens down, self-grade before the correc
     await expect(win.getByText('Enuncia e dimostra il teorema di Rolle.')).toBeVisible()
     await expect(win.getByLabel('Risposta all’esercizio 1')).toHaveCount(0)
     if (round === 1) await win.screenshot({ path: 'test-results/paper-sheet.png' })
-    win.once('dialog', (d) => void d.accept())
     await win.getByRole('button', { name: 'Ho finito: consegno' }).click()
+    // Irreversible: the inline confirmation replaces the native dialog.
+    await win.getByRole('button', { name: 'Conferma', exact: true }).click()
     await expect(win.getByRole('heading', { name: 'Penne giù' })).toBeVisible()
     await expect(win.getByText('Weierstrass e Fermat.')).toBeVisible()
     await expect(win.getByRole('timer')).toHaveCount(0)
@@ -104,8 +106,9 @@ test('an exam on paper: sheet and clock, pens down, self-grade before the correc
     await win.getByLabel('Risposta all’esercizio 1').fill('Vale $1$.')
     await win.getByLabel('Risposta all’esercizio 2').fill('Per Weierstrass ha max e min.')
     if (round === 1) await win.screenshot({ path: 'test-results/paper-self.png' })
-    win.once('dialog', (d) => void d.accept())
     await win.getByRole('button', { name: 'Correggi' }).click()
+    // Irreversible: the inline confirmation replaces the native dialog.
+    await win.getByRole('button', { name: 'Conferma', exact: true }).click()
     await expect(win.getByRole('region', { name: 'Voto' }).getByText('21/30')).toBeVisible()
     const panel = win.getByRole('region', { name: 'Calibrazione' })
     await expect(panel).toBeVisible()
@@ -113,7 +116,7 @@ test('an exam on paper: sheet and clock, pens down, self-grade before the correc
       await expect(panel.getByText('28/30')).toBeVisible()
       await expect(panel.getByText('Ti sei sopravvalutato di 3,5 punti in media a esercizio.')).toBeVisible()
       await win.screenshot({ path: 'test-results/paper-grade.png' })
-      await win.getByRole('button', { name: '← Home' }).click()
+      await win.getByRole('button', { name: /^← / }).click()
     } else {
       await expect(panel.getByText('Su 2 simulazioni a carta', { exact: false })).toBeVisible()
       await win.screenshot({ path: 'test-results/paper-history.png', fullPage: true })

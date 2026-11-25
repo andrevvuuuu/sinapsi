@@ -138,4 +138,58 @@ describe('QuestionDock', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Approva il piano' }))
     expect(onSay).toHaveBeenCalledWith('Approvo il piano.')
   })
+
+  it('keeps confidence section closed when newly rendered and opens it after picking an option', () => {
+    const onAnswer = vi.fn()
+    const { container } = render(
+      <QuestionDock question={choice} onAnswer={onAnswer} onSay={vi.fn()} />
+    )
+    const reveal = container.querySelector('.qd-reveal') as HTMLElement
+    expect(reveal).toBeTruthy()
+    expect(reveal.hasAttribute('data-open')).toBe(false)
+    expect(reveal.hasAttribute('inert') || reveal.inert).toBeTruthy()
+
+    // Keyboard shortcuts ignored while focus is in textarea
+    const ta = document.createElement('textarea')
+    document.body.appendChild(ta)
+    ta.focus()
+    fireEvent.keyDown(window, { key: 'b' })
+    expect(screen.getByRole('button', { name: /È costante/ }).getAttribute('aria-pressed')).toBe('false')
+    expect(reveal.hasAttribute('data-open')).toBe(false)
+    ta.blur()
+    document.body.removeChild(ta)
+
+    // Key "b" picks the second option
+    fireEvent.keyDown(window, { key: 'b' })
+    const optB = screen.getByRole('button', { name: /È costante/ })
+    expect(optB.getAttribute('aria-pressed')).toBe('true')
+    expect(optB.className).toContain('opt-press')
+    expect(reveal.hasAttribute('data-open')).toBe(true)
+    expect(reveal.hasAttribute('inert')).toBe(false)
+
+    // Key "2" picks the second confidence level
+    fireEvent.keyDown(window, { key: '2' })
+    const confTab = screen.getByRole('tab', { name: 'Incerto' })
+    expect(confTab.getAttribute('aria-selected') === 'true' || confTab.getAttribute('data-active') !== null).toBeTruthy()
+
+    // Keys ignored while focus is in the reasoning textarea
+    const reasoning = screen.getByLabelText('Il tuo ragionamento')
+    reasoning.focus()
+    fireEvent.keyDown(window, { key: 'a' })
+    expect(optB.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.keyDown(window, { key: '1' })
+    expect(confTab.getAttribute('aria-selected') === 'true' || confTab.getAttribute('data-active') !== null).toBeTruthy()
+  })
+
+  it('keeps confidence section closed when "Non lo so" is picked', () => {
+    const { container } = render(
+      <QuestionDock question={choice} onAnswer={vi.fn()} onSay={vi.fn()} />
+    )
+    const reveal = container.querySelector('.qd-reveal') as HTMLElement
+    expect(reveal.hasAttribute('data-open')).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Non lo so' }))
+    expect(reveal.hasAttribute('data-open')).toBe(false)
+    expect(reveal.hasAttribute('inert') || reveal.inert).toBeTruthy()
+  })
 })

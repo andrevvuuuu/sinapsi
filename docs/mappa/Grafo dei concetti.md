@@ -20,4 +20,8 @@
 ## Interfaccia
 `src/renderer/src/graph/`: `GraphView.tsx` (vista, ~1.700 righe), `GraphNotchDock.tsx` (pannello), `layout.ts` (d3-force con budget di tempo), `draw.ts`, `model.ts`.
 
+- `.gnotch-dock` e `.gzoom` usano solo token (tema chiaro e scuro), con test in `tests/unit/contrast.test.ts`.
+- Alla selezione un impulso di ~800 ms scorre sugli archi della catena (`pulse` in `DrawState`, `draw.ts`); poi il loop rAF si ferma. Con «Riduci movimento» un solo frame statico.
+- «Apri la nota» nella card apre prima l'anteprima `NotePeek` (`src/renderer/src/components/NotePeek.tsx`, superficie solida, nessuna scena WebGPU nuova): zoom, selezione e cluster restano com'erano. Da lì «Apri Nota Viva completa» o la nota.
+
 Collegate: [[Vault Obsidian]], [[AI e motori]], [[Memoria e ripasso]].

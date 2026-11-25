@@ -35,6 +35,7 @@ export type DrawState = {
   orphansSet?: Set<string>
   suspectSet?: Set<string>
   aggregation?: GraphAggregation | null
+  pulse?: { t: number }
 }
 export type DrawOut = { regionLabels: Map<string, [number, number, number, number]> }
 
@@ -370,20 +371,29 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       ((F.has(a.id) || a.kind === 'junction') &&
         (F.has(b.id) || b.kind === 'junction') &&
         (F.has(a.id) || F.has(b.id)))
+    const isSelLink =
+      !!s.sel &&
+      (isChainFocus ||
+        (F !== null &&
+          (F.has(a.id) || a.kind === 'junction') &&
+          (F.has(b.id) || b.kind === 'junction') &&
+          (F.has(a.id) || F.has(b.id))))
     const al = isChainFocus ? 1 : (0.18 + 0.5 * tProp) * (lit ? 1 : 0.06)
     ctx.lineWidth = isChainFocus ? 2.2 : 1.15
     ctx.strokeStyle = isChainFocus ? C.ink : rgba(C.ink, al)
     const [x1, y1, x2, y2] = [sx(a.x!), sy(a.y!), sx(b.x!), sy(b.y!)]
+    const dx = x2 - x1
+    const dy = y2 - y1
+    const L = Math.hypot(dx, dy) || 1
+    const [ux, uy] = [dx / L, dy / L]
+    const er = radiusOf(model, b) * Math.sqrt(k) * 0.9 + 2
+    const ah = Math.max(3, 6 * Math.min(1.4, k))
+    const targetX = l.head ? x2 - ux * (er + ah) : x2
+    const targetY = l.head ? y2 - uy * (er + ah) : y2
     if (l.head) {
-      const dx = x2 - x1
-      const dy = y2 - y1
-      const L = Math.hypot(dx, dy) || 1
-      const [ux, uy] = [dx / L, dy / L]
-      const er = radiusOf(model, b) * Math.sqrt(k) * 0.9 + 2
-      const ah = Math.max(3, 6 * Math.min(1.4, k))
       ctx.beginPath()
       ctx.moveTo(x1, y1)
-      ctx.lineTo(x2 - ux * (er + ah), y2 - uy * (er + ah))
+      ctx.lineTo(targetX, targetY)
       ctx.stroke()
       if (k > 0.45 || isChainFocus) {
         ctx.beginPath()
@@ -399,6 +409,24 @@ export function draw(ctx: CanvasRenderingContext2D, s: DrawState): DrawOut {
       ctx.moveTo(x1, y1)
       ctx.lineTo(x2, y2)
       ctx.stroke()
+    }
+    if (s.pulse && isSelLink) {
+      const t = Math.max(0, Math.min(1, s.pulse.t))
+      const alpha = 1 - t
+      if (alpha > 0.001) {
+        const edgeLen = Math.hypot(targetX - x1, targetY - y1) || 1
+        const dashLen = Math.max(12, Math.min(30, edgeLen * 0.35))
+        ctx.save()
+        ctx.setLineDash([dashLen, edgeLen + dashLen])
+        ctx.lineDashOffset = -t * (edgeLen + dashLen)
+        ctx.lineWidth = isChainFocus ? 3.0 : 2.2
+        ctx.strokeStyle = rgba(C.accent, alpha * 0.95)
+        ctx.beginPath()
+        ctx.moveTo(x1, y1)
+        ctx.lineTo(targetX, targetY)
+        ctx.stroke()
+        ctx.restore()
+      }
     }
   }
 

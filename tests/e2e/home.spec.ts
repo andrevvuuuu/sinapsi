@@ -100,7 +100,8 @@ test('home composer: full suggestion titles on one row, legible secondary text a
 
   for (const theme of ['lavagna', 'trattato']) {
     await win.evaluate((t) => (document.documentElement.dataset.theme = t), theme)
-    await win.waitForTimeout(300)
+    // The chips' colours transition for 0.2 s; under a loaded parallel run 300 ms was not always enough.
+    await win.waitForTimeout(700)
     const m = await win.evaluate(measureComposer)
     expect(new Set(m.tops).size, `${theme}: chips on one row`).toBe(1)
     for (const l of m.lines) expect(l, `${theme}: title at most two lines`).toBeLessThanOrEqual(2)

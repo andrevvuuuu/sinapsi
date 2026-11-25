@@ -23,6 +23,11 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
   const [pick, setPick] = useState<number | 'idk' | null>(null)
   const [confidence, setConfidence] = useState<number | null>(null)
   const [text, setText] = useState('')
+  const [pressedOpt, setPressedOpt] = useState<number | 'idk' | null>(null)
+
+  const isChoice = q.kind === 'choice'
+  const isGoal = q.role === 'goal'
+  const revealOpen = pick !== null && pick !== 'idk'
 
   useEffect(() => {
     setConfidence(null)
@@ -30,7 +35,20 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
     setText('')
     setThoughts('')
     setRevealed(q.role !== 'check')
+    setPressedOpt(null)
   }, [q.id, q.role])
+
+  const pickOption = (i: number | 'idk'): void => {
+    setPick(i)
+    setPressedOpt(i)
+  }
+
+  useEffect(() => {
+    if (pressedOpt === null) return
+    const t = setTimeout(() => setPressedOpt(null), 120)
+    return () => clearTimeout(t)
+  }, [pressedOpt])
+
   // A new question takes the focus, so screen readers and the keyboard start from it.
   const head = useRef<HTMLDivElement>(null)
   // Once the dock's glass shell shows (a frame after it mounts).
@@ -50,6 +68,61 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
   const thoughtsBusy = thoughtsMic.state !== 'idle'
   const answerBusy = answerMic.state !== 'idle'
   const middle = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!revealed || q.kind === 'game' || q.role === 'plan') return
+
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const el = document.activeElement
+      if (
+        el instanceof HTMLElement &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'TEXTAREA' ||
+          el.tagName === 'SELECT' ||
+          el.isContentEditable ||
+          el.getAttribute('contenteditable') === 'true' ||
+          Boolean(el.closest('input, textarea, select, [contenteditable]')))
+      ) {
+        return
+      }
+      const tgt = e.target
+      if (
+        tgt instanceof HTMLElement &&
+        (tgt.tagName === 'INPUT' ||
+          tgt.tagName === 'TEXTAREA' ||
+          tgt.tagName === 'SELECT' ||
+          tgt.isContentEditable ||
+          tgt.getAttribute('contenteditable') === 'true' ||
+          Boolean(tgt.closest('input, textarea, select, [contenteditable]')))
+      ) {
+        return
+      }
+
+      const k = e.key.toUpperCase()
+      if (isChoice && q.options && k >= 'A' && k <= 'F') {
+        const idx = k.charCodeAt(0) - 65
+        if (idx < q.options.length) {
+          e.preventDefault()
+          pickOption(idx)
+          return
+        }
+      }
+
+      const isConfidenceOpen = (!isChoice && !isGoal) || (isChoice && !isGoal && revealOpen)
+      if (isConfidenceOpen && ['1', '2', '3', '4'].includes(e.key)) {
+        const numIdx = Number(e.key) - 1
+        const opt = CONFIDENCE_OPTIONS[numIdx]
+        if (opt) {
+          e.preventDefault()
+          setConfidence(Number(opt.value))
+        }
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [revealed, q.kind, q.role, isChoice, isGoal, q.options, revealOpen])
 
   if (q.kind === 'game') return <GameDock question={q} onAnswer={onAnswer} />
 
@@ -141,8 +214,6 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
     )
   }
 
-  const isChoice = q.kind === 'choice'
-  const isGoal = q.role === 'goal'
   const hasConfidence = confidence !== null
   const ready =
     !answerBusy &&
@@ -195,10 +266,10 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
                   <button
                     key={i}
                     type="button"
-                    className="opt"
+                    className={`opt ${pressedOpt === i ? 'opt-press' : ''}`}
                     aria-pressed={pick === i}
                     aria-label={`${LETTERS[i]}: ${o}`}
-                    onClick={() => setPick(i)}
+                    onClick={() => pickOption(i)}
                   >
                     <span className="k" aria-hidden="true">
                       {LETTERS[i]}
@@ -208,33 +279,59 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
                 ))}
                 <button
                   type="button"
-                  className="opt idk"
+                  className={`opt idk ${pressedOpt === 'idk' ? 'opt-press' : ''}`}
                   aria-pressed={pick === 'idk'}
-                  onClick={() => setPick('idk')}
+                  onClick={() => pickOption('idk')}
                 >
                   Non lo so
                 </button>
               </div>
-              {!isGoal && pick !== 'idk' && (
-                <div className="conf" role="group" aria-labelledby="cf-l">
-                  <span className="lab" id="cf-l">
-                    Fiducia
-                  </span>
-                  <Seg<ConfKey>
-                    label="Fiducia"
-                    track="plain"
-                    value={confidence !== null ? (String(confidence) as ConfKey) : null}
-                    onChange={(v) => setConfidence(Number(v))}
-                    options={CONFIDENCE_OPTIONS}
-                  />
+              {!isGoal && (
+                <div
+                  className="qd-reveal"
+                  data-open={revealOpen ? '' : undefined}
+                  inert={!revealOpen ? true : undefined}
+                >
+                  <div className="qd-reveal-inner">
+                    <div className="conf" role="group" aria-labelledby="cf-l">
+                      <span className="lab" id="cf-l">
+                        Fiducia
+                      </span>
+                      <Seg<ConfKey>
+                        label="Fiducia"
+                        track="plain"
+                        value={confidence !== null ? (String(confidence) as ConfKey) : null}
+                        onChange={(v) => setConfidence(Number(v))}
+                        options={CONFIDENCE_OPTIONS}
+                      />
+                    </div>
+                    <div className="think">
+                      <label className="lab" htmlFor="th">
+                        Il tuo ragionamento
+                      </label>
+                      <div className="mic-field">
+                        <textarea
+                          id="th"
+                          ref={answerField}
+                          readOnly={answerBusy}
+                          placeholder="Perché questa risposta? Quello che ti passa per la testa."
+                          value={text}
+                          onChange={(e) => setText(e.target.value)}
+                          onKeyDown={onKey}
+                        />
+                        <MicButton dictation={answerMic} />
+                      </div>
+                      <DictationError dictation={answerMic} />
+                    </div>
+                  </div>
                 </div>
               )}
             </>
           )}
-          {(!isGoal || !isChoice) && (
+          {!isChoice && (
             <div className="think">
               <label className="lab" htmlFor="th">
-                {isGoal ? 'Il tuo obiettivo' : isChoice ? 'Il tuo ragionamento' : 'La tua risposta'}
+                {isGoal ? 'Il tuo obiettivo' : 'La tua risposta'}
               </label>
               <div className="mic-field">
                 <textarea
@@ -242,11 +339,9 @@ export function QuestionDock({ question: q, onAnswer, onSay }: Props): React.JSX
                   ref={answerField}
                   readOnly={answerBusy}
                   placeholder={
-                    isChoice
-                      ? 'Perché questa risposta? Quello che ti passa per la testa.'
-                      : q.role === 'recall'
-                        ? 'Tutto quello che ricordi, senza guardare.'
-                        : 'Scrivi come ti viene.'
+                    q.role === 'recall'
+                      ? 'Tutto quello che ricordi, senza guardare.'
+                      : 'Scrivi come ti viene.'
                   }
                   value={text}
                   onChange={(e) => setText(e.target.value)}

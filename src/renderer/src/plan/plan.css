@@ -136,8 +136,11 @@
   gap: 12px;
   max-width: 320px;
 }
+.plan-buffer-control .range-scene,
 .plan-buffer-control input {
   flex: 1;
+}
+.plan-buffer-control input {
   height: 6px;
   accent-color: var(--accent);
   border-radius: var(--r-pill);
@@ -187,6 +190,26 @@
 .plan-block {
   padding: 12px 0;
   border-top: 1px solid var(--hair);
+}
+.plan-block-review {
+  border-left: 3px solid var(--sh-review, var(--accent));
+  padding-left: 10px;
+}
+.plan-block-review h3 {
+  color: var(--sh-review, var(--accent));
+}
+.plan-block-review.is-actionable {
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  transition: background-color 0.15s var(--ease-out);
+}
+.plan-block-review.is-actionable:hover {
+  background: var(--btn-secondary-bg-hover);
+}
+.plan-block-review.is-actionable:focus,
+.plan-block-review.is-actionable:focus-visible {
+  outline: var(--btn-focus-ring);
+  outline-offset: var(--btn-focus-offset, 2px);
 }
 .plan-block:first-of-type {
   border-top: 1px solid var(--hair);

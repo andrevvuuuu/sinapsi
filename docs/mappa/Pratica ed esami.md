@@ -14,11 +14,12 @@
 
 ## Esami, piano, prontezza
 - `src/main/exams/` (`exams.jsonl`, `reduceExams`).
-- `buildWeekPlan()` in `src/main/planner/plan.ts`: piano settimanale sulle ore di studio (`studyHours`, `planBuffer`).
+- `buildWeekPlan()` in `src/main/planner/plan.ts`: piano settimanale sulle ore di studio (`studyHours`, `planBuffer`). Ogni giorno riserva prima il tempo dei ripassi FSRS in scadenza (`reviewMinutes`, `reviewConceptIds` in `DayPlan`; stima `REVIEW_MINUTES_PER_CARD`, gli scaduti vanno sul primo giorno), poi distribuisce lezioni e simulazioni. Non scrive nulla.
+- `createPracticeRunner()` (`src/main/practice/runner.ts`) tiene in memoria gli eventi di ogni sessione e rilegge un file solo se cambia (mtime + size); `list()` e `practiced()` leggono ogni file al massimo una volta.
 - `readinessFor()` in `src/main/planner/readiness.ts`: prontezza per un esame da cinque segnali.
 
 ## Interfaccia
-`src/renderer/src/practice/` (`PracticeView.tsx`, `PracticeSetup.tsx`, `ExamView.tsx`, `PaperExam.tsx`, `PhotoButton.tsx`), `src/renderer/src/plan/`.
+`src/renderer/src/practice/` (`PracticeView.tsx`, `PracticeSetup.tsx`, `ExamView.tsx`, `PaperExam.tsx`, `PhotoButton.tsx`), `src/renderer/src/plan/` (`PlanView.tsx`, `ExamManager.tsx`, `ReadinessPanel.tsx`, `exams.css`). Gestione esami condivisa con importazione 1-clic dal tutor Obsidian montata nel Piano e nel Registro.
 
 ## Dati
 `practice/` nella cartella dati. → [[Dati su disco]]

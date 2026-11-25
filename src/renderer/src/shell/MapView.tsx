@@ -17,10 +17,10 @@ export function MapView({
   onStudy: (title: string) => void
 }): React.JSX.Element {
   return (
-    <section className="sh-map" aria-label="Mappa dei concetti">
+    <section className="sh-map" aria-label="Grafo dei concetti">
       <header className="sh-map-header">
         <p className="sh-eyebrow">IL TUO VAULT</p>
-        <h1>Mappa</h1>
+        <h1>Grafo</h1>
       </header>
       {index ? (
         <GraphView
@@ -32,7 +32,7 @@ export function MapView({
           onStudy={onStudy}
         />
       ) : (
-        <p className="sh-empty">La mappa sarà disponibile quando il vault sarà caricato.</p>
+        <p className="sh-empty">Il grafo sarà disponibile quando il vault sarà caricato.</p>
       )}
     </section>
   )

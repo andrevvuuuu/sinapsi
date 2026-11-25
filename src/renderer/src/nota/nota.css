@@ -70,6 +70,11 @@
   box-shadow: 0 16px 32px rgb(0 0 0 / 0.32);
   -webkit-app-region: no-drag;
   overflow-x: auto;
+  transition: transform 200ms var(--ease-out), padding 200ms var(--ease-out), opacity 200ms var(--ease-out);
+}
+.nota .island.compact {
+  padding: 3px;
+  transform: translateX(-50%) scale(0.96);
 }
 .nota .island .back {
   min-height: var(--ctl-sm);
@@ -197,6 +202,19 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  position: relative;
+}
+.nota .toc .toc-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  transform: translateY(var(--toc-y, 0px));
+  height: var(--toc-h, 36px);
+  transition: transform 200ms var(--ease-out);
+  pointer-events: none;
 }
 .nota .toc a {
   display: flex;
@@ -210,6 +228,10 @@
   color: var(--muted);
   text-decoration: none;
   transition: var(--btn-transition);
+}
+.nota .toc a[aria-current='true'] {
+  color: var(--ink);
+  font-weight: 500;
 }
 .nota .toc a b {
   font: var(--font-caption);

@@ -1,0 +1,114 @@
+.cmd-palette {
+  width: min(600px, calc(100vw - 32px));
+  max-height: min(480px, calc(100vh - 64px));
+  display: flex;
+  flex-direction: column;
+}
+
+.cmd-core {
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--r-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: min(480px, calc(100vh - 64px));
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--hair);
+}
+
+.cmd-input-wrap {
+  padding: var(--s-3);
+  border-bottom: 1px solid var(--hair);
+  display: flex;
+  align-items: center;
+}
+
+.cmd-input {
+  width: 100%;
+  min-height: var(--ctl);
+  padding: 0 var(--s-3);
+  background: var(--panel);
+  border: 1px solid var(--ctl-edge);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font: var(--font-body);
+  outline: none;
+  transition: var(--btn-transition);
+}
+
+.cmd-input:focus {
+  outline: var(--btn-focus-ring);
+  outline-offset: var(--btn-focus-offset);
+}
+
+.cmd-input::placeholder {
+  color: var(--muted);
+}
+
+.cmd-listbox {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s-2) var(--s-3) var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.cmd-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cmd-group-title {
+  font: var(--font-caption);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--s-2) var(--s-2) var(--s-1);
+}
+
+.cmd-item {
+  min-height: var(--ctl);
+  padding: 0 var(--s-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  color: var(--ink);
+  font: var(--font-body);
+  user-select: none;
+  transition: var(--btn-transition);
+}
+
+.cmd-item:hover,
+.cmd-item.selected {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+}
+
+.cmd-item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.cmd-item-badge {
+  font: var(--font-caption);
+  color: var(--muted);
+  background: var(--panel);
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  margin-left: var(--s-2);
+  flex-shrink: 0;
+}
+
+.cmd-empty {
+  padding: var(--s-6) var(--s-3);
+  text-align: center;
+  color: var(--muted);
+  font: var(--font-body);
+}
